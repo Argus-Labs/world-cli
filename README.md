@@ -16,7 +16,7 @@ see newProject.go to see how this utilizes these libraries to construct an inter
 
 All this does is clone the starter-game-template. 
 
-Test with these commands in the project dir run:
+Test with these commands; in the project dir run:
 1. `go build`
 2. `./world-engine-cli new-project myproject`
    
