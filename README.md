@@ -14,7 +14,7 @@ see newProject.go to see how this utilizes these libraries to construct an inter
 - https://github.com/charmbracelet/bubbletea for the tui framework
 - https://github.com/charmbracelet/bubbles for tui widgets that work with bubbletea
 
-All this does is clone the project. 
+All this does is clone the starter-game-template. 
 
 Test with these commands in the project dir run:
 1. `go build`
