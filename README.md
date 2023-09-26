@@ -14,9 +14,11 @@ see newProject.go to see how this utilizes these libraries to construct an inter
 - https://github.com/charmbracelet/bubbletea for the tui framework
 - https://github.com/charmbracelet/bubbles for tui widgets that work with bubbletea
 
-Test with:
+All this does is clone the project. 
+
+Test with these commands in the project dir run:
 1. `go build`
-2. `world-engine-cli new-project myproject`
+2. `./world-engine-cli new-project myproject`
    
 
 
