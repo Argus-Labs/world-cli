@@ -1,20 +1,20 @@
 # world-engine-cli
 world-engine-cli
 
-temp Dev notes:
+temporary testing notes:
 
-install this:
+install this to add new commands to the cli:
 `go install github.com/spf13/cobra-cli@latest`
 
 Then run:
 `cobra-cli add create -p 'configCmd` to add a command line parameter "create" with an option "-p" that takes an argument 'configCmd'
 
-see newProject.go to see how this utilizes these libraries to construct an interface:
+see newProject.go to see how this CLI utilizes these libraries to construct a TUI after a command has been run:
 - https://github.com/charmbracelet/lipgloss for terminal rendering
 - https://github.com/charmbracelet/bubbletea for the tui framework
 - https://github.com/charmbracelet/bubbles for tui widgets that work with bubbletea
 
-All this does is clone the starter-game-template. 
+All this thing currently does is clone the starter-game-template. 
 
 Test with these commands; in the project dir run:
 1. `go build`
