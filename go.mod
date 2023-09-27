@@ -8,6 +8,8 @@ require (
 	github.com/spf13/cobra v1.7.0
 )
 
+require github.com/google/go-cmp v0.5.9 // indirect
+
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/lipgloss v0.7.1 // indirect
@@ -27,4 +29,5 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
+	gotest.tools/v3 v3.5.0
 )

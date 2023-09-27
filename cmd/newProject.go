@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -38,27 +39,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
+func CreateNewProject(projectName string) error {
+	command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", projectName)
+	p := tea.NewProgram(initialModel(projectName))
+	go func() {
+		utils.RunShellCmd(command, true)
+		p.Quit()
+	}()
+	_, err := p.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // newProjectCmd represents the newProject command
 var newProjectCmd = &cobra.Command{
 	Use:   "new-project",
 	Short: "Creates a new project for world engine",
 	Long:  `Uses git clone to create a new project for world-engine from https://github.com/Argus-Labs/starter-game-template`,
-	Run: func(cmd *cobra.Command, arg []string) {
+	RunE: func(_ *cobra.Command, arg []string) error {
 		if len(arg) != 1 {
-			fmt.Println("new-project requires a destination to create a new project.")
-			return
+			return errors.New("new-project requires a destination to create a new project.")
 		}
-		command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", arg[0])
-		p := tea.NewProgram(initialModel(arg[0]))
-		go func() {
-			utils.RunShellCmd(command, true)
-			p.Quit()
-		}()
-		_, err := p.Run()
-		if err != nil {
-			panic(fmt.Sprintf("%w", err))
-		}
-
+		return CreateNewProject(arg[0])
 	},
 }
 
