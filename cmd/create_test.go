@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"pkg.world.dev/world-engine-cli/cmd"
+	"pkg.world.dev/world-cli/cmd"
 )
 
 func TestNewProjectCreation(t *testing.T) {

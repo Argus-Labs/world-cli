@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-engine-cli/utils"
+	"pkg.world.dev/world-cli/utils"
 )
 
 type model struct {
@@ -55,7 +55,7 @@ func CreateNewProject(projectName string) error {
 
 // newProjectCmd represents the newProject command
 var newProjectCmd = &cobra.Command{
-	Use:   "new-project",
+	Use:   "create",
 	Short: "Creates a new project for world engine",
 	Long:  `Uses git clone to create a new project for world-engine from https://github.com/Argus-Labs/starter-game-template`,
 	RunE: func(_ *cobra.Command, arg []string) error {

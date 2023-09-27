@@ -1,4 +1,4 @@
-module pkg.world.dev/world-engine-cli
+module pkg.world.dev/world-cli
 
 go 1.21.0
 
