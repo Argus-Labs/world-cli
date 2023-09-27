@@ -5,7 +5,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-engine-cli/utils"
+	"pkg.world.dev/world-cli/utils"
 )
 
 // startCmd represents the start command

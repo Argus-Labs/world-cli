@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-engine-cli/utils"
+	"pkg.world.dev/world-cli/utils"
 )
 
 type newProjectModel struct {
@@ -39,30 +39,36 @@ func (m newProjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
+func CreateNewProject(projectName string) error {
+	command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", projectName)
+	p := tea.NewProgram(newProjectInitialModel(projectName))
+	go func() {
+		utils.RunShellCmd(command, true, false)
+		p.Quit()
+	}()
+	_, err := p.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // newProjectCmd represents the newProject command
 var newProjectCmd = &cobra.Command{
-	Use:   "new-project",
+	Use:   "create",
 	Short: "Creates a new project for world engine",
 	Long:  `Uses git clone to create a new project for world-engine from https://github.com/Argus-Labs/starter-game-template`,
-	RunE: func(cmd *cobra.Command, arg []string) error {
+	RunE: func(_ *cobra.Command, arg []string) error {
 		if len(arg) != 1 {
-			msg := "new-project requires a destination to create a new project."
-			return errors.New(msg)
+			return errors.New("new-project requires a destination to create a new project.")
 		}
-		command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", arg[0])
-		p := tea.NewProgram(newProjectInitialModel(arg[0]))
-		go func() {
-			utils.RunShellCmd(command, true, false)
-			p.Quit()
-		}()
-		_, err := p.Run()
+		err := CreateNewProject(arg[0])
 		if err != nil {
-			return fmt.Errorf("%w", err)
+			return err
 		}
+		fmt.Printf("Created new project: \"%s\"\n", arg[0])
+		fmt.Printf("To use this cli to control the project please set current working directory to \"%s\"\n", arg[0])
 		return nil
-	},
-	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Project created: %s, please change current working directory to that project to use this cli to monitor and start it.\n", args[0])
 	},
 }
 
