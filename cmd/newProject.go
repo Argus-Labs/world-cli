@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -9,25 +10,25 @@ import (
 	"pkg.world.dev/world-engine-cli/utils"
 )
 
-type model struct {
+type newProjectModel struct {
 	spinner     spinner.Model
 	projectName string
 }
 
-func (m model) View() string {
+func (m newProjectModel) View() string {
 	loadingValue := fmt.Sprintf("%s Creating new project \"%s\"...", m.spinner.View(), m.projectName)
 	return loadingValue
 }
 
-func initialModel(projectName string) model {
-	return model{spinner: spinner.New(spinner.WithSpinner(spinner.Pulse)), projectName: projectName}
+func newProjectInitialModel(projectName string) newProjectModel {
+	return newProjectModel{spinner: spinner.New(spinner.WithSpinner(spinner.Pulse)), projectName: projectName}
 }
 
-func (m model) Init() tea.Cmd {
+func (m newProjectModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m newProjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case tea.QuitMsg:
 		return m, tea.Quit
@@ -43,22 +44,25 @@ var newProjectCmd = &cobra.Command{
 	Use:   "new-project",
 	Short: "Creates a new project for world engine",
 	Long:  `Uses git clone to create a new project for world-engine from https://github.com/Argus-Labs/starter-game-template`,
-	Run: func(cmd *cobra.Command, arg []string) {
+	RunE: func(cmd *cobra.Command, arg []string) error {
 		if len(arg) != 1 {
-			fmt.Println("new-project requires a destination to create a new project.")
-			return
+			msg := "new-project requires a destination to create a new project."
+			return errors.New(msg)
 		}
 		command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", arg[0])
-		p := tea.NewProgram(initialModel(arg[0]))
+		p := tea.NewProgram(newProjectInitialModel(arg[0]))
 		go func() {
-			utils.RunShellCmd(command, true)
+			utils.RunShellCmd(command, true, false)
 			p.Quit()
 		}()
 		_, err := p.Run()
 		if err != nil {
-			panic(fmt.Sprintf("%w", err))
+			return fmt.Errorf("%w", err)
 		}
-
+		return nil
+	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Project created: %s, please change current working directory to that project to use this cli to monitor and start it.\n", args[0])
 	},
 }
 

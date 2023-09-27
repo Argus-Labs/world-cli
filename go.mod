@@ -5,6 +5,7 @@ go 1.21.0
 require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
+	github.com/guumaster/logsymbols v0.3.1
 	github.com/spf13/cobra v1.7.0
 )
 
@@ -27,4 +28,5 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
+	gopkg.in/gookit/color.v1 v1.1.6 // indirect
 )
