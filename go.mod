@@ -1,4 +1,4 @@
-module pkg.world.dev/world-engine-cli
+module pkg.world.dev/world-cli
 
 go 1.21.0
 
@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/lipgloss v0.7.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
@@ -29,4 +30,5 @@ require (
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 	gopkg.in/gookit/color.v1 v1.1.6 // indirect
+	gotest.tools/v3 v3.5.0
 )

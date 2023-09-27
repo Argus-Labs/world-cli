@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-engine-cli/utils"
+	"pkg.world.dev/world-cli/utils"
 )
 
 func newDoctorModel() utils.StatusCollection {

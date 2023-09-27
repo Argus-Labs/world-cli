@@ -11,9 +11,9 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "world-engine-cli",
+	Use:   "world",
 	Short: "A command line utility to manage and create a world-engine instance.",
-	Long:  `A longer description for what world-engine-cli does.`,
+	Long:  `A longer description for what world-cli does.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
