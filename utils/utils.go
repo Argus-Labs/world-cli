@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -21,6 +22,31 @@ const (
 	SUCCESS
 	FAILED
 )
+
+func RunShellCommandReturnBuffers(cmd string, cap uint) (stdoutBuffer *LogByteBuffer, stderrBuffer *LogByteBuffer, err error) {
+	stdoutBuffer = NewLogByteBuffer(cap)
+	stderrBuffer = NewLogByteBuffer(cap)
+	err = PipeShellCmdPipeToBuffers(cmd, stdoutBuffer, stderrBuffer)
+	if err != nil {
+		stdoutBuffer = nil
+		stderrBuffer = nil
+	}
+	return
+}
+
+func PipeShellCmdPipeToBuffers(cmd string, stdoutBuffer io.Writer, stderrBuffer io.Writer) error {
+	result := exec.Command(cmd)
+	if result.Err != nil {
+		return result.Err
+	}
+	result.Stdout = stdoutBuffer
+	result.Stderr = stderrBuffer
+	go func() {
+		_ = result.Run()
+	}()
+
+	return nil
+}
 
 // RunShellCmd run a command using the shell; no need to split args
 // from https://stackoverflow.com/questions/6182369/exec-a-shell-command-in-go
