@@ -4,11 +4,27 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/utils"
 )
+
+func DevCommand(cmd *cobra.Command, args []string) error {
+	//total width/height doesn't matter here as soon as you put it into the bubbletea framework everything will resize to fit window.
+	lowerLeftBox := utils.NewServerStatusApp()
+	lowerLeftBoxInfo := utils.CreateBoxInfo(lowerLeftBox, 50, 30, utils.WithBorder)
+	triLayout := utils.BuildTriLayoutHorizontal(0, 0, nil, lowerLeftBoxInfo, nil)
+	_, _, _, err := utils.RunShellCommandReturnBuffers("cd cardinal && go build && ./cardinal && cd ..", 1024)
+	if err != nil {
+		return err
+	}
+	p := tea.NewProgram(triLayout, tea.WithAltScreen())
+	_, err = p.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // devCmd represents the dev command
 var devCmd = &cobra.Command{
@@ -20,10 +36,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		trilayout := utils.BuildTriLayout()
-		fmt.Print(trilayout.Render(20, 20))
-	},
+	RunE: DevCommand,
 }
 
 func init() {

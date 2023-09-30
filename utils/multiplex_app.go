@@ -1,70 +1,118 @@
 package utils
 
 import (
-	"fmt"
-
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type Option = func(box *WindowBox)
-
-func WithBorder(box *WindowBox) {
-	box.Style = box.Style.BorderStyle(lipgloss.NormalBorder())
+func CreateBoxInfo(box BoxAndTeaModel, widthPercentage int, heightPercentage int, boxOptions ...Option) *BoxInfo {
+	for _, option := range boxOptions {
+		option(box)
+	}
+	res := BoxInfo{
+		box:              box,
+		widthPercentage:  widthPercentage,
+		heightPercentage: heightPercentage,
+	}
+	return &res
 }
 
-func CreateWindowBox(widthPercentage int, heightPercentage int, options ...Option) WindowBox {
+func CreateWindowBoxInfo(widthPercentage int, heightPercentage int, totalWidth int, totalHeight int, content string, boxOptions ...Option) *BoxInfo {
+	box := CreateWindowBox(
+		int(float64(widthPercentage*totalWidth)/100.0),
+		int(float64(heightPercentage*totalHeight)/100.0),
+		content)
+	return CreateBoxInfo(box, widthPercentage, heightPercentage, boxOptions...)
+}
 
+func CreateWindowBox(width int, height int, content string, options ...Option) *WindowBox {
 	res := WindowBox{
 		Style: lipgloss.
 			NewStyle().
 			Align(lipgloss.Top, lipgloss.Left),
-		WidthPercentage:  widthPercentage,
-		HeightPercentage: heightPercentage,
+		Width:   width,
+		Height:  height,
+		Content: content,
 	}
 
 	for _, option := range options {
 		option(&res)
 	}
-	return res
+	return &res
 }
 
 type WindowBox struct {
-	Style            lipgloss.Style
-	WidthPercentage  int
-	HeightPercentage int
-	Content          string
+	Style   lipgloss.Style
+	Width   int
+	Height  int
+	Content string
 }
 
-func (b WindowBox) Render(totalWidth int, totalHeight int, offsetWidth int, offsetHeight int) string {
-	actualWidth := int(float64(b.WidthPercentage)/100.0*float64(totalWidth)) + offsetWidth
-	actualHeight := int(float64(b.HeightPercentage)/100.0*float64(totalHeight)) + offsetHeight
-	fmt.Printf("width %d, height %d\n", actualWidth, actualHeight)
-	return b.Style.Width(actualWidth).Height(actualHeight).Render(b.Content)
+func (b *WindowBox) View() string {
+	return b.Style.Width(b.Width).Height(b.Height).Render(b.Content)
 }
+
+func (b *WindowBox) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		b.Width = msg.Width
+		b.Height = msg.Height
+	}
+	return b, nil
+}
+
+func (b *WindowBox) SetStyle(style *lipgloss.Style) {
+	b.Style = b.Style.Inherit(*style)
+}
+
+func (b *WindowBox) Init() tea.Cmd {
+	return nil
+}
+
+func (b *WindowBox) GetWidth() int {
+	return b.Width
+}
+
+func (b *WindowBox) GetHeight() int {
+	return b.Height
+}
+
+type BoxAndTeaModel interface {
+	IBox
+	tea.Model
+}
+
+type BoxInfo struct {
+	box              BoxAndTeaModel
+	widthPercentage  int
+	heightPercentage int
+}
+
+type LayoutMode int
+
+const (
+	rowMajor LayoutMode = iota
+	colMajor
+)
 
 type BoxLayout struct {
-	grid [][]IBox
+	grid        [][]*BoxInfo
+	TotalWidth  int
+	TotalHeight int
+	Mode        LayoutMode
 }
 
-func (b WindowBox) GetWidthPercentage() int {
-	return b.WidthPercentage
-}
-
-func (b WindowBox) GetHeightPercentage() int {
-	return b.HeightPercentage
-}
-
-func (b *BoxLayout) isGridValid() bool {
+func (b *BoxLayout) IsGridValid() bool {
 	maxHeights := make([]int, 0, len(b.grid))
 	for _, row := range b.grid {
 		acc := 0
 		currentMaxHeight := -1
-		for _, box := range row {
-			if box.GetHeightPercentage() > currentMaxHeight {
-				currentMaxHeight = box.GetHeightPercentage()
+		for _, boxInfo := range row {
+			if boxInfo.widthPercentage > currentMaxHeight {
+				currentMaxHeight = boxInfo.widthPercentage
 			}
-			acc += box.GetWidthPercentage()
-			if acc > 100 {
+			acc += boxInfo.widthPercentage
+			if acc != 100 {
 				return false
 			}
 		}
@@ -74,110 +122,161 @@ func (b *BoxLayout) isGridValid() bool {
 	acc := 0
 	for _, height := range maxHeights {
 		acc += height
-		if acc > 100 {
+		if acc != 100 {
 			return false
 		}
 	}
 	return true
 }
 
-func (b *BoxLayout) Render(totalWidth int, totalHeight int) string {
-	if totalWidth%2 != 0 {
-		totalWidth += 1
-	}
-	if totalHeight%4 != 0 {
-		totalHeight += totalHeight % 4
-	}
-
-	getWidthOffsets := func(boxLayout *BoxLayout) []int {
-		acc := make([]int, 0, len(boxLayout.grid))
-		for _, row := range boxLayout.grid {
-			acc = append(acc, len(row)-1)
-		}
-		return acc
-	}
-
-	getRowTotalWidthPercentage := func(boxes []IBox) int {
-		acc := 0
-		for _, box := range boxes {
-			acc += box.GetWidthPercentage()
-		}
-		return acc
-	}
-
-	getRemainingOffsets := func(offsets []int) []int {
-		maxOffset := -1
-		for _, offset := range offsets {
-			if offset > maxOffset {
-				maxOffset = offset
-			}
-		}
-
-		acc := make([]int, 0, len(offsets))
-		for _, offset := range offsets {
-			acc = append(acc, maxOffset-offset)
-		}
-		return acc
-	}
-
-	findIndividualOffsetForEachRow := func(remainingOffset int, rowLength int) []int {
-		if remainingOffset == 0 {
-			return make([]int, rowLength)
-		}
-		if remainingOffset >= rowLength {
-			offset := remainingOffset / rowLength
-			offsets := make([]int, rowLength)
-			remainder := remainingOffset % rowLength
-			for i, _ := range offsets {
-				if remainder > 0 {
-					offsets[i] += 1
-					remainder -= 1
-				}
-				offsets[i] += offset
-			}
-			return offsets
-		} else {
-			res := make([]int, rowLength)
-			for i, _ := range res {
-				if remainingOffset > 0 {
-					res[i] += 1
-					remainingOffset -= 1
-				}
-			}
-			return res
-		}
-	}
-
-	remainingOffsets := getRemainingOffsets(getWidthOffsets(b))
-
-	rowAcc := make([]string, 0, len(b.grid))
-	for index, row := range b.grid {
-		colAcc := make([]string, 0, len(row))
-		offsets := findIndividualOffsetForEachRow(remainingOffsets[index], len(row))
-
-		shouldApplyOffset := getRowTotalWidthPercentage(row) == 100
-		for index1, box := range row {
-			rowOffset := 0
-			if shouldApplyOffset {
-				rowOffset = offsets[index1] * 2
-			}
-			colAcc = append(colAcc, box.Render(totalWidth, totalHeight, rowOffset, 0))
-		}
-		rowAcc = append(rowAcc, lipgloss.JoinHorizontal(lipgloss.Top, colAcc...))
-	}
-	return lipgloss.JoinVertical(lipgloss.Left, rowAcc...)
+func (b *BoxLayout) GetWidth() int {
+	return b.TotalWidth
 }
 
-func BuildTriLayout() BoxLayout {
-	return BoxLayout{
-		grid: [][]IBox{
+func (b *BoxLayout) GetHeight() int {
+	return b.TotalHeight
+}
+
+func (b *BoxLayout) SetStyle(style *lipgloss.Style) {
+	for _, row := range b.grid {
+		for _, boxInfo := range row {
+			boxInfo.box.SetStyle(style)
+		}
+	}
+}
+
+func (b *BoxLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	updateAllChildren := func(msg tea.Msg) ([][]*BoxInfo, tea.Cmd) {
+		var cmds []tea.Cmd
+		res := make([][]*BoxInfo, 0, len(b.grid))
+		for _, row := range b.grid {
+			subRes := make([]*BoxInfo, 0, len(row))
+			for _, boxInfo := range row {
+				var m tea.Model
+				var cmd tea.Cmd
+				m, cmd = boxInfo.box.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				boxInfo.box = m.(BoxAndTeaModel)
+				subRes = append(subRes, boxInfo)
+			}
+			res = append(res, subRes)
+		}
+		return res, tea.Batch(cmds...)
+	}
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		b.TotalWidth = msg.Width
+		b.TotalHeight = msg.Height
+		//updateAllChildren(msg)
+		borderOffsetPerWindow := 2
+		var cmds []tea.Cmd
+		for i, row := range b.grid {
+			for j, boxInfo := range row {
+				newUpdateMessage := tea.WindowSizeMsg{
+					Width:  int(float64(boxInfo.widthPercentage*b.TotalWidth)/100.0) - borderOffsetPerWindow,
+					Height: int(float64(boxInfo.heightPercentage*b.TotalHeight)/100.0) - borderOffsetPerWindow,
+				}
+				var m tea.Model
+				var cmd tea.Cmd
+				m, cmd = boxInfo.box.Update(newUpdateMessage)
+				cmds = append(cmds, cmd)
+				b.grid[i][j].box = m.(BoxAndTeaModel)
+			}
+		}
+		return b, tea.Batch(cmds...)
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			var cmd tea.Cmd
+			b.grid, cmd = updateAllChildren(msg)
+			return b, tea.Batch(cmd, tea.Quit)
+		}
+
+	default:
+		var cmd tea.Cmd
+		b.grid, cmd = updateAllChildren(msg)
+		return b, cmd
+	}
+	return b, nil
+}
+
+func (b *BoxLayout) Init() tea.Cmd {
+	var cmds []tea.Cmd
+	for _, row := range b.grid {
+		for _, boxInfo := range row {
+			cmds = append(cmds, boxInfo.box.Init())
+		}
+	}
+	cmds = append(cmds, tea.ClearScreen)
+	return tea.Batch(cmds...)
+}
+
+func (b *BoxLayout) View() string {
+	rowAcc := make([]string, 0, len(b.grid))
+	for _, row := range b.grid {
+		colAcc := make([]string, 0, len(row))
+		for _, boxInfo := range row {
+			box := boxInfo.box
+			colAcc = append(colAcc, box.View())
+		}
+		if b.Mode == rowMajor {
+			rowAcc = append(rowAcc, lipgloss.JoinHorizontal(lipgloss.Top, colAcc...))
+		} else if b.Mode == colMajor {
+			rowAcc = append(rowAcc, lipgloss.JoinVertical(lipgloss.Left, colAcc...))
+		} else {
+			panic("logic error, enum should not arrive here")
+		}
+	}
+	if b.Mode == rowMajor {
+		return lipgloss.JoinVertical(lipgloss.Left, rowAcc...)
+	} else if b.Mode == colMajor {
+		return lipgloss.JoinHorizontal(lipgloss.Top, rowAcc...)
+	} else {
+		panic("logic error, enum should not arrive here")
+	}
+}
+
+func BuildTriLayoutHorizontal(totalWidth int, totalHeight int, mainBox *BoxInfo, lowerLeftBox *BoxInfo, lowerRightBox *BoxInfo) *BoxLayout {
+
+	if mainBox == nil {
+		mainBox = CreateWindowBoxInfo(100, 70, totalWidth, totalHeight, "", WithBorder)
+	}
+	if lowerLeftBox == nil {
+		lowerLeftBox = CreateWindowBoxInfo(50, 30, totalWidth, totalHeight, "", WithBorder)
+	}
+	if lowerRightBox == nil {
+		lowerRightBox = CreateWindowBoxInfo(50, 30, totalWidth, totalHeight, "", WithBorder)
+	}
+	res := BoxLayout{
+		grid: [][]*BoxInfo{
 			{
-				CreateWindowBox(100, 80, WithBorder),
+				mainBox,
 			},
 			{
-				CreateWindowBox(50, 20, WithBorder),
-				CreateWindowBox(50, 20, WithBorder),
+				lowerLeftBox,
+				lowerRightBox,
 			},
 		},
+		Mode: rowMajor,
 	}
+	return &res
+}
+
+func BuildTriLayoutVertical(totalWidth int, totalHeight int) *BoxLayout {
+	res := BoxLayout{
+		grid: [][]*BoxInfo{
+			{
+				CreateWindowBoxInfo(20, 50, totalWidth, totalHeight, "", WithBorder),
+				CreateWindowBoxInfo(20, 50, totalWidth, totalHeight, "", WithBorder),
+			},
+			{
+				CreateWindowBoxInfo(80, 100, totalWidth, totalHeight, "", WithBorder),
+			},
+		},
+		Mode: colMajor,
+	}
+	return &res
 }
