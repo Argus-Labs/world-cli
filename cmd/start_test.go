@@ -7,6 +7,6 @@ import (
 )
 
 func TestDev(t *testing.T) {
-	err := DevCommand(nil, nil)
+	err := StartCommand(nil, nil)
 	assert.NilError(t, err)
 }

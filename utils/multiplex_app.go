@@ -146,24 +146,21 @@ func (b *BoxLayout) SetStyle(style *lipgloss.Style) {
 }
 
 func (b *BoxLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	updateAllChildren := func(msg tea.Msg) ([][]*BoxInfo, tea.Cmd) {
+	updateAllChildren := func(msg tea.Msg) (*BoxLayout, tea.Cmd) {
 		var cmds []tea.Cmd
-		res := make([][]*BoxInfo, 0, len(b.grid))
-		for _, row := range b.grid {
-			subRes := make([]*BoxInfo, 0, len(row))
-			for _, boxInfo := range row {
+		for i, row := range b.grid {
+			for j, boxInfo := range row {
 				var m tea.Model
 				var cmd tea.Cmd
 				m, cmd = boxInfo.box.Update(msg)
+				b.grid[i][j].box = m.(BoxAndTeaModel)
 				if cmd != nil {
 					cmds = append(cmds, cmd)
 				}
 				boxInfo.box = m.(BoxAndTeaModel)
-				subRes = append(subRes, boxInfo)
 			}
-			res = append(res, subRes)
 		}
-		return res, tea.Batch(cmds...)
+		return b, tea.Batch(cmds...)
 	}
 
 	switch msg := msg.(type) {
@@ -190,15 +187,13 @@ func (b *BoxLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-			var cmd tea.Cmd
-			b.grid, cmd = updateAllChildren(msg)
-			return b, tea.Batch(cmd, tea.Quit)
+			newB, cmd := updateAllChildren(msg)
+			return newB, tea.Batch(cmd, tea.Quit)
 		}
 
 	default:
-		var cmd tea.Cmd
-		b.grid, cmd = updateAllChildren(msg)
-		return b, cmd
+		newB, cmd := updateAllChildren(msg)
+		return newB, cmd
 	}
 	return b, nil
 }

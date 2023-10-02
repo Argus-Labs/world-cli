@@ -76,22 +76,28 @@ func (s *StatusObject) GetStatusMessage(spinnerModel *spinner.Model) string {
 }
 
 type StatusCollection struct {
-	Style        lipgloss.Style
-	Spinner      spinner.Model
-	Statuses     []*StatusObject
-	ShutdownChan chan bool
-	width        int
-	height       int
+	Style             lipgloss.Style
+	Spinner           spinner.Model
+	Statuses          []*StatusObject
+	ShutdownOnChecked bool
+	ShutdownChan      chan bool
+	width             int
+	height            int
+}
+
+func WithShutdownOnChecked(box StatusCollection) {
+	box.ShutdownOnChecked = true
 }
 
 func NewStatusCollection(statuses []*StatusObject, options ...Option) *StatusCollection {
 	res := StatusCollection{
-		Style:        lipgloss.NewStyle().Align(lipgloss.Top, lipgloss.Left),
-		Spinner:      spinner.New(spinner.WithSpinner(spinner.Pulse)),
-		Statuses:     statuses,
-		ShutdownChan: make(chan bool),
-		width:        500,
-		height:       500,
+		Style:             lipgloss.NewStyle().Align(lipgloss.Top, lipgloss.Left),
+		Spinner:           spinner.New(spinner.WithSpinner(spinner.Pulse)),
+		Statuses:          statuses,
+		ShutdownChan:      make(chan bool),
+		ShutdownOnChecked: false,
+		width:             500,
+		height:            500,
 	}
 	for _, option := range options {
 		option(&res)
@@ -164,7 +170,7 @@ func (s *StatusCollection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	default:
 		var cmd tea.Cmd
 		s.Spinner, cmd = s.Spinner.Update(msg)
-		if s.IsAllChecked() {
+		if s.IsAllChecked() && s.ShutdownOnChecked {
 			s.Shutdown()
 			return s, tea.Quit
 		}

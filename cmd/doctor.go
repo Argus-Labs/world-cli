@@ -14,8 +14,9 @@ import (
 
 func newDoctorModel() *utils.StatusCollection {
 	res := utils.StatusCollection{
-		Spinner:      spinner.New(spinner.WithSpinner(spinner.Pulse)),
-		ShutdownChan: make(chan bool),
+		Spinner:           spinner.New(spinner.WithSpinner(spinner.Pulse)),
+		ShutdownChan:      make(chan bool),
+		ShutdownOnChecked: true,
 	}
 	statuses := []*utils.StatusObject{
 		utils.CreateNewStatus("docker", func(status *utils.StatusObject) {
