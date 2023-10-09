@@ -10,25 +10,25 @@ import (
 	"pkg.world.dev/world-cli/utils"
 )
 
-type model struct {
+type newProjectModel struct {
 	spinner     spinner.Model
 	projectName string
 }
 
-func (m model) View() string {
+func (m newProjectModel) View() string {
 	loadingValue := fmt.Sprintf("%s Creating new project \"%s\"...", m.spinner.View(), m.projectName)
 	return loadingValue
 }
 
-func initialModel(projectName string) model {
-	return model{spinner: spinner.New(spinner.WithSpinner(spinner.Pulse)), projectName: projectName}
+func newProjectInitialModel(projectName string) newProjectModel {
+	return newProjectModel{spinner: spinner.New(spinner.WithSpinner(spinner.Pulse)), projectName: projectName}
 }
 
-func (m model) Init() tea.Cmd {
+func (m newProjectModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m newProjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case tea.QuitMsg:
 		return m, tea.Quit
@@ -41,9 +41,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func CreateNewProject(projectName string) error {
 	command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", projectName)
-	p := tea.NewProgram(initialModel(projectName))
+	p := tea.NewProgram(newProjectInitialModel(projectName))
 	go func() {
-		utils.RunShellCmd(command, true)
+		utils.RunShellCmd(command, true, false)
 		p.Quit()
 	}()
 	_, err := p.Run()
@@ -62,7 +62,13 @@ var newProjectCmd = &cobra.Command{
 		if len(arg) != 1 {
 			return errors.New("new-project requires a destination to create a new project.")
 		}
-		return CreateNewProject(arg[0])
+		err := CreateNewProject(arg[0])
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Created new project: \"%s\"\n", arg[0])
+		fmt.Printf("To use this cli to control the project please set current working directory to \"%s\"\n", arg[0])
+		return nil
 	},
 }
 

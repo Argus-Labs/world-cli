@@ -4,7 +4,6 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
 	"os/exec"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -13,10 +12,11 @@ import (
 	"pkg.world.dev/world-cli/utils"
 )
 
-func newDoctorModel() utils.StatusCollection {
+func newDoctorModel() *utils.StatusCollection {
 	res := utils.StatusCollection{
-		Spinner:      spinner.New(spinner.WithSpinner(spinner.Pulse)),
-		ShutdownChan: make(chan bool),
+		Spinner:           spinner.New(spinner.WithSpinner(spinner.Pulse)),
+		ShutdownChan:      make(chan bool),
+		ShutdownOnChecked: true,
 	}
 	statuses := []*utils.StatusObject{
 		utils.CreateNewStatus("docker", func(status *utils.StatusObject) {
@@ -48,7 +48,7 @@ func newDoctorModel() utils.StatusCollection {
 		}),
 	}
 	res.Statuses = statuses
-	return res
+	return &res
 }
 
 // doctorCmd represents the doctor command
@@ -67,11 +67,6 @@ to quickly create a Cobra application.`,
 		_, err := p.Run()
 		if err != nil {
 			return err
-		}
-		if model.IsAllChecked() {
-			fmt.Println("All dependencies found.")
-		} else {
-			fmt.Println("Missing dependencies.")
 		}
 		return nil
 	},
