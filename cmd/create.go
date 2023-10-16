@@ -1,87 +1,158 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
-
-	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/utils"
+	"io"
+	"pkg.world.dev/world-cli/cmd/action"
+	"pkg.world.dev/world-cli/cmd/component/steps"
+	"pkg.world.dev/world-cli/cmd/style"
+	"strings"
 )
 
-type newProjectModel struct {
-	spinner     spinner.Model
-	projectName string
-}
-
-func (m newProjectModel) View() string {
-	loadingValue := fmt.Sprintf("%s Creating new project \"%s\"...", m.spinner.View(), m.projectName)
-	return loadingValue
-}
-
-func newProjectInitialModel(projectName string) newProjectModel {
-	return newProjectModel{spinner: spinner.New(spinner.WithSpinner(spinner.Pulse)), projectName: projectName}
-}
-
-func (m newProjectModel) Init() tea.Cmd {
-	return m.spinner.Tick
-}
-
-func (m newProjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case tea.QuitMsg:
-		return m, tea.Quit
-	default:
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
-	}
-}
-
-func CreateNewProject(projectName string) error {
-	command := fmt.Sprintf("git clone git@github.com:Argus-Labs/starter-game-template.git %s", projectName)
-	p := tea.NewProgram(newProjectInitialModel(projectName))
-	go func() {
-		utils.RunShellCmd(command, true, false)
-		p.Quit()
-	}()
-	_, err := p.Run()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// newProjectCmd represents the newProject command
-var newProjectCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Creates a new project for world engine",
-	Long:  `Uses git clone to create a new project for world-engine from https://github.com/Argus-Labs/starter-game-template`,
-	RunE: func(_ *cobra.Command, arg []string) error {
-		if len(arg) != 1 {
-			return errors.New("new-project requires a destination to create a new project.")
-		}
-		err := CreateNewProject(arg[0])
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Created new project: \"%s\"\n", arg[0])
-		fmt.Printf("To use this cli to control the project please set current working directory to \"%s\"\n", arg[0])
-		return nil
-	},
-}
+const TemplateGitUrl = "https://github.com/Argus-Labs/starter-game-template.git"
 
 func init() {
-	rootCmd.AddCommand(newProjectCmd)
+	rootCmd.AddCommand(createCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+type WorldCreateModel struct {
+	logs             []string
+	steps            steps.Model
+	projectNameInput textinput.Model
+	args             []string
+	err              error
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// newProjectCmd.PersistentFlags().String("foo", "", "A help for foo")
+func (m WorldCreateModel) InitWorldCreateModel(args []string) WorldCreateModel {
+	pnInput := textinput.New()
+	pnInput.Prompt = style.DoubleRightIcon.Render()
+	pnInput.Placeholder = "starter-game"
+	pnInput.Focus()
+	pnInput.Width = 50
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// newProjectCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	createSteps := steps.New()
+	createSteps.Steps = []steps.Entry{
+		steps.NewStep("Set game shard name"),
+		steps.NewStep("Initialize game shard with starter-game-template"),
+	}
+
+	// Set the project text if it was passed in as an argument
+	if len(args) == 1 {
+		pnInput.SetValue(args[0])
+	}
+
+	return WorldCreateModel{
+		steps:            createSteps,
+		projectNameInput: pnInput,
+		args:             args,
+		err:              nil,
+	}
+}
+
+func (m WorldCreateModel) View() string {
+	output := ""
+	output += m.steps.View()
+	output += "\n\n"
+	output += style.QuestionIcon.Render() + "What is your game shard name? " + m.projectNameInput.View()
+	output += "\n\n"
+	output += strings.Join(m.logs, "\n")
+	output += "\n\n"
+
+	return output
+}
+
+func (m WorldCreateModel) Init() tea.Cmd {
+	// If the project name was passed in as an argument, skip the 1st step
+	if m.projectNameInput.Value() != "" {
+		return tea.Batch(textinput.Blink, m.steps.StartCmd(), m.steps.CompleteStepCmd(nil))
+	}
+
+	return tea.Batch(textinput.Blink, m.steps.StartCmd())
+}
+
+func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			if m.projectNameInput.Value() == "" {
+				m.projectNameInput.SetValue("starter-game")
+			}
+			m.projectNameInput.Blur()
+			return m, m.steps.CompleteStepCmd(nil)
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		}
+	case NewLogMsg:
+		m.logs = append(m.logs, msg.Log)
+		return m, nil
+	case steps.SignalStepStartedMsg:
+		// If step 1 is started, dispatch the git clone command
+		if msg.Index == 1 {
+			return m, tea.Sequence(
+				NewLogCmd(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
+				action.GitCloneCmd(TemplateGitUrl, m.projectNameInput.Value(), "Initial commit from World CLI"),
+			)
+		}
+		return m, nil
+	case steps.SignalStepCompletedMsg:
+		// If step 1 is completed, log success message
+		if msg.Index == 1 {
+			return m, NewLogCmd(style.ChevronIcon.Render() + "Successfully created a new game shard based on starter-game-template!")
+		}
+	case steps.SignalStepErrorMsg:
+		// Log error, then quit
+		return m, tea.Sequence(NewLogCmd(style.CrossIcon.Render()+"Error: "+msg.Err.Error()), tea.Quit)
+	case steps.SignalFinishMsg:
+		// All done, quit
+		return m, tea.Quit
+	case action.GitCloneFinishMsg:
+		// If there is an error, log stderr then mark step as failed
+		if msg.Err != nil {
+			stderrBytes, err := io.ReadAll(msg.ErrBuf)
+			if err != nil {
+				m.logs = append(m.logs, style.CrossIcon.Render()+"Error occurred while reading stderr")
+			} else {
+				m.logs = append(m.logs, style.CrossIcon.Render()+string(stderrBytes))
+			}
+			return m, m.steps.CompleteStepCmd(msg.Err)
+		}
+
+		// Otherwise, mark step as completed
+		return m, m.steps.CompleteStepCmd(nil)
+	default:
+		var cmd tea.Cmd
+		m.steps, cmd = m.steps.Update(msg)
+		return m, cmd
+	}
+
+	var cmd tea.Cmd
+	m.projectNameInput, cmd = m.projectNameInput.Update(msg)
+	return m, cmd
+}
+
+type NewLogMsg struct {
+	Log string
+}
+
+func NewLogCmd(log string) tea.Cmd {
+	return func() tea.Msg {
+		return NewLogMsg{Log: log}
+	}
+}
+
+var createCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Creates a new game shard from scratch.",
+	Long:  `Creates a World Engine game shard based on https://github.com/Argus-Labs/starter-game-template`,
+	RunE: func(_ *cobra.Command, args []string) error {
+		var m WorldCreateModel
+		p := tea.NewProgram(m.InitWorldCreateModel(args))
+		if _, err := p.Run(); err != nil {
+			return err
+		}
+		return nil
+	},
 }

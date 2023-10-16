@@ -20,4 +20,11 @@ vendor/
 # Go workspace file
 go.work
 
-world-engine-cli
+# Build
+world-cli
+
+# Mac
+.DS_Store
+
+# Jetbrains
+.idea

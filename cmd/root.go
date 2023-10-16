@@ -1,30 +1,22 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"os"
-
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "world",
-	Short: "A command line utility to manage and create a world-engine instance.",
-	Long:  `A longer description for what world-cli does.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Short: "A CLI to create and manage World Engine projects.",
+	Long:  `A CLI to create and manage World Engine projects.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to execute root command")
 	}
 }
 

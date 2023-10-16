@@ -69,5 +69,4 @@ func RunShellCmd(cmd string, shell bool, stdout bool) {
 			logger.Fatalf(err.Error())
 		}
 	}
-
 }
