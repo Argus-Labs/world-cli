@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  go-build:
+    name: Run Go Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.21.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: "go.sum"
+      - name: Build
+        run: |
+          go build
+      - name: Run build binary
+        run: |
+          ./world-cli version
+      - name: Upload binary Github artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: world-cli
+          path: ./world-cli
