@@ -37,9 +37,7 @@ jobs:
       - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
         run: |
           output_name=world-cli_${{ matrix.goos }}_${{ matrix.goarch }}
-          if [ $GOOS = "windows" ]; then
-        		output_name+='.exe'
-        	fi
+          [ ${{ matrix.goos }} = "windows" ] && output_name+=".exe"
 
           env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $output_name
       - name: Upload binary to Github artifact
