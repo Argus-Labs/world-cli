@@ -16,6 +16,7 @@ jobs:
   release:
     name: Release world-cli binary
     runs-on: ubuntu-latest
+    needs: [go-test, go-build]
     strategy:
       matrix:
         go-version: [1.21.x]
