@@ -25,9 +25,12 @@ jobs:
     steps:
       - name: Download world-cli build binary
         uses: actions/download-artifact@v3
+      - name: Display downloaded files
+        run: |
+          ls -R
       - name: Publish world-cli binary to corresponding Github Release
         uses: skx/github-action-publish-binaries@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: 'world-cli*'
+          args: 'world-cli*/*.tar.gz'
