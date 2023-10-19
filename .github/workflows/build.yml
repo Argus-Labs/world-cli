@@ -35,14 +35,24 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: "go.sum"
       - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+        id: build
         run: |
           output_name=world-cli_${{ matrix.goos }}_${{ matrix.goarch }}
           [ ${{ matrix.goos }} = "windows" ] && output_name+=".exe"
 
           env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $output_name
+          echo "output_name=$output_name" >> $GITHUB_OUTPUT
+      - name: Compress Build Binary
+        uses: a7ul/tar-action@v1.1.0
+        id: compress
+        with:
+          command: c
+          files: |
+            ./${{ steps.build.outputs.output_name }}
+          outPath: ${{ steps.build.outputs.output_name }}.tar.gz
       - name: Upload binary to Github artifact
         if: ${{ inputs.create_release }}
         uses: actions/upload-artifact@v3
         with:
           name: world-cli-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ./world-cli*
+          path: ./world-cli*.tar.gz
