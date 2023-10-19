@@ -7,11 +7,11 @@ on:
 jobs:
   go-test:
     name: Test
-    uses: ./.github/workflows/test.yml@7d18b079500732c2b2adb5ee9ee06954438aa43c
+    uses: ./.github/workflows/test.yml
 
   go-build:
     name: Build
-    uses: ./.github/workflows/build.yml@7d18b079500732c2b2adb5ee9ee06954438aa43c
+    uses: ./.github/workflows/build.yml
 
   release:
     name: Release world-cli binary
