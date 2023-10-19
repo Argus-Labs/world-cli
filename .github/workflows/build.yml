@@ -8,6 +8,12 @@ on:
     branches:
       - main
   workflow_call:
+    inputs:
+      create_release:
+        description: 'Check if workflows called from Github Release event.'
+        default: false
+        required: false
+        type: boolean
 
 jobs:
   go-build:
@@ -16,6 +22,8 @@ jobs:
     strategy:
       matrix:
         go-version: [1.21.x]
+        goos: [linux, windows, darwin]
+        goarch: [amd64]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -26,14 +34,17 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: "go.sum"
-      - name: Build
+      - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
         run: |
-          go build
-      - name: Run build binary
-        run: |
-          ./world-cli version
-      - name: Upload binary Github artifact
+          output_name=world-cli_${{ matrix.goos }}_${{ matrix.goarch }}
+          if [ $GOOS = "windows" ]; then
+        		output_name+='.exe'
+        	fi
+
+          env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $output_name
+      - name: Upload binary to Github artifact
+        if: ${{ inputs.create_release }}
         uses: actions/upload-artifact@v3
         with:
-          name: world-cli
-          path: ./world-cli
+          name: world-cli-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ./world-cli*

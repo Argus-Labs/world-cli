@@ -12,6 +12,8 @@ jobs:
   go-build:
     name: Build
     uses: ./.github/workflows/build.yml
+    with:
+      create_release: true
 
   release:
     name: Release world-cli binary
@@ -23,11 +25,9 @@ jobs:
     steps:
       - name: Download world-cli build binary
         uses: actions/download-artifact@v3
-        with:
-          name: world-cli
       - name: Publish world-cli binary to corresponding Github Release
         uses: skx/github-action-publish-binaries@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: 'world-cli'
+          args: 'world-cli*'
