@@ -38,6 +38,7 @@ jobs:
     name: Upload coverage output to Codecov.io
     runs-on: ubuntu-latest
     needs: go-test
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
