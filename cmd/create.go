@@ -13,9 +13,30 @@ import (
 
 const TemplateGitUrl = "https://github.com/Argus-Labs/starter-game-template.git"
 
+/////////////////
+// Cobra Setup //
+/////////////////
+
 func init() {
 	rootCmd.AddCommand(createCmd)
 }
+
+var createCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Creates a newModel game shard from scratch.",
+	Long:  `Creates a World Engine game shard based on https://github.com/Argus-Labs/starter-game-template`,
+	RunE: func(_ *cobra.Command, args []string) error {
+		p := tea.NewProgram(NewWorldCreateModel(args))
+		if _, err := p.Run(); err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
+//////////////////////
+// Bubble Tea Model //
+//////////////////////
 
 type WorldCreateModel struct {
 	logs             []string
@@ -25,7 +46,7 @@ type WorldCreateModel struct {
 	err              error
 }
 
-func (m WorldCreateModel) InitWorldCreateModel(args []string) WorldCreateModel {
+func NewWorldCreateModel(args []string) WorldCreateModel {
 	pnInput := textinput.New()
 	pnInput.Prompt = style.DoubleRightIcon.Render()
 	pnInput.Placeholder = "starter-game"
@@ -51,18 +72,11 @@ func (m WorldCreateModel) InitWorldCreateModel(args []string) WorldCreateModel {
 	}
 }
 
-func (m WorldCreateModel) View() string {
-	output := ""
-	output += m.steps.View()
-	output += "\n\n"
-	output += style.QuestionIcon.Render() + "What is your game shard name? " + m.projectNameInput.View()
-	output += "\n\n"
-	output += strings.Join(m.logs, "\n")
-	output += "\n\n"
+//////////////////////////
+// Bubble Tea Lifecycle //
+//////////////////////////
 
-	return output
-}
-
+// Init returns an initial command for the application to run
 func (m WorldCreateModel) Init() tea.Cmd {
 	// If the project name was passed in as an argument, skip the 1st step
 	if m.projectNameInput.Value() != "" {
@@ -72,6 +86,7 @@ func (m WorldCreateModel) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink, m.steps.StartCmd())
 }
 
+// Update handles incoming events and updates the model accordingly
 func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -100,12 +115,12 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.SignalStepCompletedMsg:
 		// If step 1 is completed, log success message
 		if msg.Index == 1 {
-			return m, NewLogCmd(style.ChevronIcon.Render() + "Successfully created a new game shard based on starter-game-template!")
+			return m, NewLogCmd(style.ChevronIcon.Render() + "Successfully created a newModel game shard based on starter-game-template!")
 		}
 	case steps.SignalStepErrorMsg:
 		// Log error, then quit
 		return m, tea.Sequence(NewLogCmd(style.CrossIcon.Render()+"Error: "+msg.Err.Error()), tea.Quit)
-	case steps.SignalFinishMsg:
+	case steps.SignalAllStepCompletedMsg:
 		// All done, quit
 		return m, tea.Quit
 	case action.GitCloneFinishMsg:
@@ -133,6 +148,23 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View renders the UI based on the data in the WorldCreateModel
+func (m WorldCreateModel) View() string {
+	output := ""
+	output += m.steps.View()
+	output += "\n\n"
+	output += style.QuestionIcon.Render() + "What is your game shard name? " + m.projectNameInput.View()
+	output += "\n\n"
+	output += strings.Join(m.logs, "\n")
+	output += "\n\n"
+
+	return output
+}
+
+/////////////////////////
+// Bubble Tea Commands //
+/////////////////////////
+
 type NewLogMsg struct {
 	Log string
 }
@@ -141,18 +173,4 @@ func NewLogCmd(log string) tea.Cmd {
 	return func() tea.Msg {
 		return NewLogMsg{Log: log}
 	}
-}
-
-var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Creates a new game shard from scratch.",
-	Long:  `Creates a World Engine game shard based on https://github.com/Argus-Labs/starter-game-template`,
-	RunE: func(_ *cobra.Command, args []string) error {
-		var m WorldCreateModel
-		p := tea.NewProgram(m.InitWorldCreateModel(args))
-		if _, err := p.Run(); err != nil {
-			return err
-		}
-		return nil
-	},
 }
