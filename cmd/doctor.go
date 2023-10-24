@@ -1,69 +1,59 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"os/exec"
-
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/utils"
+	"os/exec"
+	"pkg.world.dev/world-cli/cmd/style"
 )
 
-func newDoctorModel() *utils.StatusCollection {
-	res := utils.StatusCollection{
-		Spinner:           spinner.New(spinner.WithSpinner(spinner.Pulse)),
-		ShutdownChan:      make(chan bool),
-		ShutdownOnChecked: true,
-	}
-	statuses := []*utils.StatusObject{
-		utils.CreateNewStatus("docker", func(status *utils.StatusObject) {
-			cmd := exec.Command("docker", "--version")
-			// Run the command
-			if err := cmd.Run(); err != nil {
-				status.SetStatus(utils.FAILED)
-			} else {
-				status.SetStatus(utils.SUCCESS)
-			}
-		}),
-		utils.CreateNewStatus("git", func(status *utils.StatusObject) {
-			cmd := exec.Command("git", "--version")
-			// Run the command
-			if err := cmd.Run(); err != nil {
-				status.SetStatus(utils.FAILED)
-			} else {
-				status.SetStatus(utils.SUCCESS)
-			}
-		}),
-		utils.CreateNewStatus("golang", func(status *utils.StatusObject) {
-			cmd := exec.Command("go", "version")
-			// Run the command
-			if err := cmd.Run(); err != nil {
-				status.SetStatus(utils.FAILED)
-			} else {
-				status.SetStatus(utils.SUCCESS)
-			}
-		}),
-	}
-	res.Statuses = statuses
-	return &res
+type Dependency struct {
+	Name string
+	Cmd  *exec.Cmd
+	Help string
 }
 
-// doctorCmd represents the doctor command
+var RequiredDependencies = []Dependency{
+	{
+		Name: "Git",
+		Cmd:  exec.Command("git", "--version"),
+		Help: `Git is required to clone the starter-game-template.
+Learn how to install Git: https://github.com/git-guides/install-git`,
+	},
+	{
+		Name: "Go",
+		Cmd: exec.Command("go"+
+			"", "version"),
+		Help: `Go is required to build and run World Engine game shards.
+Learn how to install Go: https://go.dev/doc/install`,
+	},
+	{
+		Name: "Docker",
+		Cmd:  exec.Command("docker", "--version"),
+		Help: `Docker is required to build and run World Engine game shards.
+Learn how to install Docker: https://docs.docker.com/engine/install/`,
+	},
+}
+
+/////////////////
+// Cobra Setup //
+/////////////////
+
+func init() {
+	rootCmd.AddCommand(doctorCmd)
+}
+
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Checks if required dependencies for world-cli are installed",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Checks that required dependencies for World CLI are installed",
+	Long: `Checks that required dependencies for World CLI are installed.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+World CLI requires the following dependencies to be installed:
+- Git
+- Go
+- Docker`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		model := newDoctorModel()
-		p := tea.NewProgram(model)
+		p := tea.NewProgram(NewWorldDoctorModel())
 		_, err := p.Run()
 		if err != nil {
 			return err
@@ -72,16 +62,97 @@ to quickly create a Cobra application.`,
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(doctorCmd)
+//////////////////////
+// Bubble Tea Model //
+//////////////////////
 
-	// Here you will define your flags and configuration settings.
+type WorldDoctorModel struct {
+	ListOutput string
+	HelpOutput string
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// doctorCmd.PersistentFlags().String("foo", "", "A help for foo")
+func NewWorldDoctorModel() WorldDoctorModel {
+	return WorldDoctorModel{}
+}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// doctorCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+//////////////////////////
+// Bubble Tea Lifecycle //
+//////////////////////////
+
+// Init returns an initial command for the application to run
+func (m WorldDoctorModel) Init() tea.Cmd {
+	var ListOutput string
+	var HelpOutput string
+
+	// Iterate over required dependencies and check if they are installed
+	for _, dep := range RequiredDependencies {
+		if !isInstalled(dep.Cmd) {
+			// If the dependency is not installed, set the status to failed
+			// and print the help message
+			ListOutput += style.CrossIcon.Render() + " " + dep.Name + "\n"
+			HelpOutput += dep.Help + "\n\n"
+		} else {
+			// If the dependency is installed, set the status to success
+			ListOutput += style.TickIcon.Render() + " " + dep.Name + "\n"
+		}
+	}
+	return SetOutputCmd(ListOutput, HelpOutput)
+}
+
+// Update handles incoming events and updates the model accordingly
+func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		}
+
+	case SetOutputMsg:
+		m.ListOutput = msg.ListOutput
+		m.HelpOutput = msg.HelpOutput
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+// View renders the model to the screen
+func (m WorldDoctorModel) View() string {
+	output := style.Container.Render("--- World CLI Doctor ---") + "\n\n"
+	output += "Checking dependencies...\n"
+	output += m.ListOutput + "\n"
+	output += m.HelpOutput
+	return output
+}
+
+/////////////////////
+// Misc Functions //
+////////////////////
+
+// isInstalled checks whether a dependency is installed by running the given command
+func isInstalled(cmd *exec.Cmd) bool {
+	if err := cmd.Run(); err != nil {
+		return false
+	} else {
+		return true
+	}
+}
+
+/////////////////////////
+// Bubble Tea Commands //
+/////////////////////////
+
+type SetOutputMsg struct {
+	ListOutput string
+	HelpOutput string
+}
+
+// SetOutputCmd sets the output of the doctor
+func SetOutputCmd(listOutput string, helpOutput string) tea.Cmd {
+	return func() tea.Msg {
+		return SetOutputMsg{
+			ListOutput: listOutput,
+			HelpOutput: helpOutput,
+		}
+	}
 }
