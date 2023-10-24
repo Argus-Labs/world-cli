@@ -1,4 +1,4 @@
-package utils
+package component
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
