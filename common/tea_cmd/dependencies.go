@@ -1,10 +1,10 @@
-package action
+package tea_cmd
 
 import (
 	"errors"
 	tea "github.com/charmbracelet/bubbletea"
 	"os/exec"
-	"pkg.world.dev/world-cli/cmd/style"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 var (
