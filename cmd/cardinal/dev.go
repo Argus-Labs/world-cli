@@ -1,9 +1,9 @@
-package cmd
+package cardinal
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/cmd/component"
+	"pkg.world.dev/world-cli/cmd/tea/component"
 	"pkg.world.dev/world-cli/utils"
 )
 
@@ -12,7 +12,7 @@ import (
 /////////////////
 
 func init() {
-	rootCmd.AddCommand(devCmd)
+	BaseCmd.AddCommand(devCmd)
 }
 
 var devCmd = &cobra.Command{

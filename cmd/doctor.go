@@ -4,7 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/cmd/action"
-	"pkg.world.dev/world-cli/cmd/style"
+	"pkg.world.dev/world-cli/cmd/tea/style"
 )
 
 var DoctorDeps = []action.Dependency{
@@ -19,14 +19,10 @@ var DoctorDeps = []action.Dependency{
 // Cobra Setup //
 /////////////////
 
-func init() {
-	rootCmd.AddCommand(doctorCmd)
-}
-
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Checks that required dependencies for World CLI are installed",
-	Long: `Checks that required dependencies for World CLI are installed.
+	Short: "Check that required dependencies are installed",
+	Long: `Check that required dependencies are installed.
 
 World CLI requires the following dependencies to be installed:
 - Git
