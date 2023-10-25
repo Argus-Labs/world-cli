@@ -13,6 +13,8 @@ type DockerService string
 const (
 	DockerServiceCardinal  DockerService = "cardinal"
 	DockerServiceNakama    DockerService = "nakama"
+	DockerServicePostgres  DockerService = "postgres"
+	DockerServiceRedis     DockerService = "redis"
 	DockerServiceTestsuite DockerService = "testsuite"
 )
 
@@ -98,12 +100,15 @@ func DockerStart(build bool, services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
+	if err := prepareDirs("cardinal", "nakama"); err != nil {
+		return err
+	}
 	if build {
-		if err := sh.Run("docker", "compose", "up", "--build", "-d", servicesToStr(services)); err != nil {
+		if err := sh.Run("docker", dockerArgs("compose up --build -d", services)...); err != nil {
 			return err
 		}
 	} else {
-		if err := sh.Run("docker", "compose", "up", "-d", servicesToStr(services)); err != nil {
+		if err := sh.Run("docker", dockerArgs("compose up -d", services)...); err != nil {
 			return err
 		}
 	}
@@ -160,7 +165,7 @@ func DockerRestart(build bool, services []DockerService) error {
 			return err
 		}
 	} else {
-		if err := sh.Run("docker", "compose", "restart", servicesToStr(services)); err != nil {
+		if err := sh.Run("docker", dockerArgs("compose restart", services)...); err != nil {
 			return err
 		}
 	}
@@ -173,7 +178,7 @@ func DockerStop(services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := sh.Run("docker", "compose", "stop", servicesToStr(services)); err != nil {
+	if err := sh.Run("docker", dockerArgs("compose stop", services)...); err != nil {
 		return err
 	}
 	return nil
@@ -185,13 +190,21 @@ func DockerPurge() error {
 	return sh.RunV("docker", "compose", "down", "--volumes")
 }
 
-// servicesToStr converts a slice of DockerService to a joined string separated by " "
-func servicesToStr(services []DockerService) string {
+// dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
+// We do this so we can pass variadic args cleanly.
+func dockerArgs(args string, services []DockerService) []string {
 	var res []string
+
+	// split prefix and append them to slice of strings
+	argsSlice := strings.Split(args, " ")
+	res = append(res, argsSlice...)
+
+	// convert DockerService to string and append them to slice of strings
 	for _, s := range services {
 		res = append(res, string(s))
 	}
-	return strings.Join(res, " ")
+
+	return res
 }
 
 func prepareDirs(dirs ...string) error {

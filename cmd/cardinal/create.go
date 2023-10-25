@@ -5,7 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"io"
-	action2 "pkg.world.dev/world-cli/common/tea_cmd"
+	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
 	"strings"
@@ -13,17 +13,13 @@ import (
 
 const TemplateGitUrl = "https://github.com/Argus-Labs/starter-game-template.git"
 
-var CreateDeps = []action2.Dependency{
-	action2.GitDependency,
+var CreateDeps = []tea_cmd.Dependency{
+	tea_cmd.GitDependency,
 }
 
 /////////////////
 // Cobra Setup //
 /////////////////
-
-func init() {
-	BaseCmd.AddCommand(createCmd)
-}
 
 var createCmd = &cobra.Command{
 	Use:   "create [directory_name]",
@@ -50,7 +46,7 @@ type WorldCreateModel struct {
 	steps            steps.Model
 	projectNameInput textinput.Model
 	args             []string
-	depStatus        []action2.DependencyStatus
+	depStatus        []tea_cmd.DependencyStatus
 	depStatusErr     error
 	err              error
 }
@@ -88,15 +84,15 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 func (m WorldCreateModel) Init() tea.Cmd {
 	// If the project name was passed in as an argument, skip the 1st step
 	if m.projectNameInput.Value() != "" {
-		return tea.Sequence(action2.CheckDependenciesCmd(CreateDeps), textinput.Blink, m.steps.StartCmd(), m.steps.CompleteStepCmd(nil))
+		return tea.Sequence(tea_cmd.CheckDependenciesCmd(CreateDeps), textinput.Blink, m.steps.StartCmd(), m.steps.CompleteStepCmd(nil))
 	}
-	return tea.Sequence(action2.CheckDependenciesCmd(CreateDeps), textinput.Blink, m.steps.StartCmd())
+	return tea.Sequence(tea_cmd.CheckDependenciesCmd(CreateDeps), textinput.Blink, m.steps.StartCmd())
 }
 
 // Update handles incoming events and updates the model accordingly
 func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case action2.CheckDependenciesMsg:
+	case tea_cmd.CheckDependenciesMsg:
 		m.depStatus = msg.DepStatus
 		m.depStatusErr = msg.Err
 		if msg.Err != nil {
@@ -126,7 +122,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Index == 1 {
 			return m, tea.Sequence(
 				NewLogCmd(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
-				action2.GitCloneCmd(TemplateGitUrl, m.projectNameInput.Value(), "Initial commit from World CLI"),
+				tea_cmd.GitCloneCmd(TemplateGitUrl, m.projectNameInput.Value(), "Initial commit from World CLI"),
 			)
 		}
 		return m, nil
@@ -145,7 +141,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// All done, quit
 		return m, tea.Quit
 
-	case action2.GitCloneFinishMsg:
+	case tea_cmd.GitCloneFinishMsg:
 		// If there is an error, log stderr then mark step as failed
 		if msg.Err != nil {
 			stderrBytes, err := io.ReadAll(msg.ErrBuf)
@@ -174,7 +170,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the UI based on the data in the WorldCreateModel
 func (m WorldCreateModel) View() string {
 	if m.depStatusErr != nil {
-		return action2.PrettyPrintMissingDependency(m.depStatus)
+		return tea_cmd.PrettyPrintMissingDependency(m.depStatus)
 	}
 
 	output := ""

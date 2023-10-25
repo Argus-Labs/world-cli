@@ -14,17 +14,17 @@ func init() {
 	cobra.EnableCaseInsensitive = true
 
 	// Register groups
-	RootCmd.AddGroup(&cobra.Group{ID: "Core", Title: "World CLI Commands:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "Core", Title: "World CLI Commands:"})
 
 	// Register base commands
-	RootCmd.AddCommand(doctorCmd, versionCmd)
+	rootCmd.AddCommand(doctorCmd, versionCmd)
 
 	// Register subcommands
-	RootCmd.AddCommand(cardinal.BaseCmd)
+	rootCmd.AddCommand(cardinal.BaseCmd)
 }
 
-// RootCmd represents the base command when called without any subcommands
-var RootCmd = &cobra.Command{
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
 	Use:   "world",
 	Short: "A swiss army knife for World Engine projects",
 	Long:  style.CLIHeader("World CLI", "A swiss army knife for World Engine projects"),
@@ -34,7 +34,7 @@ var RootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
-	if err := RootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Failed to execute root command")
 	}
 }

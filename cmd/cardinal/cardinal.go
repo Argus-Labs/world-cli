@@ -6,6 +6,11 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
+func init() {
+	// Register subcommands - `world cardinal [subcommand]`
+	BaseCmd.AddCommand(createCmd, startCmd, restartCmd, purgeCmd, stopCmd)
+}
+
 var BaseCmd = &cobra.Command{
 	Use:     "cardinal",
 	Short:   "Manage your Cardinal game shard project",
