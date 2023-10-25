@@ -3,8 +3,8 @@ package cardinal
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/tea/component"
-	"pkg.world.dev/world-cli/utils"
 )
 
 /////////////////
@@ -29,7 +29,7 @@ to quickly create a Cobra application.`,
 		lowerLeftBox := component.NewServerStatusApp()
 		lowerLeftBoxInfo := component.CreateBoxInfo(lowerLeftBox, 50, 30, component.WithBorder)
 		triLayout := component.BuildTriLayoutHorizontal(0, 0, nil, lowerLeftBoxInfo, nil)
-		_, _, _, err := utils.RunShellCommandReturnBuffers("cd cardinal && go run .", 1024)
+		_, _, _, err := common.RunShellCommandReturnBuffers("cd cardinal && go run .", 1024)
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-package action
+package tea_cmd
 
 import (
 	"github.com/stretchr/testify/assert"
