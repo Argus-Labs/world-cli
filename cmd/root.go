@@ -10,6 +10,7 @@ import (
 )
 
 func init() {
+	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true
 
 	// Register groups

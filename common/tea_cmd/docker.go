@@ -2,6 +2,7 @@ package tea_cmd
 
 import (
 	"fmt"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/magefile/mage/sh"
 	"os"
 	"strings"
@@ -15,19 +16,78 @@ const (
 	DockerServiceTestsuite DockerService = "testsuite"
 )
 
-// DockerPurge stops and deletes all docker containers and data volumes
-// This will completely wipe the state, if you only want to stop the containers, use DockerStop
-func DockerPurge() error {
-	return sh.RunV("docker", "compose", "down", "--volumes")
+type DockerOp int
+
+const (
+	DockerOpBuild DockerOp = iota
+	DockerOpStart
+	DockerOpStartTest
+	DockerOpStartDebug
+	DockerOpStartDetach
+	DockerOpRestart
+	DockerOpPurge
+	DockerOpStop
+)
+
+type DockerCmdArgs struct {
+	Op       DockerOp
+	Build    bool
+	Services []DockerService
 }
 
-// DockerStop stops running all docker containers (does not remove volumes).
-// If you want to reset all the services state, use DockerPurge
-func DockerStop(services []DockerService) error {
-	if services == nil {
-		return fmt.Errorf("no service names provided")
+type DockerFinishMsg struct {
+	Err       error
+	Operation DockerOp
+}
+
+// DockerCmd returns a tea.Cmd that runs a docker command
+func DockerCmd(action DockerCmdArgs) tea.Cmd {
+	return func() tea.Msg {
+		switch action.Op {
+
+		case DockerOpBuild:
+			err := DockerBuild()
+			return DockerFinishMsg{Err: err, Operation: DockerOpBuild}
+
+		case DockerOpStart:
+			err := DockerStart(action.Build, action.Services)
+			return DockerFinishMsg{Err: err, Operation: DockerOpStart}
+
+		case DockerOpStartTest:
+			err := DockerStartTest()
+			return DockerFinishMsg{Err: err, Operation: DockerOpStartTest}
+
+		case DockerOpStartDebug:
+			err := DockerStartDebug()
+			return DockerFinishMsg{Err: err, Operation: DockerOpStartDebug}
+
+		case DockerOpStartDetach:
+			err := DockerStartDetach()
+			return DockerFinishMsg{Err: err, Operation: DockerOpStartDetach}
+
+		case DockerOpRestart:
+			err := DockerRestart(action.Build, action.Services)
+			return DockerFinishMsg{Err: err, Operation: DockerOpRestart}
+
+		case DockerOpStop:
+			err := DockerStop(action.Services)
+			return DockerFinishMsg{Err: err, Operation: DockerOpStop}
+
+		case DockerOpPurge:
+			err := DockerPurge()
+			return DockerFinishMsg{Err: err, Operation: DockerOpPurge}
+		}
+
+		return nil
 	}
-	if err := sh.Run("docker", "compose", "stop", servicesToStr(services)); err != nil {
+}
+
+// DockerBuild builds all docker images
+func DockerBuild() error {
+	if err := prepareDirs("cardinal", "nakama"); err != nil {
+		return err
+	}
+	if err := sh.RunV("docker", "compose", "build"); err != nil {
 		return err
 	}
 	return nil
@@ -46,17 +106,6 @@ func DockerStart(build bool, services []DockerService) error {
 		if err := sh.Run("docker", "compose", "up", "-d", servicesToStr(services)); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// DockerBuild builds all docker images
-func DockerBuild() error {
-	if err := prepareDirs("cardinal", "nakama"); err != nil {
-		return err
-	}
-	if err := sh.RunV("docker", "compose", "build"); err != nil {
-		return err
 	}
 	return nil
 }
@@ -116,6 +165,24 @@ func DockerRestart(build bool, services []DockerService) error {
 		}
 	}
 	return nil
+}
+
+// DockerStop stops running all docker containers (does not remove volumes).
+// If you want to reset all the services state, use DockerPurge
+func DockerStop(services []DockerService) error {
+	if services == nil {
+		return fmt.Errorf("no service names provided")
+	}
+	if err := sh.Run("docker", "compose", "stop", servicesToStr(services)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DockerPurge stops and deletes all docker containers and data volumes
+// This will completely wipe the state, if you only want to stop the containers, use DockerStop
+func DockerPurge() error {
+	return sh.RunV("docker", "compose", "down", "--volumes")
 }
 
 // servicesToStr converts a slice of DockerService to a joined string separated by " "
