@@ -3,36 +3,16 @@ package cmd
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"os/exec"
+	"pkg.world.dev/world-cli/cmd/action"
 	"pkg.world.dev/world-cli/cmd/style"
 )
 
-type Dependency struct {
-	Name string
-	Cmd  *exec.Cmd
-	Help string
-}
-
-var RequiredDependencies = []Dependency{
-	{
-		Name: "Git",
-		Cmd:  exec.Command("git", "--version"),
-		Help: `Git is required to clone the starter-game-template.
-Learn how to install Git: https://github.com/git-guides/install-git`,
-	},
-	{
-		Name: "Go",
-		Cmd: exec.Command("go"+
-			"", "version"),
-		Help: `Go is required to build and run World Engine game shards.
-Learn how to install Go: https://go.dev/doc/install`,
-	},
-	{
-		Name: "Docker",
-		Cmd:  exec.Command("docker", "--version"),
-		Help: `Docker is required to build and run World Engine game shards.
-Learn how to install Docker: https://docs.docker.com/engine/install/`,
-	},
+var DoctorDeps = []action.Dependency{
+	action.GitDependency,
+	action.GoDependency,
+	action.DockerDependency,
+	action.DockerComposeDependency,
+	action.DockerDaemonDependency,
 }
 
 /////////////////
@@ -67,8 +47,8 @@ World CLI requires the following dependencies to be installed:
 //////////////////////
 
 type WorldDoctorModel struct {
-	ListOutput string
-	HelpOutput string
+	DepStatus    []action.DependencyStatus
+	DepStatusErr error
 }
 
 func NewWorldDoctorModel() WorldDoctorModel {
@@ -81,22 +61,7 @@ func NewWorldDoctorModel() WorldDoctorModel {
 
 // Init returns an initial command for the application to run
 func (m WorldDoctorModel) Init() tea.Cmd {
-	var ListOutput string
-	var HelpOutput string
-
-	// Iterate over required dependencies and check if they are installed
-	for _, dep := range RequiredDependencies {
-		if !isInstalled(dep.Cmd) {
-			// If the dependency is not installed, set the status to failed
-			// and print the help message
-			ListOutput += style.CrossIcon.Render() + " " + dep.Name + "\n"
-			HelpOutput += dep.Help + "\n\n"
-		} else {
-			// If the dependency is installed, set the status to success
-			ListOutput += style.TickIcon.Render() + " " + dep.Name + "\n"
-		}
-	}
-	return SetOutputCmd(ListOutput, HelpOutput)
+	return action.CheckDependenciesCmd(DoctorDeps)
 }
 
 // Update handles incoming events and updates the model accordingly
@@ -107,10 +72,9 @@ func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		}
-
-	case SetOutputMsg:
-		m.ListOutput = msg.ListOutput
-		m.HelpOutput = msg.HelpOutput
+	case action.CheckDependenciesMsg:
+		m.DepStatus = msg.DepStatus
+		m.DepStatusErr = msg.Err
 		return m, tea.Quit
 	}
 	return m, nil
@@ -118,41 +82,9 @@ func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the model to the screen
 func (m WorldDoctorModel) View() string {
-	output := style.Container.Render("--- World CLI Doctor ---") + "\n\n"
-	output += "Checking dependencies...\n"
-	output += m.ListOutput + "\n"
-	output += m.HelpOutput
-	return output
-}
-
-/////////////////////
-// Misc Functions //
-////////////////////
-
-// isInstalled checks whether a dependency is installed by running the given command
-func isInstalled(cmd *exec.Cmd) bool {
-	if err := cmd.Run(); err != nil {
-		return false
-	} else {
-		return true
-	}
-}
-
-/////////////////////////
-// Bubble Tea Commands //
-/////////////////////////
-
-type SetOutputMsg struct {
-	ListOutput string
-	HelpOutput string
-}
-
-// SetOutputCmd sets the output of the doctor
-func SetOutputCmd(listOutput string, helpOutput string) tea.Cmd {
-	return func() tea.Msg {
-		return SetOutputMsg{
-			ListOutput: listOutput,
-			HelpOutput: helpOutput,
-		}
-	}
+	depList, help := action.PrintDependencyStatus(m.DepStatus)
+	out := style.Container.Render("--- World CLI Doctor ---") + "\n\n"
+	out += "Checking dependencies...\n"
+	out += depList + "\n" + help + "\n"
+	return out
 }
