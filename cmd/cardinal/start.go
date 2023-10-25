@@ -45,7 +45,8 @@ This will start the following Docker services:
 			return fmt.Errorf("cannot run with special mode and debug mode at the same time")
 		}
 
-		if modeFlag == "" {
+		switch modeFlag {
+		case "":
 			if debugFlag {
 				err = tea_cmd.DockerStartDebug()
 				if err != nil {
@@ -57,22 +58,18 @@ This will start the following Docker services:
 					return err
 				}
 			}
-		} else {
-			// Start with special mode (detach/integration-test)
-			switch modeFlag {
-			case "detach":
-				err = tea_cmd.DockerStartDetach()
-				if err != nil {
-					return err
-				}
-			case "integration-test":
-				err = tea_cmd.DockerStartTest()
-				if err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("unknown mode %s", modeFlag)
+		case "detach":
+			err = tea_cmd.DockerStartDetach()
+			if err != nil {
+				return err
 			}
+		case "integration-test":
+			err = tea_cmd.DockerStartTest()
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown mode %s", modeFlag)
 		}
 
 		return nil
