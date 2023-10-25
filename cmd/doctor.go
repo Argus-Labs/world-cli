@@ -4,7 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/cmd/action"
-	"pkg.world.dev/world-cli/cmd/tea/style"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 var DoctorDeps = []action.Dependency{

@@ -3,7 +3,7 @@ package cardinal
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/cmd/tea/component"
+	"pkg.world.dev/world-cli/tea/component"
 	"pkg.world.dev/world-cli/utils"
 )
 

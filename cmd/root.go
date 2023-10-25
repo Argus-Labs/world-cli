@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"pkg.world.dev/world-cli/cmd/cardinal"
-	"pkg.world.dev/world-cli/cmd/tea/style"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 func init() {

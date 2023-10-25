@@ -3,7 +3,7 @@ package cardinal
 import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/cmd/tea/style"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 var BaseCmd = &cobra.Command{

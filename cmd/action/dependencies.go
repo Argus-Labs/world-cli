@@ -4,7 +4,7 @@ import (
 	"errors"
 	tea "github.com/charmbracelet/bubbletea"
 	"os/exec"
-	"pkg.world.dev/world-cli/cmd/tea/style"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 var (

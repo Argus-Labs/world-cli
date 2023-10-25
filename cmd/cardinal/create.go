@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"pkg.world.dev/world-cli/cmd/action"
-	"pkg.world.dev/world-cli/cmd/tea/component/steps"
-	"pkg.world.dev/world-cli/cmd/tea/style"
+	"pkg.world.dev/world-cli/tea/component/steps"
+	"pkg.world.dev/world-cli/tea/style"
 	"strings"
 )
 
