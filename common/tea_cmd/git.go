@@ -3,13 +3,13 @@ package tea_cmd
 import (
 	"bytes"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/magefile/mage/sh"
 	"os"
 	"os/exec"
 )
 
 type GitCloneFinishMsg struct {
-	ErrBuf *bytes.Buffer
-	Err    error
+	Err error
 }
 
 func Run(cmd *exec.Cmd) (*bytes.Buffer, error) {
@@ -27,41 +27,36 @@ func Run(cmd *exec.Cmd) (*bytes.Buffer, error) {
 
 func GitCloneCmd(url string, targetDir string, initMsg string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "clone", url, targetDir)
-		errBuf, err := Run(cmd)
+		err := sh.Run("git", "clone", url, targetDir)
 		if err != nil {
-			return GitCloneFinishMsg{ErrBuf: errBuf, Err: err}
+			return GitCloneFinishMsg{Err: err}
 		}
 
 		err = os.Chdir(targetDir)
 		if err != nil {
-			return GitCloneFinishMsg{ErrBuf: nil, Err: err}
+			return GitCloneFinishMsg{Err: err}
 		}
 
-		cmd = exec.Command("rm", "-rf", ".git")
-		errBuf, err = Run(cmd)
+		err = sh.Run("rm", "-rf", ".git")
 		if err != nil {
-			return GitCloneFinishMsg{ErrBuf: errBuf, Err: err}
+			return GitCloneFinishMsg{Err: err}
 		}
 
-		cmd = exec.Command("git", "init")
-		errBuf, err = Run(cmd)
+		err = sh.Run("git", "init")
 		if err != nil {
-			return GitCloneFinishMsg{ErrBuf: errBuf, Err: err}
+			return GitCloneFinishMsg{Err: err}
 		}
 
-		cmd = exec.Command("git", "add", "-A")
-		errBuf, err = Run(cmd)
+		err = sh.Run("git", "add", "-A")
 		if err != nil {
-			return GitCloneFinishMsg{ErrBuf: errBuf, Err: err}
+			return GitCloneFinishMsg{Err: err}
 		}
 
-		cmd = exec.Command("git", "commit", "-m", initMsg)
-		errBuf, err = Run(cmd)
+		err = sh.Run("git", "commit", "-m", initMsg)
 		if err != nil {
-			return GitCloneFinishMsg{ErrBuf: errBuf, Err: err}
+			return GitCloneFinishMsg{Err: err}
 		}
 
-		return GitCloneFinishMsg{ErrBuf: nil, Err: nil}
+		return GitCloneFinishMsg{Err: nil}
 	}
 }
