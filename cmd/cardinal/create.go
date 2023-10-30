@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"io"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
@@ -144,12 +143,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea_cmd.GitCloneFinishMsg:
 		// If there is an error, log stderr then mark step as failed
 		if msg.Err != nil {
-			stderrBytes, err := io.ReadAll(msg.ErrBuf)
-			if err != nil {
-				m.logs = append(m.logs, style.CrossIcon.Render()+"Error occurred while reading stderr")
-			} else {
-				m.logs = append(m.logs, style.CrossIcon.Render()+string(stderrBytes))
-			}
+			m.logs = append(m.logs, style.CrossIcon.Render()+msg.Err.Error())
 			return m, m.steps.CompleteStepCmd(msg.Err)
 		}
 

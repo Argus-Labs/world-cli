@@ -104,11 +104,11 @@ func DockerStart(build bool, services []DockerService) error {
 		return err
 	}
 	if build {
-		if err := sh.Run("docker", dockerArgs("compose up --build -d", services)...); err != nil {
+		if err := sh.RunV("docker", dockerArgs("compose up --build -d", services)...); err != nil {
 			return err
 		}
 	} else {
-		if err := sh.Run("docker", dockerArgs("compose up -d", services)...); err != nil {
+		if err := sh.RunV("docker", dockerArgs("compose up -d", services)...); err != nil {
 			return err
 		}
 	}
@@ -165,7 +165,7 @@ func DockerRestart(build bool, services []DockerService) error {
 			return err
 		}
 	} else {
-		if err := sh.Run("docker", dockerArgs("compose restart", services)...); err != nil {
+		if err := sh.RunV("docker", dockerArgs("compose restart", services)...); err != nil {
 			return err
 		}
 	}
@@ -178,7 +178,7 @@ func DockerStop(services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := sh.Run("docker", dockerArgs("compose stop", services)...); err != nil {
+	if err := sh.RunV("docker", dockerArgs("compose stop", services)...); err != nil {
 		return err
 	}
 	return nil
@@ -223,10 +223,10 @@ func prepareDir(dir string) error {
 	if err := sh.Rm("./vendor"); err != nil {
 		return err
 	}
-	if err := sh.Run("go", "mod", "tidy"); err != nil {
+	if err := sh.RunV("go", "mod", "tidy"); err != nil {
 		return err
 	}
-	if err := sh.Run("go", "mod", "vendor"); err != nil {
+	if err := sh.RunV("go", "mod", "vendor"); err != nil {
 		return err
 	}
 	if err := os.Chdir(".."); err != nil {
