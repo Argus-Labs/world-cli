@@ -89,7 +89,7 @@ func DockerBuild() error {
 	if err := prepareDirs("cardinal", "nakama"); err != nil {
 		return err
 	}
-	if err := sh.RunV("docker", "compose", "build"); err != nil {
+	if err := sh.Run("docker", "compose", "build"); err != nil {
 		return err
 	}
 	return nil
@@ -104,11 +104,11 @@ func DockerStart(build bool, services []DockerService) error {
 		return err
 	}
 	if build {
-		if err := sh.RunV("docker", dockerArgs("compose up --build -d", services)...); err != nil {
+		if err := sh.Run("docker", dockerArgs("compose up --build -d", services)...); err != nil {
 			return err
 		}
 	} else {
-		if err := sh.RunV("docker", dockerArgs("compose up -d", services)...); err != nil {
+		if err := sh.Run("docker", dockerArgs("compose up -d", services)...); err != nil {
 			return err
 		}
 	}
@@ -123,7 +123,7 @@ func DockerStartTest() error {
 	if err := prepareDirs("testsuite", "cardinal", "nakama"); err != nil {
 		return err
 	}
-	if err := sh.RunV("docker", "compose", "up", "--build", "--abort-on-container-exit", "--exit-code-from", "testsuite", "--attach", "testsuite"); err != nil {
+	if err := sh.Run("docker", "compose", "up", "--build", "--abort-on-container-exit", "--exit-code-from", "testsuite", "--attach", "testsuite"); err != nil {
 		return err
 	}
 	return nil
@@ -135,7 +135,7 @@ func DockerStartDebug() error {
 	if err := prepareDirs("cardinal", "nakama"); err != nil {
 		return err
 	}
-	if err := sh.RunV("docker", "compose", "-f", "docker-compose-debug.yml", "up", "--build", "cardinal", "nakama"); err != nil {
+	if err := sh.Run("docker", "compose", "-f", "docker-compose-debug.yml", "up", "--build", "cardinal", "nakama"); err != nil {
 		return err
 	}
 	return nil
@@ -146,7 +146,7 @@ func DockerStartDetach() error {
 	if err := prepareDirs("cardinal", "nakama"); err != nil {
 		return err
 	}
-	if err := sh.RunV("docker", "compose", "up", "--detach", "--wait", "--wait-timeout", "60"); err != nil {
+	if err := sh.Run("docker", "compose", "up", "--detach", "--wait", "--wait-timeout", "60"); err != nil {
 		return err
 	}
 	return nil
@@ -165,7 +165,7 @@ func DockerRestart(build bool, services []DockerService) error {
 			return err
 		}
 	} else {
-		if err := sh.RunV("docker", dockerArgs("compose restart", services)...); err != nil {
+		if err := sh.Run("docker", dockerArgs("compose restart", services)...); err != nil {
 			return err
 		}
 	}
@@ -178,7 +178,7 @@ func DockerStop(services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := sh.RunV("docker", dockerArgs("compose stop", services)...); err != nil {
+	if err := sh.Run("docker", dockerArgs("compose stop", services)...); err != nil {
 		return err
 	}
 	return nil
@@ -187,7 +187,7 @@ func DockerStop(services []DockerService) error {
 // DockerPurge stops and deletes all docker containers and data volumes
 // This will completely wipe the state, if you only want to stop the containers, use DockerStop
 func DockerPurge() error {
-	return sh.RunV("docker", "compose", "down", "--volumes")
+	return sh.Run("docker", "compose", "down", "--volumes")
 }
 
 // dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
@@ -223,10 +223,10 @@ func prepareDir(dir string) error {
 	if err := sh.Rm("./vendor"); err != nil {
 		return err
 	}
-	if err := sh.RunV("go", "mod", "tidy"); err != nil {
+	if err := sh.Run("go", "mod", "tidy"); err != nil {
 		return err
 	}
-	if err := sh.RunV("go", "mod", "vendor"); err != nil {
+	if err := sh.Run("go", "mod", "vendor"); err != nil {
 		return err
 	}
 	if err := os.Chdir(".."); err != nil {
