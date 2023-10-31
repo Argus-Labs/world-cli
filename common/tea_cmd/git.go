@@ -5,29 +5,24 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/magefile/mage/sh"
 	"os"
-	"os/exec"
 )
 
 type GitCloneFinishMsg struct {
 	Err error
 }
 
-func Run(cmd *exec.Cmd) (*bytes.Buffer, error) {
+func git(args ...string) error {
 	var outBuff, errBuff bytes.Buffer
-	cmd.Stdout = &outBuff
-	cmd.Stderr = &errBuff
-
-	err := cmd.Run()
+	_, err := sh.Exec(nil, &outBuff, &errBuff, args[0], args[1:]...)
 	if err != nil {
-		return &errBuff, err
+		return err
 	}
-
-	return nil, nil
+	return nil
 }
 
 func GitCloneCmd(url string, targetDir string, initMsg string) tea.Cmd {
 	return func() tea.Msg {
-		err := sh.Run("git", "clone", url, targetDir)
+		err := git("clone", url, targetDir)
 		if err != nil {
 			return GitCloneFinishMsg{Err: err}
 		}
@@ -42,17 +37,17 @@ func GitCloneCmd(url string, targetDir string, initMsg string) tea.Cmd {
 			return GitCloneFinishMsg{Err: err}
 		}
 
-		err = sh.Run("git", "init")
+		err = git("init")
 		if err != nil {
 			return GitCloneFinishMsg{Err: err}
 		}
 
-		err = sh.Run("git", "add", "-A")
+		err = git("add", "-A")
 		if err != nil {
 			return GitCloneFinishMsg{Err: err}
 		}
 
-		err = sh.Run("git", "commit", "-m", initMsg)
+		err = git("commit", "-m", initMsg)
 		if err != nil {
 			return GitCloneFinishMsg{Err: err}
 		}
