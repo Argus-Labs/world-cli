@@ -23,7 +23,8 @@ func init() {
 	rootCmd.AddCommand(cardinal.BaseCmd)
 }
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command
+// Usage: `world`
 var rootCmd = &cobra.Command{
 	Use:   "world",
 	Short: "A swiss army knife for World Engine projects",
@@ -35,6 +36,5 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal().Err(err).Msg("Failed to execute root command")
 	}
 }

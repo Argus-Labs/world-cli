@@ -9,6 +9,8 @@ import (
 // Cobra Setup //
 /////////////////
 
+// stopCmd stops your Cardinal game shard stack
+// Usage: `world cardinal stop`
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop your Cardinal game shard stack",

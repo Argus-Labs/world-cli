@@ -8,9 +8,11 @@ import (
 
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
-	BaseCmd.AddCommand(createCmd, startCmd, restartCmd, purgeCmd, stopCmd)
+	BaseCmd.AddCommand(createCmd, startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }
 
+// BaseCmd is the base command for the cardinal subcommand
+// Usage: `world cardinal`
 var BaseCmd = &cobra.Command{
 	Use:     "cardinal",
 	Short:   "Manage your Cardinal game shard project",

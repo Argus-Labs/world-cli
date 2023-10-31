@@ -28,3 +28,6 @@ world-cli
 
 # Jetbrains
 .idea
+
+# Test
+/starter-game
