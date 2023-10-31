@@ -86,7 +86,7 @@ func DockerCmd(action DockerCmdArgs) tea.Cmd {
 
 // DockerBuild builds all docker images
 func DockerBuild() error {
-	if err := prepareDirs("cardinal", "nakama"); err != nil {
+	if err := prepareDirs("cardinal"); err != nil {
 		return err
 	}
 	if err := sh.Run("docker", "compose", "build"); err != nil {
@@ -100,7 +100,7 @@ func DockerStart(build bool, services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := prepareDirs("cardinal", "nakama"); err != nil {
+	if err := prepareDirs("cardinal"); err != nil {
 		return err
 	}
 	if build {
@@ -120,7 +120,7 @@ func DockerStartTest() error {
 	if err := DockerPurge(); err != nil {
 		return err
 	}
-	if err := prepareDirs("testsuite", "cardinal", "nakama"); err != nil {
+	if err := prepareDirs("testsuite", "cardinal"); err != nil {
 		return err
 	}
 	if err := sh.Run("docker", "compose", "up", "--build", "--abort-on-container-exit", "--exit-code-from", "testsuite", "--attach", "testsuite"); err != nil {
@@ -132,7 +132,7 @@ func DockerStartTest() error {
 // DockerStartDebug starts Nakama and Cardinal in debug mode with Cardinal debugger listening on port 40000
 // Note: Cardinal server will not run until a debugger is attached port 40000
 func DockerStartDebug() error {
-	if err := prepareDirs("cardinal", "nakama"); err != nil {
+	if err := prepareDirs("cardinal"); err != nil {
 		return err
 	}
 	if err := sh.Run("docker", "compose", "-f", "docker-compose-debug.yml", "up", "--build", "cardinal", "nakama"); err != nil {
@@ -143,7 +143,7 @@ func DockerStartDebug() error {
 
 // DockerStartDetach starts Nakama and Cardinal with detach and wait-timeout 60s (useful for CI workflow)
 func DockerStartDetach() error {
-	if err := prepareDirs("cardinal", "nakama"); err != nil {
+	if err := prepareDirs("cardinal"); err != nil {
 		return err
 	}
 	if err := sh.Run("docker", "compose", "up", "--detach", "--wait", "--wait-timeout", "60"); err != nil {

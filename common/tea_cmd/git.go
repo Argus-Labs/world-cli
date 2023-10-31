@@ -13,7 +13,7 @@ type GitCloneFinishMsg struct {
 
 func git(args ...string) error {
 	var outBuff, errBuff bytes.Buffer
-	_, err := sh.Exec(nil, &outBuff, &errBuff, args[0], args[1:]...)
+	_, err := sh.Exec(nil, &outBuff, &errBuff, "git", args...)
 	if err != nil {
 		return err
 	}

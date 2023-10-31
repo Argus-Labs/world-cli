@@ -36,6 +36,5 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal().Err(err).Msg("Failed to execute root command")
 	}
 }
