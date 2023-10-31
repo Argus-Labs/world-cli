@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// versionCmd print the version number of World CLI
+// Usage: `world version`
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of World CLI",

@@ -23,7 +23,8 @@ func init() {
 	rootCmd.AddCommand(cardinal.BaseCmd)
 }
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command
+// Usage: `world`
 var rootCmd = &cobra.Command{
 	Use:   "world",
 	Short: "A swiss army knife for World Engine projects",

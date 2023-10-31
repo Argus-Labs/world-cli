@@ -20,6 +20,8 @@ var CreateDeps = []tea_cmd.Dependency{
 // Cobra Setup //
 /////////////////
 
+// createCmd creates a new World Engine project based on starter-game-template
+// Usage: `world cardinal create [directory_name]`
 var createCmd = &cobra.Command{
 	Use:   "create [directory_name]",
 	Short: "Create a World Engine game shard from scratch",

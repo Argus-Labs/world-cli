@@ -19,6 +19,8 @@ var DoctorDeps = []tea_cmd.Dependency{
 // Cobra Setup //
 /////////////////
 
+// doctorCmd checks that required dependencies are installed
+// Usage: `world doctor`
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Check that required dependencies are installed",

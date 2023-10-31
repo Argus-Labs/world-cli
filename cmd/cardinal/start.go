@@ -16,6 +16,8 @@ func init() {
 	startCmd.Flags().String("mode", "", "Run with special mode [detach/integration-test]")
 }
 
+// startCmd starts your Cardinal game shard stack
+// Usage: `world cardinal start`
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start your Cardinal game shard stack",

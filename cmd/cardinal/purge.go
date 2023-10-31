@@ -9,6 +9,8 @@ import (
 // Cobra Setup //
 /////////////////
 
+// purgeCmd stops and resets the state of your Cardinal game shard
+// Usage: `world cardinal purge`
 var purgeCmd = &cobra.Command{
 	Use:   "purge",
 	Short: "Stop and reset the state of your Cardinal game shard",
