@@ -1,5 +1,4 @@
 # world-engine-cli
-world-engine-cli
 
 temporary testing notes:
 
@@ -23,6 +22,16 @@ Test with these commands; in the project dir run:
 ## Install Pre-compiled Binaries
 
 The simplest, cross-platform way to get started is to download `world-cli` from [GitHub Releases](https://github.com/Argus-Labs/world-cli/releases) and place the executable file in your PATH, or using installer script below:
+
+- Install latest with `go install`
+```
+go install pkg.world.dev/world-cli@latest
+```
+
+- Install specific release tag with `go install`
+```
+go install pkg.world.dev/world-cli@<release tag>
+```
 
 - Install latest available release:
 ```
