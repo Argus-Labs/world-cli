@@ -19,19 +19,21 @@ Test with these commands; in the project dir run:
 1. `go build`
 2. `./world create myproject`
 
-## Install Pre-compiled Binaries
+## Installation
 
-The simplest, cross-platform way to get started is to download `world-cli` from [GitHub Releases](https://github.com/Argus-Labs/world-cli/releases) and place the executable file in your PATH, or using installer script below:
+## Go Install
 
-- Install latest with `go install`
+- Install latest available release:
 ```
 go install pkg.world.dev/world-cli@latest
 ```
 
-- Install specific release tag with `go install`
+- Install specific release tag:
 ```
 go install pkg.world.dev/world-cli@<release tag>
 ```
+
+## Curl
 
 - Install latest available release:
 ```
