@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
@@ -72,7 +73,19 @@ var devCmd = &cobra.Command{
 				return errCleanup
 			}
 
-			if cardinalExecCmd.ProcessState == nil && cardinalExecCmd.Process != nil {
+			isProcessRunning := func(cmd *exec.Cmd) bool {
+				return cardinalExecCmd.ProcessState == nil && cardinalExecCmd.Process != nil
+			}
+
+			//wait up to 10 seconds for it to quit.
+			for i := 0; i < 10; i++ {
+				if isProcessRunning(cardinalExecCmd) {
+					time.Sleep(1 * time.Second)
+				} else {
+					break
+				}
+			}
+			if isProcessRunning(cardinalExecCmd) {
 				err = cardinalExecCmd.Process.Signal(syscall.SIGTERM)
 				if err != nil {
 					return err
