@@ -19,7 +19,7 @@ Test with these commands; in the project dir run:
 1. `go build`
 2. `./world create myproject`
 
-## Installation
+# Installation
 
 ## Go Install
 
