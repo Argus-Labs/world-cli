@@ -131,7 +131,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.SignalStepCompletedMsg:
 		// If step 1 is completed, log success message
 		if msg.Index == 1 {
-			return m, NewLogCmd(style.ChevronIcon.Render() + "Successfully created a newModel game shard based on starter-game-template!")
+			return m, NewLogCmd(style.ChevronIcon.Render() + "Successfully created a starter game shard in ./" + m.projectNameInput.Value())
 		}
 
 	case steps.SignalStepErrorMsg:
