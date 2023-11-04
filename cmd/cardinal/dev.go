@@ -2,13 +2,15 @@ package cardinal
 
 import (
 	"fmt"
-	"github.com/magefile/mage/sh"
-	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
 	"os/signal"
-	"pkg.world.dev/world-cli/tea/style"
 	"syscall"
+	"time"
+
+	"github.com/magefile/mage/sh"
+	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 const (
@@ -46,7 +48,7 @@ var devCmd = &cobra.Command{
 		}
 
 		// Run Cardinal
-		execCmd, err := runCardinal()
+		cardinalExecCmd, err := runCardinal()
 		if err != nil {
 			return err
 		}
@@ -59,7 +61,7 @@ var devCmd = &cobra.Command{
 		cmdErr := make(chan error, 1)
 
 		go func() {
-			err := execCmd.Wait()
+			err := cardinalExecCmd.Wait()
 			cmdErr <- err
 		}()
 
@@ -71,9 +73,23 @@ var devCmd = &cobra.Command{
 				return errCleanup
 			}
 
-			err = execCmd.Process.Signal(syscall.SIGTERM)
-			if err != nil {
-				return err
+			isProcessRunning := func(cmd *exec.Cmd) bool {
+				return cardinalExecCmd.ProcessState == nil && cardinalExecCmd.Process != nil
+			}
+
+			//wait up to 10 seconds for it to quit.
+			for i := 0; i < 10; i++ {
+				if isProcessRunning(cardinalExecCmd) {
+					time.Sleep(1 * time.Second)
+				} else {
+					break
+				}
+			}
+			if isProcessRunning(cardinalExecCmd) {
+				err = cardinalExecCmd.Process.Signal(syscall.SIGTERM)
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil
