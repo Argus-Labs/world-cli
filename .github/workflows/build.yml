@@ -37,7 +37,7 @@ jobs:
       - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
         id: build
         run: |
-          output_name=world-cli_${{ matrix.goos }}_${{ matrix.goarch }}
+          output_name=world_${{ matrix.goos }}_${{ matrix.goarch }}
           [ ${{ matrix.goos }} = "windows" ] && output_name+=".exe"
 
           env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $output_name
@@ -54,5 +54,5 @@ jobs:
         if: ${{ inputs.create_release }}
         uses: actions/upload-artifact@v3
         with:
-          name: world-cli-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ./world-cli*.tar.gz
+          name: world-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ./world*.tar.gz
