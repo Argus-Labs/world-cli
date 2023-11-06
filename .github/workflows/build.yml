@@ -40,7 +40,7 @@ jobs:
           output_name=world_${{ matrix.goos }}_${{ matrix.goarch }}
           [ ${{ matrix.goos }} = "windows" ] && output_name+=".exe"
 
-          env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build ./cmd/world -o $output_name
+          env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $output_name ./cmd/world
           echo "output_name=$output_name" >> $GITHUB_OUTPUT
       - name: Compress Build Binary
         uses: a7ul/tar-action@v1.1.3
