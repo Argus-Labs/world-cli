@@ -1,11 +1,11 @@
-package cmd
+package root
 
 import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"os"
-	"pkg.world.dev/world-cli/cmd/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
