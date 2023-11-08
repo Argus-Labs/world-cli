@@ -42,7 +42,7 @@ type DockerFinishMsg struct {
 }
 
 var dockerCompose = sh.RunCmd("docker", "compose")
-var dockerComposeDebug = sh.RunCmd("docker", "compose -f ./debug/docker-compose-debug.yml")
+var dockerComposeDebug = sh.RunCmd("docker", "compose -f ./.debug/docker-compose-debug.yml")
 
 // DockerCmd returns a tea.Cmd that runs a docker command
 func DockerCmd(action DockerCmdArgs) tea.Cmd {
