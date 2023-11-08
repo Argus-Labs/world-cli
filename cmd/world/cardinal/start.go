@@ -11,9 +11,9 @@ import (
 /////////////////
 
 func init() {
-	startCmd.Flags().Bool("build", true, "Rebuild the Docker images before starting")
-	startCmd.Flags().Bool("debug", false, "Enable debug mode")
-	startCmd.Flags().String("mode", "", "Run with special mode [detach/integration-test]")
+	startCmd.Flags().Bool("build", true, "Rebuild Docker images before starting")
+	startCmd.Flags().Bool("debug", false, "Run in debug mode")
+	startCmd.Flags().Bool("detach", false, "Run in detached mode")
 }
 
 // startCmd starts your Cardinal game shard stack
@@ -23,9 +23,11 @@ var startCmd = &cobra.Command{
 	Short: "Start your Cardinal game shard stack",
 	Long: `Start your Cardinal game shard stack.
 
-This will start the following Docker services:
+This will start the following Docker services and its dependencies:
 - Cardinal (Core game logic)
-- Nakama (Relay)`,
+- Nakama (Relay)
+- Redis (Cardinal dependency)
+- Postgres (Nakama dependency)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		buildFlag, err := cmd.Flags().GetBool("build")
 		if err != nil {
@@ -37,41 +39,18 @@ This will start the following Docker services:
 			return err
 		}
 
-		modeFlag, err := cmd.Flags().GetString("mode")
+		detachFlag, err := cmd.Flags().GetBool("detach")
 		if err != nil {
 			return err
 		}
 
-		// Don't allow running with special mode and debug mode
-		if modeFlag != "" && debugFlag {
-			return fmt.Errorf("cannot run with special mode and debug mode at the same time")
-		}
+		fmt.Println("Starting Cardinal game shard...")
+		fmt.Println("This may take a few minutes to rebuild the Docker images.")
+		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
 
-		switch modeFlag {
-		case "":
-			if debugFlag {
-				err = tea_cmd.DockerStartDebug()
-				if err != nil {
-					return err
-				}
-			} else {
-				err = tea_cmd.DockerStart(buildFlag, []tea_cmd.DockerService{tea_cmd.DockerServiceCardinal, tea_cmd.DockerServiceNakama})
-				if err != nil {
-					return err
-				}
-			}
-		case "detach":
-			err = tea_cmd.DockerStartDetach()
-			if err != nil {
-				return err
-			}
-		case "integration-test":
-			err = tea_cmd.DockerStartTest()
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("unknown mode %s", modeFlag)
+		err = tea_cmd.DockerStartAll(buildFlag, debugFlag, detachFlag, -1)
+		if err != nil {
+			return err
 		}
 
 		return nil

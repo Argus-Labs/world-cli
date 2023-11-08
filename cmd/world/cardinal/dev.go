@@ -1,22 +1,22 @@
 package cardinal
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
+	"pkg.world.dev/world-cli/tea/style"
 	"syscall"
 	"time"
 
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/tea/style"
 )
 
 const (
 	CardinalPort = "3333"
 	RedisPort    = "6379"
-	WebdisPort   = "7379"
 )
 
 /////////////////
@@ -27,22 +27,18 @@ const (
 // Usage: `world cardinal dev`
 var devCmd = &cobra.Command{
 	Use:   "dev",
-	Short: "TODO",
-	Long:  `TODO`,
+	Short: "Run Cardinal in development mode",
+	Long:  `Run Cardinal in development mode`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := os.Chdir("cardinal")
-		if err != nil {
-			return err
-		}
+		fmt.Print(style.CLIHeader("Cardinal", "Running Cardinal in dev mode"), "\n")
+		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
+		fmt.Println()
+		fmt.Println(fmt.Sprintf("Redis: localhost:%s", RedisPort))
+		fmt.Println(fmt.Sprintf("Cardinal: localhost:%s", CardinalPort))
+		fmt.Println()
 
 		// Run Redis container
-		err = sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "-e", "LOCAL_REDIS=true", "--name", "cardinal-dev-redis", "redis")
-		if err != nil {
-			return err
-		}
-
-		// Run Webdis container - this provides a REST wrapper around Redis
-		err = sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", WebdisPort, WebdisPort), "--link", "cardinal-dev-redis:redis", "--name", "cardinal-dev-webdis", "anapsix/webdis")
+		err := runRedis()
 		if err != nil {
 			return err
 		}
@@ -105,16 +101,37 @@ var devCmd = &cobra.Command{
 	},
 }
 
+// runRedis runs Redis in a Docker container
+func runRedis() error {
+	fmt.Println("Starting Redis container...")
+	cmd := exec.Command("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
+	if err != nil {
+		fmt.Println("Failed to start Redis container. Retrying after cleanup...")
+		cleanupErr := cleanup()
+		if cleanupErr != nil {
+			return err
+		}
+
+		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // runCardinal runs cardinal in dev mode.
 // We run cardinal without docker to make it easier to debug and skip the docker image build step
 func runCardinal() (*exec.Cmd, error) {
-	fmt.Print(style.CLIHeader("Cardinal", "Running Cardinal in dev mode"), "\n")
-	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
-	fmt.Println()
-	fmt.Println(fmt.Sprintf("Redis: localhost:%s", RedisPort))
-	fmt.Println(fmt.Sprintf("Webdis: localhost:%s", WebdisPort))
-	fmt.Println(fmt.Sprintf("Cardinal: localhost:%s", CardinalPort))
-	fmt.Println()
+	err := os.Chdir("cardinal")
+	if err != nil {
+		return nil, errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
+	}
 
 	env := map[string]string{
 		"REDIS_MODE":    "normal",
@@ -131,7 +148,7 @@ func runCardinal() (*exec.Cmd, error) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return cmd, err
 	}
@@ -145,13 +162,6 @@ func cleanup() error {
 	if err != nil {
 		fmt.Println("Failed to delete Redis container automatically")
 		fmt.Println("Please delete it manually with `docker rm -f cardinal-dev-redis`")
-		return err
-	}
-
-	err = sh.Run("docker", "rm", "-f", "cardinal-dev-webdis")
-	if err != nil {
-		fmt.Println("Failed to delete Webdis container automatically")
-		fmt.Println("Please delete it manually with `docker rm -f cardinal-dev-webdis`")
 		return err
 	}
 

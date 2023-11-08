@@ -18,15 +18,11 @@ var stopCmd = &cobra.Command{
 
 This will stop the following Docker services:
 - Cardinal (Core game logic)
-- Nakama (Relay)`,
+- Nakama (Relay)
+- Redis (Cardinal dependency)
+- Postgres (Nakama dependency)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := tea_cmd.DockerStop([]tea_cmd.DockerService{
-			tea_cmd.DockerServiceCardinal,
-			tea_cmd.DockerServiceNakama,
-			tea_cmd.DockerServicePostgres,
-			tea_cmd.DockerServiceRedis,
-			tea_cmd.DockerServiceTestsuite,
-		})
+		err := tea_cmd.DockerStopAll()
 		if err != nil {
 			return err
 		}
