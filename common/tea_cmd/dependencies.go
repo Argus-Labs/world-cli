@@ -2,8 +2,9 @@ package tea_cmd
 
 import (
 	"errors"
-	tea "github.com/charmbracelet/bubbletea"
 	"os/exec"
+
+	tea "github.com/charmbracelet/bubbletea"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -35,7 +36,7 @@ Learn how to install Docker: https://docs.docker.com/engine/install/`,
 	}
 	DockerDaemonDependency = Dependency{
 		Name: "Docker daemon is running",
-		Cmd:  exec.Command("docker", "--version"),
+		Cmd:  exec.Command("docker", "info"),
 		Help: `Docker daemon needs to be running.
 If you use Docker Desktop, make sure that you have ran it`,
 	}
