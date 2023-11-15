@@ -23,6 +23,9 @@ var BaseCmd = &cobra.Command{
 		return dependency.Check(
 			dependency.Go,
 			dependency.Git,
+			dependency.Docker,
+			dependency.DockerCompose,
+			dependency.DockerDaemon,
 		)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
