@@ -1,19 +1,21 @@
 package cardinal
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
-	"strings"
 )
 
 const TemplateGitUrl = "https://github.com/Argus-Labs/starter-game-template.git"
 
-var CreateDeps = []tea_cmd.Dependency{
-	tea_cmd.GitDependency,
+var CreateDeps = []dependency.Dependency{
+	dependency.Git,
 }
 
 /////////////////

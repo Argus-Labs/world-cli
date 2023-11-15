@@ -3,6 +3,7 @@ package root
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -27,7 +28,9 @@ func outputFromCmd(t *testing.T, cmd string) (lines []string, err error) {
 		rootCmd.SetArgs(nil)
 	}()
 
-	assert.NilError(t, rootCmd.Execute())
+	if err = rootCmd.Execute(); err != nil {
+		return nil, fmt.Errorf("root command failed with: %w", err)
+	}
 	lines = strings.Split(stdOut.String(), "\n")
 	errorStr := stdErr.String()
 	if len(errorStr) > 0 {
