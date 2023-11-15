@@ -6,17 +6,12 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
 const TemplateGitUrl = "https://github.com/Argus-Labs/starter-game-template.git"
-
-var CreateDeps = []dependency.Dependency{
-	dependency.Git,
-}
 
 /////////////////
 // Cobra Setup //
@@ -87,9 +82,9 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 func (m WorldCreateModel) Init() tea.Cmd {
 	// If the project name was passed in as an argument, skip the 1st step
 	if m.projectNameInput.Value() != "" {
-		return tea.Sequence(tea_cmd.CheckDependenciesCmd(CreateDeps), textinput.Blink, m.steps.StartCmd(), m.steps.CompleteStepCmd(nil))
+		return tea.Sequence(textinput.Blink, m.steps.StartCmd(), m.steps.CompleteStepCmd(nil))
 	}
-	return tea.Sequence(tea_cmd.CheckDependenciesCmd(CreateDeps), textinput.Blink, m.steps.StartCmd())
+	return tea.Sequence(textinput.Blink, m.steps.StartCmd())
 }
 
 // Update handles incoming events and updates the model accordingly
