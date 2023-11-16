@@ -125,7 +125,7 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 func TestTextDecoding(t *testing.T) {
 	content := `
 [cardinal]
-namespace="alpha"
+CARDINAL_NAMESPACE="alpha"
 `
 
 	file, err := os.CreateTemp("", "config*.toml")
