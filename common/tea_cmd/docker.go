@@ -29,13 +29,6 @@ func dockerCompose(env map[string]string, debug bool, args ...string) error {
 	return sh.RunWith(env, "docker", args...)
 }
 
-func environmentFromConfig(cfg config.Config) map[string]string {
-	// Q: Why not just encode the toml file with these environment variable keys?
-	return map[string]string{
-		"CARDINAL_NAMESPACE": cfg.Cardinal.Namespace,
-	}
-}
-
 // DockerStart starts a given docker container by name.
 // Rebuilds the image if `build` is true
 // Runs in detach mode if `detach` is true
@@ -58,9 +51,8 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 	if cfg.Timeout > 0 {
 		flags = append(flags, fmt.Sprintf("--wait-timeout %d", cfg.Timeout))
 	}
-	env := environmentFromConfig(cfg)
 
-	if err := dockerCompose(env, cfg.Debug, dockerArgs("up", services, flags...)...); err != nil {
+	if err := dockerCompose(cfg.Env, cfg.Debug, dockerArgs("up", services, flags...)...); err != nil {
 		return err
 	}
 
@@ -86,8 +78,7 @@ func DockerRestart(cfg config.Config, services []DockerService) error {
 			return err
 		}
 	} else {
-		env := environmentFromConfig(cfg)
-		if err := dockerCompose(env, false, dockerArgs("restart", services, "--build")...); err != nil {
+		if err := dockerCompose(cfg.Env, false, dockerArgs("restart", services, "--build")...); err != nil {
 			return err
 		}
 	}

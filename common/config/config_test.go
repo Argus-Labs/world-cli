@@ -10,6 +10,12 @@ import (
 	"gotest.tools/v3/assert"
 )
 
+func getNamespace(t *testing.T, cfg Config) string {
+	val, ok := cfg.Env["CARDINAL_NAMESPACE"]
+	assert.Check(t, ok, "no CARDINAL_NAMESPACE field found")
+	return val
+}
+
 func makeConfigAtTemp(t *testing.T, namespace string) (filename string) {
 	file, err := os.CreateTemp("", "config*.toml")
 	assert.NilError(t, err)
@@ -30,8 +36,8 @@ func makeConfigAtPath(t *testing.T, path, namespace string) {
 
 func makeConfigAtFile(t *testing.T, file *os.File, namespace string) {
 	data := map[string]any{
-		"cardinal": map[string]string{
-			"namespace": namespace,
+		"cardinal": map[string]any{
+			"CARDINAL_NAMESPACE": namespace,
 		},
 	}
 	assert.NilError(t, toml.NewEncoder(file).Encode(data))
@@ -41,7 +47,7 @@ func TestCanSetNamespaceWithFilename(t *testing.T) {
 	file := makeConfigAtTemp(t, "alpha")
 	cfg, err := LoadConfig(file)
 	assert.NilError(t, err)
-	assert.Equal(t, "alpha", cfg.Cardinal.Namespace)
+	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
 
 func replaceEnvVarForTest(t *testing.T, env, value string) {
@@ -57,7 +63,7 @@ func TestCanSetNamespaceWithEnvVariable(t *testing.T) {
 	replaceEnvVarForTest(t, WorldCLIConfigFileEnvVariable, file)
 	cfg, err := LoadConfig("")
 	assert.NilError(t, err)
-	assert.Equal(t, "alpha", cfg.Cardinal.Namespace)
+	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
 
 func TestConfigPreference(t *testing.T) {
@@ -66,7 +72,7 @@ func TestConfigPreference(t *testing.T) {
 	replaceEnvVarForTest(t, WorldCLIConfigFileEnvVariable, envConfig)
 	cfg, err := LoadConfig(fileConfig)
 	assert.NilError(t, err)
-	assert.Equal(t, "alpha", cfg.Cardinal.Namespace)
+	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
 
 func makeTempDir(t *testing.T) string {
@@ -95,7 +101,7 @@ func TestConfigFromLocalFile(t *testing.T) {
 
 	cfg, err := LoadConfig("")
 	assert.NilError(t, err)
-	assert.Equal(t, "alpha", cfg.Cardinal.Namespace)
+	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
 
 func TestLoadConfigLooksInParentDirectories(t *testing.T) {
@@ -113,7 +119,7 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 
 	cfg, err := LoadConfig("")
 	assert.NilError(t, err)
-	assert.Equal(t, "alpha", cfg.Cardinal.Namespace)
+	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
 
 func TestTextDecoding(t *testing.T) {
@@ -133,5 +139,5 @@ namespace="alpha"
 
 	cfg, err := LoadConfig(file.Name())
 	assert.NilError(t, err)
-	assert.Equal(t, "alpha", cfg.Cardinal.Namespace)
+	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }

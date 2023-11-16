@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,23 +17,12 @@ const (
 )
 
 type Config struct {
-	RootDir  string
-	Build    bool `toml:"build"`
-	Debug    bool `toml:"debug"`
-	Detach   bool `toml:"detach"`
-	Timeout  int  `toml:"timeout"`
-	Cardinal struct {
-		Namespace string `toml:"namespace""`
-	}
-	EVM struct {
-		DAAuthToken   string `toml:"da_auth_token"`
-		DABaseURL     string `toml:"da_base_url"`
-		DANamespaceID string `toml:"da_namespace_id"`
-		ChainID       string `toml:"chain_id"`
-		KeyMnemonic   string `toml:"key_mnemonic"`
-		FaucetAddr    string `toml:"faucet_addr"`
-		BlockTime     int    `toml:"block_time"`
-	}
+	RootDir string
+	Detach  bool
+	Build   bool
+	Debug   bool
+	Timeout int
+	Env     map[string]string
 }
 
 func LoadConfig(filename string) (Config, error) {
@@ -67,17 +57,28 @@ func LoadConfig(filename string) (Config, error) {
 }
 
 func loadConfigFromFile(filename string) (Config, error) {
-	cfg := Config{}
+	cfg := Config{
+		Env: map[string]string{},
+	}
 	file, err := os.Open(filename)
 	if err != nil {
 		return cfg, err
 	}
 	defer file.Close()
 
-	if err = toml.NewDecoder(file).Decode(&cfg); err != nil {
+	data := map[string]any{}
+	if err = toml.NewDecoder(file).Decode(&data); err != nil {
 		return cfg, err
 	}
 	log.Debug().Msgf("successfully loaded config from %q", filename)
+	// Ignore top level sections insert all key/value pairs as environment variables
+	for _, section := range data {
+		asMap := section.(map[string]any)
+		for key, value := range asMap {
+			cfg.Env[key] = fmt.Sprintf("%v", value)
+		}
+	}
+
 	cfg.RootDir, _ = filepath.Split(filename)
 	return cfg, nil
 }
