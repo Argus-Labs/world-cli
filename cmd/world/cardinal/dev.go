@@ -130,7 +130,7 @@ func runRedis() error {
 func runCardinal() (*exec.Cmd, error) {
 	err := os.Chdir("cardinal")
 	if err != nil {
-		return nil, errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
+		return nil, errors.New("can't find cardinal directory. Are you in the root of a World Engine project?")
 	}
 
 	env := map[string]string{

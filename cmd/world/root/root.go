@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -20,7 +21,9 @@ func init() {
 	rootCmd.AddCommand(doctorCmd, versionCmd)
 
 	// Register subcommands
-	rootCmd.AddCommand(cardinal.BaseCmd)
+	rootCmd.AddCommand(cardinal.BaseCmd())
+
+	rootCmd.AddCommand(evm.EVMCmds())
 }
 
 // rootCmd represents the base command

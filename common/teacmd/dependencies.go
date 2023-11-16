@@ -1,4 +1,4 @@
-package tea_cmd
+package teacmd
 
 import (
 	"errors"

@@ -2,7 +2,6 @@ package cardinal
 
 import (
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/tea_cmd"
 )
 
 /////////////////
@@ -22,7 +21,7 @@ This will stop the following Docker services:
 - Redis (Cardinal dependency)
 - Postgres (Nakama dependency)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := tea_cmd.DockerStopAll()
+		err := teacmd.DockerStopAll()
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-package tea_cmd
+package teacmd
 
 import (
 	"fmt"
@@ -15,6 +15,8 @@ const (
 	DockerServiceNakama   DockerService = "nakama"
 	DockerServicePostgres DockerService = "postgres"
 	DockerServiceRedis    DockerService = "redis"
+	DockerServiceEVM      DockerService = "evm"
+	DockerServiceDA       DockerService = "celestia-devnet"
 )
 
 type DockerOp int
@@ -54,7 +56,7 @@ func DockerCmd(action DockerCmdArgs) tea.Cmd {
 			return DockerFinishMsg{Err: err, Operation: DockerOpBuild}
 
 		case DockerOpStart:
-			err := DockerStart(action.Build, action.Debug, action.Detach, action.Timeout, action.Services)
+			err := DockerStart(action.Build, action.Debug, action.Detach, action.Timeout, action.Services...)
 			return DockerFinishMsg{Err: err, Operation: DockerOpStart}
 
 		case DockerOpRestart:
@@ -89,7 +91,7 @@ func DockerBuild() error {
 // Rebuilds the image if `build` is true
 // Runs in detach mode if `detach` is true
 // Runs with the debug docker compose, if `debug` is true
-func DockerStart(build bool, debug bool, detach bool, timeout int, services []DockerService) error {
+func DockerStart(build bool, debug bool, detach bool, timeout int, services ...DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
@@ -124,7 +126,7 @@ func DockerStart(build bool, debug bool, detach bool, timeout int, services []Do
 // DockerStartAll starts both cardinal and nakama
 func DockerStartAll(build bool, debug bool, detach bool, timeout int) error {
 	return DockerStart(build, debug, detach, timeout,
-		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServicePostgres, DockerServiceRedis})
+		DockerServiceCardinal, DockerServiceNakama, DockerServicePostgres, DockerServiceRedis)
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
@@ -136,7 +138,7 @@ func DockerRestart(build bool, services []DockerService) error {
 		if err := DockerStop(services); err != nil {
 			return err
 		}
-		if err := DockerStart(build, false, false, -1, services); err != nil {
+		if err := DockerStart(build, false, false, -1, services...); err != nil {
 			return err
 		}
 	} else {
