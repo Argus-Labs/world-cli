@@ -2,145 +2,92 @@ package tea_cmd
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/magefile/mage/sh"
 	"os"
+	"path"
 	"strings"
+
+	"github.com/magefile/mage/sh"
+	"pkg.world.dev/world-cli/common/config"
 )
 
 type DockerService string
 
 const (
-	DockerServiceCardinal DockerService = "cardinal"
-	DockerServiceNakama   DockerService = "nakama"
-	DockerServicePostgres DockerService = "postgres"
-	DockerServiceRedis    DockerService = "redis"
+	DockerServiceCardinal    DockerService = "cardinal"
+	DockerServiceNakama      DockerService = "nakama"
+	DockerServiceCockroachDB DockerService = "cockroachdb"
+	DockerServiceRedis       DockerService = "redis"
 )
 
-type DockerOp int
-
-const (
-	DockerOpBuild DockerOp = iota
-	DockerOpStart
-	DockerOpRestart
-	DockerOpPurge
-	DockerOpStop
-)
-
-type DockerCmdArgs struct {
-	Op       DockerOp
-	Build    bool
-	Debug    bool
-	Detach   bool
-	Timeout  int
-	Services []DockerService
+func dockerCompose(env map[string]string, debug bool, args ...string) error {
+	cmdArgs := []string{"compose"}
+	if debug {
+		// ROOT DIR IS A GOOD CANDIDATE HERE
+		cmdArgs = append(cmdArgs, "-f", "./.run/docker-compose-debug.yml")
+	}
+	args = append(cmdArgs, args...)
+	return sh.RunWith(env, "docker", args...)
 }
 
-type DockerFinishMsg struct {
-	Err       error
-	Operation DockerOp
-}
-
-var dockerCompose = sh.RunCmd("docker", "compose")
-var dockerComposeDebug = sh.RunCmd("docker", "compose -f ./.run/docker-compose-debug.yml")
-
-// DockerCmd returns a tea.Cmd that runs a docker command
-func DockerCmd(action DockerCmdArgs) tea.Cmd {
-	return func() tea.Msg {
-		switch action.Op {
-
-		case DockerOpBuild:
-			err := DockerBuild()
-			return DockerFinishMsg{Err: err, Operation: DockerOpBuild}
-
-		case DockerOpStart:
-			err := DockerStart(action.Build, action.Debug, action.Detach, action.Timeout, action.Services)
-			return DockerFinishMsg{Err: err, Operation: DockerOpStart}
-
-		case DockerOpRestart:
-			err := DockerRestart(action.Build, action.Services)
-			return DockerFinishMsg{Err: err, Operation: DockerOpRestart}
-
-		case DockerOpStop:
-			err := DockerStop(action.Services)
-			return DockerFinishMsg{Err: err, Operation: DockerOpStop}
-
-		case DockerOpPurge:
-			err := DockerPurge()
-			return DockerFinishMsg{Err: err, Operation: DockerOpPurge}
-		}
-
-		return nil
+func environmentFromConfig(cfg config.Config) map[string]string {
+	// Q: Why not just encode the toml file with these environment variable keys?
+	return map[string]string{
+		"CARDINAL_NAMESPACE": cfg.Cardinal.Namespace,
 	}
-}
-
-// DockerBuild builds all docker images
-func DockerBuild() error {
-	if err := prepareDirs("cardinal"); err != nil {
-		return err
-	}
-	if err := dockerCompose("build"); err != nil {
-		return err
-	}
-	return nil
 }
 
 // DockerStart starts a given docker container by name.
 // Rebuilds the image if `build` is true
 // Runs in detach mode if `detach` is true
 // Runs with the debug docker compose, if `debug` is true
-func DockerStart(build bool, debug bool, detach bool, timeout int, services []DockerService) error {
+func DockerStart(cfg config.Config, services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := prepareDirs("cardinal"); err != nil {
+	if err := prepareDirs(path.Join(cfg.RootDir, "cardinal")); err != nil {
 		return err
 	}
 
 	var flags []string
-	if detach {
+	if cfg.Detach {
 		flags = append(flags, "--detach")
 	}
-	if build {
+	if cfg.Build {
 		flags = append(flags, "--build")
 	}
-	if timeout > 0 {
-		flags = append(flags, fmt.Sprintf("--wait-timeout %d", timeout))
+	if cfg.Timeout > 0 {
+		flags = append(flags, fmt.Sprintf("--wait-timeout %d", cfg.Timeout))
 	}
+	env := environmentFromConfig(cfg)
 
-	if debug {
-		if err := dockerComposeDebug(dockerArgs("up", services, flags...)...); err != nil {
-			return err
-		}
-	} else {
-		if err := dockerCompose(dockerArgs("up", services, flags...)...); err != nil {
-			return err
-		}
+	if err := dockerCompose(env, cfg.Debug, dockerArgs("up", services, flags...)...); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // DockerStartAll starts both cardinal and nakama
-func DockerStartAll(build bool, debug bool, detach bool, timeout int) error {
-	return DockerStart(build, debug, detach, timeout,
-		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServicePostgres, DockerServiceRedis})
+func DockerStartAll(cfg config.Config) error {
+	return DockerStart(cfg,
+		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceCockroachDB, DockerServiceRedis})
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
-func DockerRestart(build bool, services []DockerService) error {
+func DockerRestart(cfg config.Config, services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if build {
+	if cfg.Build {
 		if err := DockerStop(services); err != nil {
 			return err
 		}
-		if err := DockerStart(build, false, false, -1, services); err != nil {
+		if err := DockerStart(cfg, services); err != nil {
 			return err
 		}
 	} else {
-		if err := dockerCompose(dockerArgs("restart", services, "--build")...); err != nil {
+		env := environmentFromConfig(cfg)
+		if err := dockerCompose(env, false, dockerArgs("restart", services, "--build")...); err != nil {
 			return err
 		}
 	}
@@ -153,7 +100,7 @@ func DockerStop(services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := dockerCompose(dockerArgs("stop", services)...); err != nil {
+	if err := dockerCompose(nil, false, dockerArgs("stop", services)...); err != nil {
 		return err
 	}
 	return nil
@@ -161,13 +108,13 @@ func DockerStop(services []DockerService) error {
 
 // DockerStopAll stops all running docker containers (does not remove volumes).
 func DockerStopAll() error {
-	return DockerStop([]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServicePostgres, DockerServiceRedis})
+	return DockerStop([]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceCockroachDB, DockerServiceRedis})
 }
 
 // DockerPurge stops and deletes all docker containers and data volumes
 // This will completely wipe the state, if you only want to stop the containers, use DockerStop
 func DockerPurge() error {
-	return dockerCompose("down", "--volumes")
+	return dockerCompose(nil, false, "down", "--volumes")
 }
 
 // dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
@@ -200,19 +147,23 @@ func prepareDirs(dirs ...string) error {
 }
 
 func prepareDir(dir string) error {
-	if err := os.Chdir(dir); err != nil {
+	startDir, err := os.Getwd()
+	if err != nil {
 		return err
 	}
-	if err := sh.Rm("./vendor"); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		return err
 	}
-	if err := sh.Run("go", "mod", "tidy"); err != nil {
+	if err = sh.Rm("./vendor"); err != nil {
 		return err
 	}
-	if err := sh.Run("go", "mod", "vendor"); err != nil {
+	if err = sh.Run("go", "mod", "tidy"); err != nil {
 		return err
 	}
-	if err := os.Chdir(".."); err != nil {
+	if err = sh.Run("go", "mod", "vendor"); err != nil {
+		return err
+	}
+	if err = os.Chdir(startDir); err != nil {
 		return err
 	}
 	return nil
