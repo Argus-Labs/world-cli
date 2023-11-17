@@ -19,14 +19,18 @@ const (
 	DockerServiceRedis       DockerService = "redis"
 )
 
-func dockerCompose(env map[string]string, debug bool, args ...string) error {
+func dockerCompose(args ...string) error {
+	return dockerComposeWithCfg(config.Config{}, args...)
+}
+
+func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	cmdArgs := []string{"compose"}
-	if debug {
-		// ROOT DIR IS A GOOD CANDIDATE HERE
-		cmdArgs = append(cmdArgs, "-f", "./.run/docker-compose-debug.yml")
+	if cfg.Debug {
+		debugYml := path.Join(cfg.RootDir, ".run/docker-compose-debug.yml")
+		cmdArgs = append(cmdArgs, "-f", debugYml)
 	}
 	args = append(cmdArgs, args...)
-	return sh.RunWith(env, "docker", args...)
+	return sh.RunWith(cfg.Env, "docker", args...)
 }
 
 // DockerStart starts a given docker container by name.
@@ -52,7 +56,7 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 		flags = append(flags, fmt.Sprintf("--wait-timeout %d", cfg.Timeout))
 	}
 
-	if err := dockerCompose(cfg.Env, cfg.Debug, dockerArgs("up", services, flags...)...); err != nil {
+	if err := dockerComposeWithCfg(cfg, dockerArgs("up", services, flags...)...); err != nil {
 		return err
 	}
 
@@ -78,7 +82,7 @@ func DockerRestart(cfg config.Config, services []DockerService) error {
 			return err
 		}
 	} else {
-		if err := dockerCompose(cfg.Env, false, dockerArgs("restart", services, "--build")...); err != nil {
+		if err := dockerComposeWithCfg(cfg, dockerArgs("restart", services, "--build")...); err != nil {
 			return err
 		}
 	}
@@ -91,7 +95,7 @@ func DockerStop(services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := dockerCompose(nil, false, dockerArgs("stop", services)...); err != nil {
+	if err := dockerCompose(dockerArgs("stop", services)...); err != nil {
 		return err
 	}
 	return nil
@@ -105,7 +109,7 @@ func DockerStopAll() error {
 // DockerPurge stops and deletes all docker containers and data volumes
 // This will completely wipe the state, if you only want to stop the containers, use DockerStop
 func DockerPurge() error {
-	return dockerCompose(nil, false, "down", "--volumes")
+	return dockerCompose("down", "--volumes")
 }
 
 // dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
