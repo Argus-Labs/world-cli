@@ -157,7 +157,7 @@ ENV_BETA="beta"
 	cfg, err := LoadConfig(filename)
 	assert.NilError(t, err)
 	assert.Equal(t, cfg.DockerEnv["ENV_ALPHA"], "alpha")
-	assert.Equal(t, cfg.DockerEnv["ENV_BETA"], "alpha")
+	assert.Equal(t, cfg.DockerEnv["ENV_BETA"], "beta")
 }
 
 func TestCanOverrideRootDir(t *testing.T) {
