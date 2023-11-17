@@ -30,7 +30,7 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 		cmdArgs = append(cmdArgs, "-f", debugYml)
 	}
 	args = append(cmdArgs, args...)
-	return sh.RunWith(cfg.Env, "docker", args...)
+	return sh.RunWith(cfg.DockerEnv, "docker", args...)
 }
 
 // DockerStart starts a given docker container by name.

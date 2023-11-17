@@ -17,12 +17,12 @@ const (
 )
 
 type Config struct {
-	RootDir string
-	Detach  bool
-	Build   bool
-	Debug   bool
-	Timeout int
-	Env     map[string]string
+	RootDir   string
+	Detach    bool
+	Build     bool
+	Debug     bool
+	Timeout   int
+	DockerEnv map[string]string
 }
 
 func LoadConfig(filename string) (Config, error) {
@@ -58,7 +58,7 @@ func LoadConfig(filename string) (Config, error) {
 
 func loadConfigFromFile(filename string) (Config, error) {
 	cfg := Config{
-		Env: map[string]string{},
+		DockerEnv: map[string]string{},
 	}
 	file, err := os.Open(filename)
 	if err != nil {
@@ -70,15 +70,17 @@ func loadConfigFromFile(filename string) (Config, error) {
 	if err = toml.NewDecoder(file).Decode(&data); err != nil {
 		return cfg, err
 	}
-	log.Debug().Msgf("successfully loaded config from %q", filename)
-	// Ignore top level sections insert all key/value pairs as environment variables
-	for _, section := range data {
-		asMap := section.(map[string]any)
-		for key, value := range asMap {
-			cfg.Env[key] = fmt.Sprintf("%v", value)
-		}
+	if rootDir, ok := data["root_dir"]; ok {
+		cfg.RootDir = rootDir.(string)
+	} else {
+		cfg.RootDir, _ = filepath.Split(filename)
 	}
 
-	cfg.RootDir, _ = filepath.Split(filename)
+	for key, val := range data["docker_env"].(map[string]any) {
+		cfg.DockerEnv[key] = fmt.Sprintf("%v", val)
+	}
+
+	log.Debug().Msgf("successfully loaded config from %q", filename)
+
 	return cfg, nil
 }
