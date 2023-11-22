@@ -1,10 +1,13 @@
 package evm
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
+	"os/exec"
 	"pkg.world.dev/world-cli/common/teacmd"
+	"time"
 )
 
 func EVMCmds() *cobra.Command {
@@ -19,6 +22,7 @@ func EVMCmds() *cobra.Command {
 	})
 	evmRootCmd.AddCommand(
 		StartEVM(),
+		StartDA(),
 	)
 	return evmRootCmd
 }
@@ -39,14 +43,30 @@ func StartDA() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			err = teacmd.DockerStart(true, false, false, 0, teacmd.DockerServiceDA)
+			daService := teacmd.DockerServiceDA
+			fmt.Println("starting DA docker service...")
+			err = teacmd.DockerStart(true, false, true, -1, daService)
 			if err != nil {
-				fmt.Errorf("error starting %s docker container: %w", teacmd.DockerServiceDA, err)
+				fmt.Errorf("error starting %s docker container: %w", daService, err)
+			}
+			time.Sleep(3 * time.Second)
+			fmt.Println("started DA service...")
+			if !dontSetToken { // yes, we want to set it!
+				fmt.Println("attempting to set DA token...")
+				daToken, err := getDAToken()
+				if err != nil {
+					return err
+				}
+				err = os.Setenv(EnvDAAuthToken, daToken)
+				if err != nil {
+					return fmt.Errorf("error setting environment variable %q to %q: %w", EnvDAAuthToken, daToken, err)
+				}
 			}
 			return nil
 		},
 	}
 	cmd.Flags().Bool(FlagDoNotSetToken, false, fmt.Sprintf("When set to true, this command will not write to the %s environment variable.", EnvDAAuthToken))
+	return cmd
 }
 
 func StartEVM() *cobra.Command {
@@ -76,4 +96,55 @@ func StartEVM() *cobra.Command {
 	}
 	cmd.Flags().String(FlagDAAuthToken, "", "DA Auth Token that allows the rollup to communicate with the Celestia client.")
 	return cmd
+}
+
+func getDAToken() (string, error) {
+	// Create a new command
+	cmd := exec.Command("docker", "logs", "celestia_devnet")
+	retry := 0
+	for ; retry < 10; func() {
+		time.Sleep(2 * time.Second)
+		retry++
+	}() {
+		fmt.Println("attempting to get DA token...")
+		// Create a buffer to store the command output
+		var outBuffer bytes.Buffer
+		cmd.Stdout = &outBuffer
+
+		// Run the command
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println("error running command docker logs: ", err)
+			continue
+		}
+
+		// Convert the buffer to string
+		output := outBuffer.String()
+
+		// Find the line containing CELESTIA_NODE_AUTH_TOKEN
+		var authTokenLine string
+		lines := bytes.Split([]byte(output), []byte("\n"))
+		for i, line := range lines {
+			if bytes.Contains(line, []byte("CELESTIA_NODE_AUTH_TOKEN")) {
+				// Get the next 5 lines after the match
+				endIndex := i + 6
+				if endIndex > len(lines) {
+					endIndex = len(lines)
+				}
+				authTokenLines := lines[i:endIndex]
+
+				// Concatenate the lines to get the final output
+				authTokenLine = string(bytes.Join(authTokenLines, []byte("\n")))
+				break
+			}
+		}
+
+		// Print the final output
+		if authTokenLine != "" {
+			fmt.Println("token found")
+			return authTokenLine, nil
+		}
+		fmt.Println("failed... trying again")
+	}
+	return "", fmt.Errorf("timed out while getting DA token")
 }

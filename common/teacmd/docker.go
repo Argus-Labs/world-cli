@@ -2,7 +2,6 @@ package teacmd
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/magefile/mage/sh"
 	"os"
 	"strings"
@@ -19,83 +18,18 @@ const (
 	DockerServiceDA       DockerService = "celestia-devnet"
 )
 
-type DockerOp int
-
-const (
-	DockerOpBuild DockerOp = iota
-	DockerOpStart
-	DockerOpRestart
-	DockerOpPurge
-	DockerOpStop
-)
-
-type DockerCmdArgs struct {
-	Op       DockerOp
-	Build    bool
-	Debug    bool
-	Detach   bool
-	Timeout  int
-	Services []DockerService
-}
-
-type DockerFinishMsg struct {
-	Err       error
-	Operation DockerOp
-}
-
 var dockerCompose = sh.RunCmd("docker", "compose")
 var dockerComposeDebug = sh.RunCmd("docker", "compose -f ./.run/docker-compose-debug.yml")
-
-// DockerCmd returns a tea.Cmd that runs a docker command
-func DockerCmd(action DockerCmdArgs) tea.Cmd {
-	return func() tea.Msg {
-		switch action.Op {
-
-		case DockerOpBuild:
-			err := DockerBuild()
-			return DockerFinishMsg{Err: err, Operation: DockerOpBuild}
-
-		case DockerOpStart:
-			err := DockerStart(action.Build, action.Debug, action.Detach, action.Timeout, action.Services...)
-			return DockerFinishMsg{Err: err, Operation: DockerOpStart}
-
-		case DockerOpRestart:
-			err := DockerRestart(action.Build, action.Services)
-			return DockerFinishMsg{Err: err, Operation: DockerOpRestart}
-
-		case DockerOpStop:
-			err := DockerStop(action.Services)
-			return DockerFinishMsg{Err: err, Operation: DockerOpStop}
-
-		case DockerOpPurge:
-			err := DockerPurge()
-			return DockerFinishMsg{Err: err, Operation: DockerOpPurge}
-		}
-
-		return nil
-	}
-}
-
-// DockerBuild builds all docker images
-func DockerBuild() error {
-	if err := prepareDirs("cardinal"); err != nil {
-		return err
-	}
-	if err := dockerCompose("build"); err != nil {
-		return err
-	}
-	return nil
-}
 
 // DockerStart starts a given docker container by name.
 // Rebuilds the image if `build` is true
 // Runs in detach mode if `detach` is true
 // Runs with the debug docker compose, if `debug` is true
 func DockerStart(build bool, debug bool, detach bool, timeout int, services ...DockerService) error {
-	if services == nil {
+	if len(services) == 0 {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := prepareDirs("cardinal"); err != nil {
+	if err := tidyAndVendorDirs("cardinal"); err != nil {
 		return err
 	}
 
@@ -192,16 +126,16 @@ func dockerArgs(args string, services []DockerService, flags ...string) []string
 	return res
 }
 
-func prepareDirs(dirs ...string) error {
+func tidyAndVendorDirs(dirs ...string) error {
 	for _, dir := range dirs {
-		if err := prepareDir(dir); err != nil {
+		if err := tidyAndVendorDir(dir); err != nil {
 			return fmt.Errorf("failed to prepare dir %s: %w", dir, err)
 		}
 	}
 	return nil
 }
 
-func prepareDir(dir string) error {
+func tidyAndVendorDir(dir string) error {
 	if err := os.Chdir(dir); err != nil {
 		return err
 	}
