@@ -2,53 +2,14 @@ package teacmd
 
 import (
 	"errors"
+
 	tea "github.com/charmbracelet/bubbletea"
-	"os/exec"
+	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-var (
-	GitDependency = Dependency{
-		Name: "Git",
-		Cmd:  exec.Command("git", "--version"),
-		Help: `Git is required to clone the starter-game-template.
-Learn how to install Git: https://github.com/git-guides/install-git`,
-	}
-	GoDependency = Dependency{
-		Name: "Go",
-		Cmd: exec.Command("go"+
-			"", "version"),
-		Help: `Go is required to build and run World Engine game shards.
-Learn how to install Go: https://go.dev/doc/install`,
-	}
-	DockerDependency = Dependency{
-		Name: "Docker",
-		Cmd:  exec.Command("docker", "--version"),
-		Help: `Docker is required to build and run World Engine game shards.
-Learn how to install Docker: https://docs.docker.com/engine/install/`,
-	}
-	DockerComposeDependency = Dependency{
-		Name: "Docker Compose",
-		Cmd:  exec.Command("docker", "compose", "version"),
-		Help: `Docker Compose is required to build and run World Engine game shards.
-Learn how to install Docker: https://docs.docker.com/engine/install/`,
-	}
-	DockerDaemonDependency = Dependency{
-		Name: "Docker daemon is running",
-		Cmd:  exec.Command("docker", "--version"),
-		Help: `Docker daemon needs to be running.
-If you use Docker Desktop, make sure that you have ran it`,
-	}
-)
-
-type Dependency struct {
-	Name string
-	Cmd  *exec.Cmd
-	Help string
-}
-
 type DependencyStatus struct {
-	Dependency
+	dependency.Dependency
 	IsInstalled bool
 }
 
@@ -59,7 +20,7 @@ type CheckDependenciesMsg struct {
 
 // CheckDependenciesCmd Iterate through required dependencies and check if they are installed.
 // Dispatch CheckDependenciesMsg if any dependency is missing.
-func CheckDependenciesCmd(deps []Dependency) tea.Cmd {
+func CheckDependenciesCmd(deps []dependency.Dependency) tea.Cmd {
 	return func() tea.Msg {
 		var res []DependencyStatus
 		var resErr error

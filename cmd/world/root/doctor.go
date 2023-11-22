@@ -3,16 +3,17 @@ package root
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-var DoctorDeps = []teacmd.Dependency{
-	teacmd.GitDependency,
-	teacmd.GoDependency,
-	teacmd.DockerDependency,
-	teacmd.DockerComposeDependency,
-	teacmd.DockerDaemonDependency,
+var DoctorDeps = []dependency.Dependency{
+	dependency.Git,
+	dependency.Go,
+	dependency.Docker,
+	dependency.DockerCompose,
+	dependency.DockerDaemon,
 }
 
 /////////////////
