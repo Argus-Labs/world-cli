@@ -16,6 +16,13 @@ const (
 	WorldCLIConfigFilename        = "world.toml"
 )
 
+var (
+	// Items under these toml headers will be included in the environment variables when
+	// running docker. An error will be generated if a duplicate key is found across
+	// these sections.
+	dockerEnvHeaders = []string{"cardinal", "evm"}
+)
+
 type Config struct {
 	RootDir   string
 	Detach    bool
@@ -76,8 +83,17 @@ func loadConfigFromFile(filename string) (Config, error) {
 		cfg.RootDir, _ = filepath.Split(filename)
 	}
 
-	for key, val := range data["docker_env"].(map[string]any) {
-		cfg.DockerEnv[key] = fmt.Sprintf("%v", val)
+	for _, header := range dockerEnvHeaders {
+		m, ok := data[header]
+		if !ok {
+			continue
+		}
+		for key, val := range m.(map[string]any) {
+			if _, ok := cfg.DockerEnv[key]; ok {
+				return cfg, fmt.Errorf("duplicate env variable %q", key)
+			}
+			cfg.DockerEnv[key] = fmt.Sprintf("%v", val)
+		}
 	}
 
 	log.Debug().Msgf("successfully loaded config from %q", filename)

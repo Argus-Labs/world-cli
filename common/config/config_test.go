@@ -36,7 +36,7 @@ func makeConfigAtPath(t *testing.T, path, namespace string) {
 
 func makeConfigAtFile(t *testing.T, file *os.File, namespace string) {
 	data := map[string]any{
-		"docker_env": map[string]any{
+		"cardinal": map[string]any{
 			"CARDINAL_NAMESPACE": namespace,
 		},
 	}
@@ -136,7 +136,7 @@ func makeTempConfigWithContent(t *testing.T, content string) (filename string) {
 
 func TestTextDecoding(t *testing.T) {
 	content := `
-[docker_env]
+[cardinal]
 CARDINAL_NAMESPACE="alpha"
 `
 	filename := makeTempConfigWithContent(t, content)
@@ -148,8 +148,10 @@ CARDINAL_NAMESPACE="alpha"
 
 func TestCanSetArbitraryEnvVariables(t *testing.T) {
 	content := `
-[docker_env]
+[evm]
 ENV_ALPHA="alpha"
+
+[cardinal]
 ENV_BETA="beta"
 `
 	filename := makeTempConfigWithContent(t, content)
@@ -162,7 +164,7 @@ ENV_BETA="beta"
 
 func TestCanOverrideRootDir(t *testing.T) {
 	content := `
-[docker_env]
+[evm]
 FOO = "bar"
 `
 	filename := makeTempConfigWithContent(t, content)
@@ -176,7 +178,7 @@ FOO = "bar"
 	// Alternatively, a custom root dir can be set in the congif file
 	content = `
 root_dir="/some/crazy/path"
-[docker_env]
+[cardinal]
 FOO = "bar"
 `
 	wantRootDir = "/some/crazy/path"
@@ -194,7 +196,7 @@ func TestErrorWhenNoConfigFileExists(t *testing.T) {
 
 func TestNumbersAreValidDockerEnvVariable(t *testing.T) {
 	content := `
-[docker_env]
+[evm]
 SOME_INT = 100
 SOME_FLOAT = 99.9
 `
@@ -207,7 +209,7 @@ SOME_FLOAT = 99.9
 
 func TestErrorOnInvalidToml(t *testing.T) {
 	invalidContent := `
-[docker_env]
+[cardinal]
 SOME_INT = 100
 SOME_FLOAT = 99.9
 =1000
@@ -215,4 +217,44 @@ SOME_FLOAT = 99.9
 	filename := makeTempConfigWithContent(t, invalidContent)
 	_, err := LoadConfig(filename)
 	assert.Check(t, err != nil)
+}
+
+func TestDuplicateEnvironmentVariableProducesError(t *testing.T) {
+	testCases := []struct {
+		name string
+		toml string
+	}{
+		{
+			name: "malformed toml",
+			toml: `
+[cardinal]
+SOME_INT = 100
+SOME_FLOAT = 99.9
+=1000
+`,
+		},
+		{
+			name: "duplicate env var in section",
+			toml: `
+[cardinal]
+DUPLICATE = 100
+DUPLICATE = 200
+`,
+		},
+		{
+			name: "duplicate env var in two section",
+			toml: `
+[evm]
+DUPLICATE = 100
+[cardinal]
+DUPLICATE = 200
+`,
+		},
+	}
+
+	for _, tc := range testCases {
+		filename := makeTempConfigWithContent(t, tc.toml)
+		_, err := LoadConfig(filename)
+		assert.Check(t, err != nil, "in %q", tc.name)
+	}
 }
