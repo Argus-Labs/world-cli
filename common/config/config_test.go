@@ -258,3 +258,11 @@ DUPLICATE = 200
 		assert.Check(t, err != nil, "in %q", tc.name)
 	}
 }
+
+func TestCanParseExampleConfig(t *testing.T) {
+	exampleConfig := "../../example-world.toml"
+	cfg, err := LoadConfig(exampleConfig)
+	assert.NilError(t, err)
+	assert.Equal(t, "my-world-1", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	assert.Equal(t, "world-engine", cfg.DockerEnv["CHAIN_ID"])
+}
