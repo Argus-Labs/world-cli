@@ -163,10 +163,6 @@ func getDAToken() (authTokenLog, token string, err error) {
 					endIndex = len(lines)
 				}
 				authTokenLines := lines[i:endIndex]
-				fmt.Println("I have some lines", len(authTokenLines))
-				for _, X := range authTokenLines {
-					fmt.Println("->", string(X))
-				}
 
 				// Concatenate the lines to get the final output
 				authTokenLog = string(bytes.Join(authTokenLines, []byte("\n")))
