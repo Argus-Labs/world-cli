@@ -42,7 +42,7 @@ func AddConfigFlag(cmd *cobra.Command) {
 func GetConfig(cmd *cobra.Command) (cfg Config, err error) {
 	if !cmd.Flags().Changed(flagForConfigFile) {
 		// The config flag was not set. Attempt to find the config via environment variables or in the local directory
-		return LoadConfig("")
+		return loadConfig("")
 	}
 	// The config flag was explicitly set
 	configFile, err := cmd.Flags().GetString(flagForConfigFile)
@@ -52,10 +52,10 @@ func GetConfig(cmd *cobra.Command) (cfg Config, err error) {
 	if configFile == "" {
 		return cfg, errors.New("config cannot be empty")
 	}
-	return LoadConfig(configFile)
+	return loadConfig(configFile)
 }
 
-func LoadConfig(filename string) (Config, error) {
+func loadConfig(filename string) (Config, error) {
 	if filename != "" {
 		return loadConfigFromFile(filename)
 	}
