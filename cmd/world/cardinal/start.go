@@ -32,10 +32,9 @@ var startCmd = &cobra.Command{
 	Long: `Start your Cardinal game shard stack.
 
 This will start the following Docker services and its dependencies:
-- Cardinal (Core game logic)
+- Cardinal (Game shard)
 - Nakama (Relay)
-- Redis (Cardinal dependency)
-- Postgres (Nakama dependency)`,
+- Redis (Cardinal dependency)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.GetConfig(cmd)
 		if err != nil {
