@@ -13,10 +13,10 @@ import (
 type DockerService string
 
 const (
-	DockerServiceCardinal    DockerService = "cardinal"
-	DockerServiceNakama      DockerService = "nakama"
-	DockerServiceCockroachDB DockerService = "cockroachdb"
-	DockerServiceRedis       DockerService = "redis"
+	DockerServiceCardinal DockerService = "cardinal"
+	DockerServiceNakama   DockerService = "nakama"
+	DockerServiceNakamaDB DockerService = "nakama-db"
+	DockerServiceRedis    DockerService = "redis"
 )
 
 func dockerCompose(args ...string) error {
@@ -28,7 +28,7 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	if !cfg.Debug {
 		yml = path.Join(cfg.RootDir, "docker-compose.yml")
 	} else {
-		yml = path.Join(cfg.RootDir, ".run/docker-compose-debug.yml")
+		yml = path.Join(cfg.RootDir, ".ide-debug/docker-compose.debug.yml")
 	}
 	args = append([]string{"compose", "-f", yml}, args...)
 	return sh.RunWith(cfg.DockerEnv, "docker", args...)
@@ -67,7 +67,7 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 // DockerStartAll starts both cardinal and nakama
 func DockerStartAll(cfg config.Config) error {
 	return DockerStart(cfg,
-		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceCockroachDB, DockerServiceRedis})
+		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
@@ -104,7 +104,12 @@ func DockerStop(services []DockerService) error {
 
 // DockerStopAll stops all running docker containers (does not remove volumes).
 func DockerStopAll() error {
-	return DockerStop([]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceCockroachDB, DockerServiceRedis})
+	return DockerStop([]DockerService{
+		DockerServiceCardinal,
+		DockerServiceNakama,
+		DockerServiceNakamaDB,
+		DockerServiceRedis,
+	})
 }
 
 // DockerPurge stops and deletes all docker containers and data volumes

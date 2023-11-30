@@ -17,10 +17,9 @@ var stopCmd = &cobra.Command{
 	Long: `Stop your Cardinal game shard stack.
 
 This will stop the following Docker services:
-- Cardinal (Core game logic)
-- Nakama (Relay)
-- Redis (Cardinal dependency)
-- Postgres (Nakama dependency)`,
+- Cardinal (Game shard)
+- Nakama (Relay) + DB
+- Redis (Cardinal dependency)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		err := tea_cmd.DockerStopAll()
 		if err != nil {
