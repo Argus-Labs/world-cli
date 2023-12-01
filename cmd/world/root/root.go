@@ -1,11 +1,14 @@
 package root
 
 import (
+	"os"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"os"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
+	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -21,6 +24,10 @@ func init() {
 
 	// Register subcommands
 	rootCmd.AddCommand(cardinal.BaseCmd)
+
+	rootCmd.AddCommand(evm.EVMCmds())
+
+	config.AddConfigFlag(rootCmd)
 }
 
 // rootCmd represents the base command

@@ -17,6 +17,8 @@ const (
 	DockerServiceNakama   DockerService = "nakama"
 	DockerServiceNakamaDB DockerService = "nakama-db"
 	DockerServiceRedis    DockerService = "redis"
+	DockerServiceEVM      DockerService = "evm"
+	DockerServiceDA       DockerService = "celestia-devnet"
 )
 
 func dockerCompose(args ...string) error {

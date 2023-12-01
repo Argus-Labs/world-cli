@@ -2,6 +2,7 @@ package cardinal
 
 import (
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 )
 
@@ -20,7 +21,7 @@ This will restart the following Docker services:
 - Cardinal (Core game logic)
 - Nakama (Relay)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := getConfig(cmd)
+		cfg, err := config.GetConfig(cmd)
 		if err != nil {
 			return err
 		}

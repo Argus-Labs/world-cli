@@ -9,11 +9,14 @@ import (
 
 	"github.com/pelletier/go-toml"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 const (
 	WorldCLIConfigFileEnvVariable = "WORLD_CLI_CONFIG_FILE"
 	WorldCLIConfigFilename        = "world.toml"
+
+	flagForConfigFile = "config"
 )
 
 var (
@@ -32,7 +35,27 @@ type Config struct {
 	DockerEnv map[string]string
 }
 
-func LoadConfig(filename string) (Config, error) {
+func AddConfigFlag(cmd *cobra.Command) {
+	cmd.Flags().String(flagForConfigFile, "", "a toml encoded config file")
+}
+
+func GetConfig(cmd *cobra.Command) (cfg Config, err error) {
+	if !cmd.Flags().Changed(flagForConfigFile) {
+		// The config flag was not set. Attempt to find the config via environment variables or in the local directory
+		return loadConfig("")
+	}
+	// The config flag was explicitly set
+	configFile, err := cmd.Flags().GetString(flagForConfigFile)
+	if err != nil {
+		return cfg, err
+	}
+	if configFile == "" {
+		return cfg, errors.New("config cannot be empty")
+	}
+	return loadConfig(configFile)
+}
+
+func loadConfig(filename string) (Config, error) {
 	if filename != "" {
 		return loadConfigFromFile(filename)
 	}
