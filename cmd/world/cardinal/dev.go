@@ -3,12 +3,14 @@ package cardinal
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
-	"pkg.world.dev/world-cli/tea/style"
 	"syscall"
 	"time"
+
+	"pkg.world.dev/world-cli/tea/style"
 
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
@@ -41,6 +43,23 @@ var devCmd = &cobra.Command{
 		err := runRedis()
 		if err != nil {
 			return err
+		}
+
+		isRedisRunning := false
+		for !isRedisRunning {
+			server := fmt.Sprintf("localhost:%s", RedisPort)
+			timeout := 2 * time.Second
+
+			conn, err := net.DialTimeout("tcp", server, timeout)
+			if err != nil {
+				fmt.Printf("Failed to connect to Redis server at %s: %s\n", server, err)
+				continue
+			}
+			err = conn.Close()
+			if err != nil {
+				continue
+			}
+			isRedisRunning = true
 		}
 
 		// Run Cardinal
@@ -108,7 +127,7 @@ func runRedis() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Start()
+	err := cmd.Run()
 	if err != nil {
 		fmt.Println("Failed to start Redis container. Retrying after cleanup...")
 		cleanupErr := cleanup()
@@ -149,6 +168,10 @@ func runCardinal() (*exec.Cmd, error) {
 	}
 
 	err = cmd.Start()
+	if err != nil {
+		return cmd, err
+	}
+	err = cmd.Wait()
 	if err != nil {
 		return cmd, err
 	}
