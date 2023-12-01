@@ -62,9 +62,9 @@ func validateDevDALayer(cfg config.Config) error {
 		return fmt.Errorf("error starting %s docker container: %w", daService, err)
 	}
 
-	// TODO: Use `docker container inspect -f '{{.State.Running}}' celestia_devnet` to block until
-	// the container is running.
-	time.Sleep(3 * time.Second)
+	if err := blockUntilContainerIsRunning(daContainer, 10*time.Second); err != nil {
+		return err
+	}
 	fmt.Println("started DA service...")
 
 	daToken, err := getDAToken()
@@ -183,10 +183,7 @@ func getDAToken() (token string, err error) {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Println("failed to get da token")
-			fmt.Println("command was: ", cmd.String())
-			fmt.Printf("output: %q\n", string(output))
-			fmt.Println("error: ", err)
-			fmt.Printf("%d/%d retrying...\n", retry, maxRetries)
+			fmt.Printf("%d/%d retrying...\n", retry+1, maxRetries)
 			time.Sleep(2 * time.Second)
 			continue
 		}
@@ -201,4 +198,20 @@ func getDAToken() (token string, err error) {
 	}
 	return "", fmt.Errorf("timed out while getting DA token")
 
+}
+
+func blockUntilContainerIsRunning(targetContainer string, timeout time.Duration) error {
+	timeoutAt := time.Now().Add(timeout)
+	cmdString := "docker container inspect -f '{{.State.Running}}' " + targetContainer
+	// This string will be returned by the above command when the container is running
+	runningOutput := "'true'\n"
+	cmdParts := strings.Split(cmdString, " ")
+	for time.Now().Before(timeoutAt) {
+		output, err := exec.Command(cmdParts[0], cmdParts[1:]...).CombinedOutput()
+		if err == nil && string(output) == runningOutput {
+			return nil
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	return fmt.Errorf("timeout while waiting for %q to start", targetContainer)
 }
