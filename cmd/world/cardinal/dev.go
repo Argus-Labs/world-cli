@@ -3,6 +3,7 @@ package cardinal
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -42,6 +43,23 @@ var devCmd = &cobra.Command{
 		err := runRedis()
 		if err != nil {
 			return err
+		}
+
+		isRedisRunning := false
+		for !isRedisRunning {
+			server := fmt.Sprintf("localhost:%s", RedisPort)
+			timeout := 2 * time.Second
+
+			conn, err := net.DialTimeout("tcp", server, timeout)
+			if err != nil {
+				fmt.Printf("Failed to connect to Redis server at %s: %s\n", server, err)
+				continue
+			}
+			err = conn.Close()
+			if err != nil {
+				continue
+			}
+			isRedisRunning = true
 		}
 
 		// Run Cardinal
@@ -109,32 +127,19 @@ func runRedis() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	handlerError := func(err error) error {
-		if err != nil {
-			fmt.Println("Failed to start Redis container. Retrying after cleanup...")
-			cleanupErr := cleanup()
-			if cleanupErr != nil {
-				return err
-			}
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println("Failed to start Redis container. Retrying after cleanup...")
+		cleanupErr := cleanup()
+		if cleanupErr != nil {
+			return err
+		}
 
-			err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
-			if err != nil {
-				return err
-			}
-			return nil
+		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+		if err != nil {
+			return err
 		}
 		return nil
-	}
-
-	err := cmd.Start()
-	err = handlerError(err)
-	if err != nil {
-		return err
-	}
-	err = cmd.Wait()
-	err = handlerError(err)
-	if err != nil {
-		return err
 	}
 
 	return nil
