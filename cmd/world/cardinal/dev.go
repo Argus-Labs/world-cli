@@ -6,9 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"pkg.world.dev/world-cli/tea/style"
 	"syscall"
 	"time"
+
+	"pkg.world.dev/world-cli/tea/style"
 
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
@@ -108,18 +109,32 @@ func runRedis() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Start()
-	if err != nil {
-		fmt.Println("Failed to start Redis container. Retrying after cleanup...")
-		cleanupErr := cleanup()
-		if cleanupErr != nil {
-			return err
-		}
-
-		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+	handlerError := func(err error) error {
 		if err != nil {
-			return err
+			fmt.Println("Failed to start Redis container. Retrying after cleanup...")
+			cleanupErr := cleanup()
+			if cleanupErr != nil {
+				return err
+			}
+
+			err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+			if err != nil {
+				return err
+			}
+			return nil
 		}
+		return nil
+	}
+
+	err := cmd.Start()
+	err = handlerError(err)
+	if err != nil {
+		return err
+	}
+	err = cmd.Wait()
+	err = handlerError(err)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -149,6 +164,10 @@ func runCardinal() (*exec.Cmd, error) {
 	}
 
 	err = cmd.Start()
+	if err != nil {
+		return cmd, err
+	}
+	err = cmd.Wait()
 	if err != nil {
 		return cmd, err
 	}
