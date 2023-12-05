@@ -3,6 +3,7 @@ package tea_cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 
@@ -33,7 +34,16 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 		yml = path.Join(cfg.RootDir, ".ide-debug/docker-compose.debug.yml")
 	}
 	args = append([]string{"compose", "-f", yml}, args...)
-	return sh.RunWith(cfg.DockerEnv, "docker", args...)
+	cmd := exec.Command("docker", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	env := os.Environ()
+	for k, v := range cfg.DockerEnv {
+		env = append(env, k+"="+v)
+	}
+	cmd.Env = env
+	return cmd.Run()
+	//return sh.RunWith(cfg.DockerEnv, "docker", args...)
 }
 
 // DockerStart starts a given docker container by name.
