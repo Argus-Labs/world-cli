@@ -3,7 +3,12 @@
 # root_dir="/path/to/cardinal/"
 
 [cardinal]
-CARDINAL_NAMESPACE="my-world-1"
+CARDINAL_NAMESPACE="my-world-1" # required to be set in production
+REDIS_ADDRESS=""  # required to be set in production
+REDIS_PASSWORD="" # required to be set in production
+CARDINAL_MODE="development"     # can be either "development" or "production". leaving blank will default to "development"
+BASE_SHARD_SEQUENCER_ADDRESS="" # required to be set in production
+BASE_SHARD_QUERY_ADDRESS=""     # required to be set in production
 
 [evm]
 # DA_AUTH_TOKEN is obtained from celestia client and passed in from world.toml. 
