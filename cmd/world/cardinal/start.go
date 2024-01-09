@@ -3,6 +3,7 @@ package cardinal
 import (
 	"fmt"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/tea_cmd"
@@ -13,15 +14,20 @@ import (
 /////////////////
 
 const (
-	flagBuild  = "build"
-	flagDebug  = "debug"
-	flagDetach = "detach"
+	flagBuild    = "build"
+	flagDebug    = "debug"
+	flagDetach   = "detach"
+	flagLogLevel = "log-level"
+
+	// DockerCardinalEnvLogLevel Environment variable name for Docker
+	DockerCardinalEnvLogLevel = "CARDINAL_LOG_LEVEL"
 )
 
 func init() {
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDebug, false, "Run in debug mode")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
+	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
 }
 
 // startCmd starts your Cardinal game shard stack
@@ -53,6 +59,21 @@ This will start the following Docker services and its dependencies:
 			return err
 		}
 		cfg.Timeout = -1
+
+		// Replace cardinal log level using flag value if flag is set
+		logLevel, err := cmd.Flags().GetString(flagLogLevel)
+		if logLevel != "" {
+			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
+			if err != nil {
+				return err
+			}
+			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
+		}
+
+		// Set default log level to 'info' if log level is not set
+		if val, exists := cfg.DockerEnv[DockerCardinalEnvLogLevel]; !exists || val == "" {
+			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.InfoLevel.String()
+		}
 
 		fmt.Println("Starting Cardinal game shard...")
 		fmt.Println("This may take a few minutes to rebuild the Docker images.")
