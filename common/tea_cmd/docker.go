@@ -27,13 +27,14 @@ func dockerCompose(args ...string) error {
 }
 
 func dockerComposeWithCfg(cfg config.Config, args ...string) error {
-	yml := ""
+	yml := path.Join(cfg.RootDir, "docker-compose.yml")
+
 	if !cfg.Debug {
-		yml = path.Join(cfg.RootDir, "docker-compose.yml")
+		args = append([]string{"compose", "-f", yml}, args...)
 	} else {
-		yml = path.Join(cfg.RootDir, ".ide-debug/docker-compose.debug.yml")
+		ymlDebug := path.Join(cfg.RootDir, ".ide-debug/compose.debug.override.yml")
+		args = append([]string{"compose", "-f", yml, "-f", ymlDebug}, args...)
 	}
-	args = append([]string{"compose", "-f", yml}, args...)
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
