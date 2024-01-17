@@ -122,9 +122,14 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.SignalStepStartedMsg:
 		// If step 1 is started, dispatch the git clone command
 		if msg.Index == 1 {
+			err := tea_cmd.GitCloneCmd(TemplateGitUrl, m.projectNameInput.Value(), "Initial commit from World CLI")
+			teaCmd := func() tea.Msg {
+				return tea_cmd.GitCloneFinishMsg{Err: err}
+			}
+
 			return m, tea.Sequence(
 				NewLogCmd(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
-				tea_cmd.GitCloneCmd(TemplateGitUrl, m.projectNameInput.Value(), "Initial commit from World CLI"),
+				teaCmd,
 			)
 		}
 		return m, nil
