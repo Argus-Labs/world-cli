@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 )
 
@@ -23,10 +24,17 @@ func EVMCmds() *cobra.Command {
 		ID:    "EVM",
 		Title: "EVM Base Shard Commands",
 	})
+
+	startCmd := StartEVM()
+	stopCmd := StopAll()
+
 	evmRootCmd.AddCommand(
-		StartEVM(),
-		StopAll(),
+		startCmd,
+		stopCmd,
 	)
+
+	// Add --debug flag
+	logger.AddLogFlag(startCmd, stopCmd)
 	return evmRootCmd
 }
 
@@ -57,7 +65,7 @@ func validateDevDALayer(cfg config.Config) error {
 	cfg.Debug = false
 	cfg.Detach = true
 	cfg.Timeout = -1
-	fmt.Println("starting DA docker service for dev mode...")
+	logger.Println("starting DA docker service for dev mode...")
 	if err := tea_cmd.DockerStart(cfg, services(daService)); err != nil {
 		return fmt.Errorf("error starting %s docker container: %w", daService, err)
 	}
@@ -65,7 +73,7 @@ func validateDevDALayer(cfg config.Config) error {
 	if err := blockUntilContainerIsRunning(daContainer, 10*time.Second); err != nil {
 		return err
 	}
-	fmt.Println("started DA service...")
+	logger.Println("started DA service...")
 
 	daToken, err := getDAToken()
 	if err != nil {
@@ -77,7 +85,7 @@ func validateDevDALayer(cfg config.Config) error {
 		EnvDANamespaceID: "67480c4a88c4d12935d4",
 	}
 	for key, value := range envOverrides {
-		fmt.Printf("overriding config value %q to %q\n", key, value)
+		logger.Printf("overriding config value %q to %q\n", key, value)
 		cfg.DockerEnv[key] = value
 	}
 	return nil
@@ -125,6 +133,8 @@ func StartEVM() *cobra.Command {
 		Short: "Start the EVM base shard. Use --da-auth-token to pass in an auth token directly.",
 		Long:  "Start the EVM base shard. Requires connection to celestia DA.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.SetDebugMode(cmd)
+
 			cfg, err := config.GetConfig(cmd)
 			if err != nil {
 				return err
@@ -165,7 +175,15 @@ func StopAll() *cobra.Command {
 		Short: "Stop the EVM base shard and DA layer client.",
 		Long:  "Stop the EVM base shard and data availability layer client if they are running.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tea_cmd.DockerStop(services(tea_cmd.DockerServiceEVM, tea_cmd.DockerServiceDA))
+			logger.SetDebugMode(cmd)
+
+			err := tea_cmd.DockerStop(services(tea_cmd.DockerServiceEVM, tea_cmd.DockerServiceDA))
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("EVM successfully stopped")
+			return nil
 		},
 	}
 	return cmd
@@ -177,13 +195,13 @@ func getDAToken() (token string, err error) {
 	cmdString := fmt.Sprintf("docker exec %s celestia bridge --node.store /home/celestia/bridge/ auth admin", daContainer)
 	cmdParts := strings.Split(cmdString, " ")
 	for retry := 0; retry < maxRetries; retry++ {
-		fmt.Println("attempting to get DA token...")
+		logger.Println("attempting to get DA token...")
 
 		cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println("failed to get da token")
-			fmt.Printf("%d/%d retrying...\n", retry+1, maxRetries)
+			logger.Println("failed to get da token")
+			logger.Printf("%d/%d retrying...\n", retry+1, maxRetries)
 			time.Sleep(2 * time.Second)
 			continue
 		}

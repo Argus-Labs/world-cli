@@ -3,7 +3,9 @@ package root
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+
 	"pkg.world.dev/world-cli/common/dependency"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -32,6 +34,7 @@ World CLI requires the following dependencies to be installed:
 - Go
 - Docker`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		logger.SetDebugMode(cmd)
 		p := tea.NewProgram(NewWorldDoctorModel())
 		_, err := p.Run()
 		if err != nil {

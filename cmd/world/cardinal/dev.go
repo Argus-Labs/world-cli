@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 
 	"github.com/magefile/mage/sh"
@@ -32,6 +33,8 @@ var devCmd = &cobra.Command{
 	Short: "Run Cardinal in development mode",
 	Long:  `Run Cardinal in development mode`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		logger.SetDebugMode(cmd)
+
 		fmt.Print(style.CLIHeader("Cardinal", "Running Cardinal in dev mode"), "\n")
 		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
 		fmt.Println()
@@ -52,7 +55,7 @@ var devCmd = &cobra.Command{
 
 			conn, err := net.DialTimeout("tcp", server, timeout)
 			if err != nil {
-				fmt.Printf("Failed to connect to Redis server at %s: %s\n", server, err)
+				logger.Printf("Failed to connect to Redis server at %s: %s\n", server, err)
 				continue
 			}
 			err = conn.Close()
@@ -122,14 +125,18 @@ var devCmd = &cobra.Command{
 
 // runRedis runs Redis in a Docker container
 func runRedis() error {
-	fmt.Println("Starting Redis container...")
+	logger.Println("Starting Redis container...")
 	cmd := exec.Command("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	// hide stderr if not in debug mode
+	if logger.DebugMode {
+		cmd.Stderr = os.Stderr
+	}
 
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Failed to start Redis container. Retrying after cleanup...")
+		logger.Println("Failed to start Redis container. Retrying after cleanup...")
 		cleanupErr := cleanup()
 		if cleanupErr != nil {
 			return err
@@ -161,7 +168,12 @@ func runCardinal() (*exec.Cmd, error) {
 
 	cmd := exec.Command("go", "run", ".")
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	// hide stderr if not in debug mode
+	if logger.DebugMode {
+		cmd.Stderr = os.Stderr
+	}
+
 	cmd.Env = os.Environ()
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
@@ -183,8 +195,8 @@ func runCardinal() (*exec.Cmd, error) {
 func cleanup() error {
 	err := sh.Run("docker", "rm", "-f", "cardinal-dev-redis")
 	if err != nil {
-		fmt.Println("Failed to delete Redis container automatically")
-		fmt.Println("Please delete it manually with `docker rm -f cardinal-dev-redis`")
+		logger.Println("Failed to delete Redis container automatically")
+		logger.Println("Please delete it manually with `docker rm -f cardinal-dev-redis`")
 		return err
 	}
 

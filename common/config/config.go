@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/pelletier/go-toml"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	"pkg.world.dev/world-cli/common/logger"
 )
 
 const (
@@ -119,7 +120,7 @@ func loadConfigFromFile(filename string) (Config, error) {
 		}
 	}
 
-	log.Debug().Msgf("successfully loaded config from %q", filename)
+	logger.Debugf("successfully loaded config from %q", filename)
 
 	return cfg, nil
 }

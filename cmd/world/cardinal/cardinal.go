@@ -4,12 +4,16 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/dependency"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
 	BaseCmd.AddCommand(createCmd, startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
+
+	// Add --debug flag
+	logger.AddLogFlag(createCmd, startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }
 
 // BaseCmd is the base command for the cardinal subcommand

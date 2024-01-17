@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 )
 
@@ -33,7 +34,6 @@ var (
 
 func init() {
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
-	startCmd.Flags().Bool(flagDebug, false, "Run in debug mode")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
 }
@@ -50,6 +50,8 @@ This will start the following Docker services and its dependencies:
 - Nakama (Relay)
 - Redis (Cardinal dependency)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		logger.SetDebugMode(cmd)
+
 		cfg, err := config.GetConfig(cmd)
 		if err != nil {
 			return err

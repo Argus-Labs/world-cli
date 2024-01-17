@@ -4,8 +4,11 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
@@ -26,7 +29,8 @@ var createCmd = &cobra.Command{
 If [directory_name] is set, it will automatically clone the starter project into that directory. 
 Otherwise, it will prompt you to enter a directory name.`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		logger.SetDebugMode(cmd)
 		p := tea.NewProgram(NewWorldCreateModel(args))
 		if _, err := p.Run(); err != nil {
 			return err
