@@ -20,6 +20,7 @@ const (
 	DockerServiceRedis    DockerService = "redis"
 	DockerServiceEVM      DockerService = "evm"
 	DockerServiceDA       DockerService = "celestia-devnet"
+	DockerServiceCardinalDebug DockerService = "cardinal-debug"
 )
 
 func dockerCompose(args ...string) error {
@@ -28,13 +29,8 @@ func dockerCompose(args ...string) error {
 
 func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	yml := path.Join(cfg.RootDir, "docker-compose.yml")
+	args = append([]string{"compose", "-f", yml}, args...)
 
-	if !cfg.Debug {
-		args = append([]string{"compose", "-f", yml}, args...)
-	} else {
-		ymlDebug := path.Join(cfg.RootDir, ".ide-debug/compose.debug.override.yml")
-		args = append([]string{"compose", "-f", yml, "-f", ymlDebug}, args...)
-	}
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -42,6 +38,10 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	for k, v := range cfg.DockerEnv {
 		env = append(env, k+"="+v)
 	}
+	if cfg.Debug {
+		env = append(env, "CARDINAL_ADDR=cardinal-debug:3333")
+	}
+
 	cmd.Env = env
 	return cmd.Run()
 	//return sh.RunWith(cfg.DockerEnv, "docker", args...)
@@ -79,8 +79,14 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 
 // DockerStartAll starts both cardinal and nakama
 func DockerStartAll(cfg config.Config) error {
-	return DockerStart(cfg,
-		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
+	if cfg.Debug {
+		return DockerStart(cfg,
+			[]DockerService{DockerServiceCardinalDebug, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
+	} else {
+		return DockerStart(cfg,
+			[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
+	}
+	return nil
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
