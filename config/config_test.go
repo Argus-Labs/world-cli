@@ -276,7 +276,7 @@ DUPLICATE = 200
 }
 
 func TestCanParseExampleConfig(t *testing.T) {
-	exampleConfig := "../../example-world.toml"
+	exampleConfig := "../example-world.toml"
 	cfg, err := GetConfig(cmdWithConfig(exampleConfig))
 	assert.NilError(t, err)
 	assert.Equal(t, "my-world-1", cfg.DockerEnv["CARDINAL_NAMESPACE"])

@@ -6,9 +6,9 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/tea_cmd"
+
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/pkg/logger"
 )
 
 /////////////////
@@ -32,73 +32,75 @@ var (
 		zerolog.TraceLevel.String()}, ", ")
 )
 
-func init() {
-	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
-	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
-	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
-}
-
 // startCmd starts your Cardinal game shard stack
 // Usage: `world cardinal start`
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start your Cardinal game shard stack",
-	Long: `Start your Cardinal game shard stack.
+func (c *cardinal) StartCmd() *cobra.Command {
+	startCmd := &cobra.Command{
+		Use:   "start",
+		Short: "Start your Cardinal game shard stack",
+		Long: `Start your Cardinal game shard stack.
 
 This will start the following Docker services and its dependencies:
 - Cardinal (Game shard)
 - Nakama (Relay)
 - Redis (Cardinal dependency)`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		logger.SetDebugMode(cmd)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.SetDebugMode(cmd)
 
-		cfg, err := config.GetConfig(cmd)
-		if err != nil {
-			return err
-		}
-		// Parameters set at the command line overwrite toml values
-		if replaceBoolWithFlag(cmd, flagBuild, &cfg.Build); err != nil {
-			return err
-		}
-
-		if replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
-			return err
-		}
-
-		if replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
-			return err
-		}
-		cfg.Timeout = -1
-
-		// Replace cardinal log level using flag value if flag is set
-		logLevel, err := cmd.Flags().GetString(flagLogLevel)
-		if logLevel != "" {
-			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
+			cfg, err := config.GetConfig(cmd)
 			if err != nil {
-				return fmt.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels)
+				return err
 			}
-			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
-		}
+			// Parameters set at the command line overwrite toml values
+			if replaceBoolWithFlag(cmd, flagBuild, &cfg.Build); err != nil {
+				return err
+			}
 
-		if val, exists := cfg.DockerEnv[DockerCardinalEnvLogLevel]; !exists || val == "" {
-			// Set default log level to 'info' if log level is not set
-			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.InfoLevel.String()
-		} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil { // make sure the log level is valid when the flag is not set and using env var from config
-			// Error when CARDINAL_LOG_LEVEL is not a valid log level
-			return fmt.Errorf("invalid value for %s env variable in the config file: must be one of (%v)", DockerCardinalEnvLogLevel, validLogLevels)
-		}
+			if replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
+				return err
+			}
 
-		fmt.Println("Starting Cardinal game shard...")
-		fmt.Println("This may take a few minutes to rebuild the Docker images.")
-		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
+			if replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
+				return err
+			}
+			cfg.Timeout = -1
 
-		err = tea_cmd.DockerStartAll(cfg)
-		if err != nil {
-			return err
-		}
+			// Replace cardinal log level using flag value if flag is set
+			logLevel, err := cmd.Flags().GetString(flagLogLevel)
+			if logLevel != "" {
+				zeroLogLevel, err := zerolog.ParseLevel(logLevel)
+				if err != nil {
+					return fmt.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels)
+				}
+				cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
+			}
 
-		return nil
-	},
+			if val, exists := cfg.DockerEnv[DockerCardinalEnvLogLevel]; !exists || val == "" {
+				// Set default log level to 'info' if log level is not set
+				cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.InfoLevel.String()
+			} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil { // make sure the log level is valid when the flag is not set and using env var from config
+				// Error when CARDINAL_LOG_LEVEL is not a valid log level
+				return fmt.Errorf("invalid value for %s env variable in the config file: must be one of (%v)", DockerCardinalEnvLogLevel, validLogLevels)
+			}
+
+			fmt.Println("Starting Cardinal game shard...")
+			fmt.Println("This may take a few minutes to rebuild the Docker images.")
+			fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
+
+			err = c.teaCmd.DockerStartAll(cfg)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	}
+
+	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
+	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
+	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
+
+	return startCmd
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag

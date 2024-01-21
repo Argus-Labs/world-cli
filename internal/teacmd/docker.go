@@ -1,4 +1,4 @@
-package tea_cmd
+package teacmd
 
 import (
 	"fmt"
@@ -7,9 +7,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/magefile/mage/sh"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/pkg/logger"
 )
 
 type DockerService string
@@ -24,11 +23,11 @@ const (
 	DockerServiceCardinalDebug DockerService = "cardinal-debug"
 )
 
-func dockerCompose(args ...string) error {
-	return dockerComposeWithCfg(config.Config{}, args...)
+func (t *teaCmd) dockerCompose(args ...string) error {
+	return t.dockerComposeWithCfg(config.Config{}, args...)
 }
 
-func dockerComposeWithCfg(cfg config.Config, args ...string) error {
+func (t *teaCmd) dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	yml := path.Join(cfg.RootDir, "docker-compose.yml")
 	args = append([]string{"compose", "-f", yml}, args...)
 
@@ -49,7 +48,8 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	}
 
 	cmd.Env = env
-	return cmd.Run()
+	_, err := t.terminal.ExecCmd(cmd)
+	return err
 	//return sh.RunWith(cfg.DockerEnv, "docker", args...)
 }
 
@@ -57,11 +57,11 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 // Rebuilds the image if `build` is true
 // Runs in detach mode if `detach` is true
 // Runs with the debug docker compose, if `debug` is true
-func DockerStart(cfg config.Config, services []DockerService) error {
+func (t *teaCmd) DockerStart(cfg config.Config, services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := prepareDirs(path.Join(cfg.RootDir, "cardinal")); err != nil {
+	if err := t.prepareDirs(path.Join(cfg.RootDir, "cardinal")); err != nil {
 		return err
 	}
 
@@ -76,7 +76,7 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 		flags = append(flags, fmt.Sprintf("--wait-timeout %d", cfg.Timeout))
 	}
 
-	if err := dockerComposeWithCfg(cfg, dockerArgs("up", services, flags...)...); err != nil {
+	if err := t.dockerComposeWithCfg(cfg, dockerArgs("up", services, flags...)...); err != nil {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 }
 
 // DockerStartAll starts both cardinal and nakama
-func DockerStartAll(cfg config.Config) error {
+func (t *teaCmd) DockerStartAll(cfg config.Config) error {
 	services := []DockerService{
 		DockerServiceNakama,
 		DockerServiceNakamaDB,
@@ -97,23 +97,23 @@ func DockerStartAll(cfg config.Config) error {
 		services = append(services, DockerServiceCardinal)
 	}
 
-	return DockerStart(cfg, services)
+	return t.DockerStart(cfg, services)
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
-func DockerRestart(cfg config.Config, services []DockerService) error {
+func (t *teaCmd) DockerRestart(cfg config.Config, services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
 	if cfg.Build {
-		if err := DockerStop(services); err != nil {
+		if err := t.DockerStop(services); err != nil {
 			return err
 		}
-		if err := DockerStart(cfg, services); err != nil {
+		if err := t.DockerStart(cfg, services); err != nil {
 			return err
 		}
 	} else {
-		if err := dockerComposeWithCfg(cfg, dockerArgs("restart", services, "--build")...); err != nil {
+		if err := t.dockerComposeWithCfg(cfg, dockerArgs("restart", services, "--build")...); err != nil {
 			return err
 		}
 	}
@@ -122,19 +122,19 @@ func DockerRestart(cfg config.Config, services []DockerService) error {
 
 // DockerStop stops running specified docker containers (does not remove volumes).
 // If you want to reset all the services state, use DockerPurge
-func DockerStop(services []DockerService) error {
+func (t *teaCmd) DockerStop(services []DockerService) error {
 	if services == nil {
 		return fmt.Errorf("no service names provided")
 	}
-	if err := dockerCompose(dockerArgs("stop", services)...); err != nil {
+	if err := t.dockerCompose(dockerArgs("stop", services)...); err != nil {
 		return err
 	}
 	return nil
 }
 
 // DockerStopAll stops all running docker containers (does not remove volumes).
-func DockerStopAll() error {
-	return DockerStop([]DockerService{
+func (t *teaCmd) DockerStopAll() error {
+	return t.DockerStop([]DockerService{
 		DockerServiceCardinal,
 		DockerServiceCardinalDebug,
 		DockerServiceNakama,
@@ -145,8 +145,8 @@ func DockerStopAll() error {
 
 // DockerPurge stops and deletes all docker containers and data volumes
 // This will completely wipe the state, if you only want to stop the containers, use DockerStop
-func DockerPurge() error {
-	return dockerCompose("down", "--volumes")
+func (t *teaCmd) DockerPurge() error {
+	return t.dockerCompose("down", "--volumes")
 }
 
 // dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
@@ -169,33 +169,33 @@ func dockerArgs(args string, services []DockerService, flags ...string) []string
 	return res
 }
 
-func prepareDirs(dirs ...string) error {
+func (t *teaCmd) prepareDirs(dirs ...string) error {
 	for _, dir := range dirs {
-		if err := prepareDir(dir); err != nil {
+		if err := t.prepareDir(dir); err != nil {
 			return fmt.Errorf("failed to prepare dir %s: %w", dir, err)
 		}
 	}
 	return nil
 }
 
-func prepareDir(dir string) error {
-	startDir, err := os.Getwd()
+func (t *teaCmd) prepareDir(dir string) error {
+	startDir, err := t.terminal.GetWd()
 	if err != nil {
 		return err
 	}
-	if err = os.Chdir(dir); err != nil {
+	if err = t.terminal.Chdir(dir); err != nil {
 		return err
 	}
-	if err = sh.Rm("./vendor"); err != nil {
+	if err = t.terminal.Rm("./vendor"); err != nil {
 		return err
 	}
-	if err = sh.Run("go", "mod", "tidy"); err != nil {
+	if _, err = t.terminal.Exec("go", "mod", "tidy"); err != nil {
 		return err
 	}
-	if err = sh.Run("go", "mod", "vendor"); err != nil {
+	if _, err = t.terminal.Exec("go", "mod", "vendor"); err != nil {
 		return err
 	}
-	if err = os.Chdir(startDir); err != nil {
+	if err = t.terminal.Chdir(startDir); err != nil {
 		return err
 	}
 	return nil

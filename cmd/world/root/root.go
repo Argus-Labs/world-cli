@@ -5,30 +5,53 @@ import (
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/internal/teacmd"
+	"pkg.world.dev/world-cli/pkg/logger"
+	"pkg.world.dev/world-cli/utils/tea/style"
+	"pkg.world.dev/world-cli/utils/terminal"
 )
 
-func init() {
+type root struct {
+}
+
+type Root interface {
+	Execute()
+}
+
+func New() Root {
+	logger.Println("Initializing Commands")
+
 	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true
 
 	// Register groups
 	rootCmd.AddGroup(&cobra.Group{ID: "Core", Title: "World CLI Commands:"})
 
+	//Initialize Dependencies
+	terminalUtil := terminal.New()
+	teaCmd := teacmd.New(terminalUtil)
+
+	//Initialize Commands
+	cardinalCmd := cardinal.New(terminalUtil, teaCmd)
+	evmCmd := evm.New(terminalUtil, teaCmd)
+
 	// Register base commands
-	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd)
+	doctor := doctorCmd(teaCmd)
+	create := createCmd(teaCmd)
+	rootCmd.AddCommand(create, doctor, versionCmd)
 
 	// Register subcommands
-	rootCmd.AddCommand(cardinal.BaseCmd)
-	rootCmd.AddCommand(evm.EVMCmds())
+	rootCmd.AddCommand(cardinalCmd.GetBaseCmd())
+	rootCmd.AddCommand(evmCmd.GetBaseCmd())
 
 	config.AddConfigFlag(rootCmd)
 
 	// Add --debug flag
-	logger.AddLogFlag(createCmd)
-	logger.AddLogFlag(doctorCmd)
+	logger.AddLogFlag(create)
+	logger.AddLogFlag(doctor)
+
+	return &root{}
 }
 
 // rootCmd represents the base command
@@ -41,7 +64,7 @@ var rootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func (r *root) Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		logger.Errors(err)
 	}

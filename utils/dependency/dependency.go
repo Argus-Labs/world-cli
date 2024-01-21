@@ -6,61 +6,86 @@ import (
 	"os/exec"
 )
 
-type Dependency struct {
-	Name string
-	Cmd  *exec.Cmd
-	Help string
-}
-
 var (
-	Git = Dependency{
+	Git = dependency{
 		Name: "Git",
 		Cmd:  exec.Command("git", "--version"),
 		Help: `Git is required to clone the starter-game-template.
 Learn how to install Git: https://github.com/git-guides/install-git`,
 	}
-	Go = Dependency{
+	Go = dependency{
 		Name: "Go",
 		Cmd:  exec.Command("go", "version"),
 		Help: `Go is required to build and run World Engine game shards.
 Learn how to install Go: https://go.dev/doc/install`,
 	}
-	Docker = Dependency{
+	Docker = dependency{
 		Name: "Docker",
 		Cmd:  exec.Command("docker", "--version"),
 		Help: `Docker is required to build and run World Engine game shards.
 Learn how to install Docker: https://docs.docker.com/engine/install/`,
 	}
-	DockerCompose = Dependency{
+	DockerCompose = dependency{
 		Name: "Docker Compose",
 		Cmd:  exec.Command("docker", "compose", "version"),
 		Help: `Docker Compose is required to build and run World Engine game shards.
 Learn how to install Docker: https://docs.docker.com/engine/install/`,
 	}
-	DockerDaemon = Dependency{
+	DockerDaemon = dependency{
 		Name: "Docker daemon is running",
 		Cmd:  exec.Command("docker", "info"),
 		Help: `Docker daemon needs to be running.
 If you use Docker Desktop, make sure that you have ran it`,
 	}
-	AlwaysFail = Dependency{
+	AlwaysFail = dependency{
 		Name: "Always fails",
 		Cmd:  exec.Command("false"),
 		Help: `This dependency check will always fail. It can be used for testing.`,
 	}
 )
 
-func (d Dependency) Check() error {
+type dependency struct {
+	Name string
+	Cmd  *exec.Cmd
+	Help string
+}
+
+type Dependency interface {
+	Check() error
+	Run() error
+	GetName() string
+	GetHelp() string
+}
+
+func (d *dependency) Check() error {
 	if err := d.Cmd.Run(); err != nil {
 		return fmt.Errorf("dependency check %q failed with: %w", d.Name, err)
 	}
 	return nil
 }
 
-func Check(deps ...Dependency) error {
+func Check(deps ...dependency) error {
 	var errs []error
 	for _, dep := range deps {
-		errs = append(errs, dep.Check())
+		err := dep.Check()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) == 0 {
+		return nil
 	}
 	return errors.Join(errs...)
+}
+
+func (d *dependency) Run() error {
+	return d.Cmd.Run()
+}
+
+func (d *dependency) GetName() string {
+	return d.Name
+}
+
+func (d *dependency) GetHelp() string {
+	return d.Help
 }

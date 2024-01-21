@@ -5,21 +5,20 @@ go 1.21
 require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
+	github.com/getsentry/sentry-go v0.26.0
 	github.com/guumaster/logsymbols v0.3.1
 	github.com/magefile/mage v1.15.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.7.0
+	go.uber.org/mock v0.4.0
 	gotest.tools/v3 v3.5.1
 )
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/getsentry/sentry-go v0.26.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/stretchr/testify v1.8.2 // indirect
 )
 
 require (

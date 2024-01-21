@@ -4,39 +4,24 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/tea_cmd"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/internal/teacmd"
+	"pkg.world.dev/world-cli/pkg/logger"
+	"pkg.world.dev/world-cli/utils/terminal"
 )
 
-func EVMCmds() *cobra.Command {
-	evmRootCmd := &cobra.Command{
-		Use:   "evm",
-		Short: "EVM base shard commands.",
-		Long:  "Commands for provisioning the EVM Base Shard.",
-	}
-	evmRootCmd.AddGroup(&cobra.Group{
-		ID:    "EVM",
-		Title: "EVM Base Shard Commands",
-	})
+type evm struct {
+	teaCmd   teacmd.TeaCmd
+	terminal terminal.Terminal
+}
 
-	startCmd := StartEVM()
-	stopCmd := StopAll()
-
-	evmRootCmd.AddCommand(
-		startCmd,
-		stopCmd,
-	)
-
-	// Add --debug flag
-	logger.AddLogFlag(startCmd, stopCmd)
-	return evmRootCmd
+type EVM interface {
+	GetBaseCmd() *cobra.Command
 }
 
 const (
@@ -46,8 +31,41 @@ const (
 	EnvDABaseURL     = "DA_BASE_URL"
 	EnvDANamespaceID = "DA_NAMESPACE_ID"
 
-	daService = tea_cmd.DockerServiceDA
+	daService = teacmd.DockerServiceDA
 )
+
+func New(terminal terminal.Terminal, teaCommand teacmd.TeaCmd) EVM {
+	return &evm{
+		teaCmd:   teaCommand,
+		terminal: terminal,
+	}
+}
+
+func (e *evm) GetBaseCmd() *cobra.Command {
+	evmRootCmd := &cobra.Command{
+		Use:   "evm",
+		Short: "EVM base shard commands.",
+		Long:  "Commands for provisioning the EVM Base Shard.",
+	}
+
+	evmRootCmd.AddGroup(&cobra.Group{
+		ID:    "EVM",
+		Title: "EVM Base Shard Commands",
+	})
+
+	startCmd := e.startEVM()
+	stopCmd := e.stopAll()
+
+	evmRootCmd.AddCommand(
+		startCmd,
+		stopCmd,
+	)
+
+	// Add --debug flag
+	logger.AddLogFlag(startCmd, stopCmd)
+
+	return evmRootCmd
+}
 
 var (
 	// Docker compose seems to replace the hyphen with an underscore. This could be properly fixed by removing the hyphen
@@ -55,28 +73,28 @@ var (
 	daContainer = strings.ReplaceAll(string(daService), "-", "_")
 )
 
-func services(s ...tea_cmd.DockerService) []tea_cmd.DockerService {
+func services(s ...teacmd.DockerService) []teacmd.DockerService {
 	return s
 }
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
 // variable with the token from the locally running container.
-func validateDevDALayer(cfg config.Config) error {
+func (e *evm) validateDevDALayer(cfg config.Config) error {
 	cfg.Build = true
 	cfg.Debug = false
 	cfg.Detach = true
 	cfg.Timeout = -1
 	logger.Println("starting DA docker service for dev mode...")
-	if err := tea_cmd.DockerStart(cfg, services(daService)); err != nil {
+	if err := e.teaCmd.DockerStart(cfg, services(daService)); err != nil {
 		return fmt.Errorf("error starting %s docker container: %w", daService, err)
 	}
 
-	if err := blockUntilContainerIsRunning(daContainer, 10*time.Second); err != nil {
+	if err := e.blockUntilContainerIsRunning(daContainer, 10*time.Second); err != nil {
 		return err
 	}
 	logger.Println("started DA service...")
 
-	daToken, err := getDAToken()
+	daToken, err := e.getDAToken()
 	if err != nil {
 		return err
 	}
@@ -117,18 +135,18 @@ func validateProdDALayer(cfg config.Config) error {
 	return nil
 }
 
-func validateDALayer(cmd *cobra.Command, cfg config.Config) error {
+func (e *evm) validateDALayer(cmd *cobra.Command, cfg config.Config) error {
 	devDA, err := cmd.Flags().GetBool(FlagUseDevDA)
 	if err != nil {
 		return err
 	}
 	if devDA {
-		return validateDevDALayer(cfg)
+		return e.validateDevDALayer(cfg)
 	}
 	return validateProdDALayer(cfg)
 }
 
-func StartEVM() *cobra.Command {
+func (e *evm) startEVM() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start the EVM base shard. Use --da-auth-token to pass in an auth token directly.",
@@ -141,7 +159,7 @@ func StartEVM() *cobra.Command {
 				return err
 			}
 
-			if err = validateDALayer(cmd, cfg); err != nil {
+			if err = e.validateDALayer(cmd, cfg); err != nil {
 				return err
 			}
 
@@ -158,9 +176,9 @@ func StartEVM() *cobra.Command {
 			cfg.Detach = false
 			cfg.Timeout = 0
 
-			err = tea_cmd.DockerStart(cfg, services(tea_cmd.DockerServiceEVM))
+			err = e.teaCmd.DockerStart(cfg, services(teacmd.DockerServiceEVM))
 			if err != nil {
-				return fmt.Errorf("error starting %s docker container: %w", tea_cmd.DockerServiceEVM, err)
+				return fmt.Errorf("error starting %s docker container: %w", teacmd.DockerServiceEVM, err)
 			}
 			return nil
 		},
@@ -170,7 +188,7 @@ func StartEVM() *cobra.Command {
 	return cmd
 }
 
-func StopAll() *cobra.Command {
+func (e *evm) stopAll() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop the EVM base shard and DA layer client.",
@@ -178,7 +196,7 @@ func StopAll() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.SetDebugMode(cmd)
 
-			err := tea_cmd.DockerStop(services(tea_cmd.DockerServiceEVM, tea_cmd.DockerServiceDA))
+			err := e.teaCmd.DockerStop(services(teacmd.DockerServiceEVM, teacmd.DockerServiceDA))
 			if err != nil {
 				return err
 			}
@@ -190,7 +208,7 @@ func StopAll() *cobra.Command {
 	return cmd
 }
 
-func getDAToken() (token string, err error) {
+func (e *evm) getDAToken() (token string, err error) {
 	// Create a new command
 	maxRetries := 10
 	cmdString := fmt.Sprintf("docker exec %s celestia bridge --node.store /home/celestia/bridge/ auth admin", daContainer)
@@ -198,8 +216,7 @@ func getDAToken() (token string, err error) {
 	for retry := 0; retry < maxRetries; retry++ {
 		logger.Println("attempting to get DA token...")
 
-		cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
-		output, err := cmd.CombinedOutput()
+		output, err := e.terminal.Exec(cmdParts[0], cmdParts[1:]...)
 		if err != nil {
 			logger.Println("failed to get da token")
 			logger.Printf("%d/%d retrying...\n", retry+1, maxRetries)
@@ -219,14 +236,14 @@ func getDAToken() (token string, err error) {
 
 }
 
-func blockUntilContainerIsRunning(targetContainer string, timeout time.Duration) error {
+func (e *evm) blockUntilContainerIsRunning(targetContainer string, timeout time.Duration) error {
 	timeoutAt := time.Now().Add(timeout)
 	cmdString := "docker container inspect -f '{{.State.Running}}' " + targetContainer
 	// This string will be returned by the above command when the container is running
 	runningOutput := "'true'\n"
 	cmdParts := strings.Split(cmdString, " ")
 	for time.Now().Before(timeoutAt) {
-		output, err := exec.Command(cmdParts[0], cmdParts[1:]...).CombinedOutput()
+		output, err := e.terminal.Exec(cmdParts[0], cmdParts[1:]...)
 		if err == nil && string(output) == runningOutput {
 			return nil
 		}

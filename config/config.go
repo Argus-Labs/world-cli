@@ -6,11 +6,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"pkg.world.dev/world-cli/pkg/logger"
 
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
-
-	"pkg.world.dev/world-cli/common/logger"
 )
 
 const (

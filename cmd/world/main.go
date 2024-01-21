@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/getsentry/sentry-go"
 	"log"
 	"time"
+
+	"github.com/getsentry/sentry-go"
 
 	"pkg.world.dev/world-cli/cmd/world/root"
 )
@@ -35,5 +36,6 @@ func main() {
 		}()
 	}
 
-	root.Execute()
+	rootCmd := root.New()
+	rootCmd.Execute()
 }
