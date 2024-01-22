@@ -3,7 +3,7 @@ package teacmd
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"pkg.world.dev/world-cli/config"
-	"pkg.world.dev/world-cli/utils/dependency"
+	"pkg.world.dev/world-cli/internal/dependency"
 	"pkg.world.dev/world-cli/utils/terminal"
 )
 

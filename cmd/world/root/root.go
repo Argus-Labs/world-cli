@@ -1,6 +1,8 @@
 package root
 
 import (
+	"bytes"
+
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
@@ -13,14 +15,26 @@ import (
 )
 
 type root struct {
+	cmd *cobra.Command
 }
 
 type Root interface {
-	Execute()
+	Execute() error
+	SetOut(out *bytes.Buffer)
+	SetErr(out *bytes.Buffer)
+	SetArgs(args []string)
 }
 
 func New() Root {
 	logger.Println("Initializing Commands")
+
+	// rootCmd represents the base command
+	// Usage: `world`
+	var rootCmd = &cobra.Command{
+		Use:   "world",
+		Short: "A swiss army knife for World Engine projects",
+		Long:  style.CLIHeader("World CLI", "A swiss army knife for World Engine projects"),
+	}
 
 	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true
@@ -51,23 +65,32 @@ func New() Root {
 	logger.AddLogFlag(create)
 	logger.AddLogFlag(doctor)
 
-	return &root{}
-}
-
-// rootCmd represents the base command
-// Usage: `world`
-var rootCmd = &cobra.Command{
-	Use:   "world",
-	Short: "A swiss army knife for World Engine projects",
-	Long:  style.CLIHeader("World CLI", "A swiss army knife for World Engine projects"),
+	return &root{
+		rootCmd,
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func (r *root) Execute() {
-	if err := rootCmd.Execute(); err != nil {
+func (r *root) Execute() error {
+	if err := r.cmd.Execute(); err != nil {
 		logger.Errors(err)
+		return err
 	}
 	// print log stack
 	logger.PrintLogs()
+
+	return nil
+}
+
+func (r *root) SetOut(out *bytes.Buffer) {
+	r.cmd.SetOut(out)
+}
+
+func (r *root) SetErr(out *bytes.Buffer) {
+	r.cmd.SetErr(out)
+}
+
+func (r *root) SetArgs(args []string) {
+	r.cmd.SetArgs(args)
 }

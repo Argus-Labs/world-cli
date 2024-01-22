@@ -3,9 +3,9 @@ package cardinal
 import (
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/internal/dependency"
 	"pkg.world.dev/world-cli/internal/teacmd"
 	"pkg.world.dev/world-cli/pkg/logger"
-	"pkg.world.dev/world-cli/utils/dependency"
 	"pkg.world.dev/world-cli/utils/tea/style"
 	"pkg.world.dev/world-cli/utils/terminal"
 )

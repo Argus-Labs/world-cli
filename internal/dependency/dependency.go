@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+
+	"pkg.world.dev/world-cli/pkg/logger"
 )
 
 var (
@@ -52,7 +54,7 @@ type dependency struct {
 
 type Dependency interface {
 	Check() error
-	Run() error
+	GetCmd() *exec.Cmd
 	GetName() string
 	GetHelp() string
 }
@@ -78,8 +80,8 @@ func Check(deps ...dependency) error {
 	return errors.Join(errs...)
 }
 
-func (d *dependency) Run() error {
-	return d.Cmd.Run()
+func (d *dependency) GetCmd() *exec.Cmd {
+	return d.Cmd
 }
 
 func (d *dependency) GetName() string {

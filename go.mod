@@ -7,7 +7,6 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/getsentry/sentry-go v0.26.0
 	github.com/guumaster/logsymbols v0.3.1
-	github.com/magefile/mage v1.15.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.7.0

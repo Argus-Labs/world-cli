@@ -2,10 +2,10 @@ package teacmd
 
 import (
 	"errors"
-	"pkg.world.dev/world-cli/utils/dependency"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"pkg.world.dev/world-cli/internal/dependency"
 	"pkg.world.dev/world-cli/utils/tea/style"
 )
 
@@ -26,7 +26,7 @@ func (t *teaCmd) CheckDependenciesCmd(deps []dependency.Dependency) tea.Cmd {
 		var res []DependencyStatus
 		var resErr error
 		for _, dep := range deps {
-			err := dep.Run()
+			_, err := t.terminal.ExecCmd(dep.GetCmd())
 			res = append(res, DependencyStatus{
 				Dependency:  dep,
 				IsInstalled: err == nil,

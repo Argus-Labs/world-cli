@@ -4,9 +4,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/internal/dependency"
 	"pkg.world.dev/world-cli/internal/teacmd"
 	"pkg.world.dev/world-cli/pkg/logger"
-	"pkg.world.dev/world-cli/utils/dependency"
 	"pkg.world.dev/world-cli/utils/tea/style"
 )
 
@@ -22,10 +22,12 @@ var DoctorDeps = []dependency.Dependency{
 // Cobra Setup //
 /////////////////
 
+var model tea.Model
+
 // doctorCmd checks that required dependencies are installed
 // Usage: `world doctor`
 func doctorCmd(teaCmd teacmd.TeaCmd) *cobra.Command {
-	doctorCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check that required dependencies are installed",
 		Long: `Check that required dependencies are installed.
@@ -45,9 +47,9 @@ func doctorCmd(teaCmd teacmd.TeaCmd) *cobra.Command {
 		},
 	}
 
-	logger.AddLogFlag(doctorCmd)
+	logger.AddLogFlag(cmd)
 
-	return doctorCmd
+	return cmd
 }
 
 //////////////////////

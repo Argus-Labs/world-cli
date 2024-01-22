@@ -15,8 +15,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	gomock "go.uber.org/mock/gomock"
 	config "pkg.world.dev/world-cli/config"
+	dependency "pkg.world.dev/world-cli/internal/dependency"
 	teacmd "pkg.world.dev/world-cli/internal/teacmd"
-	dependency "pkg.world.dev/world-cli/utils/dependency"
 )
 
 // MockTeaCmd is a mock of TeaCmd interface.

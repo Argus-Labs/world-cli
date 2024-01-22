@@ -10,7 +10,7 @@ import (
 	mock_terminal "pkg.world.dev/world-cli/utils/terminal/mock"
 )
 
-func Test_GitCloneCmd(t *testing.T) {
+func TestGitCloneCmd(t *testing.T) {
 	terminalMock := mock_terminal.NewMockTerminal(gomock.NewController(t))
 	cmd := New(terminalMock)
 

@@ -10,6 +10,7 @@
 package mock_root
 
 import (
+	bytes "bytes"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -39,13 +40,51 @@ func (m *MockRoot) EXPECT() *MockRootMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockRoot) Execute() {
+func (m *MockRoot) Execute() error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Execute")
+	ret := m.ctrl.Call(m, "Execute")
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Execute indicates an expected call of Execute.
 func (mr *MockRootMockRecorder) Execute() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockRoot)(nil).Execute))
+}
+
+// SetArgs mocks base method.
+func (m *MockRoot) SetArgs(args []string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetArgs", args)
+}
+
+// SetArgs indicates an expected call of SetArgs.
+func (mr *MockRootMockRecorder) SetArgs(args any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetArgs", reflect.TypeOf((*MockRoot)(nil).SetArgs), args)
+}
+
+// SetErr mocks base method.
+func (m *MockRoot) SetErr(out *bytes.Buffer) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetErr", out)
+}
+
+// SetErr indicates an expected call of SetErr.
+func (mr *MockRootMockRecorder) SetErr(out any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErr", reflect.TypeOf((*MockRoot)(nil).SetErr), out)
+}
+
+// SetOut mocks base method.
+func (m *MockRoot) SetOut(out *bytes.Buffer) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetOut", out)
+}
+
+// SetOut indicates an expected call of SetOut.
+func (mr *MockRootMockRecorder) SetOut(out any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetOut", reflect.TypeOf((*MockRoot)(nil).SetOut), out)
 }
