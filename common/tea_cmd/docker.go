@@ -125,6 +125,7 @@ func DockerStop(services []DockerService) error {
 func DockerStopAll() error {
 	return DockerStop([]DockerService{
 		DockerServiceCardinal,
+		DockerServiceCardinalDebug,
 		DockerServiceNakama,
 		DockerServiceNakamaDB,
 		DockerServiceRedis,
