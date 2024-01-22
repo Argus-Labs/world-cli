@@ -79,14 +79,19 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 
 // DockerStartAll starts both cardinal and nakama
 func DockerStartAll(cfg config.Config) error {
-	if cfg.Debug {
-		return DockerStart(cfg,
-			[]DockerService{DockerServiceCardinalDebug, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
-	} else {
-		return DockerStart(cfg,
-			[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
+	services := []DockerService{
+		DockerServiceNakama,
+		DockerServiceNakamaDB,
+		DockerServiceRedis,
 	}
-	return nil
+
+	if cfg.Debug {
+		services = append(services, DockerServiceCardinalDebug)
+	} else {
+		services = append(services, DockerServiceCardinal)
+	}
+
+	return DockerStart(cfg, services)
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
