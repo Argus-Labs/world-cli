@@ -31,10 +31,18 @@ This will restart the following Docker services:
 		}
 		cfg.Build = true
 
-		err = tea_cmd.DockerRestart(cfg, []tea_cmd.DockerService{
-			tea_cmd.DockerServiceCardinal,
-			tea_cmd.DockerServiceNakama,
-		})
+		if cfg.Debug {
+			err = tea_cmd.DockerRestart(cfg, []tea_cmd.DockerService{
+				tea_cmd.DockerServiceCardinalDebug,
+				tea_cmd.DockerServiceNakama,
+			})
+		} else {
+			err = tea_cmd.DockerRestart(cfg, []tea_cmd.DockerService{
+				tea_cmd.DockerServiceCardinal,
+				tea_cmd.DockerServiceNakama,
+			})
+		}
+
 		if err != nil {
 			return err
 		}

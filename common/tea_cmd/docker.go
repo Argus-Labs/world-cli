@@ -21,6 +21,7 @@ const (
 	DockerServiceRedis    DockerService = "redis"
 	DockerServiceEVM      DockerService = "evm"
 	DockerServiceDA       DockerService = "celestia-devnet"
+	DockerServiceCardinalDebug DockerService = "cardinal-debug"
 )
 
 func dockerCompose(args ...string) error {
@@ -28,13 +29,9 @@ func dockerCompose(args ...string) error {
 }
 
 func dockerComposeWithCfg(cfg config.Config, args ...string) error {
-	yml := ""
-	if !cfg.Debug {
-		yml = path.Join(cfg.RootDir, "docker-compose.yml")
-	} else {
-		yml = path.Join(cfg.RootDir, ".ide-debug/docker-compose.debug.yml")
-	}
+	yml := path.Join(cfg.RootDir, "docker-compose.yml")
 	args = append([]string{"compose", "-f", yml}, args...)
+
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout
 
@@ -47,6 +44,10 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 	for k, v := range cfg.DockerEnv {
 		env = append(env, k+"="+v)
 	}
+	if cfg.Debug {
+		env = append(env, "CARDINAL_ADDR=cardinal-debug:3333")
+	}
+
 	cmd.Env = env
 	return cmd.Run()
 	//return sh.RunWith(cfg.DockerEnv, "docker", args...)
@@ -84,8 +85,19 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 
 // DockerStartAll starts both cardinal and nakama
 func DockerStartAll(cfg config.Config) error {
-	return DockerStart(cfg,
-		[]DockerService{DockerServiceCardinal, DockerServiceNakama, DockerServiceNakamaDB, DockerServiceRedis})
+	services := []DockerService{
+		DockerServiceNakama,
+		DockerServiceNakamaDB,
+		DockerServiceRedis,
+	}
+
+	if cfg.Debug {
+		services = append(services, DockerServiceCardinalDebug)
+	} else {
+		services = append(services, DockerServiceCardinal)
+	}
+
+	return DockerStart(cfg, services)
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
@@ -124,6 +136,7 @@ func DockerStop(services []DockerService) error {
 func DockerStopAll() error {
 	return DockerStop([]DockerService{
 		DockerServiceCardinal,
+		DockerServiceCardinalDebug,
 		DockerServiceNakama,
 		DockerServiceNakamaDB,
 		DockerServiceRedis,
