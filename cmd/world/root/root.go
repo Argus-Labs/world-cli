@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/spf13/cobra"
+	"os"
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
@@ -18,6 +19,7 @@ func init() {
 	rootCmd.AddGroup(&cobra.Group{ID: "Core", Title: "World CLI Commands:"})
 
 	// Register base commands
+	doctorCmd := getDoctorCmd(os.Stdout)
 	rootCmd.AddCommand(doctorCmd, versionCmd)
 
 	// Register subcommands

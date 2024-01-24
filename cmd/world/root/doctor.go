@@ -3,7 +3,7 @@ package root
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-
+	"io"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
@@ -24,24 +24,28 @@ var DoctorDeps = []dependency.Dependency{
 
 // doctorCmd checks that required dependencies are installed
 // Usage: `world doctor`
-var doctorCmd = &cobra.Command{
-	Use:   "doctor",
-	Short: "Check that required dependencies are installed",
-	Long: `Check that required dependencies are installed.
+func getDoctorCmd(writer io.Writer) *cobra.Command {
+	doctorCmd := &cobra.Command{
+		Use:   "doctor",
+		Short: "Check that required dependencies are installed",
+		Long: `Check that required dependencies are installed.
 
 World CLI requires the following dependencies to be installed:
 - Git
 - Go
 - Docker`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		logger.SetDebugMode(cmd)
-		p := tea.NewProgram(NewWorldDoctorModel())
-		_, err := p.Run()
-		if err != nil {
-			return err
-		}
-		return nil
-	},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.SetDebugMode(cmd)
+			p := tea.NewProgram(NewWorldDoctorModel(), tea.WithOutput(writer))
+			_, err := p.Run()
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
+	return doctorCmd
 }
 
 //////////////////////
