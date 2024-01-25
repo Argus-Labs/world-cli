@@ -26,6 +26,10 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: "go.sum"
+      - name: Init Dummy Git config for testing
+        run: |
+          git config --global user.email "github-action@mail.com"
+          git config --global user.name "github-action"
       - name: Test
         run: |
           go test ./... -coverprofile=coverage.out -covermode=count -v
@@ -34,7 +38,7 @@ jobs:
         with:
           name: coverage
           path: ./coverage.out
-          
+
   upload-codecov:
     name: Upload coverage output to Codecov.io
     runs-on: ubuntu-latest
