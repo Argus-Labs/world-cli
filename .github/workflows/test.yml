@@ -2,8 +2,6 @@ name: Test
 
 on:
   pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
@@ -31,6 +29,7 @@ jobs:
           git config --global user.email "github-action@mail.com"
           git config --global user.name "github-action"
       - name: Test
+        shell: 'script -q -e -c "bash {0}"'
         run: |
           go test ./... -coverprofile=coverage.out -covermode=count -v
       - name: Upload coverage results to Github artifact
