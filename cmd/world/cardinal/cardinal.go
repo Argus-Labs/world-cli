@@ -1,7 +1,6 @@
 package cardinal
 
 import (
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/logger"
@@ -34,7 +33,7 @@ var BaseCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := cmd.Help(); err != nil {
-			log.Fatal().Err(err).Msg("Failed to execute cardinal command")
+			logger.Fatalf("Failed to execute cardinal command : %s", err.Error())
 		}
 	},
 }

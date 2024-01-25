@@ -10,7 +10,7 @@ import (
 
 const (
 	DefaultTimeFormat           = "15:04:05.000"
-	DefaultCallerSkipFrameCount = 3
+	DefaultCallerSkipFrameCount = 3 // set to 3 because logger wrapped in logger.go
 
 	NoColor   = true
 	UseCaller = false // for developer, if you want to expose line of code of caller
@@ -45,6 +45,9 @@ func init() {
 	if UseCaller {
 		lgr = lgr.With().Caller().Logger()
 	}
+
+	// Set hook for sentry capture error message
+	lgr = lgr.Hook(SentryHook{})
 
 	log.Logger = lgr
 }

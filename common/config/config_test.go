@@ -125,12 +125,13 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 	deepPath := path.Join(tempdir, "/a/b/c/d/e/f/g")
 	assert.NilError(t, os.MkdirAll(deepPath, 0755))
 
-	configFile := path.Join(deepPath, WorldCLIConfigFilename)
-	// The eventual call to LoadConfig should find this config file
-	makeConfigAtPath(t, configFile, "alpha")
 	deepPath = path.Join(deepPath, "/h/i/j/k/l/m/n")
 	assert.NilError(t, os.MkdirAll(deepPath, 0755))
 	assert.NilError(t, os.Chdir(deepPath))
+
+	configFile := path.Join(deepPath, WorldCLIConfigFilename)
+	// The eventual call to LoadConfig should find this config file
+	makeConfigAtPath(t, configFile, "alpha")
 
 	cfg, err := GetConfig(cmdZero())
 	assert.NilError(t, err)

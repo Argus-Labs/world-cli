@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
@@ -159,7 +160,7 @@ func StartEVM() *cobra.Command {
 
 			err = tea_cmd.DockerStart(cfg, services(tea_cmd.DockerServiceEVM))
 			if err != nil {
-				fmt.Errorf("error starting %s docker container: %w", tea_cmd.DockerServiceEVM, err)
+				return fmt.Errorf("error starting %s docker container: %w", tea_cmd.DockerServiceEVM, err)
 			}
 			return nil
 		},

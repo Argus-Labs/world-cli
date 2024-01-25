@@ -2,10 +2,10 @@ package root
 
 import (
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/config"
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
+	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 )

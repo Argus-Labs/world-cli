@@ -15,12 +15,12 @@ import (
 type DockerService string
 
 const (
-	DockerServiceCardinal DockerService = "cardinal"
-	DockerServiceNakama   DockerService = "nakama"
-	DockerServiceNakamaDB DockerService = "nakama-db"
-	DockerServiceRedis    DockerService = "redis"
-	DockerServiceEVM      DockerService = "evm"
-	DockerServiceDA       DockerService = "celestia-devnet"
+	DockerServiceCardinal      DockerService = "cardinal"
+	DockerServiceNakama        DockerService = "nakama"
+	DockerServiceNakamaDB      DockerService = "nakama-db"
+	DockerServiceRedis         DockerService = "redis"
+	DockerServiceEVM           DockerService = "evm"
+	DockerServiceDA            DockerService = "celestia-devnet"
 	DockerServiceCardinalDebug DockerService = "cardinal-debug"
 )
 
