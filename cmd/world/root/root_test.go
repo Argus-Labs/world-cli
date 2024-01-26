@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/spf13/cobra"
 	"strings"
 	"testing"
 
@@ -12,23 +13,23 @@ import (
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
-func outputFromCmd(t *testing.T, cmd string) (lines []string, err error) {
+func outputFromCmd(cobra *cobra.Command, cmd string) (lines []string, err error) {
 	stdOut := &bytes.Buffer{}
 	stdErr := &bytes.Buffer{}
-	rootCmd.SetOut(stdOut)
+	cobra.SetOut(stdOut)
 	defer func() {
-		rootCmd.SetOut(nil)
+		cobra.SetOut(nil)
 	}()
-	rootCmd.SetErr(stdErr)
+	cobra.SetErr(stdErr)
 	defer func() {
-		rootCmd.SetErr(nil)
+		cobra.SetErr(nil)
 	}()
-	rootCmd.SetArgs(strings.Split(cmd, " "))
+	cobra.SetArgs(strings.Split(cmd, " "))
 	defer func() {
-		rootCmd.SetArgs(nil)
+		cobra.SetArgs(nil)
 	}()
 
-	if err = rootCmd.Execute(); err != nil {
+	if err = cobra.Execute(); err != nil {
 		return nil, fmt.Errorf("root command failed with: %w", err)
 	}
 	lines = strings.Split(stdOut.String(), "\n")
@@ -40,7 +41,7 @@ func outputFromCmd(t *testing.T, cmd string) (lines []string, err error) {
 }
 
 func TestSubcommandsHaveHelpText(t *testing.T) {
-	lines, err := outputFromCmd(t, "help")
+	lines, err := outputFromCmd(rootCmd, "help")
 	assert.NilError(t, err)
 	seenSubcommands := map[string]int{
 		"cardinal":   0,
@@ -60,5 +61,37 @@ func TestSubcommandsHaveHelpText(t *testing.T) {
 
 	for subcommand, count := range seenSubcommands {
 		assert.Check(t, count > 0, "subcommand %q is not listed in the help command", subcommand)
+	}
+}
+
+func TestExecuteDoctorCommand(t *testing.T) {
+	teaOut := &bytes.Buffer{}
+	_, err := outputFromCmd(getDoctorCmd(teaOut), "")
+	assert.NilError(t, err)
+
+	seenDependencies := map[string]int{
+		"Git":                      0,
+		"Go":                       0,
+		"Docker":                   0,
+		"Docker Compose":           0,
+		"Docker daemon is running": 0,
+	}
+
+	lines := strings.Split(teaOut.String(), "\r\n")
+	for _, line := range lines {
+		// Remove the first three characters for the example(✓  Git)
+		resultString := ""
+		if len(line) > 5 {
+			resultString = line[5:]
+		}
+		for dep := range seenDependencies {
+			if resultString != "" && resultString == dep {
+				seenDependencies[dep]++
+			}
+		}
+	}
+
+	for dep, count := range seenDependencies {
+		assert.Check(t, count > 0, "dependencies %q is not listed in dependencies checking", dep)
 	}
 }
