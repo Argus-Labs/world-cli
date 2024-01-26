@@ -1,14 +1,14 @@
 package root
 
 import (
+	"github.com/spf13/cobra"
+	"io"
+	"pkg.world.dev/world-cli/common/logger"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/spf13/cobra"
-
 	tea "github.com/charmbracelet/bubbletea"
 
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/tea_cmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
@@ -22,21 +22,25 @@ const TemplateGitUrl = "https://github.com/Argus-Labs/starter-game-template.git"
 
 // createCmd creates a new World Engine project based on starter-game-template
 // Usage: `world cardinal create [directory_name]`
-var createCmd = &cobra.Command{
-	Use:   "create [directory_name]",
-	Short: "Create a World Engine game shard from scratch",
-	Long: `Create a World Engine game shard based on https://github.com/Argus-Labs/starter-game-template.
+func getCreateCmd(writer io.Writer) *cobra.Command {
+	createCmd := &cobra.Command{
+		Use:   "create [directory_name]",
+		Short: "Create a World Engine game shard from scratch",
+		Long: `Create a World Engine game shard based on https://github.com/Argus-Labs/starter-game-template.
 If [directory_name] is set, it will automatically clone the starter project into that directory. 
 Otherwise, it will prompt you to enter a directory name.`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		logger.SetDebugMode(cmd)
-		p := tea.NewProgram(NewWorldCreateModel(args))
-		if _, err := p.Run(); err != nil {
-			return err
-		}
-		return nil
-	},
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.SetDebugMode(cmd)
+			p := tea.NewProgram(NewWorldCreateModel(args), tea.WithOutput(writer))
+			if _, err := p.Run(); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
+	return createCmd
 }
 
 //////////////////////

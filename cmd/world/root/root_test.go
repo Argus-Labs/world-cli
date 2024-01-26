@@ -2,9 +2,12 @@ package root
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
+	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -94,4 +97,56 @@ func TestExecuteDoctorCommand(t *testing.T) {
 	for dep, count := range seenDependencies {
 		assert.Check(t, count > 0, "dependencies %q is not listed in dependencies checking", dep)
 	}
+}
+
+func TestCreateStartStopPurge(t *testing.T) {
+	// Create Cardinal
+	gameDir, err := os.MkdirTemp("", "game-template")
+	assert.NilError(t, err)
+
+	// Remove dir
+	defer os.RemoveAll(gameDir)
+
+	// set tea ouput to variable
+	teaOut := &bytes.Buffer{}
+	createCmd := getCreateCmd(teaOut)
+	createCmd.SetArgs([]string{gameDir})
+
+	err = createCmd.Execute()
+	assert.NilError(t, err)
+
+	// Start cardinal
+	os.Chdir(gameDir)
+	rootCmd.SetArgs([]string{"cardinal", "start", "--build", "--detach"})
+	err = rootCmd.Execute()
+	assert.NilError(t, err)
+
+	// Check cardinal health
+	resp, err := http.Get("http://127.0.0.1:3333/health")
+	assert.NilError(t, err)
+	assert.Equal(t, resp.StatusCode, 200)
+	var healthResponse struct {
+		IsServerRunning   bool
+		IsGameLoopRunning bool
+	}
+	err = json.NewDecoder(resp.Body).Decode(&healthResponse)
+	assert.NilError(t, err)
+	assert.Assert(t, healthResponse.IsServerRunning)
+	assert.Assert(t, healthResponse.IsGameLoopRunning)
+
+	// Stop cardinal
+	rootCmd.SetArgs([]string{"cardinal", "stop"})
+	err = rootCmd.Execute()
+	assert.NilError(t, err)
+
+	// Check cardinal health
+	_, err = http.Get("http://127.0.0.1:3333/health")
+	assert.Error(t, err,
+		"Get \"http://127.0.0.1:3333/health\": dial tcp 127.0.0.1:3333: connect: connection refused")
+
+	// Purge cardinal
+	rootCmd.SetArgs([]string{"cardinal", "purge"})
+	err = rootCmd.Execute()
+	assert.NilError(t, err)
+
 }

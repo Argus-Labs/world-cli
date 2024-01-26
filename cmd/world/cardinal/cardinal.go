@@ -2,6 +2,7 @@ package cardinal
 
 import (
 	"github.com/spf13/cobra"
+
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
@@ -10,7 +11,6 @@ import (
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
 	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
-
 	// Add --debug flag
 	logger.AddLogFlag(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }
@@ -22,7 +22,7 @@ var BaseCmd = &cobra.Command{
 	Short:   "Manage your Cardinal game shard project",
 	Long:    style.CLIHeader("World CLI — CARDINAL", "Manage your Cardinal game shard project"),
 	GroupID: "Core",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		return dependency.Check(
 			dependency.Go,
 			dependency.Git,
