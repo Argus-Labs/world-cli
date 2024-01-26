@@ -1,4 +1,4 @@
-package cardinal
+package root
 
 import (
 	"strings"

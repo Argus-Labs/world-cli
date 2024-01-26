@@ -18,7 +18,7 @@ func init() {
 	rootCmd.AddGroup(&cobra.Group{ID: "Core", Title: "World CLI Commands:"})
 
 	// Register base commands
-	rootCmd.AddCommand(doctorCmd, versionCmd)
+	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd)
 
 	// Register subcommands
 	rootCmd.AddCommand(cardinal.BaseCmd)
@@ -27,6 +27,7 @@ func init() {
 	config.AddConfigFlag(rootCmd)
 
 	// Add --debug flag
+	logger.AddLogFlag(createCmd)
 	logger.AddLogFlag(doctorCmd)
 }
 
