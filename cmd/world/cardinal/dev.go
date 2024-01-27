@@ -78,6 +78,7 @@ var devCmd = &cobra.Command{
 		// Create a channel to receive errors from the command
 		cmdErr := make(chan error, 1)
 
+		fmt.Println("Starting Cardinal...")
 		go func() {
 			err := cardinalExecCmd.Wait()
 			cmdErr <- err
@@ -128,11 +129,7 @@ func runRedis() error {
 	logger.Println("Starting Redis container...")
 	cmd := exec.Command("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
 	cmd.Stdout = os.Stdout
-
-	// hide stderr if not in debug mode
-	if logger.DebugMode {
-		cmd.Stderr = os.Stderr
-	}
+	cmd.Stderr = os.Stderr
 
 	err := cmd.Run()
 	if err != nil {
@@ -144,6 +141,10 @@ func runRedis() error {
 
 		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
 		if err != nil {
+			if sh.ExitStatus(err) == 125 {
+				fmt.Println("Maybe redis cardinal docker is still up, run 'world cardinal stop' and try again")
+				return err
+			}
 			return err
 		}
 	}
@@ -168,11 +169,7 @@ func runCardinal() (*exec.Cmd, error) {
 
 	cmd := exec.Command("go", "run", ".")
 	cmd.Stdout = os.Stdout
-
-	// hide stderr if not in debug mode
-	if logger.DebugMode {
-		cmd.Stderr = os.Stderr
-	}
+	cmd.Stderr = os.Stderr
 
 	cmd.Env = os.Environ()
 	for k, v := range env {
@@ -181,11 +178,7 @@ func runCardinal() (*exec.Cmd, error) {
 
 	err = cmd.Start()
 	if err != nil {
-		return cmd, err
-	}
-	err = cmd.Wait()
-	if err != nil {
-		return cmd, err
+		return nil, err
 	}
 
 	return cmd, nil

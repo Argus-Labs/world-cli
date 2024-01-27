@@ -2,6 +2,7 @@ package tea_cmd
 
 import (
 	"fmt"
+	"github.com/magefile/mage/sh"
 	"gotest.tools/v3/assert"
 	"os"
 	"testing"
@@ -19,13 +20,13 @@ func TestGitCloneCmd(t *testing.T) {
 	test := []struct {
 		name     string
 		wantErr  bool
-		expected string
+		expected int
 		param    param
 	}{
 		{
 			name:     "error clone wrong address",
 			wantErr:  true,
-			expected: `running "git clone wrong address targetDir" failed with exit code 128`,
+			expected: 128,
 			param: param{
 				url:       "wrong address",
 				targetDir: "targetDir",
@@ -50,7 +51,7 @@ func TestGitCloneCmd(t *testing.T) {
 
 			err := GitCloneCmd(tt.param.url, tt.param.targetDir, tt.param.initMsg)
 			if tt.wantErr {
-				assert.Error(t, err, tt.expected)
+				assert.Equal(t, sh.ExitStatus(err), tt.expected)
 			} else {
 				assert.NilError(t, err)
 			}

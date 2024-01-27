@@ -9,7 +9,6 @@ import (
 
 	"github.com/magefile/mage/sh"
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
 )
 
 type DockerService string
@@ -34,11 +33,7 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout
-
-	// hide stderr if not in debug mode
-	if logger.DebugMode {
-		cmd.Stderr = os.Stderr
-	}
+	cmd.Stderr = os.Stderr
 
 	env := os.Environ()
 	for k, v := range cfg.DockerEnv {
