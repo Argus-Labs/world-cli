@@ -6,13 +6,36 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
+	"gotest.tools/v3/assert"
 	"net/http"
 	"os"
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"strings"
 	"testing"
-
-	"gotest.tools/v3/assert"
+	"time"
 )
+
+type healthResponse struct {
+	StatusCode        int
+	IsServerRunning   bool
+	IsGameLoopRunning bool
+}
+
+func getHealthCheck() (*healthResponse, error) {
+	var healtCheck healthResponse
+
+	resp, err := http.Get("http://127.0.0.1:3333/health")
+	if err != nil {
+		return nil, err
+	}
+	err = json.NewDecoder(resp.Body).Decode(&healtCheck)
+	if err != nil {
+		return nil, err
+	}
+
+	healtCheck.StatusCode = resp.StatusCode
+	return &healtCheck, nil
+}
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
@@ -99,13 +122,20 @@ func TestExecuteDoctorCommand(t *testing.T) {
 	}
 }
 
-func TestCreateStartStopPurge(t *testing.T) {
+func TestCreateStartStopRestartPurge(t *testing.T) {
 	// Create Cardinal
 	gameDir, err := os.MkdirTemp("", "game-template")
 	assert.NilError(t, err)
 
 	// Remove dir
-	defer os.RemoveAll(gameDir)
+	defer func() {
+		err = os.RemoveAll(gameDir)
+		assert.NilError(t, err)
+	}()
+
+	// Change dir
+	err = os.Chdir(gameDir)
+	assert.NilError(t, err)
 
 	// set tea ouput to variable
 	teaOut := &bytes.Buffer{}
@@ -116,37 +146,108 @@ func TestCreateStartStopPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal
-	os.Chdir(gameDir)
 	rootCmd.SetArgs([]string{"cardinal", "start", "--build", "--detach"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
+	defer func() {
+		// Purge cardinal
+		rootCmd.SetArgs([]string{"cardinal", "purge"})
+		err = rootCmd.Execute()
+		assert.NilError(t, err)
+	}()
+
 	// Check cardinal health
-	resp, err := http.Get("http://127.0.0.1:3333/health")
+	resp, err := getHealthCheck()
 	assert.NilError(t, err)
 	assert.Equal(t, resp.StatusCode, 200)
-	var healthResponse struct {
-		IsServerRunning   bool
-		IsGameLoopRunning bool
-	}
-	err = json.NewDecoder(resp.Body).Decode(&healthResponse)
+	assert.Assert(t, resp.IsServerRunning)
+	assert.Assert(t, resp.IsGameLoopRunning)
+
+	// Restart cardinal
+	rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
+	err = rootCmd.Execute()
 	assert.NilError(t, err)
-	assert.Assert(t, healthResponse.IsServerRunning)
-	assert.Assert(t, healthResponse.IsGameLoopRunning)
+
+	// Check cardinal health after restart
+	resp, err = getHealthCheck()
+	assert.NilError(t, err)
+	assert.Equal(t, resp.StatusCode, 200)
+	assert.Assert(t, resp.IsServerRunning)
+	assert.Assert(t, resp.IsGameLoopRunning)
 
 	// Stop cardinal
 	rootCmd.SetArgs([]string{"cardinal", "stop"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
-	// Check cardinal health
-	_, err = http.Get("http://127.0.0.1:3333/health")
+	// Check cardinal health (expected error)
+	_, err = getHealthCheck()
 	assert.Error(t, err,
 		"Get \"http://127.0.0.1:3333/health\": dial tcp 127.0.0.1:3333: connect: connection refused")
+}
 
-	// Purge cardinal
-	rootCmd.SetArgs([]string{"cardinal", "purge"})
-	err = rootCmd.Execute()
+func TestDev(t *testing.T) {
+	// Create Cardinal
+	gameDir, err := os.MkdirTemp("", "game-template")
 	assert.NilError(t, err)
 
+	// Remove dir
+	defer func() {
+		err = os.RemoveAll(gameDir)
+		assert.NilError(t, err)
+	}()
+
+	// Change dir
+	err = os.Chdir(gameDir)
+	assert.NilError(t, err)
+
+	//set tea ouput to variable
+	teaOut := &bytes.Buffer{}
+	createCmd := getCreateCmd(teaOut)
+	createCmd.SetArgs([]string{gameDir})
+
+	err = createCmd.Execute()
+	assert.NilError(t, err)
+
+	// Start cardinal dev
+	rootCmd.SetArgs([]string{"cardinal", "dev"})
+	go func() {
+		err := rootCmd.Execute()
+		assert.NilError(t, err)
+	}()
+
+	// Check cardinal health for 300 second, waiting to download dependencies and building the apps
+	isServerRunning := false
+	isGameLoopRunning := false
+	timeout := time.Now().Add(300 * time.Second)
+	for !(isServerRunning && isGameLoopRunning) && time.Now().Before(timeout) {
+		resp, err := getHealthCheck()
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		assert.Equal(t, resp.StatusCode, 200)
+		isServerRunning = resp.IsServerRunning
+		isGameLoopRunning = resp.IsGameLoopRunning
+	}
+	assert.Assert(t, isServerRunning)
+	assert.Assert(t, isGameLoopRunning)
+
+	// Shutdown the program
+	close(cardinal.StopChan)
+
+	// Check cardinal health (expected error), trying for 10 times
+	count := 0
+	for count < 10 {
+		_, err = getHealthCheck()
+		if err != nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+		count++
+	}
+
+	assert.Error(t, err,
+		"Get \"http://127.0.0.1:3333/health\": dial tcp 127.0.0.1:3333: connect: connection refused")
 }

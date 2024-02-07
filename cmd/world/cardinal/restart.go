@@ -12,6 +12,10 @@ import (
 // Cobra Setup //
 /////////////////
 
+func init() {
+	restartCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
+}
+
 // restartCmd restarts your Cardinal game shard stack
 // Usage: `world cardinal restart`
 var restartCmd = &cobra.Command{
@@ -30,6 +34,13 @@ This will restart the following Docker services:
 			return err
 		}
 		cfg.Build = true
+		if replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
+			return err
+		}
+
+		if replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
+			return err
+		}
 
 		if cfg.Debug {
 			err = tea_cmd.DockerRestart(cfg, []tea_cmd.DockerService{
