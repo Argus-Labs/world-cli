@@ -15,12 +15,16 @@ import (
 
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
+	"github.com/zulkhair/fresh/runner"
 )
 
 const (
 	CardinalPort = "3333"
 	RedisPort    = "6379"
 )
+
+// StopChan is used to signal graceful shutdown
+var StopChan = make(chan struct{})
 
 /////////////////
 // Cobra Setup //
@@ -35,7 +39,7 @@ var devCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger.SetDebugMode(cmd)
 
-		fmt.Print(style.CLIHeader("Cardinal", "Running Cardinal in dev mode"), "\n")
+		fmt.Print(style.CLIHeader("Cardinal", "Running Cardinal in dev mode, cardinal supports hot reloading"), "\n")
 		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
 		fmt.Println()
 		fmt.Println(fmt.Sprintf("Redis: localhost:%s", RedisPort))
@@ -65,62 +69,37 @@ var devCmd = &cobra.Command{
 			isRedisRunning = true
 		}
 
-		// Run Cardinal
-		cardinalExecCmd, err := runCardinal()
+		// Create a channel to receive termination signals
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+
+		// Run Cardinal Preparation
+		err = runCardinalPrep()
 		if err != nil {
 			return err
 		}
 
-		// Create a channel to receive termination signals
-		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
-
-		// Create a channel to receive errors from the command
-		cmdErr := make(chan error, 1)
-
 		fmt.Println("Starting Cardinal...")
+		go runner.Start()
+
+		// Start a goroutine to listen for signals
 		go func() {
-			err := cardinalExecCmd.Wait()
-			cmdErr <- err
+			<-signalCh
+			close(StopChan)
 		}()
 
-		select {
-		case <-signalCh:
-			// Shutdown signal received, attempt to gracefully stop the command
-			errCleanup := cleanup()
-			if errCleanup != nil {
-				return errCleanup
-			}
+		// Wait for stop signal
+		<-StopChan
+		runner.Stop() // Stop Cardinal
 
-			isProcessRunning := func(cmd *exec.Cmd) bool {
-				return cardinalExecCmd.ProcessState == nil && cardinalExecCmd.Process != nil
-			}
-
-			//wait up to 10 seconds for it to quit.
-			for i := 0; i < 10; i++ {
-				if isProcessRunning(cardinalExecCmd) {
-					time.Sleep(1 * time.Second)
-				} else {
-					break
-				}
-			}
-			if isProcessRunning(cardinalExecCmd) {
-				err = cardinalExecCmd.Process.Signal(syscall.SIGTERM)
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
-
-		case err := <-cmdErr:
-			fmt.Println(err)
-			errCleanup := cleanup()
-			if errCleanup != nil {
-				return errCleanup
-			}
-			return nil
+		// Cleanup redis
+		errCleanup := cleanup()
+		if errCleanup != nil {
+			return errCleanup
 		}
+
+		return nil
+
 	},
 }
 
@@ -152,36 +131,26 @@ func runRedis() error {
 	return nil
 }
 
-// runCardinal runs cardinal in dev mode.
+// runCardinalPrep preparation for runs cardinal in dev mode.
 // We run cardinal without docker to make it easier to debug and skip the docker image build step
-func runCardinal() (*exec.Cmd, error) {
+func runCardinalPrep() error {
 	err := os.Chdir("cardinal")
 	if err != nil {
-		return nil, errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
+		return errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
 	}
 
 	env := map[string]string{
-		"REDIS_MODE":    "normal",
-		"CARDINAL_PORT": CardinalPort,
-		"REDIS_ADDR":    fmt.Sprintf("localhost:%s", RedisPort),
-		"DEPLOY_MODE":   "development",
+		"REDIS_MODE":     "normal",
+		"CARDINAL_PORT":  CardinalPort,
+		"REDIS_ADDR":     fmt.Sprintf("localhost:%s", RedisPort),
+		"DEPLOY_MODE":    "development",
+		"RUNNER_IGNORED": "assets, tmp, vendor",
 	}
 
-	cmd := exec.Command("go", "run", ".")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	cmd.Env = os.Environ()
-	for k, v := range env {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	for key, value := range env {
+		os.Setenv(key, value)
 	}
-
-	err = cmd.Start()
-	if err != nil {
-		return nil, err
-	}
-
-	return cmd, nil
+	return nil
 }
 
 // cleanup stops and removes the Redis and Webdis containers
