@@ -46,9 +46,6 @@ func init() {
 		lgr = lgr.With().Caller().Logger()
 	}
 
-	// Set hook for sentry capture error message
-	lgr = lgr.Hook(SentryHook{})
-
 	log.Logger = lgr
 }
 

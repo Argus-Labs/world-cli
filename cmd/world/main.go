@@ -1,16 +1,13 @@
 package main
 
 import (
-	"github.com/denisbrodbeck/machineid"
-	ph "github.com/posthog/posthog-go"
-	"log"
 	"os"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/posthog"
-	"time"
 
-	"github.com/getsentry/sentry-go"
+	"github.com/rs/zerolog/log"
+
 	"pkg.world.dev/world-cli/cmd/world/root"
+	_ "pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/telemetry"
 )
 
 // This variable will be overridden by ldflags during build
@@ -19,11 +16,6 @@ var (
 	AppVersion    string
 	PosthogApiKey string
 	SentryDsn     string
-)
-
-const (
-	postInstallationEvent = "World CLI Installation"
-	runningEvent          = "World CLI Running"
 )
 
 func init() {
@@ -36,60 +28,24 @@ func init() {
 
 func main() {
 	// Sentry initialization
-	if SentryDsn != "" {
-		err := sentry.Init(sentry.ClientOptions{
-			Dsn:                SentryDsn,
-			EnableTracing:      true,
-			TracesSampleRate:   1.0,
-			ProfilesSampleRate: 1.0,
-			AttachStacktrace:   true,
-		})
-		if err != nil {
-			log.Fatalf("sentry.Init: %s", err)
-		}
-		// Handle panic
-		defer func() {
-			err := recover()
-			if err != nil {
-				sentry.CurrentHub().Recover(err)
-			}
+	telemetry.SentryInit(SentryDsn)
+	defer telemetry.SentryFlush()
 
-			// Flush buffered events before the program terminates.
-			// Set the timeout to the maximum duration the program can afford to wait.
-			sentry.Flush(time.Second * 5)
-		}()
-	}
+	// Set logger sentry hook
+	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
 
 	// Posthog Initialization
-	posthog.Init(PosthogApiKey)
-	defer posthog.Close()
-
-	// Obtain the machine ID
-	machineID, err := machineid.ProtectedID("world-cli")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	// Create capture event for posthog
-	event := ph.Capture{
-		DistinctId: machineID,
-		Timestamp:  time.Now(),
-		Properties: map[string]interface{}{
-			"version": AppVersion,
-			"command": os.Args,
-		},
-	}
+	telemetry.PosthogInit(PosthogApiKey)
+	defer telemetry.PosthogClose()
 
 	// Capture event post installation
 	if len(os.Args) > 1 && os.Args[1] == "post-installation" {
-		event.Event = postInstallationEvent
-		posthog.CaptureEvent(event)
+		telemetry.PosthogCaptureEvent(AppVersion, telemetry.PostInstallationEvent)
 		return
 	}
 
 	// Capture event running
-	event.Event = runningEvent
-	posthog.CaptureEvent(event)
+	telemetry.PosthogCaptureEvent(AppVersion, telemetry.RunningEvent)
 
 	root.Execute()
 }
