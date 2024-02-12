@@ -41,7 +41,7 @@ jobs:
           [ ${{ matrix.goos }} = "windows" ] && output_name+=".exe"
 
           ## Get version from tag name
-          $bin_version=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          bin_version=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           ## Handle if event coming from PR, not release/tag
           [ "$bin_version" == "merge" ] && bin_version=${{ github.event.pull_request.head.sha }}
 
