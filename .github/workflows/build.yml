@@ -43,7 +43,7 @@ jobs:
           ## Get version from tag name
           bin_version=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           ## Handle if event coming from PR, not release/tag
-          [ "$bin_version" == "merge" ] && bin_version=${{ github.event.pull_request.head.sha }}
+          if [ "${{ github.event_name }}" == "pull_request" ]; then bin_version=${{ github.event.pull_request.head.sha }}; fi
 
           env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags "-X main.AppVersion=$bin_version -X main.SentryDsn=${{ secrets.SENTRY_DSN }} -X main.PosthogApiKey=${{ secrets.POSTHOG_API_KEY }}" -o $output_name ./cmd/world
           echo "output_name=$output_name" >> $GITHUB_OUTPUT
