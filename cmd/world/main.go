@@ -1,39 +1,51 @@
 package main
 
 import (
-	"github.com/getsentry/sentry-go"
-	"log"
-	"time"
+	"os"
+
+	"github.com/rs/zerolog/log"
 
 	"pkg.world.dev/world-cli/cmd/world/root"
+	_ "pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/telemetry"
 )
+
+// This variable will be overridden by ldflags during build
+// Example : go build -ldflags "-X main.AppVersion=1.0.0 -X main.PosthogApiKey=<POSTHOG_API_KEY> -X main.SentryDsn=<SENTRY_DSN>"
+var (
+	AppVersion    string
+	PosthogApiKey string
+	SentryDsn     string
+)
+
+func init() {
+	// Set default app version in case not provided by ldflags
+	if AppVersion == "" {
+		AppVersion = "dev"
+	}
+	root.AppVersion = AppVersion
+}
 
 func main() {
 	// Sentry initialization
-	DSN := "" // Input DSN here, you can get it from https://argus-labs.sentry.io/settings/projects/world-cli/keys/
-	if DSN != "" {
-		err := sentry.Init(sentry.ClientOptions{
-			Dsn:                DSN,
-			EnableTracing:      true,
-			TracesSampleRate:   1.0,
-			ProfilesSampleRate: 1.0,
-			AttachStacktrace:   true,
-		})
-		if err != nil {
-			log.Fatalf("sentry.Init: %s", err)
-		}
-		// Handle panic
-		defer func() {
-			err := recover()
-			if err != nil {
-				sentry.CurrentHub().Recover(err)
-			}
+	telemetry.SentryInit(SentryDsn)
+	defer telemetry.SentryFlush()
 
-			// Flush buffered events before the program terminates.
-			// Set the timeout to the maximum duration the program can afford to wait.
-			sentry.Flush(time.Second * 5)
-		}()
+	// Set logger sentry hook
+	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
+
+	// Posthog Initialization
+	telemetry.PosthogInit(PosthogApiKey)
+	defer telemetry.PosthogClose()
+
+	// Capture event post installation
+	if len(os.Args) > 1 && os.Args[1] == "post-installation" {
+		telemetry.PosthogCaptureEvent(AppVersion, telemetry.PostInstallationEvent)
+		return
 	}
+
+	// Capture event running
+	telemetry.PosthogCaptureEvent(AppVersion, telemetry.RunningEvent)
 
 	root.Execute()
 }
