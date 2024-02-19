@@ -5,6 +5,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"slices"
 	"time"
 )
 
@@ -50,7 +51,8 @@ type SentryHook struct{}
 
 // Run is called for every log event and implements the zerolog.Hook interface
 func (h SentryHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
-	if sentryInitialized {
+	shouldBeLogged := slices.Contains(h.Levels(), level)
+	if sentryInitialized && shouldBeLogged {
 		// Capture error message
 		sentry.CaptureException(fmt.Errorf(msg))
 	}
