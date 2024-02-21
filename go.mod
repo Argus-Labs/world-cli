@@ -3,6 +3,7 @@ module pkg.world.dev/world-cli
 go 1.21.1
 
 require (
+	github.com/argus-labs/fresh v0.0.1-alpha
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -13,7 +14,6 @@ require (
 	github.com/posthog/posthog-go v0.0.0-20240202122501-d793288ce2c9
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.7.0
-	github.com/zulkhair/fresh v0.0.0-20240206120148-20e4bcfbc141
 	gotest.tools/v3 v3.5.1
 )
 

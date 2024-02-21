@@ -13,9 +13,9 @@ import (
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 
+	"github.com/argus-labs/fresh/runner"
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
-	"github.com/zulkhair/fresh/runner"
 )
 
 const (
