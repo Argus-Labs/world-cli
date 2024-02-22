@@ -46,7 +46,7 @@ func GitCloneCmd(url string, targetDir string, initMsg string) (err error) {
 		return
 	}
 
-	err = sh.Run("rm", "-rf", ".git")
+	err = os.RemoveAll(".git")
 	if err != nil {
 		return
 	}

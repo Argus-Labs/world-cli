@@ -1,4 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/argus-labs/fresh v0.0.0-20190826141211-0fa698148017 h1:1ydnqO+gobIGjoAqaxiyp2A2xn8uYq/1mvwmA0hZZYU=
+github.com/argus-labs/fresh v0.0.0-20190826141211-0fa698148017/go.mod h1:bL8572iFtTlm3raiHKfJrP1kZWS7AT3sCx2Eo19p6lI=
+github.com/argus-labs/fresh v0.0.1-alpha h1:CQ34bjQzwki9XMfYDMMuEhtA354numpUz0n7Ll8WVyg=
+github.com/argus-labs/fresh v0.0.1-alpha/go.mod h1:0JyLyBC5gajmcQ8NK6qhf/GNy36I7PU/8XzHQVzDcWI=
 github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
 github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
@@ -89,8 +93,6 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/urfave/cli v1.22.5/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
-github.com/zulkhair/fresh v0.0.0-20240206120148-20e4bcfbc141 h1:XymlZUaPL97jSQRZ9dzbgAWIJJ/1Tjneoz/LlFo8Q9Q=
-github.com/zulkhair/fresh v0.0.0-20240206120148-20e4bcfbc141/go.mod h1:21tH5jBa0HwMBoVsf4qBfImYjF2Qtfddsa2KY4y9zr4=
 golang.org/x/sync v0.1.0 h1:wsuoTGHzEhffawBOhz5CYhcrV4IdKZbEyZjBMuTp12o=
 golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20200116001909-b77594299b42/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
