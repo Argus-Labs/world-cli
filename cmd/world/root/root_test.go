@@ -24,7 +24,7 @@ type healthResponse struct {
 func getHealthCheck() (*healthResponse, error) {
 	var healtCheck healthResponse
 
-	resp, err := http.Get("http://127.0.0.1:3333/health")
+	resp, err := http.Get("http://127.0.0.1:4040/health")
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	// Check cardinal health (expected error)
 	_, err = getHealthCheck()
 	assert.Error(t, err,
-		"Get \"http://127.0.0.1:3333/health\": dial tcp 127.0.0.1:3333: connect: connection refused")
+		"Get \"http://127.0.0.1:4040/health\": dial tcp 127.0.0.1:4040: connect: connection refused")
 }
 
 func TestDev(t *testing.T) {
@@ -249,5 +249,5 @@ func TestDev(t *testing.T) {
 	}
 
 	assert.Error(t, err,
-		"Get \"http://127.0.0.1:3333/health\": dial tcp 127.0.0.1:3333: connect: connection refused")
+		"Get \"http://127.0.0.1:4040/health\": dial tcp 127.0.0.1:4040: connect: connection refused")
 }
