@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	CardinalPort = "3333"
+	CardinalPort = "4040"
 	RedisPort    = "6379"
 
 	// flagWatch : Flag for hot reload support

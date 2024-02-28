@@ -40,7 +40,7 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 		env = append(env, k+"="+v)
 	}
 	if cfg.Debug {
-		env = append(env, "CARDINAL_ADDR=cardinal-debug:3333")
+		env = append(env, "CARDINAL_ADDR=cardinal-debug:4040")
 	}
 
 	cmd.Env = env
