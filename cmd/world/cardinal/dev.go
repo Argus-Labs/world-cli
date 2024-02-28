@@ -21,6 +21,9 @@ import (
 const (
 	CardinalPort = "3333"
 	RedisPort    = "6379"
+
+	// flagWatch : Flag for hot reload support
+	flagWatch = "watch"
 )
 
 // StopChan is used to signal graceful shutdown
@@ -30,6 +33,10 @@ var StopChan = make(chan struct{})
 // Cobra Setup //
 /////////////////
 
+func init() {
+	devCmd.Flags().Bool(flagWatch, false, "Dev mode with hot reload support")
+}
+
 // devCmd runs Cardinal in development mode
 // Usage: `world cardinal dev`
 var devCmd = &cobra.Command{
@@ -37,9 +44,15 @@ var devCmd = &cobra.Command{
 	Short: "Run Cardinal in development mode",
 	Long:  `Run Cardinal in development mode`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		watch, _ := cmd.Flags().GetBool(flagWatch)
 		logger.SetDebugMode(cmd)
 
-		fmt.Print(style.CLIHeader("Cardinal", "Running Cardinal in dev mode, cardinal supports hot reloading"), "\n")
+		startingMessage := "Running Cardinal in dev mode"
+		if watch {
+			startingMessage += " with hot reload support"
+		}
+
+		fmt.Print(style.CLIHeader("Cardinal", startingMessage), "\n")
 		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
 		fmt.Println()
 		fmt.Println(fmt.Sprintf("Redis: localhost:%s", RedisPort))
@@ -74,7 +87,7 @@ var devCmd = &cobra.Command{
 		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 
 		// Run Cardinal Preparation
-		err = runCardinalPrep()
+		err = runCardinalPrep(watch)
 		if err != nil {
 			return err
 		}
@@ -133,10 +146,15 @@ func runRedis() error {
 
 // runCardinalPrep preparation for runs cardinal in dev mode.
 // We run cardinal without docker to make it easier to debug and skip the docker image build step
-func runCardinalPrep() error {
+func runCardinalPrep(watch bool) error {
 	err := os.Chdir("cardinal")
 	if err != nil {
 		return errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
+	}
+
+	runnerIgnored := "."
+	if watch {
+		runnerIgnored = "assets, tmp, vendor"
 	}
 
 	env := map[string]string{
@@ -144,7 +162,7 @@ func runCardinalPrep() error {
 		"CARDINAL_PORT":  CardinalPort,
 		"REDIS_ADDR":     fmt.Sprintf("localhost:%s", RedisPort),
 		"DEPLOY_MODE":    "development",
-		"RUNNER_IGNORED": "assets, tmp, vendor",
+		"RUNNER_IGNORED": runnerIgnored,
 	}
 
 	for key, value := range env {
