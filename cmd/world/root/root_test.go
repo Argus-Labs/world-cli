@@ -211,7 +211,7 @@ func TestDev(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal dev
-	rootCmd.SetArgs([]string{"cardinal", "dev"})
+	rootCmd.SetArgs([]string{"cardinal", "dev", "--watch"})
 	go func() {
 		err := rootCmd.Execute()
 		assert.NilError(t, err)

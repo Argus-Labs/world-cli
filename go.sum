@@ -1,6 +1,4 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/argus-labs/fresh v0.0.0-20190826141211-0fa698148017 h1:1ydnqO+gobIGjoAqaxiyp2A2xn8uYq/1mvwmA0hZZYU=
-github.com/argus-labs/fresh v0.0.0-20190826141211-0fa698148017/go.mod h1:bL8572iFtTlm3raiHKfJrP1kZWS7AT3sCx2Eo19p6lI=
 github.com/argus-labs/fresh v0.0.1-alpha h1:CQ34bjQzwki9XMfYDMMuEhtA354numpUz0n7Ll8WVyg=
 github.com/argus-labs/fresh v0.0.1-alpha/go.mod h1:0JyLyBC5gajmcQ8NK6qhf/GNy36I7PU/8XzHQVzDcWI=
 github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
