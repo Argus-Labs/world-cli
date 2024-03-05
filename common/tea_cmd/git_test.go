@@ -2,10 +2,12 @@ package tea_cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/magefile/mage/sh"
 	"gotest.tools/v3/assert"
-	"os"
-	"testing"
 )
 
 const templateUrlTest = "https://github.com/Argus-Labs/starter-game-template.git"
@@ -38,7 +40,7 @@ func TestGitCloneCmd(t *testing.T) {
 			wantErr: false,
 			param: param{
 				url:       templateUrlTest,
-				targetDir: os.TempDir() + "/worldclitest",
+				targetDir: filepath.Join(os.TempDir(), "worldclitest"),
 				initMsg:   "initMsg",
 			},
 		},
