@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -84,16 +85,19 @@ var devCmd = &cobra.Command{
 
 		// Create a channel to receive termination signals
 		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
 		// Run Cardinal Preparation
-		err = runCardinalPrep(watch)
+		err = runCardinalPrep()
 		if err != nil {
 			return err
 		}
 
 		fmt.Println("Starting Cardinal...")
-		go runner.Start()
+		execCmd, err := runCardinal(watch)
+		if err != nil {
+			return err
+		}
 
 		// Start a goroutine to listen for signals
 		go func() {
@@ -103,7 +107,10 @@ var devCmd = &cobra.Command{
 
 		// Wait for stop signal
 		<-StopChan
-		runner.Stop() // Stop Cardinal
+		err = stopCardinal(execCmd, watch)
+		if err != nil {
+			return err
+		}
 
 		// Cleanup redis
 		errCleanup := cleanup()
@@ -146,15 +153,10 @@ func runRedis() error {
 
 // runCardinalPrep preparation for runs cardinal in dev mode.
 // We run cardinal without docker to make it easier to debug and skip the docker image build step
-func runCardinalPrep(watch bool) error {
+func runCardinalPrep() error {
 	err := os.Chdir("cardinal")
 	if err != nil {
 		return errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
-	}
-
-	runnerIgnored := "."
-	if watch {
-		runnerIgnored = "assets, tmp, vendor"
 	}
 
 	env := map[string]string{
@@ -162,13 +164,55 @@ func runCardinalPrep(watch bool) error {
 		"CARDINAL_PORT":  CardinalPort,
 		"REDIS_ADDR":     fmt.Sprintf("localhost:%s", RedisPort),
 		"DEPLOY_MODE":    "development",
-		"RUNNER_IGNORED": runnerIgnored,
+		"RUNNER_IGNORED": "assets, tmp, vendor",
 	}
 
 	for key, value := range env {
 		os.Setenv(key, value)
 	}
 	return nil
+}
+
+// runCardinal runs cardinal in dev mode.
+// If watch is true, it uses fresh for hot reload support
+// Otherwise, it runs cardinal using `go run .`
+func runCardinal(watch bool) (*exec.Cmd, error) {
+	if watch {
+		// using fresh
+		go runner.Start()
+		return nil, nil
+	}
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+
+	err := cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	return cmd, nil
+}
+
+// stopCardinal stops the cardinal process
+// If watch is true, it stops the fresh process
+// Otherwise, it stops the cardinal process
+func stopCardinal(cmd *exec.Cmd, watch bool) (err error) {
+	if watch {
+		// using fresh
+		runner.Stop()
+		return nil
+	}
+
+	// stop the cardinal process
+	if runtime.GOOS == "windows" {
+		err = cmd.Process.Kill()
+	} else {
+		err = cmd.Process.Signal(os.Interrupt)
+	}
+	return err
 }
 
 // cleanup stops and removes the Redis and Webdis containers
