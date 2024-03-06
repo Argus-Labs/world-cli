@@ -3,7 +3,7 @@ module pkg.world.dev/world-cli
 go 1.21.1
 
 require (
-	github.com/argus-labs/fresh v0.0.1-alpha
+	github.com/argus-labs/fresh v0.0.2
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/denisbrodbeck/machineid v1.0.1
