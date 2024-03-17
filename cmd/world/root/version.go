@@ -2,6 +2,7 @@ package root
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +14,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of World CLI",
 	Long:  `Print the version number of World CLI`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		fmt.Printf("World CLI %s\n", AppVersion)
 	},
 }

@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/guumaster/logsymbols"
 )
-
-type Status int32
 
 const (
 	PENDING Status = iota
@@ -19,18 +17,12 @@ const (
 	FAILED
 )
 
+type Status int32
+
 type StatusObject struct {
 	statusName string
 	status     atomic.Int32
 	check      func(*StatusObject)
-}
-
-func (s *StatusCollection) GetHeight() int {
-	return s.width
-}
-
-func (s *StatusCollection) GetWidth() int {
-	return s.height
 }
 
 func CreateNewStatus(statusName string, checkFunc func(*StatusObject)) *StatusObject {
@@ -61,13 +53,10 @@ func (s *StatusObject) GetStatusMessage(spinnerModel *spinner.Model) string {
 	switch s.GetStatus() {
 	case PENDING:
 		prefix = spinnerModel.View()
-		break
 	case SUCCESS:
 		prefix = string(logsymbols.Success)
-		break
 	case FAILED:
 		prefix = string(logsymbols.Error)
-		break
 	default:
 		panic("logic error with GetStatusMessage, check enum utils.Status")
 	}
@@ -75,7 +64,7 @@ func (s *StatusObject) GetStatusMessage(spinnerModel *spinner.Model) string {
 	return finalString
 }
 
-type StatusCollection struct {
+type StatusCollection struct { //nolint:decorder
 	Style             lipgloss.Style
 	Spinner           spinner.Model
 	Statuses          []*StatusObject
@@ -85,10 +74,6 @@ type StatusCollection struct {
 	height            int
 }
 
-func WithShutdownOnChecked(box StatusCollection) {
-	box.ShutdownOnChecked = true
-}
-
 func NewStatusCollection(statuses []*StatusObject, options ...Option) *StatusCollection {
 	res := StatusCollection{
 		Style:             lipgloss.NewStyle().Align(lipgloss.Top, lipgloss.Left),
@@ -96,8 +81,8 @@ func NewStatusCollection(statuses []*StatusObject, options ...Option) *StatusCol
 		Statuses:          statuses,
 		ShutdownChan:      make(chan bool),
 		ShutdownOnChecked: false,
-		width:             500,
-		height:            500,
+		width:             500, //nolint:gomnd
+		height:            500, //nolint:gomnd
 	}
 	for _, option := range options {
 		option(&res)
@@ -129,7 +114,7 @@ func (s *StatusCollection) Init() tea.Cmd {
 	go func() {
 	loop:
 		for {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond) //nolint:gomnd
 			for _, status := range s.Statuses {
 				status.AutoSetStatus()
 			}
@@ -161,7 +146,7 @@ func (s *StatusCollection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.Spinner, cmd = s.Spinner.Update(msg)
 
 		return s, cmd
-	//case tea.KeyMsg:
+	// case tea.KeyMsg:
 	//	switch msg.String() {
 	//	case "q", "ctrl+c":
 	//		s.Shutdown()
@@ -176,4 +161,16 @@ func (s *StatusCollection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return s, cmd
 	}
+}
+
+func (s *StatusCollection) GetHeight() int {
+	return s.width
+}
+
+func (s *StatusCollection) GetWidth() int {
+	return s.height
+}
+
+func WithShutdownOnChecked(box StatusCollection) {
+	box.ShutdownOnChecked = true //nolint:govet // not applicable
 }

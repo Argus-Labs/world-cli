@@ -8,21 +8,14 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-func init() {
-	// Register subcommands - `world cardinal [subcommand]`
-	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
-	// Add --debug flag
-	logger.AddLogFlag(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
-}
-
 // BaseCmd is the base command for the cardinal subcommand
 // Usage: `world cardinal`
 var BaseCmd = &cobra.Command{
 	Use:     "cardinal",
-	Short:   "Manage your Cardinal game shard project",
+	Short:   "Utilities for managing the Cardinal game shard",
 	Long:    style.CLIHeader("World CLI — CARDINAL", "Manage your Cardinal game shard project"),
-	GroupID: "Core",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
+	GroupID: "core",
+	PreRunE: func(_ *cobra.Command, _ []string) error {
 		return dependency.Check(
 			dependency.Go,
 			dependency.Git,
@@ -31,9 +24,16 @@ var BaseCmd = &cobra.Command{
 			dependency.DockerDaemon,
 		)
 	},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		if err := cmd.Help(); err != nil {
 			logger.Fatalf("Failed to execute cardinal command : %s", err.Error())
 		}
 	},
+}
+
+func init() {
+	// Register subcommands - `world cardinal [subcommand]`
+	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
+	// Add --debug flag
+	logger.AddLogFlag(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }

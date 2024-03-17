@@ -1,4 +1,4 @@
-package tea_cmd
+package teacmd
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-const templateUrlTest = "https://github.com/Argus-Labs/starter-game-template.git"
+const templateURLTest = "https://github.com/Argus-Labs/starter-game-template.git"
 
 func TestGitCloneCmd(t *testing.T) {
 	type param struct {
@@ -39,7 +39,7 @@ func TestGitCloneCmd(t *testing.T) {
 			name:    "success",
 			wantErr: false,
 			param: param{
-				url:       templateUrlTest,
+				url:       templateURLTest,
 				targetDir: filepath.Join(os.TempDir(), "worldclitest"),
 				initMsg:   "initMsg",
 			},

@@ -1,17 +1,35 @@
 package telemetry
 
 import (
-	"fmt"
+	"errors"
+	"slices"
+	"time"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"slices"
-	"time"
 )
 
 var (
 	sentryInitialized bool
 )
+
+// SentryHook is a custom hook that implements zerolog.Hook interface
+type SentryHook struct{}
+
+// Run is called for every log event and implements the zerolog.Hook interface
+func (h SentryHook) Run(_ *zerolog.Event, level zerolog.Level, msg string) {
+	shouldBeLogged := slices.Contains(h.Levels(), level)
+	if sentryInitialized && shouldBeLogged {
+		// Capture error message
+		sentry.CaptureException(errors.New(msg))
+	}
+}
+
+// Levels returns the log levels that this hook should be triggered for
+func (h SentryHook) Levels() []zerolog.Level {
+	return []zerolog.Level{zerolog.ErrorLevel, zerolog.FatalLevel}
+}
 
 // SentryInit initialize sentry
 func SentryInit(sentryDsn string) {
@@ -41,24 +59,7 @@ func SentryFlush() {
 
 		// Flush buffered events before the program terminates.
 		// Set the timeout to the maximum duration the program can afford to wait.
-		sentry.Flush(time.Second * 5)
+		sentry.Flush(5 * time.Second) //nolint:gomnd
 		sentryInitialized = false
 	}
-}
-
-// SentryHook is a custom hook that implements zerolog.Hook interface
-type SentryHook struct{}
-
-// Run is called for every log event and implements the zerolog.Hook interface
-func (h SentryHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
-	shouldBeLogged := slices.Contains(h.Levels(), level)
-	if sentryInitialized && shouldBeLogged {
-		// Capture error message
-		sentry.CaptureException(fmt.Errorf(msg))
-	}
-}
-
-// Levels returns the log levels that this hook should be triggered for
-func (h SentryHook) Levels() []zerolog.Level {
-	return []zerolog.Level{zerolog.ErrorLevel, zerolog.FatalLevel}
 }

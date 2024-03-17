@@ -6,15 +6,17 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"pkg.world.dev/world-cli/cmd/world/root"
-	_ "pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/telemetry"
+
+	_ "pkg.world.dev/world-cli/common/logger"
 )
 
 // This variable will be overridden by ldflags during build
-// Example : go build -ldflags "-X main.AppVersion=1.0.0 -X main.PosthogApiKey=<POSTHOG_API_KEY> -X main.SentryDsn=<SENTRY_DSN>"
+// Example:
+// go build -ldflags "-X main.AppVersion=1.0.0 -X main.PosthogAPIKey=<POSTHOG_API_KEY> -X main.SentryDsn=<SENTRY_DSN>"
 var (
 	AppVersion    string
-	PosthogApiKey string
+	PosthogAPIKey string
 	SentryDsn     string
 )
 
@@ -35,7 +37,7 @@ func main() {
 	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
 
 	// Posthog Initialization
-	telemetry.PosthogInit(PosthogApiKey)
+	telemetry.PosthogInit(PosthogAPIKey)
 	defer telemetry.PosthogClose()
 
 	// Capture event post installation
