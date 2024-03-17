@@ -6,12 +6,6 @@ import (
 	"os/exec"
 )
 
-type Dependency struct {
-	Name string
-	Cmd  *exec.Cmd
-	Help string
-}
-
 var (
 	Git = Dependency{
 		Name: "Git",
@@ -50,6 +44,12 @@ If you use Docker Desktop, make sure that you have ran it`,
 	}
 )
 
+type Dependency struct {
+	Name string
+	Cmd  *exec.Cmd
+	Help string
+}
+
 func (d Dependency) Check() error {
 	if err := d.Cmd.Run(); err != nil {
 		return fmt.Errorf("dependency check %q failed with: %w", d.Name, err)
@@ -58,7 +58,7 @@ func (d Dependency) Check() error {
 }
 
 func Check(deps ...Dependency) error {
-	var errs []error
+	errs := make([]error, 0, len(deps))
 	for _, dep := range deps {
 		errs = append(errs, dep.Check())
 	}

@@ -1,6 +1,7 @@
-package tea_cmd
+package teacmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,10 +9,9 @@ import (
 	"strings"
 
 	"github.com/magefile/mage/sh"
+
 	"pkg.world.dev/world-cli/common/config"
 )
-
-type DockerService string
 
 const (
 	DockerServiceCardinal      DockerService = "cardinal"
@@ -23,11 +23,13 @@ const (
 	DockerServiceCardinalDebug DockerService = "cardinal-debug"
 )
 
+type DockerService string
+
 func dockerCompose(args ...string) error {
-	return dockerComposeWithCfg(config.Config{}, args...)
+	return dockerComposeWithCfg(&config.Config{}, args...)
 }
 
-func dockerComposeWithCfg(cfg config.Config, args ...string) error {
+func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
 	yml := path.Join(cfg.RootDir, "docker-compose.yml")
 	args = append([]string{"compose", "-f", yml}, args...)
 
@@ -45,16 +47,16 @@ func dockerComposeWithCfg(cfg config.Config, args ...string) error {
 
 	cmd.Env = env
 	return cmd.Run()
-	//return sh.RunWith(cfg.DockerEnv, "docker", args...)
+	// return sh.RunWith(cfg.DockerEnv, "docker", args...)
 }
 
 // DockerStart starts a given docker container by name.
 // Rebuilds the image if `build` is true
 // Runs in detach mode if `detach` is true
 // Runs with the debug docker compose, if `debug` is true
-func DockerStart(cfg config.Config, services []DockerService) error {
+func DockerStart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
-		return fmt.Errorf("no service names provided")
+		return errors.New("no service names provided")
 	}
 	if err := prepareDirs(path.Join(cfg.RootDir, "cardinal")); err != nil {
 		return err
@@ -79,7 +81,7 @@ func DockerStart(cfg config.Config, services []DockerService) error {
 }
 
 // DockerStartAll starts both cardinal and nakama
-func DockerStartAll(cfg config.Config) error {
+func DockerStartAll(cfg *config.Config) error {
 	services := []DockerService{
 		DockerServiceNakama,
 		DockerServiceNakamaDB,
@@ -96,9 +98,9 @@ func DockerStartAll(cfg config.Config) error {
 }
 
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
-func DockerRestart(cfg config.Config, services []DockerService) error {
+func DockerRestart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
-		return fmt.Errorf("no service names provided")
+		return errors.New("no service names provided")
 	}
 	if cfg.Build {
 		if err := DockerStop(services); err != nil {
@@ -119,7 +121,7 @@ func DockerRestart(cfg config.Config, services []DockerService) error {
 // If you want to reset all the services state, use DockerPurge
 func DockerStop(services []DockerService) error {
 	if services == nil {
-		return fmt.Errorf("no service names provided")
+		return errors.New("no service names provided")
 	}
 	if err := dockerCompose(dockerArgs("stop", services)...); err != nil {
 		return err
@@ -147,10 +149,11 @@ func DockerPurge() error {
 // dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
 // We do this so we can pass variadic args cleanly.
 func dockerArgs(args string, services []DockerService, flags ...string) []string {
-	var res []string
+	argsSlice := strings.Split(args, " ")
+
+	res := make([]string, 0, len(argsSlice)+len(services)+len(flags))
 
 	// split prefix and append them to slice of strings
-	argsSlice := strings.Split(args, " ")
 	res = append(res, argsSlice...)
 
 	// append flags to slice of strings

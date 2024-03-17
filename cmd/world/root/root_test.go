@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/spf13/cobra"
-	"gotest.tools/v3/assert"
 	"net/http"
 	"os"
-	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/cobra"
+	"gotest.tools/v3/assert"
+
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
 )
 
 type healthResponse struct {
@@ -39,7 +41,7 @@ func getHealthCheck() (*healthResponse, error) {
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
-func outputFromCmd(cobra *cobra.Command, cmd string) (lines []string, err error) {
+func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
 	stdOut := &bytes.Buffer{}
 	stdErr := &bytes.Buffer{}
 	cobra.SetOut(stdOut)
@@ -55,15 +57,16 @@ func outputFromCmd(cobra *cobra.Command, cmd string) (lines []string, err error)
 		cobra.SetArgs(nil)
 	}()
 
-	if err = cobra.Execute(); err != nil {
+	if err := cobra.Execute(); err != nil {
 		return nil, fmt.Errorf("root command failed with: %w", err)
 	}
-	lines = strings.Split(stdOut.String(), "\n")
+	lines := strings.Split(stdOut.String(), "\n")
 	errorStr := stdErr.String()
 	if len(errorStr) > 0 {
-		err = errors.New(errorStr)
+		return lines, errors.New(errorStr)
 	}
-	return lines, err
+
+	return lines, nil
 }
 
 func TestSubcommandsHaveHelpText(t *testing.T) {
@@ -202,7 +205,7 @@ func TestDev(t *testing.T) {
 	err = os.Chdir(gameDir)
 	assert.NilError(t, err)
 
-	//set tea ouput to variable
+	// set tea ouput to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})

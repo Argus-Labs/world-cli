@@ -21,17 +21,17 @@ func cmdZero() *cobra.Command {
 func cmdWithConfig(filename string) *cobra.Command {
 	cmd := cmdZero()
 	AddConfigFlag(cmd)
-	cmd.Flags().Set(flagForConfigFile, filename)
+	_ = cmd.Flags().Set(flagForConfigFile, filename)
 	return cmd
 }
 
-func getNamespace(t *testing.T, cfg Config) string {
+func getNamespace(t *testing.T, cfg *Config) string {
 	val, ok := cfg.DockerEnv["CARDINAL_NAMESPACE"]
 	assert.Check(t, ok, "no CARDINAL_NAMESPACE field found")
 	return val
 }
 
-func makeConfigAtTemp(t *testing.T, namespace string) (filename string) {
+func makeConfigAtTemp(t *testing.T, namespace string) string {
 	file, err := os.CreateTemp("", "config*.toml")
 	assert.NilError(t, err)
 	defer file.Close()
@@ -70,7 +70,7 @@ func replaceEnvVarForTest(t *testing.T, env, value string) {
 	t.Cleanup(func() {
 		assert.NilError(t, os.Setenv(env, original))
 	})
-	os.Setenv(env, value)
+	t.Setenv(env, value)
 }
 
 func TestCanSetNamespaceWithEnvVariable(t *testing.T) {
@@ -102,7 +102,7 @@ func makeTempDir(t *testing.T) string {
 	currDir, err := os.Getwd()
 	assert.NilError(t, err)
 	t.Cleanup(func() {
-		os.Chdir(currDir)
+		_ = os.Chdir(currDir)
 	})
 	assert.NilError(t, os.Chdir(tempdir))
 	return tempdir
@@ -138,7 +138,7 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
 
-func makeTempConfigWithContent(t *testing.T, content string) (filename string) {
+func makeTempConfigWithContent(t *testing.T, content string) string {
 	file, err := os.CreateTemp("", "config*.toml")
 	assert.NilError(t, err)
 	defer file.Close()

@@ -2,9 +2,11 @@ package steps
 
 import (
 	"fmt"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"pkg.world.dev/world-cli/tea/style"
 )
 

@@ -6,9 +6,10 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/tea_cmd"
+	"pkg.world.dev/world-cli/common/teacmd"
 )
 
 /////////////////
@@ -27,16 +28,17 @@ const (
 
 var (
 	// ValidLogLevels Valid log levels for zerolog
-	validLogLevels = strings.Join([]string{zerolog.DebugLevel.String(), zerolog.InfoLevel.String(), zerolog.WarnLevel.String(),
-		zerolog.ErrorLevel.String(), zerolog.FatalLevel.String(), zerolog.PanicLevel.String(), zerolog.Disabled.String(),
-		zerolog.TraceLevel.String()}, ", ")
+	validLogLevels = strings.Join([]string{
+		zerolog.DebugLevel.String(),
+		zerolog.InfoLevel.String(),
+		zerolog.WarnLevel.String(),
+		zerolog.ErrorLevel.String(),
+		zerolog.FatalLevel.String(),
+		zerolog.PanicLevel.String(),
+		zerolog.Disabled.String(),
+		zerolog.TraceLevel.String(),
+	}, ", ")
 )
-
-func init() {
-	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
-	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
-	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
-}
 
 // startCmd starts your Cardinal game shard stack
 // Usage: `world cardinal start`
@@ -49,7 +51,7 @@ This will start the following Docker services and its dependencies:
 - Cardinal (Game shard)
 - Nakama (Relay)
 - Redis (Cardinal dependency)`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		logger.SetDebugMode(cmd)
 
 		cfg, err := config.GetConfig(cmd)
@@ -57,21 +59,25 @@ This will start the following Docker services and its dependencies:
 			return err
 		}
 		// Parameters set at the command line overwrite toml values
-		if replaceBoolWithFlag(cmd, flagBuild, &cfg.Build); err != nil {
+		if err := replaceBoolWithFlag(cmd, flagBuild, &cfg.Build); err != nil {
 			return err
 		}
 
-		if replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
+		if err := replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
 			return err
 		}
 
-		if replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
+		if err := replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
 			return err
 		}
 		cfg.Timeout = -1
 
 		// Replace cardinal log level using flag value if flag is set
 		logLevel, err := cmd.Flags().GetString(flagLogLevel)
+		if err != nil {
+			return err
+		}
+
 		if logLevel != "" {
 			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
 			if err != nil {
@@ -83,22 +89,30 @@ This will start the following Docker services and its dependencies:
 		if val, exists := cfg.DockerEnv[DockerCardinalEnvLogLevel]; !exists || val == "" {
 			// Set default log level to 'info' if log level is not set
 			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.InfoLevel.String()
-		} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil { // make sure the log level is valid when the flag is not set and using env var from config
+		} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil {
+			// make sure the log level is valid when the flag is not set and using env var from config
 			// Error when CARDINAL_LOG_LEVEL is not a valid log level
-			return fmt.Errorf("invalid value for %s env variable in the config file: must be one of (%v)", DockerCardinalEnvLogLevel, validLogLevels)
+			return fmt.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
+				DockerCardinalEnvLogLevel, validLogLevels)
 		}
 
 		fmt.Println("Starting Cardinal game shard...")
 		fmt.Println("This may take a few minutes to rebuild the Docker images.")
 		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
 
-		err = tea_cmd.DockerStartAll(cfg)
+		err = teacmd.DockerStartAll(cfg)
 		if err != nil {
 			return err
 		}
 
 		return nil
 	},
+}
+
+func init() {
+	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
+	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
+	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag

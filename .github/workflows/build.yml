@@ -16,8 +16,8 @@ on:
         type: boolean
 
 jobs:
-  go-build:
-    name: Run Go Build
+  build-go:
+    name: Go
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -51,7 +51,7 @@ jobs:
 
           env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags "-X main.AppVersion=$bin_version -X main.SentryDsn=$sentry_dsn -X main.PosthogApiKey=$posthog_api_key" -o $output_name ./cmd/world
           echo "output_name=$output_name" >> $GITHUB_OUTPUT
-      - name: Compress Build Binary
+      - name: Compress build binary
         uses: a7ul/tar-action@v1.1.3
         id: compress
         with:

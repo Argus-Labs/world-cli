@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/tea/style"
-
 	"github.com/argus-labs/fresh/runner"
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
+
+	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/tea/style"
 )
 
 const (
@@ -30,21 +30,13 @@ const (
 // StopChan is used to signal graceful shutdown
 var StopChan = make(chan struct{})
 
-/////////////////
-// Cobra Setup //
-/////////////////
-
-func init() {
-	devCmd.Flags().Bool(flagWatch, false, "Dev mode with hot reload support")
-}
-
 // devCmd runs Cardinal in development mode
 // Usage: `world cardinal dev`
 var devCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Run Cardinal in development mode",
 	Long:  `Run Cardinal in development mode`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		watch, _ := cmd.Flags().GetBool(flagWatch)
 		logger.SetDebugMode(cmd)
 
@@ -56,8 +48,8 @@ var devCmd = &cobra.Command{
 		fmt.Print(style.CLIHeader("Cardinal", startingMessage), "\n")
 		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
 		fmt.Println()
-		fmt.Println(fmt.Sprintf("Redis: localhost:%s", RedisPort))
-		fmt.Println(fmt.Sprintf("Cardinal: localhost:%s", CardinalPort))
+		fmt.Printf("Redis: localhost:%s\n", RedisPort)
+		fmt.Printf("Cardinal: localhost:%s\n", CardinalPort)
 		fmt.Println()
 
 		// Run Redis container
@@ -69,7 +61,7 @@ var devCmd = &cobra.Command{
 		isRedisRunning := false
 		for !isRedisRunning {
 			server := fmt.Sprintf("localhost:%s", RedisPort)
-			timeout := 2 * time.Second
+			timeout := 2 * time.Second //nolint:gomnd
 
 			conn, err := net.DialTimeout("tcp", server, timeout)
 			if err != nil {
@@ -123,10 +115,20 @@ var devCmd = &cobra.Command{
 	},
 }
 
+/////////////////
+// Cobra Setup //
+/////////////////
+
+func init() {
+	devCmd.Flags().Bool(flagWatch, false, "Dev mode with hot reload support")
+}
+
 // runRedis runs Redis in a Docker container
 func runRedis() error {
 	logger.Println("Starting Redis container...")
-	cmd := exec.Command("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+	//nolint:gosec // not applicable
+	cmd := exec.Command("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name",
+		"cardinal-dev-redis", "redis")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -138,9 +140,10 @@ func runRedis() error {
 			return err
 		}
 
-		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name", "cardinal-dev-redis", "redis")
+		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name",
+			"cardinal-dev-redis", "redis")
 		if err != nil {
-			if sh.ExitStatus(err) == 125 {
+			if sh.ExitStatus(err) == 125 { //nolint:gomnd
 				fmt.Println("Maybe redis cardinal docker is still up, run 'world cardinal stop' and try again")
 				return err
 			}
@@ -180,7 +183,7 @@ func runCardinal(watch bool) (*exec.Cmd, error) {
 	if watch {
 		// using fresh
 		go runner.Start()
-		return nil, nil
+		return &exec.Cmd{}, nil
 	}
 
 	cmd := exec.Command("go", "run", ".")
@@ -199,7 +202,7 @@ func runCardinal(watch bool) (*exec.Cmd, error) {
 // stopCardinal stops the cardinal process
 // If watch is true, it stops the fresh process
 // Otherwise, it stops the cardinal process
-func stopCardinal(cmd *exec.Cmd, watch bool) (err error) {
+func stopCardinal(cmd *exec.Cmd, watch bool) error {
 	if watch {
 		// using fresh
 		runner.Stop()
@@ -208,11 +211,18 @@ func stopCardinal(cmd *exec.Cmd, watch bool) (err error) {
 
 	// stop the cardinal process
 	if runtime.GOOS == "windows" {
-		err = cmd.Process.Kill()
+		err := cmd.Process.Kill()
+		if err != nil {
+			return err
+		}
 	} else {
-		err = cmd.Process.Signal(os.Interrupt)
+		err := cmd.Process.Signal(os.Interrupt)
+		if err != nil {
+			return err
+		}
 	}
-	return err
+
+	return nil
 }
 
 // cleanup stops and removes the Redis and Webdis containers

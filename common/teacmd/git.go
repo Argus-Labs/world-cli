@@ -1,4 +1,4 @@
-package tea_cmd
+package teacmd
 
 import (
 	"bufio"
@@ -23,58 +23,58 @@ func git(args ...string) (string, error) {
 	return outBuff.String(), nil
 }
 
-func GitCloneCmd(url string, targetDir string, initMsg string) (err error) {
-	_, err = git("clone", url, targetDir)
+func GitCloneCmd(url string, targetDir string, initMsg string) error {
+	_, err := git("clone", url, targetDir)
 	if err != nil {
-		return
+		return err
 	}
 	err = os.Chdir(targetDir)
 	if err != nil {
-		return
+		return err
 	}
 
 	rev, err := git("rev-list", "--tags", "--max-count=1")
 	if err != nil {
-		return
+		return err
 	}
 
 	tag, err := git("describe", "--tags", strings.TrimSpace(rev))
 	if err != nil {
-		return
+		return err
 	}
 
 	_, err = git("checkout", strings.TrimSpace(tag))
 	if err != nil {
-		return
+		return err
 	}
 
 	err = os.RemoveAll(".git")
 	if err != nil {
-		return
+		return err
 	}
 
 	_, err = git("init")
 	if err != nil {
-		return
+		return err
 	}
 
 	oldModuleName := "github.com/argus-labs/starter-game-template/cardinal"
 	err = refactorModuleName(oldModuleName, filepath.Base(targetDir))
 	if err != nil {
-		return
+		return err
 	}
 
 	_, err = git("add", "-A")
 	if err != nil {
-		return
+		return err
 	}
 
 	_, err = git("commit", "-m", initMsg)
 	if err != nil {
-		return
+		return err
 	}
 
-	return
+	return nil
 }
 
 func refactorModuleName(oldModuleName, newModuleName string) error {

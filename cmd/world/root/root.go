@@ -12,12 +12,21 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
+// rootCmd represents the base command
+// Usage: `world`
+var rootCmd = &cobra.Command{
+	Use:   "world",
+	Short: "A swiss army knife for World Engine development",
+	Long:  style.CLIHeader("World CLI", "A swiss army knife for World Engine projects"),
+}
+
 func init() {
 	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true
 
 	// Register groups
-	rootCmd.AddGroup(&cobra.Group{ID: "Core", Title: "World CLI Commands:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "starter", Title: "Getting Started:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "core", Title: "Tools:"})
 
 	// Register base commands
 	doctorCmd := getDoctorCmd(os.Stdout)
@@ -26,21 +35,13 @@ func init() {
 
 	// Register subcommands
 	rootCmd.AddCommand(cardinal.BaseCmd)
-	rootCmd.AddCommand(evm.EVMCmds())
+	rootCmd.AddCommand(evm.BaseCmd)
 
 	config.AddConfigFlag(rootCmd)
 
 	// Add --debug flag
 	logger.AddLogFlag(createCmd)
 	logger.AddLogFlag(doctorCmd)
-}
-
-// rootCmd represents the base command
-// Usage: `world`
-var rootCmd = &cobra.Command{
-	Use:   "world",
-	Short: "A swiss army knife for World Engine projects",
-	Long:  style.CLIHeader("World CLI", "A swiss army knife for World Engine projects"),
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

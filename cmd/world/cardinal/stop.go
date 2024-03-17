@@ -2,10 +2,11 @@ package cardinal
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/tea_cmd"
+	"pkg.world.dev/world-cli/common/teacmd"
 )
 
 /////////////////
@@ -23,9 +24,9 @@ This will stop the following Docker services:
 - Cardinal (Game shard)
 - Nakama (Relay) + DB
 - Redis (Cardinal dependency)`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		logger.SetDebugMode(cmd)
-		err := tea_cmd.DockerStopAll()
+		err := teacmd.DockerStopAll()
 		if err != nil {
 			return err
 		}

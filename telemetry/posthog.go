@@ -10,22 +10,22 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var (
-	posthogClient      posthog.Client
-	posthogInitialized bool
-	lastLoggedTime     time.Time
-)
-
 const (
 	PostInstallationEvent = "World CLI Installation"
 	RunningEvent          = "World CLI Running"
 	timestampFile         = ".worldcli"
 )
 
+var (
+	posthogClient      posthog.Client
+	posthogInitialized bool
+	lastLoggedTime     time.Time
+)
+
 // Init Posthog initialization
-func PosthogInit(posthogApiKey string) {
-	if posthogApiKey != "" {
-		posthogClient = posthog.New(posthogApiKey)
+func PosthogInit(posthogAPIKey string) {
+	if posthogAPIKey != "" {
+		posthogClient = posthog.New(posthogAPIKey)
 		posthogInitialized = true
 
 		// get last logged time
@@ -87,7 +87,7 @@ func updateLastLoggedTime(timestamp time.Time) error {
 
 	data := []byte(timestamp.Format(time.DateOnly))
 
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0644) //nolint:gosec // not applicable
 }
 
 // isSameDay checks if two timestamps are from the same day.
