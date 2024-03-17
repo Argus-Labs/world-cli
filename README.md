@@ -1,4 +1,4 @@
-<div style="text-align:center">
+<div align="center">
 <h2>World CLI</h2>
 <p>A swiss army knife for creating, managing, and deploying World Engine projects</p>
   <p>
