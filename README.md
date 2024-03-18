@@ -1,5 +1,5 @@
 <div align="center">
-<h2>World CLI</h2>
+<h1 style="border-bottom: none;">World CLI</h1>
 <p>A swiss army knife for creating, managing, and deploying World Engine projects</p>
   <p>
     <a href="https://codecov.io/gh/Argus-Labs/world-cli" >
@@ -17,6 +17,10 @@
   </p>
 </div>
 
+## Overview
+
+Key features:
+
 - **Create** — Initialize a new World Engine project based on [starter-game-template](https://github.com/Argus-Labs/starter-game-template)
 - **Dev Mode** — Run your game shard in dev mode (with editor support) for fast iteration
 - **[Soon] Deploy** — Get a prod-ready World Engine deployment in the cloud easier than deploying a smart contract.
@@ -26,7 +30,7 @@
 ## Installation
 
 World CLI has been rigorously tested on macOS and Linux.
-If you are using Windows, you will need 
+If you are using Windows, you will need
 [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) to install and use the CLI.
 
 **Install latest release**
@@ -53,7 +57,7 @@ make build
 
 **Testing your local build**
 
-You can test your local build of World CLI by running the following command. 
+You can test your local build of World CLI by running the following command.
 This will install the World CLI binary in your `/usr/local/bin` directory.
 
 ```
