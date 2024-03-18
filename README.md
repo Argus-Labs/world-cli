@@ -27,6 +27,8 @@ Key features:
 
 **Need help getting started with World Engine?** Check out the [World Engine docs](https://world.dev)!
 
+<br/>
+
 ## Installation
 
 World CLI has been rigorously tested on macOS and Linux.
@@ -42,6 +44,8 @@ curl https://install.world.dev/cli! | bash
 ```
 curl https://install.world.dev/cli@<release_tag>! | bash
 ```
+
+<br/>
 
 ## Development
 
