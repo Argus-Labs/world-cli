@@ -1,12 +1,12 @@
 <div align="center">
-<h1 style="border-bottom: none;">World CLI</h1>
+<img alt="World CLI Logo" src="https://i.imgur.com/XM74ODi.png" width="378">
 <p>A swiss army knife for creating, managing, and deploying World Engine projects</p>
   <p>
     <a href="https://codecov.io/gh/Argus-Labs/world-cli" >
     <img alt="Codecov" src="https://codecov.io/gh/Argus-Labs/world-cli/branch/main/graph/badge.svg?token=XMH4P082HZ"/>
     </a>
     <a href="https://goreportcard.com/report/pkg.world.dev/world-cli">
-    <img src="https://goreportcard.com/badge/pkg.world.dev/world-cli" alt="Go Report Card">
+    <img alt="Go Report Card" src="https://goreportcard.com/badge/pkg.world.dev/world-cli">
     </a>
     <a href="https://t.me/worldengine_dev" target="_blank">
     <img alt="Telegram Chat" src="https://img.shields.io/endpoint?color=neon&logo=telegram&label=chat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fworldengine_dev">
