@@ -22,6 +22,8 @@ go.work
 
 # Build
 world-cli
+world
+dist/
 
 # Mac
 .DS_Store
