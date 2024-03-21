@@ -254,3 +254,17 @@ func TestDev(t *testing.T) {
 	assert.Error(t, err,
 		"Get \"http://127.0.0.1:4040/health\": dial tcp 127.0.0.1:4040: connect: connection refused")
 }
+
+func TestCheckLatestVersion(t *testing.T) {
+	t.Run("success scenario", func(t *testing.T) {
+		AppVersion = "v1.0.0"
+		err := checkLatestVersion()
+		assert.NilError(t, err)
+	})
+
+	t.Run("error version format", func(t *testing.T) {
+		AppVersion = "wrong format"
+		err := checkLatestVersion()
+		assert.Error(t, err, "error parsing current version: Malformed version: wrong format")
+	})
+}
