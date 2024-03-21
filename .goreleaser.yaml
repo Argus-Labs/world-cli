@@ -20,9 +20,7 @@ builds:
     binary: world
     env:
       - CGO_ENABLED=0
-
     ldflags:
-      - -s -w -X "main.goversion={{.Env.GOVERSION}}"
       - -X "main.AppVersion={{.Version}}" -X "main.SentryDsn={{.Env.SENTRY_DSN}}" -X "main.PosthogApiKey={{.Env.POSTHOG_API_KEY}}"
     goos:
       - linux
