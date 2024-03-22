@@ -17,6 +17,7 @@ jobs:
     uses: ./.github/workflows/test.yml
 
   goreleaser:
+    name: Release World CLI binary
     runs-on: namespace-profile-linux-4vcpu-8gb-cached
     needs: go-test
     steps:
@@ -34,7 +35,7 @@ jobs:
         uses: namespacelabs/nscloud-cache-action@v1
         with:
           cache: go
-      - name: Run World CLI GoReleaser
+      - name: Run World CLI goreleaser
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
