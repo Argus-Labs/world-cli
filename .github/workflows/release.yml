@@ -4,34 +4,32 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+
 jobs:
   go-test:
     name: Test
     uses: ./.github/workflows/test.yml
 
-  go-build:
-    name: Build
-    uses: ./.github/workflows/build.yml
-    with:
-      create_release: true
-    secrets: inherit
-
-  release:
-    name: Release World CLI binary
+  goreleaser:
     runs-on: ubuntu-latest
-    needs: [go-test, go-build]
-    strategy:
-      matrix:
-        go-version: [1.21.x]
     steps:
-      - name: Download World CLI build binary
-        uses: actions/download-artifact@v3
-      - name: Display downloaded files
-        run: |
-          ls -R
-      - name: Publish World CLI binary to corresponding Github Release
-        uses: skx/github-action-publish-binaries@master
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: 'world*/*.tar.gz'
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
