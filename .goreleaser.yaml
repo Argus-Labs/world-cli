@@ -23,7 +23,7 @@ builds:
       - SENTRY_DSN={{ if index .Env "SENTRY_DSN"  }}{{ .Env.SENTRY_DSN }}{{ else }}defaul_null{{ end }}
       - POSTHOG_API_KEY={{ if index .Env "POSTHOG_API_KEY"  }}{{ .Env.POSTHOG_API_KEY }}{{ else }}defaul_null{{ end }}
     ldflags:
-      - -X "main.AppVersion={{.Version}}" -X "main.SentryDsn={{.Env.SENTRY_DSN}}" -X "main.PosthogApiKey={{.Env.POSTHOG_API_KEY}}"
+      - -s -w -X main.AppVersion={{.Version}} -X main.SentryDsn={{.Env.SENTRY_DSN}} -X main.PosthogApiKey={{.Env.POSTHOG_API_KEY}}
     goos:
       - linux
       - windows
