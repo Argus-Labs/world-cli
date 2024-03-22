@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 goreleaser_version=v1.24.0
 
 goreleaser-install:
