@@ -13,5 +13,6 @@ goreleaser-install:
 build:
 	@$(MAKE) goreleaser-install
 	goreleaser build --clean --snapshot
+	@echo "--> Build binary is available in the ./dist directory"
 
 .PHONY: build
