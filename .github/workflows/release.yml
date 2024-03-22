@@ -6,7 +6,7 @@ on:
 
 env:
   GORELEASER_VERSION: v1.24.0
-  GO_VERSION: 1.21.0
+  GO_VERSION: 1.21.1
 
 permissions:
   contents: write
