@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center"> <!-- markdownlint-disable-line first-line-heading -->
 <img alt="World CLI Logo" src="https://i.imgur.com/XM74ODi.png" width="378">
 <p>A swiss army knife for creating, managing, and deploying World Engine projects</p>
   <p>
@@ -35,13 +35,15 @@ World CLI has been rigorously tested on macOS and Linux.
 If you are using Windows, you will need
 [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) to install and use the CLI.
 
-**Install latest release**
-```
+**Install latest release:**
+
+```shell
 curl https://install.world.dev/cli! | bash
 ```
 
-**Install a specific release**
-```
+**Install a specific release:**
+
+```shell
 curl https://install.world.dev/cli@<release_tag>! | bash
 ```
 
@@ -53,17 +55,17 @@ This section is for devel developers who want to contribute to the World CLI.
 If you want to develop a World Engine project using World CLI, see the
 [World Engine quickstart guide](https://world.dev/quickstart)
 
-**Building from source**
+**Building from source:**
 
-```
+```shell
 make build
 ```
 
-**Testing your local build**
+**Testing your local build:**
 
 You can test your local build of World CLI by running the following command.
 This will install the World CLI binary in your `/usr/local/bin` directory.
 
-```
+```shell
 make install
 ```
