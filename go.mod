@@ -12,6 +12,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/magefile/mage v1.15.0
 	github.com/pelletier/go-toml v1.9.5
+	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/posthog/posthog-go v0.0.0-20240202122501-d793288ce2c9
 	github.com/rotisserie/eris v0.5.4
 	github.com/rs/zerolog v1.31.0

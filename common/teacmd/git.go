@@ -3,11 +3,27 @@ package teacmd
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/magefile/mage/sh"
+	toml "github.com/pelletier/go-toml/v2"
+	"github.com/rotisserie/eris"
+)
+
+const (
+	oldModuleName = "github.com/argus-labs/starter-game-template/cardinal"
+
+	tomlFile = "world.toml"
+
+	routerKey = "ROUTER_KEY"
+
+	tomlSectionCommon = "common"
+
+	routerKeyLength = 32
 )
 
 type GitCloneFinishMsg struct {
@@ -58,8 +74,17 @@ func GitCloneCmd(url string, targetDir string, initMsg string) error {
 		return err
 	}
 
-	oldModuleName := "github.com/argus-labs/starter-game-template/cardinal"
 	err = refactorModuleName(oldModuleName, filepath.Base(targetDir))
+	if err != nil {
+		return err
+	}
+
+	rtrKey, err := generateRandomHexString(routerKeyLength)
+	if err != nil {
+		return err
+	}
+
+	err = appendToToml(tomlFile, tomlSectionCommon, map[string]any{routerKey: rtrKey})
 	if err != nil {
 		return err
 	}
@@ -131,4 +156,56 @@ func replaceInFile(filePath, oldStr, newStr string) error {
 		}
 	}
 	return writer.Flush()
+}
+
+// appendToToml reads the given TOML file, appends the specified section and fields, and writes it back.
+func appendToToml(filePath, section string, fields map[string]any) error {
+	// Read the existing content of the TOML file
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		return eris.Wrap(err, "error reading file")
+	}
+
+	// Unmarshal the file content into a map
+	var config map[string]any
+	err = toml.Unmarshal(fileContent, &config)
+	if err != nil {
+		return eris.Wrap(err, "error unmarshaling TOML")
+	}
+
+	if config == nil {
+		config = make(map[string]any)
+	}
+
+	// Check if the section already exists, if not, create it
+	if _, exists := config[section]; !exists {
+		config[section] = make(map[string]any)
+	}
+
+	// Add the fields to the section
+	for key, value := range fields {
+		config[section].(map[string]any)[key] = value
+	}
+
+	// Marshal the updated config back to TOML
+	newContent, err := toml.Marshal(config)
+	if err != nil {
+		return eris.Wrap(err, "error marshaling TOML")
+	}
+
+	// Write the updated TOML back to the file
+	err = os.WriteFile(filePath, newContent, 0600)
+	if err != nil {
+		return eris.Wrap(err, "error writing file")
+	}
+	return nil
+}
+
+func generateRandomHexString(length int) (string, error) {
+	randomBytes := make([]byte, length)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(randomBytes), nil
 }
