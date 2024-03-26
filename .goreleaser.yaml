@@ -26,6 +26,10 @@ builds:
       - linux
       - windows
       - darwin
+    goarch:
+      - amd64
+      - arm64
+      - "386"
 
 release:
   make_latest: false
