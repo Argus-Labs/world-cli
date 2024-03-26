@@ -33,6 +33,7 @@ builds:
 
 release:
   make_latest: false
+  mode: append
 
 archives:
   - format: tar.gz
