@@ -12,7 +12,7 @@ import (
 
 const (
 	latestReleaseURL = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases/latest"
-	httpTimeout      = 2 * time.Second
+	httpTimeout      = 5 * time.Second
 )
 
 type Asset struct {
@@ -23,7 +23,7 @@ type Release struct {
 	Assets []Asset `json:"assets"`
 }
 
-func SetupCardinalEditor(targetDir string) error {
+func SetupCardinalEditor() error {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func SetupCardinalEditor(targetDir string) error {
 		return err
 	}
 
-	err = downloadAndUnzipFle(release.Assets[0].BrowserDownloadURL, targetDir)
+	err = downloadAndUnzipFle(release.Assets[0].BrowserDownloadURL)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func SetupCardinalEditor(targetDir string) error {
 	return nil
 }
 
-func downloadAndUnzipFle(url string, targetDir string) error {
+func downloadAndUnzipFle(url string) error {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -69,11 +69,6 @@ func downloadAndUnzipFle(url string, targetDir string) error {
 		return err
 	}
 	defer resp.Body.Close()
-
-	err = os.Chdir(targetDir)
-	if err != nil {
-		return err
-	}
 
 	err = unzipFile(resp.Body)
 	if err != nil {
@@ -135,15 +130,11 @@ func unzipFile(src io.Reader) error {
 		}
 	}
 
-	err = os.Rename(originalDir, ".editor")
-	if err != nil {
-		println(err.Error())
+	if err = os.Rename(originalDir, ".editor"); err != nil {
 		return err
 	}
 
-	err = os.Remove(tmp)
-	if err != nil {
-		println(err.Error())
+	if err = os.Remove(tmp); err != nil {
 		return err
 	}
 
