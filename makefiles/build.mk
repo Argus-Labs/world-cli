@@ -24,9 +24,9 @@ release:
 		exit 1; \
 	fi
 	@if [ -z "${GITHUB_TOKEN}" ]; then\
-		echo " [Error] GITHUB_TOKEN not found!"; \
-		echo " --> Provide GITHUB_TOKEN as env variable, or in a file at '~/.config/goreleaser/github_token'."; \
-		echo -e "     (Grant 'repo' scopes permission: https://github.com/settings/tokens/new)\n"; \
+		echo " [Error] GITHUB_TOKEN env variable not found!"; \
+		echo " --> GoReleaser requires an API token with the repo scope to deploy the artifacts to GitHub."; \
+		echo -e "     (https://github.com/settings/tokens/new)\n"; \
 		exit 1; \
 	fi
 	@echo "--> Release Tag: $(args_release_tag)"
