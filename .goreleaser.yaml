@@ -34,7 +34,7 @@ builds:
 release:
   make_latest: false
   mode: append
-  # uncomment after v1.25.0 stable released
+  # uncomment until v1.25.0 stable released
   # replace_existing_artifacts: true
 
 archives:
