@@ -34,7 +34,8 @@ builds:
 release:
   make_latest: false
   mode: append
-  replace_existing_artifacts: true
+  # uncomment after v1.25.0 stable released
+  # replace_existing_artifacts: true
 
 archives:
   - format: tar.gz
