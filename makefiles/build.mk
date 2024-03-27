@@ -20,12 +20,21 @@ release:
 	$(eval args_count := $(words $(MAKECMDGOALS)))
 	$(eval args_release_tag := $(word 2, $(MAKECMDGOALS)))
 	@if [ "$(args_count)" != "2" ]; then \
-		echo -e " wrong argument!\n usage: make release <tag-version>"; \
+		echo " [Error] Wrong argument!";\
+		echo -e " --> usage: make release <tag-version>\n"; \
+		exit 1; \
+	fi
+	@if [ -z "${GITHUB_TOKEN}" ]; then\
+		echo " [Error] GITHUB_TOKEN not found!"; \
+		echo " --> Provide GITHUB_TOKEN as env variable, or in a file at '~/.config/goreleaser/github_token'."; \
+		echo -e "     (Grant 'repo' scopes permission: https://github.com/settings/tokens/new)\n"; \
 		exit 1; \
 	fi
 	@echo "--> Release Tag: $(args_release_tag)"
 	@echo "--> git: tags current commit HEAD"
+	@git tag $(args_release_tag) HEAD -f
 	@echo "--> git: push tag $(args_release_tag)"
+	@git push origin $(args_release_tag) -f
 	@echo "--> goreleaser release"
 
 ## do-nothing targets for extra args passed into @release
