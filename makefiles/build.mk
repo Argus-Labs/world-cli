@@ -35,6 +35,7 @@ release:
 	@echo "--> git: push tag $(args_release_tag)"
 	@git push origin $(args_release_tag)
 	@echo "--> goreleaser release"
+	goreleaser release --clean
 
 ## do-nothing targets for extra unused args passed into @release
 %:
