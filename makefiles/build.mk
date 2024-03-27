@@ -15,7 +15,6 @@ build:
 	@goreleaser build --clean --snapshot
 	@echo "--> Build binary is available in the ./dist directory"
 
-### WIP
 release:
 	$(eval args_count := $(words $(MAKECMDGOALS)))
 	$(eval args_release_tag := $(word 2, $(MAKECMDGOALS)))
@@ -37,7 +36,7 @@ release:
 	@git push origin $(args_release_tag) -f
 	@echo "--> goreleaser release"
 
-## do-nothing targets for extra args passed into @release
+## do-nothing targets for extra unused args passed into @release
 %:
 	@:
 
