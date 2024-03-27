@@ -30,10 +30,10 @@ release:
 		exit 1; \
 	fi
 	@echo "--> Release Tag: $(args_release_tag)"
-	@echo "--> git: tags current commit HEAD"
-	@git tag $(args_release_tag) HEAD -f
+	@echo "--> git: tags current commit"
+	@git tag -a $(args_release_tag) -m "goreleaser: $(args_release_tag)"
 	@echo "--> git: push tag $(args_release_tag)"
-	@git push origin $(args_release_tag) -f
+	@git push origin $(args_release_tag)
 	@echo "--> goreleaser release"
 
 ## do-nothing targets for extra unused args passed into @release
