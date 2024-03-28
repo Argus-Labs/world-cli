@@ -54,6 +54,7 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 	createSteps.Steps = []steps.Entry{
 		steps.NewStep("Set game shard name"),
 		steps.NewStep("Initialize game shard with starter-game-template"),
+		steps.NewStep("Set up Cardinal Editor"),
 	}
 
 	// Set the project text if it was passed in as an argument
@@ -119,6 +120,17 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, tea.Sequence(
 				NewLogCmd(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
+				teaCmd,
+			)
+		}
+		if msg.Index == 2 { //nolint:gomnd
+			err := teacmd.SetupCardinalEditor()
+			teaCmd := func() tea.Msg {
+				return teacmd.GitCloneFinishMsg{Err: err}
+			}
+
+			return m, tea.Sequence(
+				NewLogCmd(style.ChevronIcon.Render()+"Setting up Cardinal Editor"),
 				teaCmd,
 			)
 		}
