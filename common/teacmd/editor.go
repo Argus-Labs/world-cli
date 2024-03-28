@@ -18,6 +18,7 @@ const (
 	latestReleaseURL             = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases/latest"
 	httpTimeout                  = 5 * time.Second
 	tmpZipFileName               = "tmp.zip"
+	editorDir                    = ".editor"
 	cardinalProjectIDPlaceholder = "__CARDINAL_PROJECT_ID__"
 )
 
@@ -134,7 +135,7 @@ func unzipFile() error {
 		}
 	}
 
-	if err = os.Rename(originalDir, ".editor"); err != nil {
+	if err = os.Rename(originalDir, editorDir); err != nil {
 		return err
 	}
 
@@ -150,7 +151,7 @@ func unzipFile() error {
 }
 
 func replaceProjectIDs() error {
-	assetsDir := ".editor/assets"
+	assetsDir := filepath.Join(editorDir, "assets")
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		return err
