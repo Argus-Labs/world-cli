@@ -1,0 +1,60 @@
+# Make sure to check the documentation at https://goreleaser.com
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 1
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - main: ./cmd/world
+    binary: world
+    env:
+      - CGO_ENABLED=0
+      - SENTRY_DSN={{ if index .Env "SENTRY_DSN"  }}{{ .Env.SENTRY_DSN }}{{ else }}default_null{{ end }}
+      - POSTHOG_API_KEY={{ if index .Env "POSTHOG_API_KEY"  }}{{ .Env.POSTHOG_API_KEY }}{{ else }}default_null{{ end }}
+    ldflags:
+      - -s -w
+      - -X main.AppVersion={{.Version}}
+      - -X main.SentryDsn={{.Env.SENTRY_DSN}}
+      - -X main.PosthogAPIKey={{.Env.POSTHOG_API_KEY}}
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+
+release:
+  make_latest: false
+  mode: append
+  # uncomment until v1.25.0 stable released
+  # replace_existing_artifacts: true
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

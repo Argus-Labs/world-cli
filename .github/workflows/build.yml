@@ -7,61 +7,20 @@ on:
   push:
     branches:
       - main
-  workflow_call:
-    inputs:
-      create_release:
-        description: 'Check if workflows called from Github Release event.'
-        default: false
-        required: false
-        type: boolean
+
+env:
+  GO_VERSION: 1.21.1
 
 jobs:
   build-go:
     name: Go
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: [1.21.x]
-        goos: [linux, windows, darwin]
-        goarch: [amd64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Build
-        uses: docker/setup-buildx-action@v2
+        uses: actions/checkout@v4
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
-          cache-dependency-path: "go.sum"
-      - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
-        id: build
-        run: |
-          output_name=world_${{ matrix.goos }}_${{ matrix.goarch }}
-          [ ${{ matrix.goos }} = "windows" ] && output_name+=".exe"
-
-          ## Get version from tag name
-          bin_version=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          ## Get sentry dsn from secret
-          sentry_dsn=${{ secrets.SENTRY_DSN }}
-          ## Get posthog api key from secret
-          posthog_api_key=${{ secrets.POSTHOG_API_KEY }}
-          ## Handle if event coming from PR, not release/tag
-          if [ "${{ github.event_name }}" == "pull_request" ]; then bin_version=${{ github.event.pull_request.head.sha }}; fi
-
-          env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags "-X main.AppVersion=$bin_version -X main.SentryDsn=$sentry_dsn -X main.PosthogApiKey=$posthog_api_key" -o $output_name ./cmd/world
-          echo "output_name=$output_name" >> $GITHUB_OUTPUT
-      - name: Compress build binary
-        uses: a7ul/tar-action@v1.1.3
-        id: compress
-        with:
-          command: c
-          files: |
-            ./${{ steps.build.outputs.output_name }}
-          outPath: ${{ steps.build.outputs.output_name }}.tar.gz
-      - name: Upload binary to Github artifact
-        if: ${{ inputs.create_release }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: world-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ./world*.tar.gz
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build
+        run: make build
