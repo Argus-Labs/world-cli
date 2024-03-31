@@ -9,35 +9,53 @@ import (
 	"gotest.tools/v3/assert"
 )
 
+const (
+	testDir       = ".test-worldcli"
+	testTargetDir = ".test-worldcli/.editor"
+)
+
 func TestSetupCardinalEditor(t *testing.T) {
 	t.Run("setup cardinal editor", func(t *testing.T) {
-		cleanUpDir(editorDir)
+		cleanUpDir(testDir)
 
-		err := SetupCardinalEditor()
+		editorDir, err := downloadReleaseIfNotCached(testDir)
 		assert.NilError(t, err)
 
-		// check if .editor directory exists
+		// check if editor directory exists
 		_, err = os.Stat(editorDir)
-		assert.NilError(t, err)
+		exists := os.IsNotExist(err)
+		assert.Equal(t, exists, false)
 
 		// check if it's not empty
 		dir, err := os.ReadDir(editorDir)
 		assert.NilError(t, err)
 		assert.Assert(t, len(dir) != 0)
 
-		// check if project id is replaced
-		containsPlaceholder, err := containsCardinalProjectIDPlaceholder("")
+		// check if folder is renamed
+		err = copyDir(editorDir, testTargetDir)
 		assert.NilError(t, err)
-		assert.Equal(t, containsPlaceholder, false)
+
+		_, err = os.Stat(testTargetDir)
+		exists = os.IsNotExist(err)
+		assert.Equal(t, exists, false)
+
+		// check if project id is replaced
+		projectID := "__THIS_IS_FOR_TESTING_ONLY__"
+		err = replaceProjectIDs(testTargetDir, projectID)
+		assert.NilError(t, err)
+
+		containsNewID, err := containsCardinalProjectIDPlaceholder(testTargetDir, projectID)
+		assert.NilError(t, err)
+		assert.Equal(t, containsNewID, true)
 
 		// TODO: check if cardinal editor works
 
-		cleanUpDir(editorDir)
+		cleanUpDir(testDir)
 	})
 }
 
-func containsCardinalProjectIDPlaceholder(dir string) (bool, error) {
-	files, err := os.ReadDir(filepath.Join(editorDir, dir))
+func containsCardinalProjectIDPlaceholder(dir string, originalID string) (bool, error) {
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return false, err
 	}
@@ -45,7 +63,7 @@ func containsCardinalProjectIDPlaceholder(dir string) (bool, error) {
 	for _, file := range files {
 		// recurse over child directories
 		if file.IsDir() {
-			contains, err := containsCardinalProjectIDPlaceholder(filepath.Join(dir, file.Name()))
+			contains, err := containsCardinalProjectIDPlaceholder(filepath.Join(dir, file.Name()), originalID)
 			if contains || err != nil {
 				return contains, err
 			}
@@ -53,14 +71,14 @@ func containsCardinalProjectIDPlaceholder(dir string) (bool, error) {
 		}
 
 		if strings.HasSuffix(file.Name(), ".js") {
-			filePath := filepath.Join(editorDir, dir, file.Name())
+			filePath := filepath.Join(dir, file.Name())
 
 			content, err := os.ReadFile(filePath)
 			if err != nil {
 				return false, err
 			}
 
-			if strings.Contains(string(content), cardinalProjectIDPlaceholder) {
+			if strings.Contains(string(content), originalID) {
 				return true, nil
 			}
 		}

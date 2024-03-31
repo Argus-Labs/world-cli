@@ -4,6 +4,8 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -12,13 +14,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
 	latestReleaseURL             = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases/latest"
-	httpTimeout                  = 5 * time.Second
-	tmpZipFileName               = "tmp.zip"
-	editorDir                    = ".editor"
+	httpTimeout                  = 2 * time.Second
+	targetEditorDir              = ".editor"
 	cardinalProjectIDPlaceholder = "__CARDINAL_PROJECT_ID__"
 )
 
@@ -27,49 +30,42 @@ type Asset struct {
 }
 
 type Release struct {
+	Name   string  `json:"name"`
 	Assets []Asset `json:"assets"`
 }
 
 func SetupCardinalEditor() error {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
+	configDir, err := globalconfig.GetConfigDir()
 	if err != nil {
 		return err
 	}
 
-	client := &http.Client{
-		Timeout: httpTimeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	var release Release
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if err = json.Unmarshal(bodyBytes, &release); err != nil {
-		return err
-	}
-
-	err = downloadRelease(release.Assets[0].BrowserDownloadURL)
+	editorDir, err := downloadReleaseIfNotCached(configDir)
 	if err != nil {
 		return err
 	}
 
-	if err = unzipFile(); err != nil {
+	// rename version tag dir to .editor
+	err = copyDir(editorDir, targetEditorDir)
+	if err != nil {
+		return err
+	}
+
+	// rename project id
+	// "ce" prefix is added because guids can start with numbers, which is not allowed in js
+	projectID := "ce" + strippedGUID()
+	err = replaceProjectIDs(targetEditorDir, projectID)
+	if err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func downloadRelease(url string) error {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+func downloadReleaseIfNotCached(configDir string) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	client := &http.Client{
@@ -77,10 +73,45 @@ func downloadRelease(url string) error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
+	var release Release
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if err = json.Unmarshal(bodyBytes, &release); err != nil {
+		return "", err
+	}
+
+	editorDir := filepath.Join(configDir, "editor")
+
+	targetDir := filepath.Join(editorDir, release.Name)
+	if _, err = os.Stat(targetDir); os.IsNotExist(err) {
+		return targetDir, downloadAndUnzip(release.Assets[0].BrowserDownloadURL, targetDir)
+	}
+
+	return targetDir, nil
+}
+
+func downloadAndUnzip(url string, targetDir string) error {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{
+		Timeout: httpTimeout + 10*time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.New(url)
+	}
+	defer resp.Body.Close()
+
+	tmpZipFileName := "tmp.zip"
 	file, err := os.Create(tmpZipFileName)
 	if err != nil {
 		return err
@@ -92,11 +123,15 @@ func downloadRelease(url string) error {
 		return err
 	}
 
-	return nil
+	if err = unzipFile(tmpZipFileName, targetDir); err != nil {
+		return err
+	}
+
+	return os.Remove(tmpZipFileName)
 }
 
-func unzipFile() error {
-	reader, err := zip.OpenReader(tmpZipFileName)
+func unzipFile(filename string, targetDir string) error {
+	reader, err := zip.OpenReader(filename)
 	if err != nil {
 		return err
 	}
@@ -104,26 +139,30 @@ func unzipFile() error {
 
 	// save original folder name
 	var originalDir string
-	for _, file := range reader.File {
+	for i, file := range reader.File {
+		if i == 0 {
+			originalDir = file.Name
+		}
+
 		src, err := file.Open()
 		if err != nil {
 			return err
 		}
 		defer src.Close()
 
+		filePath, err := sanitizeExtractPath(filepath.Dir(targetDir), file.Name)
+		if err != nil {
+			return err
+		}
 		if file.FileInfo().IsDir() {
-			if originalDir == "" {
-				originalDir = file.Name
-			}
-			err = os.MkdirAll(file.Name, 0777)
+			err = os.MkdirAll(filePath, 0755)
 			if err != nil {
 				return err
 			}
 			continue
 		}
 
-		dstPath := file.Name
-		dst, err := os.Create(dstPath)
+		dst, err := os.Create(filePath)
 		if err != nil {
 			return err
 		}
@@ -135,30 +174,78 @@ func unzipFile() error {
 		}
 	}
 
-	if err = os.Rename(originalDir, editorDir); err != nil {
-		return err
-	}
-
-	if err = os.Remove(tmpZipFileName); err != nil {
-		return err
-	}
-
-	if err = replaceProjectIDs(); err != nil {
+	if err = os.Rename(filepath.Join(filepath.Dir(targetDir), originalDir), targetDir); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func replaceProjectIDs() error {
+func sanitizeExtractPath(dst string, filePath string) (string, error) {
+	dstPath := filepath.Join(dst, filePath)
+	if strings.HasPrefix(dstPath, filepath.Clean(dst)) {
+		return dstPath, nil
+	}
+	return "", fmt.Errorf("%s: illegal file path", filePath)
+}
+
+func copyDir(src string, dst string) error {
+	srcDir, err := os.ReadDir(src)
+	if err != nil {
+		return errors.New(src)
+	}
+
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+
+	for _, entry := range srcDir {
+		srcPath := filepath.Join(src, entry.Name())
+		destPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			// Recursively copy dirs
+			if err := copyDir(srcPath, destPath); err != nil {
+				return err
+			}
+		} else {
+			if err := copyFile(srcPath, destPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dest string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func replaceProjectIDs(editorDir string, newID string) error {
 	assetsDir := filepath.Join(editorDir, "assets")
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		return err
 	}
 
-	// "ce" prefix is added because guids can start with numbers, which is not allowed in js
-	projectID := "ce" + strippedGUID()
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".js") {
 			content, err := os.ReadFile(filepath.Join(assetsDir, file.Name()))
@@ -166,7 +253,7 @@ func replaceProjectIDs() error {
 				return err
 			}
 
-			newContent := strings.ReplaceAll(string(content), cardinalProjectIDPlaceholder, projectID)
+			newContent := strings.ReplaceAll(string(content), cardinalProjectIDPlaceholder, newID)
 
 			err = os.WriteFile(filepath.Join(assetsDir, file.Name()), []byte(newContent), 0600)
 			if err != nil {
