@@ -24,5 +24,16 @@ func SetupConfigDir() error {
 		return err
 	}
 
+	fs, err := os.Stat(fullConfigDir)
+	if !os.IsNotExist(err) {
+		// remove old .worldcli file
+		if !fs.IsDir() {
+			err = os.Remove(fullConfigDir)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return os.MkdirAll(fullConfigDir, 0755)
 }
