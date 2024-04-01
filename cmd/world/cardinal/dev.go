@@ -4,24 +4,35 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/argus-labs/fresh/runner"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/magefile/mage/sh"
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
 const (
 	CardinalPort = "4040"
 	RedisPort    = "6379"
+
+	// Cardinal Editor Port Range
+	cePortStart = 3000
+	cePortEnd   = 4000
+
+	// Cardinal Editor Server Config
+	ceReadTimeout = 5 * time.Second
 
 	// flagWatch : Flag for hot reload support
 	flagWatch = "watch"
@@ -45,12 +56,30 @@ var devCmd = &cobra.Command{
 			startingMessage += " with hot reload support"
 		}
 
+		// Find an unused port for the Cardinal Editor
+		cardinalEditorPort, findPortError := findUnusedPort(cePortStart, cePortEnd)
+
 		fmt.Print(style.CLIHeader("Cardinal", startingMessage), "\n")
 		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
 		fmt.Println()
 		fmt.Printf("Redis: localhost:%s\n", RedisPort)
 		fmt.Printf("Cardinal: localhost:%s\n", CardinalPort)
+		if findPortError == nil {
+			fmt.Printf("Cardinal Editor: localhost:%d\n", cardinalEditorPort)
+		} else {
+			fmt.Println("Cardinal Editor: Failed to find an unused port")
+		}
 		fmt.Println()
+
+		// Run Cardinal Editor
+		// Cardinal will not blocking the process if it's failed to run
+		go func() {
+			err := runCardinalEditor(cardinalEditorPort)
+			if err != nil {
+				cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+				fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
+			}
+		}()
 
 		// Run Redis container
 		err := runRedis()
@@ -235,4 +264,47 @@ func cleanup() error {
 	}
 
 	return nil
+}
+
+// runCardinalEditor runs the Cardinal Editor
+func runCardinalEditor(port int) error {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	cardinalEditorDir := filepath.Join(workingDir, teacmd.TargetEditorDir)
+
+	// TODO: Check the version of cardinal and match it with cardinal editor version
+
+	// Check if the Cardinal Editor directory exists
+	if _, err := os.Stat(cardinalEditorDir); os.IsNotExist(err) {
+		// TODO: setup cardinal editor
+		return errors.New("cardinal editor dir is not found")
+	}
+
+	// Serve cardinal editor dir
+	fs := http.FileServer(http.Dir(cardinalEditorDir))
+	http.Handle("/", fs)
+
+	// Create a new HTTP server
+	server := &http.Server{
+		Addr:        fmt.Sprintf(":%d", port),
+		ReadTimeout: ceReadTimeout,
+	}
+
+	// Start the server
+	return server.ListenAndServe()
+}
+
+// findUnusedPort finds an unused port in the range [start, end]
+func findUnusedPort(start, end int) (int, error) {
+	for port := start; port <= end; port++ {
+		address := fmt.Sprintf(":%d", port)
+		listener, err := net.Listen("tcp", address)
+		if err == nil {
+			listener.Close()
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("no available port in the range %d-%d", start, end)
 }

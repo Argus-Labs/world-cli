@@ -19,9 +19,10 @@ import (
 )
 
 const (
+	TargetEditorDir = ".editor"
+
 	latestReleaseURL             = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases/latest"
 	httpTimeout                  = 2 * time.Second
-	targetEditorDir              = ".editor"
 	cardinalProjectIDPlaceholder = "__CARDINAL_PROJECT_ID__"
 )
 
@@ -46,7 +47,7 @@ func SetupCardinalEditor() error {
 	}
 
 	// rename version tag dir to .editor
-	err = copyDir(editorDir, targetEditorDir)
+	err = copyDir(editorDir, TargetEditorDir)
 	if err != nil {
 		return err
 	}
@@ -54,7 +55,7 @@ func SetupCardinalEditor() error {
 	// rename project id
 	// "ce" prefix is added because guids can start with numbers, which is not allowed in js
 	projectID := "ce" + strippedGUID()
-	err = replaceProjectIDs(targetEditorDir, projectID)
+	err = replaceProjectIDs(TargetEditorDir, projectID)
 	if err != nil {
 		return err
 	}

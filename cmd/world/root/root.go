@@ -3,6 +3,7 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,6 +88,11 @@ func checkLatestVersion() error {
 		return nil
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Debug(eris.Wrap(errors.New("status is not 200"), "error fetching the latest release"))
+		return nil
+	}
 
 	// Unmarshal the response body into the Release structure
 	var release Release
