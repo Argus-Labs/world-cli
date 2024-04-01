@@ -103,10 +103,10 @@ func TestCopyDir(t *testing.T) {
 		err = copyDir("tmp", "tmp2")
 		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join("tmp"))
+		_, err = os.Stat("tmp")
 		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join("tmp2"))
+		_, err = os.Stat("tmp2")
 		assert.NilError(t, err)
 
 		_, err = os.Stat(filepath.Join("tmp2", "subdir"))
