@@ -88,38 +88,38 @@ func containsCardinalProjectIDPlaceholder(dir string, originalID string) (bool, 
 }
 func TestCopyDir(t *testing.T) {
 	t.Run("Test copy directory", func(t *testing.T) {
-		err := os.MkdirAll(filepath.Join(testDir, "tmp"), 0755)
-		assert.Check(t, os.IsExist(err))
-
-		err = os.MkdirAll(filepath.Join(testDir, "tmp", "subdir"), 0755)
-		assert.Check(t, os.IsExist(err))
-
-		_, err = os.Create(filepath.Join(testDir, "tmp", "file1"))
+		err := os.MkdirAll("tmp", 0755)
 		assert.NilError(t, err)
 
-		_, err = os.Create(filepath.Join(testDir, "tmp", "subdir", "file2"))
+		err = os.MkdirAll(filepath.Join("tmp", "subdir"), 0755)
 		assert.NilError(t, err)
 
-		err = copyDir(filepath.Join(testDir, "tmp"), filepath.Join(testDir, "tmp2"))
+		_, err = os.Create(filepath.Join("tmp", "file1"))
 		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join(testDir, "tmp"))
-		assert.Check(t, os.IsNotExist(err))
+		_, err = os.Create(filepath.Join("tmp", "subdir", "file2"))
+		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join(testDir, "tmp2"))
-		assert.Check(t, os.IsExist(err))
+		err = copyDir("tmp", "tmp2")
+		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join(testDir, "tmp2", "subdir"))
-		assert.Check(t, os.IsExist(err))
+		_, err = os.Stat(filepath.Join("tmp"))
+		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join(testDir, "tmp2", "file1"))
-		assert.Check(t, os.IsExist(err))
+		_, err = os.Stat(filepath.Join("tmp2"))
+		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join(testDir, "tmp2", "subdir", "file2"))
-		assert.Check(t, os.IsExist(err))
+		_, err = os.Stat(filepath.Join("tmp2", "subdir"))
+		assert.NilError(t, err)
 
-		cleanUpDir(filepath.Join(testDir, "tmp"))
-		cleanUpDir(filepath.Join(testDir, "tmp2"))
+		_, err = os.Stat(filepath.Join("tmp2", "file1"))
+		assert.NilError(t, err)
+
+		_, err = os.Stat(filepath.Join("tmp2", "subdir", "file2"))
+		assert.NilError(t, err)
+
+		cleanUpDir("tmp")
+		cleanUpDir("tmp2")
 	})
 }
 
