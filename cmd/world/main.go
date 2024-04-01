@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"pkg.world.dev/world-cli/cmd/world/root"
+	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/telemetry"
 
 	_ "pkg.world.dev/world-cli/common/logger"
@@ -35,6 +36,13 @@ func main() {
 
 	// Set logger sentry hook
 	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
+
+	// Set up config directory "~/.worldcli/"
+	err := globalconfig.SetupConfigDir()
+	if err != nil {
+		log.Err(err).Msg("could not setup config folder")
+		return
+	}
 
 	// Posthog Initialization
 	telemetry.PosthogInit(PosthogAPIKey)

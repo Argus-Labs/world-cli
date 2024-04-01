@@ -8,12 +8,14 @@ import (
 	"github.com/denisbrodbeck/machineid"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
+
+	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
 	PostInstallationEvent = "World CLI Installation"
 	RunningEvent          = "World CLI Running"
-	timestampFile         = ".worldcli"
+	timestampFile         = "last_logged_time"
 )
 
 var (
@@ -71,11 +73,11 @@ func getLastLoggedTime() (time.Time, error) {
 
 // getTimestampFilePath returns the path to the timestamp file.
 func getTimestampFilePath() (string, error) {
-	homeDir, err := os.UserHomeDir()
+	configDir, err := globalconfig.GetConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homeDir, timestampFile), nil
+	return filepath.Join(configDir, timestampFile), nil
 }
 
 // updateLastLoggedTime updates the last visited timestamp in the file.
