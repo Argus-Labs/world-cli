@@ -30,17 +30,18 @@ func init() {
 }
 
 func main() {
-	err := globalconfig.SetupConfigDir()
-	if err != nil {
-		log.Err(err).Msg("could not setup config folder")
-	}
-
 	// Sentry initialization
 	telemetry.SentryInit(SentryDsn)
 	defer telemetry.SentryFlush()
 
 	// Set logger sentry hook
 	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
+
+	// Set up config directory "~/.worldcli/"
+	err := globalconfig.SetupConfigDir()
+	if err != nil {
+		log.Err(err).Msg("could not setup config folder")
+	}
 
 	// Posthog Initialization
 	telemetry.PosthogInit(PosthogAPIKey)
