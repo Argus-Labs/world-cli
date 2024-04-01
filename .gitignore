@@ -32,3 +32,6 @@ dist/
 
 # Test
 /starter-game
+
+# Built binary
+world
