@@ -41,6 +41,7 @@ func main() {
 	err := globalconfig.SetupConfigDir()
 	if err != nil {
 		log.Err(err).Msg("could not setup config folder")
+		return
 	}
 
 	// Posthog Initialization
