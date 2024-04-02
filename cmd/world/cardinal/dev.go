@@ -16,6 +16,7 @@ import (
 	"github.com/argus-labs/fresh/runner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/magefile/mage/sh"
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/logger"
@@ -73,13 +74,22 @@ var devCmd = &cobra.Command{
 
 		// Run Cardinal Editor
 		// Cardinal will not blocking the process if it's failed to run
+		// cePrepChan is channel for blocking process while setup cardinal editor
+		fmt.Println("Preparing Cardinal Editor...")
+		cePrepChan := make(chan struct{})
 		go func() {
-			err := runCardinalEditor(cardinalEditorPort)
+			err := runCardinalEditor(cardinalEditorPort, cePrepChan)
 			if err != nil {
 				cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 				fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
+				logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
+
+				// continue if error
+				cePrepChan <- struct{}{}
 			}
 		}()
+		// Waiting cardinal editor preparation
+		<-cePrepChan
 
 		// Run Redis container
 		err := runRedis()
@@ -267,9 +277,10 @@ func cleanup() error {
 }
 
 // runCardinalEditor runs the Cardinal Editor
-func runCardinalEditor(port int) error {
+func runCardinalEditor(port int, prepChan chan struct{}) error {
 	workingDir, err := os.Getwd()
 	if err != nil {
+		prepChan <- struct{}{}
 		return err
 	}
 	cardinalEditorDir := filepath.Join(workingDir, teacmd.TargetEditorDir)
@@ -278,8 +289,12 @@ func runCardinalEditor(port int) error {
 
 	// Check if the Cardinal Editor directory exists
 	if _, err := os.Stat(cardinalEditorDir); os.IsNotExist(err) {
-		// TODO: setup cardinal editor
-		return errors.New("cardinal editor dir is not found")
+		// Setup cardinal editor
+		err = teacmd.SetupCardinalEditor()
+		if err != nil {
+			prepChan <- struct{}{}
+			return err
+		}
 	}
 
 	// Serve cardinal editor dir
@@ -291,6 +306,9 @@ func runCardinalEditor(port int) error {
 		Addr:        fmt.Sprintf(":%d", port),
 		ReadTimeout: ceReadTimeout,
 	}
+
+	// Preparation done
+	prepChan <- struct{}{}
 
 	// Start the server
 	return server.ListenAndServe()
