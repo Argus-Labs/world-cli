@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
@@ -21,6 +23,7 @@ const (
 	flagDebug    = "debug"
 	flagDetach   = "detach"
 	flagLogLevel = "log-level"
+	flagEditor   = "editor"
 
 	// DockerCardinalEnvLogLevel Environment variable name for Docker
 	DockerCardinalEnvLogLevel = "CARDINAL_LOG_LEVEL"
@@ -96,6 +99,37 @@ This will start the following Docker services and its dependencies:
 				DockerCardinalEnvLogLevel, validLogLevels)
 		}
 
+		runEditor, err := cmd.Flags().GetBool(flagEditor)
+		if err == nil && runEditor {
+			// Find an unused port for the Cardinal Editor
+			cardinalEditorPort, findPortError := findUnusedPort(cePortStart, cePortEnd)
+			if findPortError == nil {
+				cmdBlue := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+				fmt.Println(cmdBlue.Render("Preparing Cardinal Editor..."))
+				fmt.Println(cmdBlue.Render(fmt.Sprint("Cardinal Editor will be run on localhost:", cardinalEditorPort)))
+				cePrepChan := make(chan struct{})
+				go func() {
+					err := runCardinalEditor(cardinalEditorPort, cePrepChan)
+					if err != nil {
+						cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+						fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
+						logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
+
+						// continue if error
+						cePrepChan <- struct{}{}
+					}
+				}()
+				// Waiting cardinal editor preparation
+				<-cePrepChan
+			} else {
+				// just log the error if the editor fails to run
+				logger.Error(eris.Wrap(findPortError, "Failed to find an unused port for Cardinal Editor"))
+			}
+		} else {
+			// just log the error if the editor fails to run
+			logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
+		}
+
 		fmt.Println("Starting Cardinal game shard...")
 		fmt.Println("This may take a few minutes to rebuild the Docker images.")
 		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
@@ -113,6 +147,7 @@ func init() {
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
+	startCmd.Flags().Bool(flagEditor, false, "Start cardinal with cardinal editor")
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag
