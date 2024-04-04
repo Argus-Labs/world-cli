@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rotisserie/eris"
+	"golang.org/x/mod/modfile"
 
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
@@ -21,9 +23,27 @@ import (
 const (
 	TargetEditorDir = ".editor"
 
-	latestReleaseURL             = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases/latest"
-	httpTimeout                  = 2 * time.Second
+	releaseURL       = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases"
+	latestReleaseURL = releaseURL + "/latest"
+
+	httpTimeout = 2 * time.Second
+
 	cardinalProjectIDPlaceholder = "__CARDINAL_PROJECT_ID__"
+
+	cardinalGomodPath = "cardinal/go.mod"
+
+	cardinalPkgPath = "pkg.world.dev/world-engine/cardinal"
+)
+
+var (
+	// Cardinal : Cardinal Editor version map
+	// TODO this version map need to store in somewhere that can be accessed online
+	cardinalVersionMap = map[string]string{
+		"v1.2.2-beta": "v0.1.0",
+		"v1.2.3-beta": "v0.1.0",
+		"v1.2.4-beta": "v0.3.0",
+		"v1.2.5-beta": "v0.3.0",
+	}
 )
 
 type Asset struct {
@@ -36,12 +56,36 @@ type Release struct {
 }
 
 func SetupCardinalEditor() error {
+	// Check version
+	cardinalVersion, err := getModuleVersion(cardinalGomodPath, cardinalPkgPath)
+	if err != nil {
+		return eris.Wrap(err, "failed to get cardinal version")
+	}
+
+	downloadURL := latestReleaseURL
+	downloadVersion, versionIsExist := cardinalVersionMap[cardinalVersion]
+	if versionIsExist {
+		downloadURL = fmt.Sprintf("%s/tags/%s", releaseURL, downloadVersion)
+	}
+
+	// Check if the Cardinal Editor directory exists
+	if _, err := os.Stat(TargetEditorDir); !os.IsNotExist(err) {
+		// Check the version of cardinal editor is appropriate
+		if fileExists(filepath.Join(TargetEditorDir, downloadVersion)) {
+			// do nothing if the version is already downloaded
+			return nil
+		}
+
+		// Remove the existing Cardinal Editor directory
+		os.RemoveAll(TargetEditorDir)
+	}
+
 	configDir, err := globalconfig.GetConfigDir()
 	if err != nil {
 		return err
 	}
 
-	editorDir, err := downloadReleaseIfNotCached(configDir)
+	editorDir, err := downloadReleaseIfNotCached(downloadURL, configDir)
 	if err != nil {
 		return err
 	}
@@ -60,11 +104,17 @@ func SetupCardinalEditor() error {
 		return err
 	}
 
+	// this file is used to check if the version is already downloaded
+	err = addFileVersion(filepath.Join(TargetEditorDir, downloadVersion))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func downloadReleaseIfNotCached(configDir string) (string, error) {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
+func downloadReleaseIfNotCached(downloadURL, configDir string) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -269,4 +319,50 @@ func replaceProjectIDs(editorDir string, newID string) error {
 func strippedGUID() string {
 	u := uuid.New()
 	return strings.ReplaceAll(u.String(), "-", "")
+}
+
+// addFileVersion add file with name version of cardinal editor
+func addFileVersion(version string) error {
+	// Create the file
+	file, err := os.Create(version)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return nil
+}
+
+func getModuleVersion(gomodPath, modulePath string) (string, error) {
+	// Read the go.mod file
+	data, err := os.ReadFile(gomodPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse the go.mod file
+	modFile, err := modfile.Parse(gomodPath, data, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Iterate through the require statements to find the desired module
+	for _, require := range modFile.Require {
+		if require.Mod.Path == modulePath {
+			return require.Mod.Version, nil
+		}
+	}
+
+	// Return an error if the module is not found
+	return "", fmt.Errorf("module %s not found", modulePath)
+}
+
+// fileExists checks if a file exists and is not a directory before we
+// try using it to prevent further errors.
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }

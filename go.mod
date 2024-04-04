@@ -18,6 +18,7 @@ require (
 	github.com/rotisserie/eris v0.5.4
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.7.0
+	golang.org/x/mod v0.16.0
 	gotest.tools/v3 v3.5.1
 )
 

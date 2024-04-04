@@ -285,16 +285,11 @@ func runCardinalEditor(port int, prepChan chan struct{}) error {
 	}
 	cardinalEditorDir := filepath.Join(workingDir, teacmd.TargetEditorDir)
 
-	// TODO: Check the version of cardinal and match it with cardinal editor version
-
-	// Check if the Cardinal Editor directory exists
-	if _, err := os.Stat(cardinalEditorDir); os.IsNotExist(err) {
-		// Setup cardinal editor
-		err = teacmd.SetupCardinalEditor()
-		if err != nil {
-			prepChan <- struct{}{}
-			return err
-		}
+	// Setup cardinal editor
+	err = teacmd.SetupCardinalEditor()
+	if err != nil {
+		prepChan <- struct{}{}
+		return err
 	}
 
 	// Serve cardinal editor dir
