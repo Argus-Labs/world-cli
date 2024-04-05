@@ -37,6 +37,9 @@ const (
 
 	// flagWatch : Flag for hot reload support
 	flagWatch = "watch"
+
+	// flagNoEditor : Flag for running Cardinal without the editor
+	flagNoEditor = "no-editor"
 )
 
 // StopChan is used to signal graceful shutdown
@@ -50,6 +53,7 @@ var devCmd = &cobra.Command{
 	Long:  `Run Cardinal in development mode`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		watch, _ := cmd.Flags().GetBool(flagWatch)
+		noEditor, _ := cmd.Flags().GetBool(flagNoEditor)
 		logger.SetDebugMode(cmd)
 
 		startingMessage := "Running Cardinal in dev mode"
@@ -57,39 +61,41 @@ var devCmd = &cobra.Command{
 			startingMessage += " with hot reload support"
 		}
 
-		// Find an unused port for the Cardinal Editor
-		cardinalEditorPort, findPortError := findUnusedPort(cePortStart, cePortEnd)
-
 		fmt.Print(style.CLIHeader("Cardinal", startingMessage), "\n")
 		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
 		fmt.Println()
 		fmt.Printf("Redis: localhost:%s\n", RedisPort)
 		fmt.Printf("Cardinal: localhost:%s\n", CardinalPort)
-		if findPortError == nil {
-			fmt.Printf("Cardinal Editor: localhost:%d\n", cardinalEditorPort)
-		} else {
-			fmt.Println("Cardinal Editor: Failed to find an unused port")
+
+		if !noEditor {
+			// Find an unused port for the Cardinal Editor
+			cardinalEditorPort, findPortError := findUnusedPort(cePortStart, cePortEnd)
+			if findPortError == nil {
+				fmt.Printf("Cardinal Editor: localhost:%d\n", cardinalEditorPort)
+			} else {
+				fmt.Println("Cardinal Editor: Failed to find an unused port")
+			}
+
+			// Run Cardinal Editor
+			// Cardinal will not blocking the process if it's failed to run
+			// cePrepChan is channel for blocking process while setup cardinal editor
+			fmt.Println("Preparing Cardinal Editor...")
+			cePrepChan := make(chan struct{})
+			go func() {
+				err := runCardinalEditor(cardinalEditorPort, cePrepChan)
+				if err != nil {
+					cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+					fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
+					logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
+
+					// continue if error
+					cePrepChan <- struct{}{}
+				}
+			}()
+			// Waiting cardinal editor preparation
+			<-cePrepChan
 		}
 		fmt.Println()
-
-		// Run Cardinal Editor
-		// Cardinal will not blocking the process if it's failed to run
-		// cePrepChan is channel for blocking process while setup cardinal editor
-		fmt.Println("Preparing Cardinal Editor...")
-		cePrepChan := make(chan struct{})
-		go func() {
-			err := runCardinalEditor(cardinalEditorPort, cePrepChan)
-			if err != nil {
-				cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-				fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
-				logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
-
-				// continue if error
-				cePrepChan <- struct{}{}
-			}
-		}()
-		// Waiting cardinal editor preparation
-		<-cePrepChan
 
 		// Run Redis container
 		err := runRedis()
@@ -160,6 +166,7 @@ var devCmd = &cobra.Command{
 
 func init() {
 	devCmd.Flags().Bool(flagWatch, false, "Dev mode with hot reload support")
+	devCmd.Flags().Bool(flagNoEditor, false, "Run Cardinal without the editor")
 }
 
 // runRedis runs Redis in a Docker container
