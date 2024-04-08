@@ -65,7 +65,7 @@ func SetupCardinalEditor() error {
 
 	downloadURL := latestReleaseURL
 	downloadVersion, versionIsExist := cardinalVersionMap[cardinalVersion]
-	if downloadVersion == "" {
+	if !versionIsExist {
 		// default to defaultVersion
 		downloadVersion = defaultVersion
 	}
