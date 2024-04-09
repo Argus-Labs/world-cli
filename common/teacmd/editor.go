@@ -36,13 +36,14 @@ const (
 )
 
 var (
+	defaultVersion = "v0.3.0"
 	// Cardinal : Cardinal Editor version map
 	// TODO this version map need to store in somewhere that can be accessed online
 	cardinalVersionMap = map[string]string{
 		"v1.2.2-beta": "v0.1.0",
 		"v1.2.3-beta": "v0.1.0",
-		"v1.2.4-beta": "v0.3.0",
-		"v1.2.5-beta": "v0.3.0",
+		"v1.2.4-beta": defaultVersion,
+		"v1.2.5-beta": defaultVersion,
 	}
 )
 
@@ -64,6 +65,10 @@ func SetupCardinalEditor() error {
 
 	downloadURL := latestReleaseURL
 	downloadVersion, versionIsExist := cardinalVersionMap[cardinalVersion]
+	if !versionIsExist {
+		// default to defaultVersion
+		downloadVersion = defaultVersion
+	}
 	if versionIsExist {
 		downloadURL = fmt.Sprintf("%s/tags/%s", releaseURL, downloadVersion)
 	}
