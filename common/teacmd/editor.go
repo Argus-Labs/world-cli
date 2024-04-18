@@ -18,6 +18,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/logger"
 )
 
 const (
@@ -33,17 +34,18 @@ const (
 	cardinalGomodPath = "cardinal/go.mod"
 
 	cardinalPkgPath = "pkg.world.dev/world-engine/cardinal"
+
+	versionMapURL = "https://raw.githubusercontent.com/Argus-Labs/cardinal-editor/main/version_map.json"
 )
 
 var (
-	defaultVersion = "v0.3.0"
 	// Cardinal : Cardinal Editor version map
-	// TODO this version map need to store in somewhere that can be accessed online
-	cardinalVersionMap = map[string]string{
+	// This is the default value for fallback if cannot get version from repository
+	defaultCardinalVersionMap = map[string]string{
 		"v1.2.2-beta": "v0.1.0",
 		"v1.2.3-beta": "v0.1.0",
-		"v1.2.4-beta": defaultVersion,
-		"v1.2.5-beta": defaultVersion,
+		"v1.2.4-beta": "v0.3.1",
+		"v1.2.5-beta": "v0.3.1",
 	}
 )
 
@@ -57,6 +59,13 @@ type Release struct {
 }
 
 func SetupCardinalEditor() error {
+	// Get the version map
+	cardinalVersionMap, err := getVersionMap(versionMapURL)
+	if err != nil {
+		logger.Warn("Failed to get version map, using default version map")
+		cardinalVersionMap = defaultCardinalVersionMap
+	}
+
 	// Check version
 	cardinalVersion, err := getModuleVersion(cardinalGomodPath, cardinalPkgPath)
 	if err != nil {
@@ -65,10 +74,6 @@ func SetupCardinalEditor() error {
 
 	downloadURL := latestReleaseURL
 	downloadVersion, versionIsExist := cardinalVersionMap[cardinalVersion]
-	if !versionIsExist {
-		// default to defaultVersion
-		downloadVersion = defaultVersion
-	}
 	if versionIsExist {
 		downloadURL = fmt.Sprintf("%s/tags/%s", releaseURL, downloadVersion)
 	}
@@ -90,7 +95,7 @@ func SetupCardinalEditor() error {
 		return err
 	}
 
-	editorDir, err := downloadReleaseIfNotCached(downloadURL, configDir)
+	editorDir, downloadVersion, err := downloadReleaseIfNotCached(downloadURL, configDir)
 	if err != nil {
 		return err
 	}
@@ -118,10 +123,12 @@ func SetupCardinalEditor() error {
 	return nil
 }
 
-func downloadReleaseIfNotCached(downloadURL, configDir string) (string, error) {
+// downloadReleaseIfNotCached : downloads the latest release of the Cardinal Editor if it is not already cached.
+// returns editor directory path, version and error
+func downloadReleaseIfNotCached(downloadURL, configDir string) (string, string, error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	client := &http.Client{
@@ -129,27 +136,27 @@ func downloadReleaseIfNotCached(downloadURL, configDir string) (string, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	var release Release
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if err = json.Unmarshal(bodyBytes, &release); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	editorDir := filepath.Join(configDir, "editor")
 
 	targetDir := filepath.Join(editorDir, release.Name)
 	if _, err = os.Stat(targetDir); os.IsNotExist(err) {
-		return targetDir, downloadAndUnzip(release.Assets[0].BrowserDownloadURL, targetDir)
+		return targetDir, release.Name, downloadAndUnzip(release.Assets[0].BrowserDownloadURL, targetDir)
 	}
 
-	return targetDir, nil
+	return targetDir, release.Name, nil
 }
 
 func downloadAndUnzip(url string, targetDir string) error {
@@ -370,4 +377,45 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+// getVersionMap fetches the JSON data from a URL and unmarshals it into a map[string]string.
+func getVersionMap(url string) (map[string]string, error) {
+	// Make an HTTP GET request
+	client := &http.Client{
+		Timeout: httpTimeout,
+	}
+
+	// Create a new request using http
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send the request via a client
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Check for HTTP error
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP error: %d - %s", resp.StatusCode, resp.Status)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the JSON data into a map
+	var result map[string]string
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

@@ -1,6 +1,9 @@
 package teacmd
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +21,7 @@ func TestSetupCardinalEditor(t *testing.T) {
 	t.Run("setup cardinal editor", func(t *testing.T) {
 		cleanUpDir(testDir)
 
-		editorDir, err := downloadReleaseIfNotCached(latestReleaseURL, testDir)
+		editorDir, _, err := downloadReleaseIfNotCached(latestReleaseURL, testDir)
 		assert.NilError(t, err)
 
 		// check if editor directory exists
@@ -260,4 +263,79 @@ func TestFileExists(t *testing.T) {
 	if exists := fileExists(tempDir); exists {
 		t.Errorf("fileExists(%s) = %v, want %v", tempDir, exists, false)
 	}
+}
+
+func TestGetVersionMap(t *testing.T) {
+	// Define test cases
+	tests := []struct {
+		name           string
+		serverResponse string
+		serverStatus   int
+		want           map[string]string
+		wantErr        bool
+	}{
+		{
+			name: "successful response with specific version map",
+			serverResponse: `{
+				"v1.2.2-beta": "v0.1.0",
+				"v1.2.3-beta": "v0.1.0",
+				"v1.2.4-beta": "v0.3.0"
+			}`,
+			serverStatus: http.StatusOK,
+			want: map[string]string{
+				"v1.2.2-beta": "v0.1.0",
+				"v1.2.3-beta": "v0.1.0",
+				"v1.2.4-beta": "v0.3.0",
+			},
+			wantErr: false,
+		},
+		{
+			name:           "HTTP error",
+			serverResponse: `HTTP error occurred`,
+			serverStatus:   http.StatusInternalServerError,
+			want:           nil,
+			wantErr:        true,
+		},
+		{
+			name:           "invalid JSON",
+			serverResponse: `{"invalid": 1, "format": true}`, // invalid JSON for map[string]string
+			serverStatus:   http.StatusOK,
+			want:           nil,
+			wantErr:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup a test server
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.serverStatus)
+				fmt.Fprintln(w, tc.serverResponse)
+			}))
+			defer server.Close()
+
+			// Call the function with the test server URL
+			got, err := getVersionMap(server.URL)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("getVersionMap() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if err == nil && !compareMaps(got, tc.want) {
+				t.Errorf("getVersionMap() got = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// compareMaps helps in comparing two maps for equality
+func compareMaps(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
 }
