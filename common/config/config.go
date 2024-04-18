@@ -41,37 +41,44 @@ func AddConfigFlag(cmd *cobra.Command) {
 }
 
 func GetConfig(cmd *cobra.Command) (*Config, error) {
-	if !cmd.Flags().Changed(flagForConfigFile) {
-		// The config flag was not set. Attempt to find the config via environment variables or in the local directory
-		return loadConfig("")
-	}
-	// The config flag was explicitly set
-	configFile, err := cmd.Flags().GetString(flagForConfigFile)
+	cfg, err := findAndLoadConfigFile(cmd)
 	if err != nil {
 		return nil, err
 	}
-	if configFile == "" {
-		return nil, errors.New("config cannot be empty")
-	}
-	return loadConfig(configFile)
+
+	// Set any default values.
+	cfg.Build = true
+	return cfg, nil
 }
 
-func loadConfig(filename string) (*Config, error) {
-	if filename != "" {
+// findAndLoadConfigFile searches for a config file based on the following priorities:
+// 1. A config file set via a flag
+// 2. A config file set via an environment variable
+// 3. A config file named "world.toml" in the current directory
+// 4. A config file found in a parent directory.
+func findAndLoadConfigFile(cmd *cobra.Command) (*Config, error) {
+	// First look for the config file in the config file flag.
+	if cmd.Flags().Changed(flagForConfigFile) {
+		configFile, err := cmd.Flags().GetString(flagForConfigFile)
+		if err != nil {
+			return nil, err
+		}
+		return loadConfigFromFile(configFile)
+	}
+
+	// Next check the environment variable for a config flag.
+	if filename := os.Getenv(WorldCLIConfigFileEnvVariable); filename != "" {
 		return loadConfigFromFile(filename)
 	}
-	// Was the file set as an environment variable
-	if filename = os.Getenv(WorldCLIConfigFileEnvVariable); filename != "" {
-		return loadConfigFromFile(filename)
-	}
-	// Is there a config in this local directory?
+
+	// Next, check the current directory, followed by all the parent directories for a "world.toml" file.
 	currDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
 	for {
-		filename = path.Join(currDir, WorldCLIConfigFilename)
+		filename := path.Join(currDir, WorldCLIConfigFilename)
 		if cfg, err := loadConfigFromFile(filename); err == nil {
 			return cfg, nil
 		} else if !os.IsNotExist(err) {
@@ -80,6 +87,7 @@ func loadConfig(filename string) (*Config, error) {
 		before := currDir
 		currDir = path.Join(currDir, "..")
 		if currDir == before {
+			// We can't move up any more directories, so no config file can be found.
 			break
 		}
 	}
@@ -93,7 +101,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 	}
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open %q: %w", filename, err)
 	}
 	defer file.Close()
 
