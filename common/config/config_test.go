@@ -21,7 +21,10 @@ func cmdZero() *cobra.Command {
 func cmdWithConfig(filename string) *cobra.Command {
 	cmd := cmdZero()
 	AddConfigFlag(cmd)
-	_ = cmd.Flags().Set(flagForConfigFile, filename)
+	err := cmd.PersistentFlags().Set(flagForConfigFile, filename)
+	if err != nil {
+		panic(err)
+	}
 	return cmd
 }
 
