@@ -58,8 +58,8 @@ func GetConfig(cmd *cobra.Command) (*Config, error) {
 // 4. A config file found in a parent directory.
 func findAndLoadConfigFile(cmd *cobra.Command) (*Config, error) {
 	// First look for the config file in the config file flag.
-	if cmd.Flags().Changed(flagForConfigFile) {
-		configFile, err := cmd.Flags().GetString(flagForConfigFile)
+	if cmd.PersistentFlags().Changed(flagForConfigFile) {
+		configFile, err := cmd.PersistentFlags().GetString(flagForConfigFile)
 		if err != nil {
 			return nil, err
 		}
