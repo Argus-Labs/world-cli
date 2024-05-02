@@ -214,7 +214,7 @@ func TestDev(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal dev
-	rootCmd.SetArgs([]string{"cardinal", "dev", "--watch"})
+	rootCmd.SetArgs([]string{"cardinal", "dev"})
 	go func() {
 		err := rootCmd.Execute()
 		assert.NilError(t, err)
@@ -238,7 +238,7 @@ func TestDev(t *testing.T) {
 	assert.Assert(t, isGameLoopRunning)
 
 	// Shutdown the program
-	close(cardinal.StopChan)
+	cardinal.StopChan <- struct{}{}
 
 	// Check cardinal health (expected error), trying for 10 times
 	count := 0

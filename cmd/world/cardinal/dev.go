@@ -136,6 +136,17 @@ var devCmd = &cobra.Command{
 			return err
 		}
 
+		// Start a goroutine to check cmd is stopped
+		go func() {
+			err := execCmd.Wait()
+			if err != nil {
+				logger.Error(eris.Wrap(err, "Cardinal process stopped"))
+			}
+
+			// if process exited, send signal to StopChan
+			signalCh <- syscall.SIGTERM
+		}()
+
 		// Start a goroutine to listen for signals
 		go func() {
 			<-signalCh
@@ -252,6 +263,10 @@ func stopCardinal(cmd *exec.Cmd, watch bool) error {
 	if watch {
 		// using fresh
 		runner.Stop()
+		return nil
+	}
+
+	if cmd.ProcessState == nil || cmd.ProcessState.Exited() {
 		return nil
 	}
 
