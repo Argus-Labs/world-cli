@@ -124,7 +124,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 		if msg.Index == 2 { //nolint:gomnd
-			err := teacmd.SetupCardinalEditor()
+			err := teacmd.SetupCardinalEditor(".", "cardinal")
 			teaCmd := func() tea.Msg {
 				return teacmd.GitCloneFinishMsg{Err: err}
 			}

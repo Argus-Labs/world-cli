@@ -109,7 +109,7 @@ This will start the following Docker services and its dependencies:
 				fmt.Println(cmdBlue.Render(fmt.Sprint("Cardinal Editor will be run on localhost:", cardinalEditorPort)))
 				cePrepChan := make(chan struct{})
 				go func() {
-					err := runCardinalEditor(cardinalEditorPort, cePrepChan)
+					err := runCardinalEditor(cfg.RootDir, cfg.GameDir, cardinalEditorPort, cePrepChan)
 					if err != nil {
 						cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 						fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))

@@ -31,8 +31,6 @@ const (
 
 	cardinalProjectIDPlaceholder = "__CARDINAL_PROJECT_ID__"
 
-	cardinalGomodPath = "cardinal/go.mod"
-
 	cardinalPkgPath = "pkg.world.dev/world-engine/cardinal"
 
 	versionMapURL = "https://raw.githubusercontent.com/Argus-Labs/cardinal-editor/main/version_map.json"
@@ -58,7 +56,7 @@ type Release struct {
 	Assets []Asset `json:"assets"`
 }
 
-func SetupCardinalEditor() error {
+func SetupCardinalEditor(rootDir string, gameDir string) error {
 	// Get the version map
 	cardinalVersionMap, err := getVersionMap(versionMapURL)
 	if err != nil {
@@ -67,7 +65,7 @@ func SetupCardinalEditor() error {
 	}
 
 	// Check version
-	cardinalVersion, err := getModuleVersion(cardinalGomodPath, cardinalPkgPath)
+	cardinalVersion, err := getModuleVersion(filepath.Join(rootDir, gameDir, "go.mod"), cardinalPkgPath)
 	if err != nil {
 		return eris.Wrap(err, "failed to get cardinal version")
 	}

@@ -29,6 +29,7 @@ var (
 
 type Config struct {
 	RootDir   string
+	GameDir   string
 	Detach    bool
 	Build     bool
 	Debug     bool
@@ -101,7 +102,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 	}
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open %q: %w", filename, err)
+		return nil, err
 	}
 	defer file.Close()
 
@@ -116,6 +117,16 @@ func loadConfigFromFile(filename string) (*Config, error) {
 		}
 	} else {
 		cfg.RootDir, _ = filepath.Split(filename)
+	}
+
+	// Load the game directory.
+	if gameDir, ok := data["game_dir"]; ok {
+		cfg.GameDir, ok = gameDir.(string)
+		if !ok {
+			return nil, errors.New("game_dir must be a string")
+		}
+	} else {
+		cfg.GameDir = "cardinal"
 	}
 
 	for _, header := range dockerEnvHeaders {

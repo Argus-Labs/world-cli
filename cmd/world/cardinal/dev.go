@@ -19,6 +19,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
@@ -56,6 +57,11 @@ var devCmd = &cobra.Command{
 		noEditor, _ := cmd.Flags().GetBool(flagNoEditor)
 		logger.SetDebugMode(cmd)
 
+		cfg, err := config.GetConfig(cmd)
+		if err != nil {
+			return err
+		}
+
 		startingMessage := "Running Cardinal in dev mode"
 		if watch {
 			startingMessage += " with hot reload support"
@@ -82,7 +88,7 @@ var devCmd = &cobra.Command{
 			fmt.Println("Preparing Cardinal Editor...")
 			cePrepChan := make(chan struct{})
 			go func() {
-				err := runCardinalEditor(cardinalEditorPort, cePrepChan)
+				err := runCardinalEditor(cfg.RootDir, cfg.GameDir, cardinalEditorPort, cePrepChan)
 				if err != nil {
 					cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 					fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
@@ -98,7 +104,7 @@ var devCmd = &cobra.Command{
 		fmt.Println()
 
 		// Run Redis container
-		err := runRedis()
+		err = runRedis()
 		if err != nil {
 			return err
 		}
@@ -125,7 +131,7 @@ var devCmd = &cobra.Command{
 		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
 		// Run Cardinal Preparation
-		err = runCardinalPrep()
+		err = runCardinalPrep(cfg.RootDir, cfg.GameDir)
 		if err != nil {
 			return err
 		}
@@ -213,10 +219,10 @@ func runRedis() error {
 
 // runCardinalPrep preparation for runs cardinal in dev mode.
 // We run cardinal without docker to make it easier to debug and skip the docker image build step
-func runCardinalPrep() error {
-	err := os.Chdir("cardinal")
+func runCardinalPrep(rootDir string, gameDir string) error {
+	err := os.Chdir(filepath.Join(rootDir, gameDir))
 	if err != nil {
-		return errors.New("can't find cardinal directory. Are you in the root of a World Engine project")
+		return errors.New("can't find game directory. Are you in the root of a World Engine project")
 	}
 
 	env := map[string]string{
@@ -299,16 +305,11 @@ func cleanup() error {
 }
 
 // runCardinalEditor runs the Cardinal Editor
-func runCardinalEditor(port int, prepChan chan struct{}) error {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		prepChan <- struct{}{}
-		return err
-	}
-	cardinalEditorDir := filepath.Join(workingDir, teacmd.TargetEditorDir)
+func runCardinalEditor(rootDir string, gameDir string, port int, prepChan chan struct{}) error {
+	cardinalEditorDir := filepath.Join(rootDir, teacmd.TargetEditorDir)
 
 	// Setup cardinal editor
-	err = teacmd.SetupCardinalEditor()
+	err := teacmd.SetupCardinalEditor(rootDir, gameDir)
 	if err != nil {
 		prepChan <- struct{}{}
 		return err
