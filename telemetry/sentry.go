@@ -22,13 +22,21 @@ func (h SentryHook) Run(_ *zerolog.Event, level zerolog.Level, msg string) {
 	shouldBeLogged := slices.Contains(h.Levels(), level)
 	if sentryInitialized && shouldBeLogged {
 		// Capture error message
-		sentry.CaptureException(errors.New(msg))
+		if level == zerolog.ErrorLevel || level == zerolog.FatalLevel || level == zerolog.PanicLevel {
+			sentry.CaptureException(errors.New(msg))
+		}
+
+		// Capture warning message
+		if level == zerolog.WarnLevel || level == zerolog.DebugLevel {
+			sentry.CaptureMessage(msg)
+		}
 	}
 }
 
 // Levels returns the log levels that this hook should be triggered for
 func (h SentryHook) Levels() []zerolog.Level {
-	return []zerolog.Level{zerolog.ErrorLevel, zerolog.FatalLevel}
+	return []zerolog.Level{zerolog.ErrorLevel, zerolog.FatalLevel, zerolog.DebugLevel,
+		zerolog.PanicLevel, zerolog.WarnLevel}
 }
 
 // SentryInit initialize sentry

@@ -6,13 +6,20 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/user"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/spf13/cobra"
+	tassert "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
+
+	"pkg.world.dev/world-cli/common/login"
 )
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
@@ -103,7 +110,7 @@ func TestExecuteDoctorCommand(t *testing.T) {
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template")
+	gameDir, err := os.MkdirTemp("", "game-template-start")
 	assert.NilError(t, err)
 
 	// Remove dir
@@ -158,7 +165,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 func TestDev(t *testing.T) {
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template")
+	gameDir, err := os.MkdirTemp("", "game-template-dev")
 	assert.NilError(t, err)
 
 	// Remove dir
@@ -241,4 +248,93 @@ func cardinalIsDown(t *testing.T) bool {
 		continue
 	}
 	return down
+}
+
+func TestGenerateTokenNameWithFallback(t *testing.T) {
+	// Attempt to generate a token name
+	name := generateTokenNameWithFallback()
+
+	// Ensure the name follows the expected pattern
+	tassert.Contains(t, name, "cli_")
+
+	// Additional checks if user and hostname can be retrieved in the environment
+	currentUser, userErr := user.Current()
+	hostname, hostErr := os.Hostname()
+	if userErr == nil && hostErr == nil {
+		expectedPrefix := fmt.Sprintf("cli_%s@%s_", currentUser.Username, hostname)
+		tassert.Contains(t, name, expectedPrefix)
+	}
+}
+
+func TestPollForAccessToken(t *testing.T) {
+	tests := []struct {
+		name             string
+		statusCode       int
+		retryAfterHeader string
+		responseBody     string
+		expectError      bool
+		expectedResponse login.AccessTokenResponse
+	}{
+		{
+			name:         "Successful token retrieval",
+			statusCode:   http.StatusOK,
+			responseBody: `{"access_token": "test_token", "pub_key": "test_pub_key", "nonce": "test_nonce"}`,
+			expectedResponse: login.AccessTokenResponse{
+				AccessToken: "test_token",
+				PublicKey:   "test_pub_key",
+				Nonce:       "test_nonce",
+			},
+			expectError: false,
+		},
+		{
+			name:             "Retry on 404 with Retry-After header",
+			statusCode:       http.StatusNotFound,
+			retryAfterHeader: "1",
+			expectError:      true,
+		},
+		{
+			name:             "Retry on 404 without Retry-After header",
+			statusCode:       http.StatusNotFound,
+			retryAfterHeader: "",
+			expectError:      true,
+		},
+		{
+			name:         "Error on invalid JSON response",
+			statusCode:   http.StatusOK,
+			responseBody: `invalid_json`,
+			expectError:  true,
+		},
+		{
+			name:        "Error on non-200/404 status",
+			statusCode:  http.StatusInternalServerError,
+			expectError: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if test.retryAfterHeader != "" {
+					w.Header().Set("Retry-After", test.retryAfterHeader)
+				}
+				w.WriteHeader(test.statusCode)
+				w.Write([]byte(test.responseBody)) //nolint:errcheck // Ignore error for test
+			})
+
+			server := httptest.NewServer(handler)
+			defer server.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			response, err := pollForAccessToken(ctx, server.URL)
+
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				tassert.Equal(t, test.expectedResponse, response)
+			}
+		})
+	}
 }
