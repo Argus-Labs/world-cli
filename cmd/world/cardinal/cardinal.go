@@ -34,6 +34,6 @@ var BaseCmd = &cobra.Command{
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
 	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
-	// Add --debug flag
+	// Add --log-debug flag
 	logger.AddLogFlag(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }

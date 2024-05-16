@@ -15,7 +15,7 @@ const (
 
 	NoColor   = true
 	UseCaller = false // for developer, if you want to expose line of code of caller
-	flagDebug = "debug"
+	flagDebug = "log-debug"
 )
 
 var (
@@ -63,17 +63,17 @@ func PrintLogs() {
 }
 
 // SetDebugMode Allow particular logger/message to be printed
-// This function will extract flag --debug from command
+// This function will extract flag --log-debug from command
 func SetDebugMode(cmd *cobra.Command) {
-	val, err := cmd.Flags().GetBool("debug")
+	val, err := cmd.Flags().GetBool(flagDebug)
 	if err == nil {
 		DebugMode = val
 	}
 }
 
-// AddLogFlag set flag --debug
+// AddLogFlag set flag --log-debug
 func AddLogFlag(cmd ...*cobra.Command) {
 	for _, c := range cmd {
-		c.Flags().Bool(flagDebug, false, "Run in debug mode")
+		c.Flags().Bool(flagDebug, false, "Enable World CLI debug logs")
 	}
 }

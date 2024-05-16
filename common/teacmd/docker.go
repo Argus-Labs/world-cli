@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/magefile/mage/sh"
@@ -46,8 +47,22 @@ func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
 	}
 
 	cmd.Env = env
-	return cmd.Run()
-	// return sh.RunWith(cfg.DockerEnv, "docker", args...)
+	if err := cmd.Run(); err != nil {
+		var exitCode *exec.ExitError
+		if errors.As(err, &exitCode) {
+			// Ignore exit codes 130, 137, and 143 as they are expected to be returned on termination.
+			// Exit code 130: Container terminated by Ctrl+C
+			// Exit code 137: Container terminated by SIGKILL
+			// Exit code 143: Container terminated by SIGTERM
+			expectedExitCodes := []int{130, 137, 143}
+			if slices.Contains(expectedExitCodes, exitCode.ExitCode()) {
+				return nil
+			}
+			return err
+		}
+	}
+
+	return nil
 }
 
 // DockerStart starts a given docker container by name.

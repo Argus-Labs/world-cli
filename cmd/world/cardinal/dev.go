@@ -1,27 +1,25 @@
 package cardinal
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"runtime"
-	"syscall"
+	"strconv"
 	"time"
 
-	"github.com/argus-labs/fresh/runner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/magefile/mage/sh"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
+	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -33,18 +31,9 @@ const (
 	cePortStart = 3000
 	cePortEnd   = 4000
 
-	// Cardinal Editor Server Config
-	ceReadTimeout = 5 * time.Second
-
-	// flagWatch : Flag for hot reload support
-	flagWatch = "watch"
-
-	// flagNoEditor : Flag for running Cardinal without the editor
-	flagNoEditor = "no-editor"
+	// flagPrettyLog Flag that determines whether to run Cardinal with pretty logging (default: true)
+	flagPrettyLog = "pretty-log"
 )
-
-// StopChan is used to signal graceful shutdown
-var StopChan = make(chan struct{})
 
 // devCmd runs Cardinal in development mode
 // Usage: `world cardinal dev`
@@ -53,8 +42,16 @@ var devCmd = &cobra.Command{
 	Short: "Run Cardinal in development mode",
 	Long:  `Run Cardinal in development mode`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		watch, _ := cmd.Flags().GetBool(flagWatch)
-		noEditor, _ := cmd.Flags().GetBool(flagNoEditor)
+		editor, err := cmd.Flags().GetBool(flagEditor)
+		if err != nil {
+			return err
+		}
+
+		prettyLog, err := cmd.Flags().GetBool(flagPrettyLog)
+		if err != nil {
+			return err
+		}
+
 		logger.SetDebugMode(cmd)
 
 		cfg, err := config.GetConfig(cmd)
@@ -62,118 +59,52 @@ var devCmd = &cobra.Command{
 			return err
 		}
 
-		startingMessage := "Running Cardinal in dev mode"
-		if watch {
-			startingMessage += " with hot reload support"
-		}
+		// Print out header
+		fmt.Println(style.CLIHeader("Cardinal", ""))
 
-		fmt.Print(style.CLIHeader("Cardinal", startingMessage), "\n")
-		fmt.Println(style.BoldText.Render("Press Ctrl+C to stop"))
-		fmt.Println()
-		fmt.Printf("Redis: localhost:%s\n", RedisPort)
-		fmt.Printf("Cardinal: localhost:%s\n", CardinalPort)
-
-		if !noEditor {
-			// Find an unused port for the Cardinal Editor
-			cardinalEditorPort, findPortError := findUnusedPort(cePortStart, cePortEnd)
-			if findPortError == nil {
-				fmt.Printf("Cardinal Editor: localhost:%d\n", cardinalEditorPort)
-			} else {
-				fmt.Println("Cardinal Editor: Failed to find an unused port")
+		// Print out service addresses
+		printServiceAddress("Redis", fmt.Sprintf("localhost:%s", RedisPort))
+		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
+		var port int
+		if editor {
+			port, err = common.FindUnusedPort(cePortStart, cePortEnd)
+			if err != nil {
+				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
 			}
-
-			// Run Cardinal Editor
-			// Cardinal will not blocking the process if it's failed to run
-			// cePrepChan is channel for blocking process while setup cardinal editor
-			fmt.Println("Preparing Cardinal Editor...")
-			cePrepChan := make(chan struct{})
-			go func() {
-				err := runCardinalEditor(cfg.RootDir, cfg.GameDir, cardinalEditorPort, cePrepChan)
-				if err != nil {
-					cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-					fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
-					logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
-
-					// continue if error
-					cePrepChan <- struct{}{}
-				}
-			}()
-			// Waiting cardinal editor preparation
-			<-cePrepChan
+			printServiceAddress("Cardinal Editor", fmt.Sprintf("localhost:%d", port))
+		} else {
+			printServiceAddress("Cardinal Editor", "[disabled]")
 		}
 		fmt.Println()
 
-		// Run Redis container
-		err = runRedis()
-		if err != nil {
-			return err
-		}
-
-		isRedisRunning := false
-		for !isRedisRunning {
-			server := fmt.Sprintf("localhost:%s", RedisPort)
-			timeout := 2 * time.Second //nolint:gomnd
-
-			conn, err := net.DialTimeout("tcp", server, timeout)
-			if err != nil {
-				logger.Printf("Failed to connect to Redis server at %s: %s\n", server, err)
-				continue
+		// Start redis, cardinal, and cardinal editor
+		// If any of the services terminates, the entire group will be terminated.
+		group, ctx := errgroup.WithContext(cmd.Context())
+		group.Go(func() error {
+			if err := startRedis(ctx); err != nil {
+				return eris.Wrap(err, "Encountered an error with Redis")
 			}
-			err = conn.Close()
-			if err != nil {
-				continue
+			return eris.Wrap(ErrGracefulExit, "Redis terminated")
+		})
+		group.Go(func() error {
+			if err := startCardinalDevMode(ctx, cfg, prettyLog); err != nil {
+				return eris.Wrap(err, "Encountered an error with Cardinal")
 			}
-			isRedisRunning = true
-		}
-
-		// Create a channel to receive termination signals
-		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
-
-		// Run Cardinal Preparation
-		err = runCardinalPrep(cfg.RootDir, cfg.GameDir)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("Starting Cardinal...")
-		execCmd, err := runCardinal(watch)
-		if err != nil {
-			return err
-		}
-
-		// Start a goroutine to check cmd is stopped
-		go func() {
-			err := execCmd.Wait()
-			if err != nil {
-				logger.Error(eris.Wrap(err, "Cardinal process stopped"))
+			return eris.Wrap(ErrGracefulExit, "Cardinal terminated")
+		})
+		group.Go(func() error {
+			if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, port); err != nil {
+				return eris.Wrap(err, "Encountered an error with Cardinal Editor")
 			}
+			return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
+		})
 
-			// if process exited, send signal to StopChan
-			signalCh <- syscall.SIGTERM
-		}()
-
-		// Start a goroutine to listen for signals
-		go func() {
-			<-signalCh
-			close(StopChan)
-		}()
-
-		// Wait for stop signal
-		<-StopChan
-		err = stopCardinal(execCmd, watch)
-		if err != nil {
+		// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
+		if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {
 			return err
-		}
-
-		// Cleanup redis
-		errCleanup := cleanup()
-		if errCleanup != nil {
-			return errCleanup
 		}
 
 		return nil
-
 	},
 }
 
@@ -182,165 +113,182 @@ var devCmd = &cobra.Command{
 /////////////////
 
 func init() {
-	devCmd.Flags().Bool(flagWatch, false, "Dev mode with hot reload support")
-	devCmd.Flags().Bool(flagNoEditor, false, "Run Cardinal without the editor")
+	registerEditorFlag(devCmd, true)
+	devCmd.Flags().Bool(flagPrettyLog, true, "Run Cardinal with pretty logging")
 }
 
-// runRedis runs Redis in a Docker container
-func runRedis() error {
-	logger.Println("Starting Redis container...")
-	//nolint:gosec // not applicable
-	cmd := exec.Command("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name",
-		"cardinal-dev-redis", "redis")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+//////////////////////
+// Cardinal Helpers //
+//////////////////////
 
-	err := cmd.Run()
-	if err != nil {
-		logger.Println("Failed to start Redis container. Retrying after cleanup...")
-		cleanupErr := cleanup()
-		if cleanupErr != nil {
-			return err
-		}
-
-		err := sh.Run("docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort), "--name",
-			"cardinal-dev-redis", "redis")
-		if err != nil {
-			if sh.ExitStatus(err) == 125 { //nolint:gomnd
-				fmt.Println("Maybe redis cardinal docker is still up, run 'world cardinal stop' and try again")
-				return err
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
-// runCardinalPrep preparation for runs cardinal in dev mode.
-// We run cardinal without docker to make it easier to debug and skip the docker image build step
-func runCardinalPrep(rootDir string, gameDir string) error {
-	err := os.Chdir(filepath.Join(rootDir, gameDir))
-	if err != nil {
-		return errors.New("can't find game directory. Are you in the root of a World Engine project")
-	}
-
-	env := map[string]string{
-		"REDIS_MODE":     "normal",
-		"CARDINAL_PORT":  CardinalPort,
-		"REDIS_ADDR":     fmt.Sprintf("localhost:%s", RedisPort),
-		"DEPLOY_MODE":    "development",
-		"RUNNER_IGNORED": "assets, tmp, vendor",
-	}
-
-	for key, value := range env {
-		os.Setenv(key, value)
-	}
-	return nil
-}
-
-// runCardinal runs cardinal in dev mode.
+// startCardinalDevMode runs cardinal in dev mode.
 // If watch is true, it uses fresh for hot reload support
 // Otherwise, it runs cardinal using `go run .`
-func runCardinal(watch bool) (*exec.Cmd, error) {
-	if watch {
-		// using fresh
-		go runner.Start()
-		return &exec.Cmd{}, nil
+func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error {
+	fmt.Println("Starting Cardinal...")
+	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop\n"))
+
+	// Move into the cardinal directory
+	if err := os.Chdir(filepath.Join(cfg.RootDir, cfg.GameDir)); err != nil {
+		return eris.New("Unable to find cardinal directory. Are you in the project root?")
 	}
 
+	// Set world.toml environment variables
+	if err := common.WithEnv(cfg.DockerEnv); err != nil {
+		return eris.Wrap(err, "Failed to set world.toml environment variables")
+	}
+
+	// Set dev mode environment variables
+	if err := common.WithEnv(
+		map[string]string{
+			"RUNNER_IGNORED":      "assets, tmp, vendor",
+			"CARDINAL_PRETTY_LOG": strconv.FormatBool(prettyLog),
+		},
+	); err != nil {
+		return eris.Wrap(err, "Failed to set dev mode environment variables")
+	}
+
+	// Create an error group for managing cardinal lifecycle
+	group, ctx := errgroup.WithContext(ctx)
+
+	// Run cardinal
 	cmd := exec.Command("go", "run", ".")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
+	group.Go(func() error {
+		if err := cmd.Start(); err != nil {
+			return eris.Wrap(err, "Failed to start Cardinal")
+		}
 
-	err := cmd.Start()
-	if err != nil {
-		return nil, err
-	}
-
-	return cmd, nil
-}
-
-// stopCardinal stops the cardinal process
-// If watch is true, it stops the fresh process
-// Otherwise, it stops the cardinal process
-func stopCardinal(cmd *exec.Cmd, watch bool) error {
-	if watch {
-		// using fresh
-		runner.Stop()
-		return nil
-	}
-
-	if cmd.ProcessState == nil || cmd.ProcessState.Exited() {
-		return nil
-	}
-
-	// stop the cardinal process
-	if runtime.GOOS == "windows" {
-		err := cmd.Process.Kill()
-		if err != nil {
+		if err := cmd.Wait(); err != nil {
 			return err
 		}
-	} else {
-		err := cmd.Process.Signal(os.Interrupt)
-		if err != nil {
-			return err
+		return nil
+	})
+
+	// Goroutine to handle termination
+	// There are two ways that a termination sequence can be triggered:
+	// 1) The cardinal goroutine returns a non-nil error
+	// 2) The parent context is canceled for whatever reason.
+	group.Go(func() error {
+		<-ctx.Done()
+
+		// No need to do anything if cardinal already exited or is not running
+		if cmd.ProcessState == nil || cmd.ProcessState.Exited() {
+			return nil
 		}
+
+		if runtime.GOOS == "windows" {
+			// Sending interrupt signal is not supported in Windows
+			if err := cmd.Process.Kill(); err != nil {
+				return err
+			}
+		} else {
+			if err := cmd.Process.Signal(os.Interrupt); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// cleanup stops and removes the Redis and Webdis containers
-func cleanup() error {
-	err := sh.Run("docker", "rm", "-f", "cardinal-dev-redis")
-	if err != nil {
+///////////////////
+// Redis Helpers //
+///////////////////
+
+// startRedis runs Redis in a Docker container
+func startRedis(ctx context.Context) error {
+	// Create an error group for managing redis lifecycle
+	group := new(errgroup.Group)
+
+	// Start Redis container
+	group.Go(func() error {
+		//nolint:gosec // not applicable
+		cmd := exec.Command(
+			"docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort),
+			"--name", "cardinal-dev-redis", "redis",
+		)
+
+		// Retry starting Redis container until successful
+		isDockerRunSuccessful := false
+		for !isDockerRunSuccessful {
+			if err := cmd.Run(); err != nil {
+				logger.Println("Failed to start Redis container. Retrying after cleanup...")
+				if err := stopRedis(); err != nil {
+					logger.Println("Failed to stop Redis container")
+				}
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			isDockerRunSuccessful = true
+		}
+
+		// Check and wait until Redis is running and is available in the expected port
+		isRedisHealthy := false
+		for !isRedisHealthy {
+			redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
+			conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
+			if err != nil {
+				logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			// Cleanup connection
+			if err := conn.Close(); err != nil {
+				continue
+			}
+
+			isRedisHealthy = true
+		}
+
+		return nil
+	})
+
+	// Goroutine to handle termination
+	// There are two ways that a termination sequence can be triggered:
+	// 1) The redis start goroutine returns a non-nil error
+	// 2) The parent context is canceled for whatever reason.
+	group.Go(func() error {
+		<-ctx.Done()
+		if err := stopRedis(); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func stopRedis() error {
+	logger.Println("Stopping cardinal-dev-redis container")
+	if err := sh.Run("docker", "rm", "-f", "cardinal-dev-redis"); err != nil {
 		logger.Println("Failed to delete Redis container automatically")
 		logger.Println("Please delete it manually with `docker rm -f cardinal-dev-redis`")
 		return err
 	}
-
 	return nil
 }
 
-// runCardinalEditor runs the Cardinal Editor
-func runCardinalEditor(rootDir string, gameDir string, port int, prepChan chan struct{}) error {
-	cardinalEditorDir := filepath.Join(rootDir, teacmd.TargetEditorDir)
+///////////////////
+// Utils Helpers //
+///////////////////
 
-	// Setup cardinal editor
-	err := teacmd.SetupCardinalEditor(rootDir, gameDir)
-	if err != nil {
-		prepChan <- struct{}{}
-		return err
-	}
-
-	// Serve cardinal editor dir
-	fs := http.FileServer(http.Dir(cardinalEditorDir))
-	http.Handle("/", fs)
-
-	// Create a new HTTP server
-	server := &http.Server{
-		Addr:        fmt.Sprintf(":%d", port),
-		ReadTimeout: ceReadTimeout,
-	}
-
-	// Preparation done
-	prepChan <- struct{}{}
-
-	// Start the server
-	return server.ListenAndServe()
-}
-
-// findUnusedPort finds an unused port in the range [start, end]
-func findUnusedPort(start, end int) (int, error) {
-	for port := start; port <= end; port++ {
-		address := fmt.Sprintf(":%d", port)
-		listener, err := net.Listen("tcp", address)
-		if err == nil {
-			listener.Close()
-			return port, nil
-		}
-	}
-	return 0, fmt.Errorf("no available port in the range %d-%d", start, end)
+func printServiceAddress(service string, address string) {
+	serviceStr := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render(service)
+	arrowStr := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Render(" → ")
+	addressStr := lipgloss.NewStyle().Render(address)
+	fmt.Println(serviceStr + arrowStr + addressStr)
 }

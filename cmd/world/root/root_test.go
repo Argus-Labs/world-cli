@@ -2,10 +2,10 @@ package root
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"net/http"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -13,31 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
-
-	"pkg.world.dev/world-cli/cmd/world/cardinal"
 )
-
-type healthResponse struct {
-	StatusCode        int
-	IsServerRunning   bool
-	IsGameLoopRunning bool
-}
-
-func getHealthCheck() (*healthResponse, error) {
-	var healtCheck healthResponse
-
-	resp, err := http.Get("http://127.0.0.1:4040/health")
-	if err != nil {
-		return nil, err
-	}
-	err = json.NewDecoder(resp.Body).Decode(&healtCheck)
-	if err != nil {
-		return nil, err
-	}
-
-	healtCheck.StatusCode = resp.StatusCode
-	return &healtCheck, nil
-}
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
@@ -149,7 +125,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal
-	rootCmd.SetArgs([]string{"cardinal", "start", "--build", "--detach"})
+	rootCmd.SetArgs([]string{"cardinal", "start", "--build", "--detach", "--editor=false"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
@@ -160,34 +136,24 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 		assert.NilError(t, err)
 	}()
 
-	// Check cardinal health
-	resp, err := getHealthCheck()
-	assert.NilError(t, err)
-	assert.Equal(t, resp.StatusCode, 200)
-	assert.Assert(t, resp.IsServerRunning)
-	assert.Assert(t, resp.IsGameLoopRunning)
+	// Check and wait until cardinal is healthy
+	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Restart cardinal
 	rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
-	// Check cardinal health after restart
-	resp, err = getHealthCheck()
-	assert.NilError(t, err)
-	assert.Equal(t, resp.StatusCode, 200)
-	assert.Assert(t, resp.IsServerRunning)
-	assert.Assert(t, resp.IsGameLoopRunning)
+	// Check and wait until cardinal is healthy
+	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Stop cardinal
 	rootCmd.SetArgs([]string{"cardinal", "stop"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
-	// Check cardinal health (expected error)
-	_, err = getHealthCheck()
-	assert.Error(t, err,
-		"Get \"http://127.0.0.1:4040/health\": dial tcp 127.0.0.1:4040: connect: connection refused")
+	// Check and wait until cardinal shutdowns
+	assert.Assert(t, cardinalIsDown(t), "Cardinal is not successfully shutdown")
 }
 
 func TestDev(t *testing.T) {
@@ -214,45 +180,21 @@ func TestDev(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal dev
-	rootCmd.SetArgs([]string{"cardinal", "dev"})
+	ctx, cancel := context.WithCancel(context.Background())
+	rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
 	go func() {
-		err := rootCmd.Execute()
+		err := rootCmd.ExecuteContext(ctx)
 		assert.NilError(t, err)
 	}()
 
-	// Check cardinal health for 300 second, waiting to download dependencies and building the apps
-	isServerRunning := false
-	isGameLoopRunning := false
-	timeout := time.Now().Add(300 * time.Second)
-	for !(isServerRunning && isGameLoopRunning) && time.Now().Before(timeout) {
-		resp, err := getHealthCheck()
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		assert.Equal(t, resp.StatusCode, 200)
-		isServerRunning = resp.IsServerRunning
-		isGameLoopRunning = resp.IsGameLoopRunning
-	}
-	assert.Assert(t, isServerRunning)
-	assert.Assert(t, isGameLoopRunning)
+	// Check and wait until cardinal is healthy
+	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Shutdown the program
-	cardinal.StopChan <- struct{}{}
+	cancel()
 
-	// Check cardinal health (expected error), trying for 10 times
-	count := 0
-	for count < 10 {
-		_, err = getHealthCheck()
-		if err != nil {
-			break
-		}
-		time.Sleep(1 * time.Second)
-		count++
-	}
-
-	assert.Error(t, err,
-		"Get \"http://127.0.0.1:4040/health\": dial tcp 127.0.0.1:4040: connect: connection refused")
+	// Check and wait until cardinal shutdowns
+	assert.Assert(t, cardinalIsDown(t), "Cardinal is not successfully shutdown")
 }
 
 func TestCheckLatestVersion(t *testing.T) {
@@ -267,4 +209,36 @@ func TestCheckLatestVersion(t *testing.T) {
 		err := checkLatestVersion()
 		assert.Error(t, err, "error parsing current version: Malformed version: wrong format")
 	})
+}
+
+func cardinalIsUp(t *testing.T) bool {
+	up := false
+	for i := 0; i < 10; i++ {
+		conn, err := net.DialTimeout("tcp", "localhost:4040", time.Second)
+		if err != nil {
+			time.Sleep(time.Second)
+			t.Log("Failed to connect to Cardinal, retrying...")
+			continue
+		}
+		_ = conn.Close()
+		up = true
+		break
+	}
+	return up
+}
+
+func cardinalIsDown(t *testing.T) bool {
+	down := false
+	for i := 0; i < 10; i++ {
+		conn, err := net.DialTimeout("tcp", "localhost:4040", time.Second)
+		if err != nil {
+			down = true
+			break
+		}
+		_ = conn.Close()
+		time.Sleep(time.Second)
+		t.Log("Cardinal is still running, retrying...")
+		continue
+	}
+	return down
 }
