@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
+	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
@@ -41,6 +42,8 @@ var (
 		zerolog.Disabled.String(),
 		zerolog.TraceLevel.String(),
 	}, ", ")
+
+	ErrGracefulExit = eris.New("Process gracefully exited")
 )
 
 // startCmd starts your Cardinal game shard stack
@@ -100,42 +103,41 @@ This will start the following Docker services and its dependencies:
 		}
 
 		runEditor, err := cmd.Flags().GetBool(flagEditor)
-		if err == nil && runEditor {
-			// Find an unused port for the Cardinal Editor
-			cardinalEditorPort, findPortError := findUnusedPort(cePortStart, cePortEnd)
-			if findPortError == nil {
-				cmdBlue := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-				fmt.Println(cmdBlue.Render("Preparing Cardinal Editor..."))
-				fmt.Println(cmdBlue.Render(fmt.Sprint("Cardinal Editor will be run on localhost:", cardinalEditorPort)))
-				cePrepChan := make(chan struct{})
-				go func() {
-					err := runCardinalEditor(cfg.RootDir, cfg.GameDir, cardinalEditorPort, cePrepChan)
-					if err != nil {
-						cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-						fmt.Println(cmdStyle.Render("Warning: Failed to run Cardinal Editor"))
-						logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
-
-						// continue if error
-						cePrepChan <- struct{}{}
-					}
-				}()
-				// Waiting cardinal editor preparation
-				<-cePrepChan
-			} else {
-				// just log the error if the editor fails to run
-				logger.Error(eris.Wrap(findPortError, "Failed to find an unused port for Cardinal Editor"))
-			}
-		} else {
-			// just log the error if the editor fails to run
-			logger.Error(eris.Wrap(err, "Failed to run Cardinal Editor"))
+		if err != nil {
+			return err
 		}
 
 		fmt.Println("Starting Cardinal game shard...")
 		fmt.Println("This may take a few minutes to rebuild the Docker images.")
 		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
 
-		err = teacmd.DockerStartAll(cfg)
-		if err != nil {
+		group, ctx := errgroup.WithContext(cmd.Context())
+
+		// Start the World Engine stack
+		group.Go(func() error {
+			if err := teacmd.DockerStartAll(cfg); err != nil {
+				return eris.Wrap(err, "Encountered an error with Docker")
+			}
+			return eris.Wrap(ErrGracefulExit, "Stack terminated")
+		})
+
+		// Start Cardinal Editor is flag is set to true
+		if runEditor {
+			editorPort, err := common.FindUnusedPort(cePortStart, cePortEnd)
+			if err != nil {
+				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
+			}
+
+			group.Go(func() error {
+				if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, editorPort); err != nil {
+					return eris.Wrap(err, "Encountered an error with Cardinal Editor")
+				}
+				return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
+			})
+		}
+
+		// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
+		if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {
 			return err
 		}
 
@@ -144,10 +146,10 @@ This will start the following Docker services and its dependencies:
 }
 
 func init() {
+	registerEditorFlag(startCmd, true)
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
-	startCmd.Flags().Bool(flagEditor, false, "Start cardinal with cardinal editor")
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag

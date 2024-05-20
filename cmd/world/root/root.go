@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -50,6 +52,12 @@ type Release struct {
 func init() {
 	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true
+
+	// Disable printing usage help text when command returns a non-nil error
+	rootCmd.SilenceUsage = true
+
+	// Injects a context that is canceled when a sigterm signal is received
+	rootCmd.SetContext(contextWithSigterm(context.Background()))
 
 	// Register groups
 	rootCmd.AddGroup(&cobra.Group{ID: "starter", Title: "Getting Started:"})
@@ -138,4 +146,26 @@ func Execute() {
 	}
 	// print log stack
 	logger.PrintLogs()
+}
+
+// contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or
+// when a termination signal is received
+func contextWithSigterm(ctx context.Context) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+
+	go func() {
+		defer cancel()
+
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+
+		select {
+		case <-signalCh:
+			fmt.Println(textStyle.Render("Interrupt signal received. Terminating..."))
+		case <-ctx.Done():
+			fmt.Println(textStyle.Render("Cancellation signal received. Terminating..."))
+		}
+	}()
+	return ctx
 }
