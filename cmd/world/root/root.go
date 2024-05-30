@@ -66,7 +66,8 @@ func init() {
 	// Register base commands
 	doctorCmd := getDoctorCmd(os.Stdout)
 	createCmd := getCreateCmd(os.Stdout)
-	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd)
+	loginCmd := getLoginCmd()
+	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd, loginCmd)
 
 	// Register subcommands
 	rootCmd.AddCommand(cardinal.BaseCmd)
@@ -131,7 +132,7 @@ func checkLatestVersion() error {
 			fmt.Println(cmdStyle.Render(updateMessage))
 
 			commandMessage := "To install the latest version run:\n\t" +
-				"'curl https://install.world.dev/cli! | bash'"
+				"'curl https://install.world.dev/cli! | bash'\n"
 			fmt.Println(cmdStyle.Render(commandMessage))
 		}
 	}

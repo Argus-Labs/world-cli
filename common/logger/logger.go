@@ -71,6 +71,11 @@ func Error(args ...interface{}) {
 	log.Error().Timestamp().Msg(fmt.Sprint(args...))
 }
 
+// Error function
+func ErrorE(err error) {
+	log.Error().Timestamp().Err(err).Msg(err.Error())
+}
+
 // Errorln function
 func Errorln(args ...interface{}) {
 	log.Error().Timestamp().Msg(fmt.Sprintln(args...))
