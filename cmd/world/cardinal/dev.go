@@ -92,12 +92,14 @@ var devCmd = &cobra.Command{
 			}
 			return eris.Wrap(ErrGracefulExit, "Cardinal terminated")
 		})
-		group.Go(func() error {
-			if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, port); err != nil {
-				return eris.Wrap(err, "Encountered an error with Cardinal Editor")
-			}
-			return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
-		})
+		if editor {
+			group.Go(func() error {
+				if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, port); err != nil {
+					return eris.Wrap(err, "Encountered an error with Cardinal Editor")
+				}
+				return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
+			})
+		}
 
 		// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
 		if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {

@@ -59,6 +59,7 @@ type Release struct {
 func SetupCardinalEditor(rootDir string, gameDir string) error {
 	// Get the version map
 	cardinalVersionMap, err := getVersionMap(versionMapURL)
+	fmt.Println("cardinalVersionMap", cardinalVersionMap)
 	if err != nil {
 		logger.Warn("Failed to get version map, using default version map")
 		cardinalVersionMap = defaultCardinalVersionMap
@@ -75,6 +76,8 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	if versionIsExist {
 		downloadURL = fmt.Sprintf("%s/tags/%s", releaseURL, downloadVersion)
 	}
+
+	fmt.Println("downloadURL", downloadURL)
 
 	// Check if the Cardinal Editor directory exists
 	if _, err := os.Stat(TargetEditorDir); !os.IsNotExist(err) {

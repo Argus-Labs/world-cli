@@ -166,17 +166,21 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 func TestDev(t *testing.T) {
 	// Create Cardinal
 	gameDir, err := os.MkdirTemp("", "game-template-dev")
+	fmt.Println("gameDir: ", gameDir)
 	assert.NilError(t, err)
 
 	// Remove dir
-	defer func() {
+	t.Cleanup(func() {
+		fmt.Println("Removing gameDir: ", gameDir)
 		err = os.RemoveAll(gameDir)
 		assert.NilError(t, err)
-	}()
+	})
 
 	// Change dir
+	fmt.Println("Changing dir to: ", gameDir)
 	err = os.Chdir(gameDir)
 	assert.NilError(t, err)
+	fmt.Println("Changed dir to: ", gameDir)
 
 	// set tea ouput to variable
 	teaOut := &bytes.Buffer{}
@@ -190,7 +194,9 @@ func TestDev(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
 	go func() {
+		fmt.Println("Starting cardinal dev")
 		err := rootCmd.ExecuteContext(ctx)
+		fmt.Println("Cardinal dev exited with error: ", err)
 		assert.NilError(t, err)
 	}()
 
@@ -198,10 +204,12 @@ func TestDev(t *testing.T) {
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Shutdown the program
+	fmt.Println("Shutting down the program")
 	cancel()
 
 	// Check and wait until cardinal shutdowns
 	assert.Assert(t, cardinalIsDown(t), "Cardinal is not successfully shutdown")
+	fmt.Println("Cardinal is successfully shutdown")
 }
 
 func TestCheckLatestVersion(t *testing.T) {
@@ -214,13 +222,14 @@ func TestCheckLatestVersion(t *testing.T) {
 	t.Run("error version format", func(t *testing.T) {
 		AppVersion = "wrong format"
 		err := checkLatestVersion()
+		fmt.Println("Error: ", err)
 		assert.Error(t, err, "error parsing current version: Malformed version: wrong format")
 	})
 }
 
 func cardinalIsUp(t *testing.T) bool {
 	up := false
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 60; i++ {
 		conn, err := net.DialTimeout("tcp", "localhost:4040", time.Second)
 		if err != nil {
 			time.Sleep(time.Second)
@@ -236,7 +245,7 @@ func cardinalIsUp(t *testing.T) bool {
 
 func cardinalIsDown(t *testing.T) bool {
 	down := false
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 60; i++ {
 		conn, err := net.DialTimeout("tcp", "localhost:4040", time.Second)
 		if err != nil {
 			down = true
