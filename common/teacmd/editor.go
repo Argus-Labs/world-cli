@@ -177,12 +177,12 @@ func downloadAndUnzip(url string, targetDir string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
 	}
+	file.Close()
 
 	if err = unzipFile(tmpZipFileName, targetDir); err != nil {
 		return err
@@ -227,12 +227,12 @@ func unzipFile(filename string, targetDir string) error {
 		if err != nil {
 			return err
 		}
-		defer dst.Close()
 
 		_, err = io.Copy(dst, src) //nolint:gosec // zip file is from us
 		if err != nil {
 			return err
 		}
+		dst.Close()
 	}
 
 	if err = os.Rename(filepath.Join(filepath.Dir(targetDir), originalDir), targetDir); err != nil {
