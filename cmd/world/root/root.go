@@ -66,8 +66,7 @@ func init() {
 	// Register base commands
 	doctorCmd := getDoctorCmd(os.Stdout)
 	createCmd := getCreateCmd(os.Stdout)
-	loginCmd := getLoginCmd()
-	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd, loginCmd)
+	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd)
 
 	// Register subcommands
 	rootCmd.AddCommand(cardinal.BaseCmd)
