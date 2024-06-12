@@ -15,14 +15,13 @@ const (
 
 	NoColor   = true
 	UseCaller = false // for developer, if you want to expose line of code of caller
-	flagDebug = "log-debug"
 )
 
 var (
 	logBuffer bytes.Buffer
 
-	// DebugMode flag for determining debug mode
-	DebugMode = false
+	// VerboseMode flag for determining verbose logging
+	verboseMode = false
 )
 
 func init() {
@@ -52,7 +51,7 @@ func init() {
 
 // PrintLogs print all stacked log
 func PrintLogs() {
-	if DebugMode {
+	if verboseMode {
 		// Extract the logs from the buffer and print them
 		logs := logBuffer.String()
 		if len(logs) > 0 {
@@ -62,18 +61,9 @@ func PrintLogs() {
 	}
 }
 
-// SetDebugMode Allow particular logger/message to be printed
-// This function will extract flag --log-debug from command
-func SetDebugMode(cmd *cobra.Command) {
-	val, err := cmd.Flags().GetBool(flagDebug)
-	if err == nil {
-		DebugMode = val
-	}
-}
-
-// AddLogFlag set flag --log-debug
-func AddLogFlag(cmd ...*cobra.Command) {
+// AddVerboseFlag set flag --log-debug
+func AddVerboseFlag(cmd ...*cobra.Command) {
 	for _, c := range cmd {
-		c.Flags().Bool(flagDebug, false, "Enable World CLI debug logs")
+		c.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable World CLI debug logs")
 	}
 }

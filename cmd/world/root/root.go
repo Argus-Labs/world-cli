@@ -74,10 +74,7 @@ func init() {
 	rootCmd.AddCommand(evm.BaseCmd)
 
 	config.AddConfigFlag(rootCmd)
-
-	// Add --debug flag
-	logger.AddLogFlag(createCmd)
-	logger.AddLogFlag(doctorCmd)
+	logger.AddVerboseFlag(rootCmd)
 }
 
 func checkLatestVersion() error {

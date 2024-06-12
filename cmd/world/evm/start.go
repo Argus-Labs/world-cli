@@ -27,8 +27,6 @@ var startCmd = &cobra.Command{
 	Short: "Start the EVM base shard. Use --da-auth-token to pass in an auth token directly.",
 	Long:  "Start the EVM base shard. Requires connection to celestia DA.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		logger.SetDebugMode(cmd)
-
 		cfg, err := config.GetConfig(cmd)
 		if err != nil {
 			return err

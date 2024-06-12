@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/dependency"
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -84,8 +83,7 @@ World CLI requires the following dependencies to be installed:
 - Go
 - Docker`,
 		GroupID: "starter",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			logger.SetDebugMode(cmd)
+		RunE: func(_ *cobra.Command, _ []string) error {
 			p := tea.NewProgram(NewWorldDoctorModel(), tea.WithOutput(writer))
 			_, err := p.Run()
 			if err != nil {

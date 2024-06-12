@@ -118,21 +118,21 @@ func FatalWithFields(msg string, kv map[string]interface{}) {
 
 // Printf standard printf with debug mode validation
 func Printf(format string, v ...interface{}) {
-	if DebugMode {
+	if verboseMode {
 		fmt.Printf(format, v...)
 	}
 }
 
 // Println standard println with debug mode validation
 func Println(v ...interface{}) {
-	if DebugMode {
+	if verboseMode {
 		fmt.Println(v...)
 	}
 }
 
 // Print standard print with debug mode validation
 func Print(v ...interface{}) {
-	if DebugMode {
+	if verboseMode {
 		fmt.Print(v...)
 	}
 }
