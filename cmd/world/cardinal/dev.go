@@ -52,8 +52,6 @@ var devCmd = &cobra.Command{
 			return err
 		}
 
-		logger.SetDebugMode(cmd)
-
 		cfg, err := config.GetConfig(cmd)
 		if err != nil {
 			return err

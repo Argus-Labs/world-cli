@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
@@ -24,8 +23,7 @@ This will stop the following Docker services:
 - Cardinal (Game shard)
 - Nakama (Relay) + DB
 - Redis (Cardinal dependency)`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		logger.SetDebugMode(cmd)
+	RunE: func(_ *cobra.Command, _ []string) error {
 		err := teacmd.DockerStopAll()
 		if err != nil {
 			return err

@@ -39,8 +39,6 @@ func getLoginCmd() *cobra.Command {
 		Use:   "login",
 		Short: "Authenticate using an access token",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			logger.SetDebugMode(cmd)
-
 			err := loginOnBrowser(cmd.Context())
 			if err != nil {
 				return eris.Wrap(err, "failed to login")

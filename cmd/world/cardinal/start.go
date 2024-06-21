@@ -11,7 +11,6 @@ import (
 
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
@@ -58,8 +57,6 @@ This will start the following Docker services and its dependencies:
 - Nakama (Relay)
 - Redis (Cardinal dependency)`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		logger.SetDebugMode(cmd)
-
 		cfg, err := config.GetConfig(cmd)
 		if err != nil {
 			return err
@@ -150,6 +147,7 @@ func init() {
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
+	startCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag
