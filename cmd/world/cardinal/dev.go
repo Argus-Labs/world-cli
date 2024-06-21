@@ -211,10 +211,8 @@ func startRedis(ctx context.Context) error {
 
 	// Start Redis container
 	group.Go(func() error {
-		//nolint:gosec // not applicable
 		cmd := exec.Command(
-			"docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort),
-			"--name", "cardinal-dev-redis", "redis",
+			"docker", "compose", "up", "-d", "redis",
 		)
 
 		// Retry starting Redis container until successful
@@ -273,10 +271,10 @@ func startRedis(ctx context.Context) error {
 }
 
 func stopRedis() error {
-	logger.Println("Stopping cardinal-dev-redis container")
-	if err := sh.Run("docker", "rm", "-f", "cardinal-dev-redis"); err != nil {
+	logger.Println("Stopping redis container")
+	if err := sh.Run("docker", "compose", "down"); err != nil {
 		logger.Println("Failed to delete Redis container automatically")
-		logger.Println("Please delete it manually with `docker rm -f cardinal-dev-redis`")
+		logger.Println("Please delete it manually with `docker compose down`")
 		return err
 	}
 	return nil
