@@ -200,13 +200,7 @@ func prepareDir(dir string) error {
 	if err = os.Chdir(dir); err != nil {
 		return err
 	}
-	if err = sh.Rm("./vendor"); err != nil {
-		return err
-	}
 	if err = sh.Run("go", "mod", "tidy"); err != nil {
-		return err
-	}
-	if err = sh.Run("go", "mod", "vendor"); err != nil {
 		return err
 	}
 	if err = os.Chdir(startDir); err != nil {

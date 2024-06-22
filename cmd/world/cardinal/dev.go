@@ -3,23 +3,20 @@ package cardinal
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/magefile/mage/sh"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -211,45 +208,10 @@ func startRedis(ctx context.Context) error {
 
 	// Start Redis container
 	group.Go(func() error {
-		//nolint:gosec // not applicable
-		cmd := exec.Command(
-			"docker", "run", "-d", "-p", fmt.Sprintf("%s:%s", RedisPort, RedisPort),
-			"--name", "cardinal-dev-redis", "redis",
-		)
-
-		// Retry starting Redis container until successful
-		isDockerRunSuccessful := false
-		for !isDockerRunSuccessful {
-			if err := cmd.Run(); err != nil {
-				logger.Println("Failed to start Redis container. Retrying after cleanup...")
-				if err := stopRedis(); err != nil {
-					logger.Println("Failed to stop Redis container")
-				}
-				time.Sleep(1 * time.Second)
-				continue
-			}
-			isDockerRunSuccessful = true
+		if err := teacmd.DockerStart(&config.Config{Detach: true, Build: false},
+			[]teacmd.DockerService{teacmd.DockerServiceRedis}); err != nil {
+			return eris.Wrap(err, "Encountered an error with Redis")
 		}
-
-		// Check and wait until Redis is running and is available in the expected port
-		isRedisHealthy := false
-		for !isRedisHealthy {
-			redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
-			conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
-			if err != nil {
-				logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			// Cleanup connection
-			if err := conn.Close(); err != nil {
-				continue
-			}
-
-			isRedisHealthy = true
-		}
-
 		return nil
 	})
 
@@ -259,7 +221,7 @@ func startRedis(ctx context.Context) error {
 	// 2) The parent context is canceled for whatever reason.
 	group.Go(func() error {
 		<-ctx.Done()
-		if err := stopRedis(); err != nil {
+		if err := teacmd.DockerStop([]teacmd.DockerService{teacmd.DockerServiceRedis}); err != nil {
 			return err
 		}
 		return nil
@@ -269,16 +231,6 @@ func startRedis(ctx context.Context) error {
 		return err
 	}
 
-	return nil
-}
-
-func stopRedis() error {
-	logger.Println("Stopping cardinal-dev-redis container")
-	if err := sh.Run("docker", "rm", "-f", "cardinal-dev-redis"); err != nil {
-		logger.Println("Failed to delete Redis container automatically")
-		logger.Println("Please delete it manually with `docker rm -f cardinal-dev-redis`")
-		return err
-	}
 	return nil
 }
 
