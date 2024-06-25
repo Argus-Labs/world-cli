@@ -124,7 +124,7 @@ func init() {
 // startCardinalDevMode runs cardinal in dev mode.
 // If watch is true, it uses fresh for hot reload support
 // Otherwise, it runs cardinal using `go run .`
-func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error {
+func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error { //nolint:gocognit
 	fmt.Println("Starting Cardinal...")
 	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop\n"))
 
