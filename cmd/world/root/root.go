@@ -165,5 +165,6 @@ func contextWithSigterm(ctx context.Context) context.Context {
 			fmt.Println(textStyle.Render("Cancellation signal received. Terminating..."))
 		}
 	}()
+
 	return ctx
 }
