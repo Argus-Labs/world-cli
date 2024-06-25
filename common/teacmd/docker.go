@@ -31,8 +31,7 @@ func dockerCompose(args ...string) error {
 }
 
 func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
-	yml := path.Join(cfg.RootDir, "docker-compose.yml")
-	args = append([]string{"compose", "-f", yml}, args...)
+	args = append([]string{"compose"}, args...)
 
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout

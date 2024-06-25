@@ -3,11 +3,13 @@ package cardinal
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rotisserie/eris"
@@ -16,6 +18,7 @@ import (
 
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -76,7 +79,7 @@ var devCmd = &cobra.Command{
 		// If any of the services terminates, the entire group will be terminated.
 		group, ctx := errgroup.WithContext(cmd.Context())
 		group.Go(func() error {
-			if err := startRedis(ctx); err != nil {
+			if err := startRedis(ctx, cfg); err != nil {
 				return eris.Wrap(err, "Encountered an error with Redis")
 			}
 			return eris.Wrap(ErrGracefulExit, "Redis terminated")
@@ -124,6 +127,25 @@ func init() {
 func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error {
 	fmt.Println("Starting Cardinal...")
 	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop\n"))
+
+	// Check and wait until Redis is running and is available in the expected port
+	isRedisHealthy := false
+	for !isRedisHealthy {
+		redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
+		conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
+		if err != nil {
+			logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		// Cleanup connection
+		if err := conn.Close(); err != nil {
+			continue
+		}
+
+		isRedisHealthy = true
+	}
 
 	// Move into the cardinal directory
 	if err := os.Chdir(filepath.Join(cfg.RootDir, cfg.GameDir)); err != nil {
@@ -202,14 +224,14 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 ///////////////////
 
 // startRedis runs Redis in a Docker container
-func startRedis(ctx context.Context) error {
+func startRedis(ctx context.Context, cfg *config.Config) error {
 	// Create an error group for managing redis lifecycle
 	group := new(errgroup.Group)
 
 	// Start Redis container
 	group.Go(func() error {
-		if err := teacmd.DockerStart(&config.Config{Detach: true, Build: false},
-			[]teacmd.DockerService{teacmd.DockerServiceRedis}); err != nil {
+		cfg.Detach = true
+		if err := teacmd.DockerStart(cfg, []teacmd.DockerService{teacmd.DockerServiceRedis}); err != nil {
 			return eris.Wrap(err, "Encountered an error with Redis")
 		}
 		return nil
