@@ -11,7 +11,8 @@ import (
 
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/common/docker/service"
 )
 
 /////////////////
@@ -110,9 +111,17 @@ This will start the following Docker services and its dependencies:
 
 		group, ctx := errgroup.WithContext(cmd.Context())
 
+		// Create docker client
+		dockerClient, err := docker.NewClient(cfg)
+		if err != nil {
+			return err
+		}
+		defer dockerClient.Close()
+
 		// Start the World Engine stack
 		group.Go(func() error {
-			if err := teacmd.DockerStartAll(cfg); err != nil {
+			if err := dockerClient.Start(ctx, cfg, service.NakamaDB,
+				service.Redis, service.Cardinal, service.Nakama); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
 			return eris.Wrap(ErrGracefulExit, "Stack terminated")

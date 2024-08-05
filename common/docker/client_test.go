@@ -1,0 +1,233 @@
+package docker
+
+import (
+	"context"
+	"net"
+	"os"
+	"testing"
+	"time"
+
+	"gotest.tools/v3/assert"
+
+	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/teacmd"
+)
+
+const (
+	redisPort         = "56379"
+	redisPassword     = "password"
+	cardinalNamespace = "test"
+)
+
+var (
+	dockerClient *Client
+)
+
+func TestMain(m *testing.M) {
+	// Purge any existing containers
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+		},
+	}
+
+	c, err := NewClient(cfg)
+	if err != nil {
+		logger.Errorf("Failed to create docker client: %v", err)
+		os.Exit(1)
+	}
+
+	dockerClient = c
+
+	err = dockerClient.Purge(cfg, service.Nakama, service.Cardinal, service.Redis, service.NakamaDB)
+	if err != nil {
+		logger.Errorf("Failed to purge containers: %v", err)
+		os.Exit(1)
+	}
+
+	// Run the tests
+	code := m.Run()
+
+	err = dockerClient.Close()
+	if err != nil {
+		logger.Errorf("Failed to close docker client: %v", err)
+		os.Exit(1)
+	}
+
+	os.Exit(code)
+}
+
+func TestStart(t *testing.T) {
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+			"REDIS_PASSWORD":     redisPassword,
+			"REDIS_PORT":         redisPort,
+		},
+		Detach: true,
+	}
+
+	ctx := context.Background()
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	cleanUp(t, cfg)
+
+	// Test if the container is running
+	assert.Assert(t, redislIsUp(t))
+}
+
+func TestStop(t *testing.T) {
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+			"REDIS_PASSWORD":     redisPassword,
+			"REDIS_PORT":         redisPort,
+		},
+		Detach: true,
+	}
+
+	ctx := context.Background()
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	cleanUp(t, cfg)
+
+	assert.NilError(t, dockerClient.Stop(cfg, service.Redis), "failed to stop container")
+
+	// Test if the container is stopped
+	assert.Assert(t, redisIsDown(t))
+}
+
+func TestRestart(t *testing.T) {
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+			"REDIS_PASSWORD":     redisPassword,
+			"REDIS_PORT":         redisPort,
+		},
+		Detach: true,
+	}
+
+	ctx := context.Background()
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	cleanUp(t, cfg)
+
+	assert.NilError(t, dockerClient.Restart(ctx, cfg, service.Redis), "failed to restart container")
+
+	// Test if the container is running
+	assert.Assert(t, redislIsUp(t))
+}
+
+func TestPurge(t *testing.T) {
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+			"REDIS_PASSWORD":     redisPassword,
+			"REDIS_PORT":         redisPort,
+		},
+		Detach: true,
+	}
+
+	ctx := context.Background()
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	assert.NilError(t, dockerClient.Purge(cfg, service.Redis), "failed to purge container")
+
+	// Test if the container is stopped
+	assert.Assert(t, redisIsDown(t))
+}
+
+func TestStartUndetach(t *testing.T) {
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+			"REDIS_PASSWORD":     redisPassword,
+			"REDIS_PORT":         redisPort,
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+		cleanUp(t, cfg)
+	}()
+	assert.Assert(t, redislIsUp(t))
+
+	cancel()
+	assert.Assert(t, redisIsDown(t))
+}
+
+func TestBuild(t *testing.T) {
+	// Create a temporary directory
+	dir, err := os.MkdirTemp("", "sgt")
+	assert.NilError(t, err)
+
+	// Remove dir
+	defer func() {
+		err = os.RemoveAll(dir)
+		assert.NilError(t, err)
+	}()
+
+	// Change to the temporary directory
+	err = os.Chdir(dir)
+	assert.NilError(t, err)
+
+	// Pull the repository
+	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
+	err = teacmd.GitCloneCmd(templateGitURL, dir, "Initial commit from World CLI")
+	assert.NilError(t, err)
+
+	// Preparation
+	cfg := &config.Config{
+		DockerEnv: map[string]string{
+			"CARDINAL_NAMESPACE": cardinalNamespace,
+		},
+	}
+	cardinalService := service.Cardinal(cfg)
+	ctx := context.Background()
+
+	// Pull prerequisite images
+	assert.NilError(t, dockerClient.pullImages(ctx, cardinalService))
+
+	// Build the image
+	err = dockerClient.buildImage(ctx, cardinalService.Dockerfile, cardinalService.BuildTarget, cardinalService.Image)
+	assert.NilError(t, err, "Failed to build Docker image")
+}
+
+func redislIsUp(t *testing.T) bool {
+	up := false
+	for i := 0; i < 60; i++ {
+		conn, err := net.DialTimeout("tcp", "localhost:"+redisPort, time.Second)
+		if err != nil {
+			time.Sleep(time.Second)
+			t.Logf("Failed to connect to Redis at localhost:%s, retrying...", redisPort)
+			continue
+		}
+		_ = conn.Close()
+		up = true
+		break
+	}
+	return up
+}
+
+func redisIsDown(t *testing.T) bool {
+	down := false
+	for i := 0; i < 60; i++ {
+		conn, err := net.DialTimeout("tcp", "localhost:"+redisPort, time.Second)
+		if err != nil {
+			down = true
+			break
+		}
+		_ = conn.Close()
+		time.Sleep(time.Second)
+		t.Logf("Redis is still running at localhost:%s, retrying...", redisPort)
+		continue
+	}
+	return down
+}
+
+func cleanUp(t *testing.T, cfg *config.Config) {
+	t.Cleanup(func() {
+		assert.NilError(t, dockerClient.Purge(cfg, service.Nakama,
+			service.Cardinal, service.Redis,
+			service.NakamaDB), "Failed to purge container during cleanup")
+	})
+}

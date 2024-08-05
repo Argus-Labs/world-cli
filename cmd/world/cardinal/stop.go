@@ -5,7 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/common/docker/service"
 )
 
 /////////////////
@@ -23,8 +25,20 @@ This will stop the following Docker services:
 - Cardinal (Game shard)
 - Nakama (Relay) + DB
 - Redis (Cardinal dependency)`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		err := teacmd.DockerStopAll()
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		cfg, err := config.GetConfig(cmd)
+		if err != nil {
+			return err
+		}
+
+		// Create docker client
+		dockerClient, err := docker.NewClient(cfg)
+		if err != nil {
+			return err
+		}
+		defer dockerClient.Close()
+
+		err = dockerClient.Stop(cfg, service.Nakama, service.Cardinal, service.NakamaDB, service.Redis)
 		if err != nil {
 			return err
 		}
