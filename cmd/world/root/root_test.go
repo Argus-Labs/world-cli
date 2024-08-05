@@ -132,7 +132,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal
-	rootCmd.SetArgs([]string{"cardinal", "start", "--build", "--detach", "--editor=false"})
+	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false", "-v"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 

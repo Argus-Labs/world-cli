@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -11,7 +12,7 @@ import (
 
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/common/docker"
 )
 
 /////////////////
@@ -108,11 +109,15 @@ This will start the following Docker services and its dependencies:
 		fmt.Println("This may take a few minutes to rebuild the Docker images.")
 		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
 
+		// Print CockroachDB password
+		cfg.DockerEnv["DB_PASSWORD"] = uuid.New().String()
+		printServiceAddress("DB Password", cfg.DockerEnv["DB_PASSWORD"])
+
 		group, ctx := errgroup.WithContext(cmd.Context())
 
 		// Start the World Engine stack
 		group.Go(func() error {
-			if err := teacmd.DockerStartAll(cfg); err != nil {
+			if err := docker.Start(cfg, docker.NakamaDB, docker.Redis, docker.Cardinal, docker.Nakama); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
 			return eris.Wrap(ErrGracefulExit, "Stack terminated")

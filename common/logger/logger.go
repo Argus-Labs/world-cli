@@ -68,6 +68,7 @@ func WarnWithFields(msg string, kv map[string]interface{}) {
 
 // Error function
 func Error(args ...interface{}) {
+	fmt.Print(args...)
 	log.Error().Timestamp().Msg(fmt.Sprint(args...))
 }
 
@@ -118,21 +119,21 @@ func FatalWithFields(msg string, kv map[string]interface{}) {
 
 // Printf standard printf with debug mode validation
 func Printf(format string, v ...interface{}) {
-	if verboseMode {
+	if VerboseMode {
 		fmt.Printf(format, v...)
 	}
 }
 
 // Println standard println with debug mode validation
 func Println(v ...interface{}) {
-	if verboseMode {
+	if VerboseMode {
 		fmt.Println(v...)
 	}
 }
 
 // Print standard print with debug mode validation
 func Print(v ...interface{}) {
-	if verboseMode {
+	if VerboseMode {
 		fmt.Print(v...)
 	}
 }
