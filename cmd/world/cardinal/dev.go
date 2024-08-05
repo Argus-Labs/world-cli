@@ -18,8 +18,8 @@ import (
 
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -231,7 +231,7 @@ func startRedis(ctx context.Context, cfg *config.Config) error {
 	// Start Redis container
 	group.Go(func() error {
 		cfg.Detach = true
-		if err := teacmd.DockerStart(cfg, []teacmd.DockerService{teacmd.DockerServiceRedis}); err != nil {
+		if err := docker.Start(cfg, docker.Redis); err != nil {
 			return eris.Wrap(err, "Encountered an error with Redis")
 		}
 		return nil
@@ -243,7 +243,7 @@ func startRedis(ctx context.Context, cfg *config.Config) error {
 	// 2) The parent context is canceled for whatever reason.
 	group.Go(func() error {
 		<-ctx.Done()
-		if err := teacmd.DockerStop([]teacmd.DockerService{teacmd.DockerServiceRedis}); err != nil {
+		if err := docker.Stop(cfg, docker.Redis); err != nil {
 			return err
 		}
 		return nil
