@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/common/docker"
 )
 
 // restartCmd restarts your Cardinal game shard stack
@@ -31,18 +31,7 @@ This will restart the following Docker services:
 			return err
 		}
 
-		if cfg.Debug {
-			err = teacmd.DockerRestart(cfg, []teacmd.DockerService{
-				teacmd.DockerServiceCardinalDebug,
-				teacmd.DockerServiceNakama,
-			})
-		} else {
-			err = teacmd.DockerRestart(cfg, []teacmd.DockerService{
-				teacmd.DockerServiceCardinal,
-				teacmd.DockerServiceNakama,
-			})
-		}
-
+		err = docker.Restart(cfg, docker.Cardinal, docker.Nakama)
 		if err != nil {
 			return err
 		}

@@ -2,12 +2,14 @@ lint_version=v1.56.2
 
 lint-install:
 	@echo "--> Checking if golangci-lint $(lint_version) is installed"
-	@if [ $$(golangci-lint --version 2> /dev/null | awk '{print $$4}') != "$(lint_version)" ]; then \
+	@installed_version=$$(golangci-lint --version 2> /dev/null | awk '{print $$4}') || true; \
+	if [ "$$installed_version" != "$(lint_version)" ]; then \
 		echo "--> Installing golangci-lint $(lint_version)"; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(lint_version); \
 	else \
 		echo "--> golangci-lint $(lint_version) is already installed"; \
 	fi
+
 lint:
 	@$(MAKE) lint-install
 	@echo "--> Running linter"
