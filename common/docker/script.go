@@ -20,7 +20,7 @@ const (
 
 	# Copy the rest of the source code and build the binary
 	COPY /cardinal ./
-	RUN --mount=type=cache,target="/root/.cache/go-build" go build -v -o /go/bin/app
+	RUN go build -v -o /go/bin/app
 
 	################################
 	# Runtime Image - Normal
@@ -57,7 +57,7 @@ const (
 
 	# Copy the rest of the source code and build the binary with debugging symbols
 	COPY /cardinal ./
-	RUN --mount=type=cache,target="/root/.cache/go-build" go build -gcflags="all=-N -l" -v -o /usr/bin/app
+	RUN go build -gcflags="all=-N -l" -v -o /usr/bin/app
 
 	# Copy world.toml to the image
 	COPY world.toml world.toml

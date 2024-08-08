@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/docker/docker/api/types"
@@ -291,9 +292,9 @@ func pullImageIfNotExists(ctx context.Context, cli *client.Client, imageName str
 
 func buildImage(ctx context.Context, cli *client.Client, dockerfile Dockerfile, imageName string) error {
 	fmt.Println("Building image ", imageName)
+
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
-	defer tw.Close()
 
 	// Add the Dockerfile to the tar archive
 	header := &tar.Header{
@@ -312,18 +313,32 @@ func buildImage(ctx context.Context, cli *client.Client, dockerfile Dockerfile, 
 		return err
 	}
 
+	if err := tw.Close(); err != nil {
+		return eris.Wrap(err, "Failed to close tar writer")
+	}
+
 	// Read the tar archive
-	tarReader := bytes.NewReader(buf.Bytes())
+	buildContext := io.NopCloser(bytes.NewReader(buf.Bytes()))
+	defer buildContext.Close()
+
+	tarFile, err := os.Create("context.tar")
+	if err != nil {
+		return err
+	}
+	defer tarFile.Close()
+	_, err = buf.WriteTo(tarFile)
+	if err != nil {
+		return err
+	}
 
 	buildOptions := types.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
 		Tags:       []string{imageName},
 		Target:     dockerfile.Target,
-		Version:    types.BuilderBuildKit,
 	}
 
 	// Build the image
-	buildResponse, err := cli.ImageBuild(ctx, tarReader, buildOptions)
+	buildResponse, err := cli.ImageBuild(ctx, buildContext, buildOptions)
 	if err != nil {
 		return err
 	}
@@ -451,6 +466,16 @@ func addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 			return err
 		}
 
+		// Check if the file is world.toml or inside the cardinal directory
+		relPath, err := filepath.Rel(baseDir, path)
+		if err != nil {
+			return err
+		}
+		if !(info.Name() == "world.toml" || strings.HasPrefix(filepath.ToSlash(relPath), "cardinal/")) {
+			logger.Debugf("Skipping %s addition to tar", info.Name())
+			return nil
+		}
+
 		// Create a tar header for the file or directory
 		header, err := tar.FileInfoHeader(info, "")
 		if err != nil {
@@ -458,10 +483,6 @@ func addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 		}
 
 		// Adjust the header name to be relative to the baseDir
-		relPath, err := filepath.Rel(baseDir, path)
-		if err != nil {
-			return err
-		}
 		header.Name = filepath.ToSlash(relPath)
 
 		// Write the header to the tar writer
