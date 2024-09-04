@@ -87,7 +87,9 @@ func TestExecuteDoctorCommand(t *testing.T) {
 		// Remove the first three characters for the example(✓  Git)
 		resultString := ""
 		if len(line) > 5 {
-			resultString = line[5:]
+			resultString = strings.ReplaceAll(line[5:], "(OK)", "")
+			resultString = strings.ReplaceAll(resultString, "(FAIL)", "")
+			resultString = strings.TrimSpace(resultString)
 		}
 		for dep := range seenDependencies {
 			if resultString != "" && resultString == dep {

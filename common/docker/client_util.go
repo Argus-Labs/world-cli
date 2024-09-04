@@ -15,7 +15,7 @@ import (
 func contextPrint(title, titleColor, subject, object string) {
 	titleStr := foregroundPrint(title, titleColor)
 	arrowStr := foregroundPrint("→", "241")
-	subjectStr := foregroundPrint(subject, "4")
+	subjectStr := foregroundPrint(subject, "5")
 
 	fmt.Printf("%s %s %s %s ", titleStr, arrowStr, subjectStr, object)
 }
