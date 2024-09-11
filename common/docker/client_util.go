@@ -2,27 +2,13 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/docker/docker/client"
 
 	"pkg.world.dev/world-cli/common/logger"
 )
-
-func contextPrint(title, titleColor, subject, object string) {
-	titleStr := foregroundPrint(title, titleColor)
-	arrowStr := foregroundPrint("→", "241")
-	subjectStr := foregroundPrint(subject, "4")
-
-	fmt.Printf("%s %s %s %s ", titleStr, arrowStr, subjectStr, object)
-}
-
-func foregroundPrint(text string, color string) string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
-}
 
 func checkBuildkitSupport(cli *client.Client) bool {
 	ctx := context.Background()

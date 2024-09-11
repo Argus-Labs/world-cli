@@ -20,7 +20,6 @@ var BaseCmd = &cobra.Command{
 			dependency.Go,
 			dependency.Git,
 			dependency.Docker,
-			dependency.DockerCompose,
 			dependency.DockerDaemon,
 		)
 	},
