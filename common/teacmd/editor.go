@@ -202,7 +202,10 @@ func unzipFile(filename string, targetDir string) error {
 	var originalDir string
 	for i, file := range reader.File {
 		if i == 0 {
-			originalDir = file.Name
+			originalDir, err = sanitizeExtractPath(filepath.Dir(targetDir), file.Name)
+			if err != nil {
+				return err
+			}
 		}
 
 		src, err := file.Open()
@@ -235,7 +238,7 @@ func unzipFile(filename string, targetDir string) error {
 		dst.Close()
 	}
 
-	if err = os.Rename(filepath.Join(filepath.Dir(targetDir), originalDir), targetDir); err != nil {
+	if err = os.Rename(originalDir, targetDir); err != nil {
 		return err
 	}
 
