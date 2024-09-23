@@ -1,4 +1,4 @@
-package teacmd
+package editor
 
 import (
 	"archive/zip"
@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	TargetEditorDir = ".editor"
+	EditorDir = ".editor"
 
 	releaseURL       = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases"
 	latestReleaseURL = releaseURL + "/latest"
@@ -77,15 +77,16 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	}
 
 	// Check if the Cardinal Editor directory exists
-	if _, err := os.Stat(TargetEditorDir); !os.IsNotExist(err) {
+	targetEditorDir := filepath.Join(rootDir, EditorDir)
+	if _, err := os.Stat(targetEditorDir); !os.IsNotExist(err) {
 		// Check the version of cardinal editor is appropriate
-		if fileExists(filepath.Join(TargetEditorDir, downloadVersion)) {
+		if fileExists(filepath.Join(targetEditorDir, downloadVersion)) {
 			// do nothing if the version is already downloaded
 			return nil
 		}
 
 		// Remove the existing Cardinal Editor directory
-		os.RemoveAll(TargetEditorDir)
+		os.RemoveAll(targetEditorDir)
 	}
 
 	configDir, err := globalconfig.GetConfigDir()
@@ -99,7 +100,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	}
 
 	// rename version tag dir to .editor
-	err = copyDir(editorDir, TargetEditorDir)
+	err = copyDir(editorDir, targetEditorDir)
 	if err != nil {
 		return err
 	}
@@ -107,13 +108,13 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	// rename project id
 	// "ce" prefix is added because guids can start with numbers, which is not allowed in js
 	projectID := "ce" + strippedGUID()
-	err = replaceProjectIDs(TargetEditorDir, projectID)
+	err = replaceProjectIDs(targetEditorDir, projectID)
 	if err != nil {
 		return err
 	}
 
 	// this file is used to check if the version is already downloaded
-	err = addFileVersion(filepath.Join(TargetEditorDir, downloadVersion))
+	err = addFileVersion(filepath.Join(targetEditorDir, downloadVersion))
 	if err != nil {
 		return err
 	}

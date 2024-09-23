@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
@@ -123,7 +124,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 		if msg.Index == 2 { //nolint:gomnd
-			err := teacmd.SetupCardinalEditor(".", "cardinal")
+			err := editor.SetupCardinalEditor(".", "cardinal")
 			teaCmd := func() tea.Msg {
 				return teacmd.GitCloneFinishMsg{Err: err}
 			}

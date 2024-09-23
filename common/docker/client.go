@@ -15,6 +15,36 @@ import (
 	"pkg.world.dev/world-cli/common/logger"
 )
 
+const (
+	START processType = iota
+	STOP
+	REMOVE
+	CREATE
+)
+
+var (
+	processName = map[processType]string{
+		START:  "start",
+		STOP:   "stop",
+		REMOVE: "remove",
+		CREATE: "create",
+	}
+
+	processInitName = map[processType]string{
+		START:  "starting",
+		STOP:   "stopping",
+		REMOVE: "removing",
+		CREATE: "creating",
+	}
+
+	processFinishName = map[processType]string{
+		START:  "started",
+		STOP:   "stopped",
+		REMOVE: "removed",
+		CREATE: "created",
+	}
+)
+
 type Client struct {
 	client *client.Client
 	cfg    *config.Config
@@ -39,24 +69,24 @@ func (c *Client) Close() error {
 	return c.client.Close()
 }
 
-func (c *Client) Start(ctx context.Context, cfg *config.Config,
+func (c *Client) Start(ctx context.Context,
 	serviceBuilders ...service.Builder) error {
 	defer func() {
-		if !cfg.Detach {
-			err := c.Stop(cfg, serviceBuilders...)
+		if !c.cfg.Detach {
+			err := c.Stop(context.Background(), serviceBuilders...)
 			if err != nil {
 				logger.Error("Failed to stop containers", err)
 			}
 		}
 	}()
 
-	namespace := cfg.DockerEnv["CARDINAL_NAMESPACE"]
+	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
 	err := c.createNetworkIfNotExists(ctx, namespace)
 	if err != nil {
 		return eris.Wrap(err, "Failed to create network")
 	}
 
-	err = c.createVolumeIfNotExists(ctx, namespace)
+	err = c.processVolume(ctx, CREATE, namespace)
 	if err != nil {
 		return eris.Wrap(err, "Failed to create volume")
 	}
@@ -64,7 +94,8 @@ func (c *Client) Start(ctx context.Context, cfg *config.Config,
 	// get all services
 	dockerServices := make([]service.Service, 0)
 	for _, sb := range serviceBuilders {
-		dockerServices = append(dockerServices, sb(cfg))
+		ds := sb(c.cfg)
+		dockerServices = append(dockerServices, ds)
 	}
 
 	// Pull all images before starting containers
@@ -73,51 +104,60 @@ func (c *Client) Start(ctx context.Context, cfg *config.Config,
 		return eris.Wrap(err, "Failed to pull images")
 	}
 
-	// Start all containers
-	for _, dockerService := range dockerServices {
-		// build image if needed
-		if cfg.Build && dockerService.Dockerfile != "" {
-			if err := c.buildImage(ctx, dockerService.Dockerfile, dockerService.BuildTarget, dockerService.Image); err != nil {
-				return eris.Wrap(err, "Failed to build image")
-			}
-		}
-
-		// create container & start
-		if err := c.startContainer(ctx, dockerService); err != nil {
-			return eris.Wrap(err, "Failed to create container")
+	// Build all images before starting containers
+	if c.cfg.Build {
+		err = c.buildImages(ctx, dockerServices...)
+		if err != nil {
+			return eris.Wrap(err, "Failed to build images")
 		}
 	}
 
+	// Start all containers
+	err = c.processMultipleContainers(ctx, START, dockerServices...)
+	if err != nil {
+		return eris.Wrap(err, "Failed to start containers")
+	}
+
 	// log containers if not detached
-	if !cfg.Detach {
+	if !c.cfg.Detach {
 		c.logMultipleContainers(ctx, dockerServices...)
 	}
 
 	return nil
 }
 
-func (c *Client) Stop(cfg *config.Config, serviceBuilders ...service.Builder) error {
-	ctx := context.Background()
+func (c *Client) Stop(ctx context.Context, serviceBuilders ...service.Builder) error {
+	// get all services
+	dockerServices := make([]service.Service, 0)
 	for _, sb := range serviceBuilders {
-		dockerService := sb(cfg)
-		if err := c.stopContainer(ctx, dockerService.Name); err != nil {
-			return eris.Wrap(err, "Failed to stop container")
-		}
+		ds := sb(c.cfg)
+		dockerServices = append(dockerServices, ds)
+	}
+
+	// Stop all containers
+	err := c.processMultipleContainers(ctx, STOP, dockerServices...)
+	if err != nil {
+		return eris.Wrap(err, "Failed to stop containers")
 	}
 
 	return nil
 }
 
-func (c *Client) Purge(cfg *config.Config, serviceBuilders ...service.Builder) error {
-	ctx := context.Background()
+func (c *Client) Purge(ctx context.Context, serviceBuilders ...service.Builder) error {
+	// get all services
+	dockerServices := make([]service.Service, 0)
 	for _, sb := range serviceBuilders {
-		dockerService := sb(cfg)
-		if err := c.removeContainer(ctx, dockerService.Name); err != nil {
-			return eris.Wrap(err, "Failed to remove container")
-		}
+		ds := sb(c.cfg)
+		dockerServices = append(dockerServices, ds)
 	}
 
-	err := c.removeVolume(ctx, cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	// remove all containers
+	err := c.processMultipleContainers(ctx, REMOVE, dockerServices...)
+	if err != nil {
+		return eris.Wrap(err, "Failed to remove containers")
+	}
+
+	err = c.processVolume(ctx, REMOVE, c.cfg.DockerEnv["CARDINAL_NAMESPACE"])
 	if err != nil {
 		return err
 	}
@@ -125,15 +165,15 @@ func (c *Client) Purge(cfg *config.Config, serviceBuilders ...service.Builder) e
 	return nil
 }
 
-func (c *Client) Restart(ctx context.Context, cfg *config.Config,
+func (c *Client) Restart(ctx context.Context,
 	serviceBuilders ...service.Builder) error {
 	// stop containers
-	err := c.Stop(cfg, serviceBuilders...)
+	err := c.Stop(ctx, serviceBuilders...)
 	if err != nil {
 		return err
 	}
 
-	return c.Start(ctx, cfg, serviceBuilders...)
+	return c.Start(ctx, serviceBuilders...)
 }
 
 func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (string, error) {

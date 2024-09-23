@@ -1,4 +1,4 @@
-package teacmd
+package editor
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ const (
 
 func TestSetupCardinalEditor(t *testing.T) {
 	t.Run("setup cardinal editor", func(t *testing.T) {
-		cleanUpDir(testDir)
+		assert.NilError(t, cleanUpDir(testDir))
 
 		editorDir, _, err := downloadReleaseIfNotCached(latestReleaseURL, testDir)
 		assert.NilError(t, err)
@@ -53,7 +53,7 @@ func TestSetupCardinalEditor(t *testing.T) {
 
 		// TODO: check if cardinal editor works
 
-		cleanUpDir(testDir)
+		assert.NilError(t, cleanUpDir(testDir))
 	})
 }
 
@@ -121,8 +121,8 @@ func TestCopyDir(t *testing.T) {
 		_, err = os.Stat(filepath.Join("tmp2", "subdir", "file2"))
 		assert.NilError(t, err)
 
-		cleanUpDir("tmp")
-		cleanUpDir("tmp2")
+		assert.NilError(t, cleanUpDir("tmp"))
+		assert.NilError(t, cleanUpDir("tmp2"))
 	})
 }
 
@@ -338,4 +338,8 @@ func compareMaps(a, b map[string]string) bool {
 		}
 	}
 	return true
+}
+
+func cleanUpDir(targetDir string) error {
+	return os.RemoveAll(targetDir)
 }

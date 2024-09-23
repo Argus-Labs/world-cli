@@ -32,7 +32,14 @@ type GitCloneFinishMsg struct {
 
 func git(args ...string) (string, error) {
 	var outBuff, errBuff bytes.Buffer
-	_, err := sh.Exec(nil, &outBuff, &errBuff, "git", args...)
+
+	// Define environment variables
+	env := map[string]string{
+		"GIT_COMMITTER_NAME":  "World CLI",
+		"GIT_COMMITTER_EMAIL": "no-reply@world.dev",
+	}
+
+	_, err := sh.Exec(env, &outBuff, &errBuff, "git", args...)
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +101,7 @@ func GitCloneCmd(url string, targetDir string, initMsg string) error {
 		return err
 	}
 
-	_, err = git("commit", "-m", initMsg)
+	_, err = git("commit", "--author=\"World CLI <no-reply@world.dev>\"", "-m", initMsg)
 	if err != nil {
 		return err
 	}
