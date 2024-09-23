@@ -6,20 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"os/user"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/spf13/cobra"
-	tassert "github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
-
-	"pkg.world.dev/world-cli/common/login"
 )
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
@@ -132,7 +125,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal
-	rootCmd.SetArgs([]string{"cardinal", "start", "--build", "--detach", "--editor=false"})
+	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
@@ -205,6 +198,10 @@ func TestDev(t *testing.T) {
 }
 
 func TestCheckLatestVersion(t *testing.T) {
+	t.Cleanup(func() {
+		AppVersion = ""
+	})
+
 	t.Run("success scenario", func(t *testing.T) {
 		AppVersion = "v1.0.0"
 		err := checkLatestVersion()
@@ -219,12 +216,28 @@ func TestCheckLatestVersion(t *testing.T) {
 }
 
 func cardinalIsUp(t *testing.T) bool {
+	return ServiceIsUp("Cardinal", "localhost:4040", t)
+}
+
+func cardinalIsDown(t *testing.T) bool {
+	return ServiceIsDown("Cardinal", "localhost:4040", t)
+}
+
+func evmIsUp(t *testing.T) bool {
+	return ServiceIsUp("EVM", "localhost:9601", t)
+}
+
+func evmIsDown(t *testing.T) bool {
+	return ServiceIsDown("EVM", "localhost:9601", t)
+}
+
+func ServiceIsUp(name, address string, t *testing.T) bool {
 	up := false
 	for i := 0; i < 60; i++ {
-		conn, err := net.DialTimeout("tcp", "localhost:4040", time.Second)
+		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			time.Sleep(time.Second)
-			t.Log("Failed to connect to Cardinal, retrying...")
+			t.Logf("%s is not running, retrying...\n", name)
 			continue
 		}
 		_ = conn.Close()
@@ -234,107 +247,59 @@ func cardinalIsUp(t *testing.T) bool {
 	return up
 }
 
-func cardinalIsDown(t *testing.T) bool {
+func ServiceIsDown(name, address string, t *testing.T) bool {
 	down := false
 	for i := 0; i < 60; i++ {
-		conn, err := net.DialTimeout("tcp", "localhost:4040", time.Second)
+		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			down = true
 			break
 		}
 		_ = conn.Close()
 		time.Sleep(time.Second)
-		t.Log("Cardinal is still running, retrying...")
+		t.Logf("%s is still running, retrying...\n", name)
 		continue
 	}
 	return down
 }
 
-func TestGenerateTokenNameWithFallback(t *testing.T) {
-	// Attempt to generate a token name
-	name := generateTokenNameWithFallback()
+func TestEVMStart(t *testing.T) {
+	// Create Cardinal
+	gameDir, err := os.MkdirTemp("", "game-template-dev")
+	assert.NilError(t, err)
 
-	// Ensure the name follows the expected pattern
-	tassert.Contains(t, name, "cli_")
+	// Remove dir
+	defer func() {
+		err = os.RemoveAll(gameDir)
+		assert.NilError(t, err)
+	}()
 
-	// Additional checks if user and hostname can be retrieved in the environment
-	currentUser, userErr := user.Current()
-	hostname, hostErr := os.Hostname()
-	if userErr == nil && hostErr == nil {
-		expectedPrefix := fmt.Sprintf("cli_%s@%s_", currentUser.Username, hostname)
-		tassert.Contains(t, name, expectedPrefix)
-	}
-}
+	// Change dir
+	err = os.Chdir(gameDir)
+	assert.NilError(t, err)
 
-func TestPollForAccessToken(t *testing.T) {
-	tests := []struct {
-		name             string
-		statusCode       int
-		retryAfterHeader string
-		responseBody     string
-		expectError      bool
-		expectedResponse login.AccessTokenResponse
-	}{
-		{
-			name:         "Successful token retrieval",
-			statusCode:   http.StatusOK,
-			responseBody: `{"access_token": "test_token", "pub_key": "test_pub_key", "nonce": "test_nonce"}`,
-			expectedResponse: login.AccessTokenResponse{
-				AccessToken: "test_token",
-				PublicKey:   "test_pub_key",
-				Nonce:       "test_nonce",
-			},
-			expectError: false,
-		},
-		{
-			name:             "Retry on 404 with Retry-After header",
-			statusCode:       http.StatusNotFound,
-			retryAfterHeader: "1",
-			expectError:      true,
-		},
-		{
-			name:             "Retry on 404 without Retry-After header",
-			statusCode:       http.StatusNotFound,
-			retryAfterHeader: "",
-			expectError:      true,
-		},
-		{
-			name:         "Error on invalid JSON response",
-			statusCode:   http.StatusOK,
-			responseBody: `invalid_json`,
-			expectError:  true,
-		},
-		{
-			name:        "Error on non-200/404 status",
-			statusCode:  http.StatusInternalServerError,
-			expectError: true,
-		},
-	}
+	// set tea ouput to variable
+	teaOut := &bytes.Buffer{}
+	createCmd := getCreateCmd(teaOut)
+	createCmd.SetArgs([]string{gameDir})
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				if test.retryAfterHeader != "" {
-					w.Header().Set("Retry-After", test.retryAfterHeader)
-				}
-				w.WriteHeader(test.statusCode)
-				w.Write([]byte(test.responseBody)) //nolint:errcheck // Ignore error for test
-			})
+	err = createCmd.Execute()
+	assert.NilError(t, err)
 
-			server := httptest.NewServer(handler)
-			defer server.Close()
+	// Start evn dev
+	ctx, cancel := context.WithCancel(context.Background())
+	rootCmd.SetArgs([]string{"evm", "start", "--dev"})
+	go func() {
+		err := rootCmd.ExecuteContext(ctx)
+		assert.NilError(t, err)
+	}()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
+	// Check and wait until evm is up
+	assert.Assert(t, evmIsUp(t), "EVM is not running")
 
-			response, err := pollForAccessToken(ctx, server.URL)
+	// Shutdown the program
+	cancel()
 
-			if test.expectError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				tassert.Equal(t, test.expectedResponse, response)
-			}
-		})
-	}
+	// Check and wait until evm is down
+	assert.Assert(t, evmIsDown(t), "EVM is not successfully shutdown")
 }

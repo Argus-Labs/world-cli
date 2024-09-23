@@ -33,6 +33,7 @@ type Config struct {
 	Detach    bool
 	Build     bool
 	Debug     bool
+	DevDA     bool
 	Timeout   int
 	DockerEnv map[string]string
 }

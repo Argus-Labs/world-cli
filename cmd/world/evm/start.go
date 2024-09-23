@@ -1,25 +1,19 @@
 package evm
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net"
-	"os/exec"
-	"strings"
-	"time"
 
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
-)
-
-var (
-	// Docker compose seems to replace the hyphen with an underscore. This could be properly fixed by removing the hyphen
-	// from celestia-devnet, or by investigating the docker compose documentation.
-	daContainer = strings.ReplaceAll(string(daService), "-", "_")
 )
 
 var startCmd = &cobra.Command{
@@ -32,7 +26,14 @@ var startCmd = &cobra.Command{
 			return err
 		}
 
-		if err = validateDALayer(cmd, cfg); err != nil {
+		// Create docker client
+		dockerClient, err := docker.NewClient(cfg)
+		if err != nil {
+			return err
+		}
+		defer dockerClient.Close()
+
+		if err = validateDALayer(cmd, cfg, dockerClient); err != nil {
 			return err
 		}
 
@@ -49,9 +50,17 @@ var startCmd = &cobra.Command{
 		cfg.Detach = false
 		cfg.Timeout = 0
 
-		err = teacmd.DockerStart(cfg, services(teacmd.DockerServiceEVM))
+		err = dockerClient.Start(cmd.Context(), cfg, service.EVM)
 		if err != nil {
 			return fmt.Errorf("error starting %s docker container: %w", teacmd.DockerServiceEVM, err)
+		}
+
+		// Stop the DA service if it was started in dev mode
+		if cfg.DevDA {
+			err = dockerClient.Stop(cfg, service.CelestiaDevNet)
+			if err != nil {
+				return eris.Wrap(err, "Failed to stop DA service")
+			}
 		}
 		return nil
 	},
@@ -65,22 +74,18 @@ func init() {
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
 // variable with the token from the locally running container.
-func validateDevDALayer(cfg *config.Config) error {
+func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) error {
 	cfg.Build = true
 	cfg.Debug = false
 	cfg.Detach = true
 	cfg.Timeout = -1
 	logger.Println("starting DA docker service for dev mode...")
-	if err := teacmd.DockerStart(cfg, services(daService)); err != nil {
+	if err := dockerClient.Start(ctx, cfg, service.CelestiaDevNet); err != nil {
 		return fmt.Errorf("error starting %s docker container: %w", daService, err)
-	}
-
-	if err := blockUntilContainerIsRunning(daContainer, 10*time.Second); err != nil { //nolint:gomnd
-		return err
 	}
 	logger.Println("started DA service...")
 
-	daToken, err := getDAToken()
+	daToken, err := getDAToken(ctx, cfg, dockerClient)
 	if err != nil {
 		return err
 	}
@@ -121,58 +126,49 @@ func validateProdDALayer(cfg *config.Config) error {
 	return nil
 }
 
-func validateDALayer(cmd *cobra.Command, cfg *config.Config) error {
+func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docker.Client) error {
 	devDA, err := cmd.Flags().GetBool(FlagUseDevDA)
 	if err != nil {
 		return err
 	}
 	if devDA {
-		return validateDevDALayer(cfg)
+		cfg.DevDA = true
+		return validateDevDALayer(cmd.Context(), cfg, dockerClient)
 	}
 	return validateProdDALayer(cfg)
 }
 
-func getDAToken() (string, error) {
-	// Create a new command
-	maxRetries := 10
-	cmdString := fmt.Sprintf("docker exec %s celestia bridge --node.store /home/celestia/bridge/ auth admin",
-		daContainer)
-	cmdParts := strings.Split(cmdString, " ")
-	for retry := 0; retry < maxRetries; retry++ {
-		logger.Println("attempting to get DA token...")
+func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) (string, error) {
+	fmt.Println("Getting DA token")
 
-		cmd := exec.Command(cmdParts[0], cmdParts[1:]...) //nolint:gosec // not applicable
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			logger.Println("failed to get da token")
-			logger.Printf("%d/%d retrying...\n", retry+1, maxRetries)
-			time.Sleep(2 * time.Second) //nolint:gomnd
-			continue
-		}
+	containerName := service.CelestiaDevNet(cfg)
 
-		if bytes.Contains(output, []byte("\n")) {
-			return "", fmt.Errorf("da token should be a single line. got %v", string(output))
-		}
-		if len(output) == 0 {
-			return "", errors.New("got empty DA token")
-		}
-		return string(output), nil
+	_, err := dockerClient.Exec(ctx, containerName.Name,
+		[]string{
+			"mkdir",
+			"-p",
+			"/home/celestia/bridge/keys",
+		})
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to create keys directory")
 	}
-	return "", errors.New("timed out while getting DA token")
-}
 
-func blockUntilContainerIsRunning(targetContainer string, timeout time.Duration) error {
-	timeoutAt := time.Now().Add(timeout)
-	cmdString := "docker container inspect -f '{{.State.Running}}' " + targetContainer
-	// This string will be returned by the above command when the container is running
-	runningOutput := "'true'\n"
-	cmdParts := strings.Split(cmdString, " ")
-	for time.Now().Before(timeoutAt) {
-		output, err := exec.Command(cmdParts[0], cmdParts[1:]...).CombinedOutput() //nolint:gosec // not applicable
-		if err == nil && string(output) == runningOutput {
-			return nil
-		}
-		time.Sleep(250 * time.Millisecond) //nolint:gomnd
+	token, err := dockerClient.Exec(ctx, containerName.Name,
+		[]string{
+			"celestia",
+			"bridge",
+			"--node.store",
+			"/home/celestia/bridge/",
+			"auth",
+			"admin",
+		})
+
+	if err != nil {
+		return "", eris.Wrapf(err, "Failed to get DA token")
 	}
-	return fmt.Errorf("timeout while waiting for %q to start", targetContainer)
+
+	if token == "" {
+		return "", errors.New("got empty DA token")
+	}
+	return token, nil
 }
