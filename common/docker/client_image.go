@@ -13,7 +13,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -23,91 +25,13 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 
 	"pkg.world.dev/world-cli/common/docker/service"
-	"pkg.world.dev/world-cli/tea/component/multispinner"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/common/logger"
+	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
-func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Service) error {
-	// Filter all services that need to be built
-	var (
-		serviceToBuild []service.Service
-		imagesName     []string
-	)
-	for _, dockerService := range dockerServices {
-		if dockerService.Dockerfile != "" {
-			serviceToBuild = append(serviceToBuild, dockerService)
-			imagesName = append(imagesName, dockerService.Image)
-		}
-	}
-
-	if len(serviceToBuild) == 0 {
-		return nil
-	}
-
-	// Create ctx with cancel
-	ctx, cancel := context.WithCancel(ctx)
-
-	// Channel to collect errors from the goroutines
-	errChan := make(chan error, len(imagesName))
-
-	p := tea.NewProgram(multispinner.CreateSpinner(imagesName, cancel))
-
-	for _, dockerService := range serviceToBuild {
-		// Capture dockerService in the loop
-		dockerService := dockerService
-
-		go func() {
-			p.Send(multispinner.ProcessState{
-				State: "building",
-				Type:  "image",
-				Name:  dockerService.Image,
-			})
-
-			// Start the build process
-			buildResponse, err := c.buildImage(ctx, dockerService)
-			if err != nil {
-				p.Send(multispinner.ProcessState{
-					Icon:   style.CrossIcon.Render(),
-					State:  "building",
-					Type:   "image",
-					Name:   dockerService.Image,
-					Detail: err.Error(),
-					Done:   true,
-				})
-				errChan <- err
-				return
-			}
-			defer buildResponse.Body.Close()
-
-			// Print the build logs
-			err = c.readBuildLog(ctx, buildResponse.Body, p, dockerService.Image)
-			if err != nil {
-				errChan <- err
-			}
-		}()
-	}
-
-	// Run the program
-	if _, err := p.Run(); err != nil {
-		return eris.Wrap(err, "Error running program")
-	}
-
-	// Close the error channel and check for errors
-	close(errChan)
-	errs := make([]error, 0)
-	for err := range errChan {
-		errs = append(errs, err)
-	}
-
-	// If there were any errors, return them as a combined error
-	if len(errs) > 0 {
-		return eris.New(fmt.Sprintf("Errors: %v", errs))
-	}
-
-	return nil
-}
-
-func (c *Client) buildImage(ctx context.Context, dockerService service.Service) (*types.ImageBuildResponse, error) {
+func (c *Client) buildImage(ctx context.Context, dockerfile, target, imageName string) error {
+	contextPrint("Building", "2", "image", imageName)
+	fmt.Println() // Add a newline after the context print
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
@@ -115,18 +39,18 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	// Add the Dockerfile to the tar archive
 	header := &tar.Header{
 		Name: "Dockerfile",
-		Size: int64(len(dockerService.Dockerfile)),
+		Size: int64(len(dockerfile)),
 	}
 	if err := tw.WriteHeader(header); err != nil {
-		return nil, eris.Wrap(err, "Failed to write header to tar writer")
+		return eris.Wrap(err, "Failed to write header to tar writer")
 	}
-	if _, err := tw.Write([]byte(dockerService.Dockerfile)); err != nil {
-		return nil, eris.Wrap(err, "Failed to write Dockerfile to tar writer")
+	if _, err := tw.Write([]byte(dockerfile)); err != nil {
+		return eris.Wrap(err, "Failed to write Dockerfile to tar writer")
 	}
 
 	// Add source code to the tar archive
 	if err := c.addFileToTarWriter(".", tw); err != nil {
-		return nil, eris.Wrap(err, "Failed to add source code to tar writer")
+		return eris.Wrap(err, "Failed to add source code to tar writer")
 	}
 
 	// Read the tar archive
@@ -134,8 +58,8 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 
 	buildOptions := types.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
-		Tags:       []string{dockerService.Image},
-		Target:     dockerService.BuildTarget,
+		Tags:       []string{imageName},
+		Target:     target,
 	}
 
 	if service.BuildkitSupport {
@@ -145,10 +69,14 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	// Build the image
 	buildResponse, err := c.client.ImageBuild(ctx, tarReader, buildOptions)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to build image")
+		return err
 	}
+	defer buildResponse.Body.Close()
 
-	return &buildResponse, nil
+	// Print the build logs
+	c.readBuildLog(ctx, buildResponse.Body)
+
+	return nil
 }
 
 // AddFileToTarWriter adds a file or directory to the tar writer
@@ -211,101 +139,94 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 //   - error: Error message from the build process
 //
 // 2. Output from the build process with buildkit
-//   - moby.buildkit.trace: Output from the build process
-//   - error: Need to research how buildkit log send error messages (TODO)
-func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Program, imageName string) error {
+func (c *Client) readBuildLog(ctx context.Context, reader io.Reader) {
+	// Create context with cancel
+	ctx, cancel := context.WithCancel(ctx)
+
 	// Create a new JSON decoder
 	decoder := json.NewDecoder(reader)
 
-	for stop := false; !stop; {
-		select {
-		case <-ctx.Done():
-			stop = true
-		default:
-			var step string
-			var err error
-			if service.BuildkitSupport {
-				// Parse the buildkit response
-				step, err = c.parseBuildkitResp(decoder, &stop)
-			} else {
-				// Parse the non-buildkit response
-				step, err = c.parseNonBuildkitResp(decoder, &stop)
-			}
+	// Initialize the spinner
+	s := spinner.New()
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
+	s.Spinner = spinner.Points
 
-			// Send the step to the spinner
-			if err != nil {
-				p.Send(multispinner.ProcessState{
-					Icon:   style.CrossIcon.Render(),
-					State:  "building",
-					Type:   "image",
-					Name:   imageName,
-					Detail: err.Error(),
-					Done:   true,
-				})
-				return err
-			}
-
-			if step != "" {
-				p.Send(multispinner.ProcessState{
-					State:  "building",
-					Type:   "image",
-					Name:   imageName,
-					Detail: step,
-				})
-			}
-		}
+	// Initialize the model
+	m := teaspinner.Spinner{
+		Spinner: s,
+		Cancel:  cancel,
 	}
 
-	// Send the final message to the spinner
-	p.Send(multispinner.ProcessState{
-		Icon:  style.TickIcon.Render(),
-		State: "built",
-		Type:  "image",
-		Name:  imageName,
-		Done:  true,
-	})
+	// Start the bubbletea program
+	p := tea.NewProgram(m)
+	go func() {
+		for stop := false; !stop; {
+			select {
+			case <-ctx.Done():
+				stop = true
+			default:
+				var step string
+				if service.BuildkitSupport {
+					// Parse the buildkit response
+					step = c.parseBuildkitResp(decoder, &stop)
+				} else {
+					// Parse the non-buildkit response
+					step = c.parseNonBuildkitResp(decoder, &stop)
+				}
 
-	return nil
+				// Send the step to the spinner
+				if step != "" {
+					p.Send(teaspinner.LogMsg(step))
+				}
+			}
+		}
+		// Send a completion message to the spinner
+		p.Send(teaspinner.LogMsg("spin: completed"))
+	}()
+
+	// Run the program
+	if _, err := p.Run(); err != nil {
+		fmt.Println("Error running program:", err)
+	}
 }
 
-func (c *Client) parseBuildkitResp(decoder *json.Decoder, stop *bool) (string, error) {
+func (c *Client) parseBuildkitResp(decoder *json.Decoder, stop *bool) string {
 	var msg jsonmessage.JSONMessage
 	if err := decoder.Decode(&msg); errors.Is(err, io.EOF) {
 		*stop = true
 	} else if err != nil {
-		return "", eris.Wrap(err, "Error decoding build output")
+		logger.Errorf("Error decoding build output: %v", err)
 	}
 
 	var resp controlapi.StatusResponse
 
 	if msg.ID != "moby.buildkit.trace" {
-		return "", nil
+		return ""
 	}
 
 	var dt []byte
 	// ignoring all messages that are not understood
-	// need to research how buildkit log send error messages
 	if err := json.Unmarshal(*msg.Aux, &dt); err != nil {
-		return "", nil //nolint:nilerr // ignore error
+		return ""
 	}
 	if err := (&resp).Unmarshal(dt); err != nil {
-		return "", nil //nolint:nilerr // ignore error
+		return ""
 	}
 
 	if len(resp.Vertexes) == 0 {
-		return "", nil
+		return ""
 	}
 
 	// return the name of the vertex (step) that is currently being executed
-	return resp.Vertexes[len(resp.Vertexes)-1].Name, nil
+	return resp.Vertexes[len(resp.Vertexes)-1].Name
 }
 
-func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string, error) {
+func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) string {
 	var event map[string]interface{}
 	if err := decoder.Decode(&event); errors.Is(err, io.EOF) {
 		*stop = true
 	} else if err != nil {
-		return "", eris.Wrap(err, "Error decoding build output")
+		logger.Errorf("Error decoding build output: %v", err)
 	}
 
 	// Only show the step if it's a build step
@@ -315,10 +236,10 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 			step = strings.TrimSpace(step)
 		}
 	} else if val, ok = event["error"]; ok && val != "" {
-		return "", eris.New(val.(string))
+		logger.Errorf("Error building image: %v", val)
 	}
 
-	return step, nil
+	return step
 }
 
 // filterImages filters the images that need to be pulled
@@ -378,8 +299,13 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 		// Create a new progress bar for this image
 		bar := p.AddBar(100, //nolint:gomnd
 			mpb.PrependDecorators(
-				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
+				decor.Name(fmt.Sprintf("%s %s: ", foregroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
+			),
+			mpb.AppendDecorators(
+				decor.OnComplete(
+					decor.EwmaETA(decor.ET_STYLE_GO, 30, decor.WCSyncWidth), "done", //nolint:gomnd
+				),
 			),
 		)
 

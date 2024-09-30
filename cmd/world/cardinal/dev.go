@@ -132,26 +132,20 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 	// Check and wait until Redis is running and is available in the expected port
 	isRedisHealthy := false
 	for !isRedisHealthy {
-		// using select to allow for context cancellation
-		select {
-		case <-ctx.Done():
-			return eris.Wrap(ctx.Err(), "Context canceled")
-		default:
-			redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
-			conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
-			if err != nil {
-				logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			// Cleanup connection
-			if err := conn.Close(); err != nil {
-				continue
-			}
-
-			isRedisHealthy = true
+		redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
+		conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
+		if err != nil {
+			logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
+			time.Sleep(1 * time.Second)
+			continue
 		}
+
+		// Cleanup connection
+		if err := conn.Close(); err != nil {
+			continue
+		}
+
+		isRedisHealthy = true
 	}
 
 	// Move into the cardinal directory
@@ -242,14 +236,10 @@ func startRedis(ctx context.Context, cfg *config.Config) error {
 	}
 	defer dockerClient.Close()
 
-	// Create context with cancel
-	ctx, cancel := context.WithCancel(ctx)
-
 	// Start Redis container
 	group.Go(func() error {
 		cfg.Detach = true
-		if err := dockerClient.Start(ctx, service.Redis); err != nil {
-			cancel()
+		if err := dockerClient.Start(ctx, cfg, service.Redis); err != nil {
 			return eris.Wrap(err, "Encountered an error with Redis")
 		}
 		return nil
@@ -261,8 +251,7 @@ func startRedis(ctx context.Context, cfg *config.Config) error {
 	// 2) The parent context is canceled for whatever reason.
 	group.Go(func() error {
 		<-ctx.Done()
-		// Using context background because cmd context is already done
-		if err := dockerClient.Stop(context.Background(), service.Redis); err != nil {
+		if err := dockerClient.Stop(cfg, service.Redis); err != nil {
 			return err
 		}
 		return nil

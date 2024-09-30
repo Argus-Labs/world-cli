@@ -27,7 +27,7 @@ var stopCmd = &cobra.Command{
 		}
 		defer dockerClient.Close()
 
-		err = dockerClient.Stop(cmd.Context(), service.EVM, service.CelestiaDevNet)
+		err = dockerClient.Stop(cfg, service.EVM, service.CelestiaDevNet)
 		if err != nil {
 			return err
 		}

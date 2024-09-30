@@ -39,7 +39,7 @@ This will restart the following Docker services:
 		}
 		defer dockerClient.Close()
 
-		err = dockerClient.Restart(cmd.Context(), service.Cardinal, service.Nakama)
+		err = dockerClient.Restart(cmd.Context(), cfg, service.Cardinal, service.Nakama)
 		if err != nil {
 			return err
 		}

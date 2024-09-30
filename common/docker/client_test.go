@@ -21,6 +21,10 @@ const (
 	cardinalNamespace = "test"
 )
 
+var (
+	dockerClient *Client
+)
+
 func TestMain(m *testing.M) {
 	// Purge any existing containers
 	cfg := &config.Config{
@@ -29,13 +33,15 @@ func TestMain(m *testing.M) {
 		},
 	}
 
-	dockerClient, err := NewClient(cfg)
+	c, err := NewClient(cfg)
 	if err != nil {
 		logger.Errorf("Failed to create docker client: %v", err)
 		os.Exit(1)
 	}
 
-	err = dockerClient.Purge(context.Background(), service.Nakama, service.Cardinal, service.Redis, service.NakamaDB)
+	dockerClient = c
+
+	err = dockerClient.Purge(cfg, service.Nakama, service.Cardinal, service.Redis, service.NakamaDB)
 	if err != nil {
 		logger.Errorf("Failed to purge containers: %v", err)
 		os.Exit(1)
@@ -63,12 +69,9 @@ func TestStart(t *testing.T) {
 		Detach: true,
 	}
 
-	dockerClient, err := NewClient(cfg)
-	assert.NilError(t, err, "Failed to create docker client")
-
 	ctx := context.Background()
-	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
-	cleanUp(t, dockerClient)
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	cleanUp(t, cfg)
 
 	// Test if the container is running
 	assert.Assert(t, redislIsUp(t))
@@ -84,14 +87,11 @@ func TestStop(t *testing.T) {
 		Detach: true,
 	}
 
-	dockerClient, err := NewClient(cfg)
-	assert.NilError(t, err, "Failed to create docker client")
-
 	ctx := context.Background()
-	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
-	cleanUp(t, dockerClient)
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	cleanUp(t, cfg)
 
-	assert.NilError(t, dockerClient.Stop(ctx, service.Redis), "failed to stop container")
+	assert.NilError(t, dockerClient.Stop(cfg, service.Redis), "failed to stop container")
 
 	// Test if the container is stopped
 	assert.Assert(t, redisIsDown(t))
@@ -107,14 +107,11 @@ func TestRestart(t *testing.T) {
 		Detach: true,
 	}
 
-	dockerClient, err := NewClient(cfg)
-	assert.NilError(t, err, "Failed to create docker client")
-
 	ctx := context.Background()
-	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
-	cleanUp(t, dockerClient)
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	cleanUp(t, cfg)
 
-	assert.NilError(t, dockerClient.Restart(ctx, service.Redis), "failed to restart container")
+	assert.NilError(t, dockerClient.Restart(ctx, cfg, service.Redis), "failed to restart container")
 
 	// Test if the container is running
 	assert.Assert(t, redislIsUp(t))
@@ -130,12 +127,9 @@ func TestPurge(t *testing.T) {
 		Detach: true,
 	}
 
-	dockerClient, err := NewClient(cfg)
-	assert.NilError(t, err, "Failed to create docker client")
-
 	ctx := context.Background()
-	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
-	assert.NilError(t, dockerClient.Purge(ctx, service.Redis), "failed to purge container")
+	assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+	assert.NilError(t, dockerClient.Purge(cfg, service.Redis), "failed to purge container")
 
 	// Test if the container is stopped
 	assert.Assert(t, redisIsDown(t))
@@ -150,13 +144,10 @@ func TestStartUndetach(t *testing.T) {
 		},
 	}
 
-	dockerClient, err := NewClient(cfg)
-	assert.NilError(t, err, "Failed to create docker client")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
-		cleanUp(t, dockerClient)
+		assert.NilError(t, dockerClient.Start(ctx, cfg, service.Redis), "failed to start container")
+		cleanUp(t, cfg)
 	}()
 	assert.Assert(t, redislIsUp(t))
 
@@ -193,14 +184,11 @@ func TestBuild(t *testing.T) {
 	cardinalService := service.Cardinal(cfg)
 	ctx := context.Background()
 
-	dockerClient, err := NewClient(cfg)
-	assert.NilError(t, err, "Failed to create docker client")
-
 	// Pull prerequisite images
 	assert.NilError(t, dockerClient.pullImages(ctx, cardinalService))
 
 	// Build the image
-	_, err = dockerClient.buildImage(ctx, cardinalService)
+	err = dockerClient.buildImage(ctx, cardinalService.Dockerfile, cardinalService.BuildTarget, cardinalService.Image)
 	assert.NilError(t, err, "Failed to build Docker image")
 }
 
@@ -236,12 +224,10 @@ func redisIsDown(t *testing.T) bool {
 	return down
 }
 
-func cleanUp(t *testing.T, dockerClient *Client) {
+func cleanUp(t *testing.T, cfg *config.Config) {
 	t.Cleanup(func() {
-		assert.NilError(t, dockerClient.Purge(context.Background(), service.Nakama,
+		assert.NilError(t, dockerClient.Purge(cfg, service.Nakama,
 			service.Cardinal, service.Redis,
 			service.NakamaDB), "Failed to purge container during cleanup")
-
-		assert.NilError(t, dockerClient.Close())
 	})
 }

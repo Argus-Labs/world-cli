@@ -34,7 +34,7 @@ This command stop all Docker services and remove all Docker volumes.`,
 		}
 		defer dockerClient.Close()
 
-		err = dockerClient.Purge(cmd.Context(), service.Nakama, service.Cardinal, service.NakamaDB, service.Redis)
+		err = dockerClient.Purge(cfg, service.Nakama, service.Cardinal, service.NakamaDB, service.Redis)
 		if err != nil {
 			return err
 		}
