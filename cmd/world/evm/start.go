@@ -50,14 +50,15 @@ var startCmd = &cobra.Command{
 		cfg.Detach = false
 		cfg.Timeout = 0
 
-		err = dockerClient.Start(cmd.Context(), cfg, service.EVM)
+		err = dockerClient.Start(cmd.Context(), service.EVM)
 		if err != nil {
 			return fmt.Errorf("error starting %s docker container: %w", teacmd.DockerServiceEVM, err)
 		}
 
 		// Stop the DA service if it was started in dev mode
 		if cfg.DevDA {
-			err = dockerClient.Stop(cfg, service.CelestiaDevNet)
+			// using context background because cmd.Context() is already done
+			err = dockerClient.Stop(context.Background(), service.CelestiaDevNet)
 			if err != nil {
 				return eris.Wrap(err, "Failed to stop DA service")
 			}
@@ -80,7 +81,7 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 	cfg.Detach = true
 	cfg.Timeout = -1
 	logger.Println("starting DA docker service for dev mode...")
-	if err := dockerClient.Start(ctx, cfg, service.CelestiaDevNet); err != nil {
+	if err := dockerClient.Start(ctx, service.CelestiaDevNet); err != nil {
 		return fmt.Errorf("error starting %s docker container: %w", daService, err)
 	}
 	logger.Println("started DA service...")
