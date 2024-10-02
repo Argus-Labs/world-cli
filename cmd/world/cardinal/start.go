@@ -121,7 +121,7 @@ This will start the following Docker services and its dependencies:
 		// Start the World Engine stack
 		group.Go(func() error {
 			if err := dockerClient.Start(ctx, service.NakamaDB,
-				service.Redis, service.Cardinal, service.Nakama); err != nil {
+				service.Redis, service.Cardinal, service.Nakama, service.OtelCollector, service.Jaeger, service.Prometheus); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
 			return eris.Wrap(ErrGracefulExit, "Stack terminated")

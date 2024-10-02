@@ -39,7 +39,7 @@ func Nakama(cfg *config.Config) Service {
 	return Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
-			Image: "ghcr.io/argus-labs/world-engine-nakama:1.2.7",
+			Image: "nakama-otel:latest",
 			Env: []string{
 				fmt.Sprintf("CARDINAL_CONTAINER=%s", getCardinalContainerName(cfg)),
 				fmt.Sprintf("CARDINAL_ADDR=%s:4040", getCardinalContainerName(cfg)),
@@ -51,7 +51,7 @@ func Nakama(cfg *config.Config) Service {
 			Entrypoint: []string{
 				"/bin/sh",
 				"-ec",
-				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO", //nolint:lll
+				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port 9464", //nolint:lll
 					dbPassword,
 					getNakamaDBContainerName(cfg),
 					dbPassword,
