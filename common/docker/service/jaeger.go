@@ -12,15 +12,12 @@ func getJaegerContainerName(cfg *config.Config) string {
 }
 
 func Jaeger(cfg *config.Config) Service {
-	exposedPorts := []int{14250, 16686}
+	exposedPorts := []int{16686}
 
 	return Service{
 		Name: getJaegerContainerName(cfg),
 		Config: container.Config{
-			Image: "jaegertracing/all-in-one:latest",
-			Env: []string{
-				"COLLECTOR_OTLP_ENABLED=false",
-			},
+			Image: "jaegertracing/all-in-one:1.61.0",
 		},
 		HostConfig: container.HostConfig{
 			PortBindings: newPortMap(exposedPorts),

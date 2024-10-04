@@ -47,11 +47,13 @@ func Nakama(cfg *config.Config) Service {
 				fmt.Sprintf("DB_PASSWORD=%s", dbPassword),
 				fmt.Sprintf("ENABLE_ALLOWLIST=%s", enableAllowList),
 				fmt.Sprintf("OUTGOING_QUEUE_SIZE=%s", outgoingQueueSize),
+				fmt.Sprintf("JAEGER_ADDR=%s:4317", getJaegerContainerName(cfg)),
+				fmt.Sprintf("JAEGER_SAMPLE_RATE=%.2f", 0.6),
 			},
 			Entrypoint: []string{
 				"/bin/sh",
 				"-ec",
-				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port 9464", //nolint:lll
+				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port 9100", //nolint:lll
 					dbPassword,
 					getNakamaDBContainerName(cfg),
 					dbPassword,
