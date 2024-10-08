@@ -39,7 +39,8 @@ func Nakama(cfg *config.Config) Service {
 	return Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
-			Image: "nakama-otel:latest",
+			// TODO: update image tag to the correct one when this pr is merged: https://github.com/Argus-Labs/world-engine/pull/799
+			Image: "ghcr.io/argus-labs/world-engine-nakama:1.3.0",
 			Env: []string{
 				fmt.Sprintf("CARDINAL_CONTAINER=%s", getCardinalContainerName(cfg)),
 				fmt.Sprintf("CARDINAL_ADDR=%s:4040", getCardinalContainerName(cfg)),
@@ -47,8 +48,9 @@ func Nakama(cfg *config.Config) Service {
 				fmt.Sprintf("DB_PASSWORD=%s", dbPassword),
 				fmt.Sprintf("ENABLE_ALLOWLIST=%s", enableAllowList),
 				fmt.Sprintf("OUTGOING_QUEUE_SIZE=%s", outgoingQueueSize),
+				// TODO: make these configurable based on world.toml
 				fmt.Sprintf("JAEGER_ADDR=%s:4317", getJaegerContainerName(cfg)),
-				fmt.Sprintf("JAEGER_SAMPLE_RATE=%.2f", 0.6),
+				fmt.Sprintf("JAEGER_SAMPLE_RATE=%.2f", 1),
 			},
 			Entrypoint: []string{
 				"/bin/sh",
