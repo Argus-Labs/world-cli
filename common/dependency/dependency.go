@@ -2,8 +2,9 @@ package dependency
 
 import (
 	"errors"
-	"fmt"
 	"os/exec"
+
+	"github.com/rotisserie/eris"
 )
 
 var (
@@ -52,7 +53,7 @@ type Dependency struct {
 
 func (d Dependency) Check() error {
 	if err := d.Cmd.Run(); err != nil {
-		return fmt.Errorf("dependency check %q failed with: %w", d.Name, err)
+		return eris.Wrapf(err, "dependency check %q failed with", d.Name)
 	}
 	return nil
 }

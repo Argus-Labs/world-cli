@@ -19,6 +19,7 @@ var (
 	AppVersion    string
 	PosthogAPIKey string
 	SentryDsn     string
+	Env           string
 )
 
 func init() {
@@ -27,15 +28,16 @@ func init() {
 		AppVersion = "v0.0.1-dev"
 	}
 	root.AppVersion = AppVersion
+
+	if Env == "" {
+		Env = "DEV"
+	}
 }
 
 func main() {
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn)
+	telemetry.SentryInit(SentryDsn, Env, AppVersion)
 	defer telemetry.SentryFlush()
-
-	// Set logger sentry hook
-	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
 
 	// Set up config directory "~/.worldcli/"
 	err := globalconfig.SetupConfigDir()

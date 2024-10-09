@@ -22,6 +22,7 @@ builds:
       - -X main.AppVersion={{.Version}}
       - -X main.SentryDsn={{.Env.SENTRY_DSN}}
       - -X main.PosthogAPIKey={{.Env.POSTHOG_API_KEY}}
+      - -X main.Env=PROD
     goos:
       - linux
       - windows
