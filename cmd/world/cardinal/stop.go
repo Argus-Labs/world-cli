@@ -7,7 +7,6 @@ import (
 
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
-	"pkg.world.dev/world-cli/common/docker/service"
 )
 
 /////////////////
@@ -38,7 +37,8 @@ This will stop the following Docker services:
 		}
 		defer dockerClient.Close()
 
-		err = dockerClient.Stop(cmd.Context(), service.Nakama, service.Cardinal, service.NakamaDB, service.Redis)
+		services := getStartedServices(cfg)
+		err = dockerClient.Stop(cmd.Context(), services...)
 		if err != nil {
 			return err
 		}

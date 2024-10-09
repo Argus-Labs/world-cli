@@ -20,12 +20,10 @@ const (
 	flagForConfigFile = "config"
 )
 
-var (
-	// Items under these toml headers will be included in the environment variables when
-	// running docker. An error will be generated if a duplicate key is found across
-	// these sections.
-	dockerEnvHeaders = []string{"cardinal", "evm", "nakama", "common"}
-)
+// Items under these toml headers will be included in the environment variables when
+// running docker. An error will be generated if a duplicate key is found across
+// these sections.
+var dockerEnvHeaders = []string{"cardinal", "evm", "nakama", "common"}
 
 type Config struct {
 	RootDir   string
@@ -34,6 +32,7 @@ type Config struct {
 	Build     bool
 	Debug     bool
 	DevDA     bool
+	Telemetry bool
 	Timeout   int
 	DockerEnv map[string]string
 }
