@@ -45,11 +45,6 @@ func Nakama(cfg *config.Config) Service {
 		traceSampleRate = "0.6"
 	}
 
-	metricsInterval := cfg.DockerEnv["NAKAMA_METRICS_INTERVAL"]
-	if metricsInterval == "" {
-		metricsInterval = "30"
-	}
-
 	metricsEnabled := false
 	if cfg.Telemetry {
 		cfgMetricsEnabled, err := strconv.ParseBool(cfg.DockerEnv["NAKAMA_METRICS_ENABLED"])
@@ -70,7 +65,8 @@ func Nakama(cfg *config.Config) Service {
 	return Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
-			// TODO: update image tag to the correct one when this pr is merged: https://github.com/Argus-Labs/world-engine/pull/799
+			// TODO: update image tag to the correct one when this pr
+			// is merged: https://github.com/Argus-Labs/world-engine/pull/799
 			Image: "ghcr.io/argus-labs/world-engine-nakama:1.3.0",
 			Env: []string{
 				fmt.Sprintf("CARDINAL_CONTAINER=%s", getCardinalContainerName(cfg)),

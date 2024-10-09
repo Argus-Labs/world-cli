@@ -5,27 +5,15 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+
 	"pkg.world.dev/world-cli/common/config"
 )
 
-func getPrometheusContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-prometheus", cfg.DockerEnv["CARDINAL_NAMESPACE"])
-}
-
-func Prometheus(cfg *config.Config) Service {
-	exposedPorts := []int{9090}
-
-	return Service{
-		Name: getPrometheusContainerName(cfg),
-		Config: container.Config{
-			Image:      "prom/prometheus:v2.54.1",
-			Entrypoint: []string{"/bin/sh", "-c"},
-			Cmd: []string{
-				strings.Replace(`sh -s <<EOF
+var containerCmd = `sh -s <<EOF
 cat > ./prometheus.yaml <<EON
 global:
-  scrape_interval:     15s
-  evaluation_interval: 15s
+  scrape_interval:     __NAKAMA_METRICS_INTERVAL__s
+  evaluation_interval: __NAKAMA_METRICS_INTERVAL__s
 
 scrape_configs:
   - job_name: nakama
@@ -34,8 +22,30 @@ scrape_configs:
     - targets: ['__NAKAMA_CONTAINER__:9100']
 EON
 prometheus --config.file=./prometheus.yaml
-EOF`, "__NAKAMA_CONTAINER__", getNakamaContainerName(cfg), 1),
-			},
+EOF
+`
+
+func getPrometheusContainerName(cfg *config.Config) string {
+	return fmt.Sprintf("%s-prometheus", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+}
+
+func Prometheus(cfg *config.Config) Service {
+	nakamaMetricsInterval := cfg.DockerEnv["NAKAMA_METRICS_INTERVAL"]
+	if nakamaMetricsInterval == "" {
+		nakamaMetricsInterval = "30"
+	}
+
+	exposedPorts := []int{9090}
+
+	containerCmd = strings.ReplaceAll(containerCmd, "__NAKAMA_CONTAINER__", getNakamaContainerName(cfg))
+	containerCmd = strings.ReplaceAll(containerCmd, "__NAKAMA_METRICS_INTERVAL__", nakamaMetricsInterval)
+
+	return Service{
+		Name: getPrometheusContainerName(cfg),
+		Config: container.Config{
+			Image:      "prom/prometheus:v2.54.1",
+			Entrypoint: []string{"/bin/sh", "-c"},
+			Cmd:        []string{containerCmd},
 		},
 		HostConfig: container.HostConfig{
 			PortBindings: newPortMap(exposedPorts),
