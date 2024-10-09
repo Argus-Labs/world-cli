@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/magefile/mage/sh"
+	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/common/config"
 )
@@ -71,7 +72,7 @@ func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
 // Runs with the debug docker compose, if `debug` is true
 func DockerStart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
-		return errors.New("no service names provided")
+		return eris.New("no service names provided")
 	}
 	if err := prepareDirs(path.Join(cfg.RootDir, "cardinal")); err != nil {
 		return err
@@ -115,7 +116,7 @@ func DockerStartAll(cfg *config.Config) error {
 // DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
 func DockerRestart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
-		return errors.New("no service names provided")
+		return eris.New("no service names provided")
 	}
 	if cfg.Build {
 		if err := DockerStop(services); err != nil {
@@ -136,7 +137,7 @@ func DockerRestart(cfg *config.Config, services []DockerService) error {
 // If you want to reset all the services state, use DockerPurge
 func DockerStop(services []DockerService) error {
 	if services == nil {
-		return errors.New("no service names provided")
+		return eris.New("no service names provided")
 	}
 	if err := dockerCompose(dockerArgs("stop", services)...); err != nil {
 		return err
@@ -185,7 +186,7 @@ func dockerArgs(args string, services []DockerService, flags ...string) []string
 func prepareDirs(dirs ...string) error {
 	for _, dir := range dirs {
 		if err := prepareDir(dir); err != nil {
-			return fmt.Errorf("failed to prepare dir %s: %w", dir, err)
+			return eris.Wrapf(err, "failed to prepare dir %s", dir)
 		}
 	}
 	return nil

@@ -394,7 +394,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
 				fmt.Printf("Error pulling image %s: %v\n", imageName, err)
-				errChan <- fmt.Errorf("error pulling image %s: %w", imageName, err)
+				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
 
 				// Stop the progress bar without clearing
 				bar.Abort(false)

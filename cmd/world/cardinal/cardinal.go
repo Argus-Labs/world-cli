@@ -23,10 +23,12 @@ var BaseCmd = &cobra.Command{
 			dependency.DockerDaemon,
 		)
 	},
-	Run: func(cmd *cobra.Command, _ []string) {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := cmd.Help(); err != nil {
 			logger.Fatalf("Failed to execute cardinal command : %s", err.Error())
+			return err
 		}
+		return nil
 	},
 }
 
