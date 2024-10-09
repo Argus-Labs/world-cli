@@ -39,7 +39,6 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 			imagesName = append(imagesName, dockerService.Image)
 		}
 	}
-
 	if len(serviceToBuild) == 0 {
 		return nil
 	}
@@ -125,7 +124,7 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	}
 
 	// Add source code to the tar archive
-	if err := c.addFileToTarWriter(".", tw); err != nil {
+	if err := c.addFileToTarWriter(c.cfg.RootDir, tw); err != nil {
 		return nil, eris.Wrap(err, "Failed to add source code to tar writer")
 	}
 
@@ -394,7 +393,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
 				fmt.Printf("Error pulling image %s: %v\n", imageName, err)
-				errChan <- fmt.Errorf("error pulling image %s: %w", imageName, err)
+				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
 
 				// Stop the progress bar without clearing
 				bar.Abort(false)

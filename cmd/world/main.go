@@ -14,11 +14,15 @@ import (
 
 // This variable will be overridden by ldflags during build
 // Example:
-// go build -ldflags "-X main.AppVersion=1.0.0 -X main.PosthogAPIKey=<POSTHOG_API_KEY> -X main.SentryDsn=<SENTRY_DSN>"
+/*
+	go build -ldflags "-X main.AppVersion=1.0.0 -X main.PosthogAPIKey=<POSTHOG_API_KEY>
+							-X main.SentryDsn=<SENTRY_DSN> -X main.Env=<DEV|PROD>"
+*/
 var (
 	AppVersion    string
 	PosthogAPIKey string
 	SentryDsn     string
+	Env           string
 )
 
 func init() {
@@ -27,15 +31,17 @@ func init() {
 		AppVersion = "v0.0.1-dev"
 	}
 	root.AppVersion = AppVersion
+
+	if Env == "" {
+		Env = "DEV"
+	}
+	root.Env = Env
 }
 
 func main() {
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn)
+	telemetry.SentryInit(SentryDsn, Env, AppVersion)
 	defer telemetry.SentryFlush()
-
-	// Set logger sentry hook
-	log.Logger = log.Logger.Hook(telemetry.SentryHook{})
 
 	// Set up config directory "~/.worldcli/"
 	err := globalconfig.SetupConfigDir()

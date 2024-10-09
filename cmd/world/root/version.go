@@ -7,6 +7,7 @@ import (
 )
 
 var AppVersion string
+var Env string
 
 // versionCmd print the version number of World CLI
 // Usage: `world version`
@@ -15,6 +16,9 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number of World CLI",
 	Long:  `Print the version number of World CLI`,
 	Run: func(_ *cobra.Command, _ []string) {
-		fmt.Printf("World CLI %s\n", AppVersion)
+		if Env == "PROD" {
+			Env = ""
+		}
+		fmt.Printf("World CLI %s %s\n", AppVersion, Env)
 	},
 }

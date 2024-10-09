@@ -3,7 +3,6 @@ package root
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/go-version"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
@@ -72,6 +72,9 @@ func init() {
 	rootCmd.AddCommand(cardinal.BaseCmd)
 	rootCmd.AddCommand(evm.BaseCmd)
 
+	// Remove completion subcommand
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
 	config.AddConfigFlag(rootCmd)
 	logger.AddVerboseFlag(rootCmd)
 }
@@ -95,7 +98,7 @@ func checkLatestVersion() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Debug(eris.Wrap(errors.New("status is not 200"), "error fetching the latest release"))
+		logger.Debug(eris.Wrap(eris.New("status is not 200"), "error fetching the latest release"))
 		return nil
 	}
 
@@ -139,6 +142,7 @@ func checkLatestVersion() error {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		sentry.CaptureException(err)
 		logger.Errors(err)
 	}
 	// print log stack
