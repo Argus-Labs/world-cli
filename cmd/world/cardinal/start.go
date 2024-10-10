@@ -20,11 +20,12 @@ import (
 /////////////////
 
 const (
-	flagBuild    = "build"
-	flagDebug    = "debug"
-	flagDetach   = "detach"
-	flagLogLevel = "log-level"
-	flagEditor   = "editor"
+	flagBuild     = "build"
+	flagDebug     = "debug"
+	flagDetach    = "detach"
+	flagLogLevel  = "log-level"
+	flagEditor    = "editor"
+	flagTelemetry = "telemetry"
 
 	// DockerCardinalEnvLogLevel Environment variable name for Docker
 	DockerCardinalEnvLogLevel = "CARDINAL_LOG_LEVEL"
@@ -74,6 +75,10 @@ This will start the following Docker services and its dependencies:
 		if err := replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
 			return err
 		}
+
+		if err := replaceBoolWithFlag(cmd, flagTelemetry, &cfg.Telemetry); err != nil {
+			return err
+		}
 		cfg.Timeout = -1
 
 		// Replace cardinal log level using flag value if flag is set
@@ -120,8 +125,14 @@ This will start the following Docker services and its dependencies:
 
 		// Start the World Engine stack
 		group.Go(func() error {
-			if err := dockerClient.Start(ctx, service.NakamaDB,
-				service.Redis, service.Cardinal, service.Nakama); err != nil {
+			services := []service.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
+			if cfg.Telemetry && cfg.DockerEnv["NAKAMA_TRACE_ENABLED"] == "true" {
+				services = append(services, service.Jaeger)
+			}
+			if cfg.Telemetry && cfg.DockerEnv["NAKAMA_METRICS_ENABLED"] == "true" {
+				services = append(services, service.Prometheus)
+			}
+			if err := dockerClient.Start(ctx, services...); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
 			return eris.Wrap(ErrGracefulExit, "Stack terminated")
@@ -157,6 +168,7 @@ func init() {
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
 	startCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
+	startCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag
