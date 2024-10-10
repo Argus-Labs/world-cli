@@ -162,7 +162,7 @@ func init() {
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
 	startCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
-	startCmd.Flags().Bool(flagTelemetry, true, "Enable tracing, metrics, and profiling")
+	startCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
 }
 
 // replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag

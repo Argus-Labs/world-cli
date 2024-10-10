@@ -48,7 +48,7 @@ func Nakama(cfg *config.Config) Service {
 	metricsEnabled := false
 	if cfg.Telemetry {
 		cfgMetricsEnabled, err := strconv.ParseBool(cfg.DockerEnv["NAKAMA_METRICS_ENABLED"])
-		if err != nil {
+		if err == nil {
 			metricsEnabled = cfgMetricsEnabled
 		}
 	}

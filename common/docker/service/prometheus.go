@@ -19,7 +19,7 @@ scrape_configs:
   - job_name: nakama
     metrics_path: /
     static_configs:
-    - targets: ['__NAKAMA_CONTAINER__:9100']
+      - targets: ['__NAKAMA_CONTAINER__:9100']
 EON
 prometheus --config.file=./prometheus.yaml
 EOF
