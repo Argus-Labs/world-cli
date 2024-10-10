@@ -125,7 +125,13 @@ This will start the following Docker services and its dependencies:
 
 		// Start the World Engine stack
 		group.Go(func() error {
-			services := getStartedServices(cfg)
+			services := []service.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
+			if cfg.Telemetry && cfg.DockerEnv["NAKAMA_TRACE_ENABLED"] == "true" {
+				services = append(services, service.Jaeger)
+			}
+			if cfg.Telemetry && cfg.DockerEnv["NAKAMA_METRICS_ENABLED"] == "true" {
+				services = append(services, service.Prometheus)
+			}
 			if err := dockerClient.Start(ctx, services...); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
@@ -177,15 +183,4 @@ func replaceBoolWithFlag(cmd *cobra.Command, flagName string, value *bool) error
 	}
 	*value = newVal
 	return nil
-}
-
-func getStartedServices(cfg *config.Config) []service.Builder {
-	services := []service.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
-	if cfg.Telemetry && cfg.DockerEnv["NAKAMA_TRACE_ENABLED"] == "true" {
-		services = append(services, service.Jaeger)
-	}
-	if cfg.Telemetry && cfg.DockerEnv["NAKAMA_METRICS_ENABLED"] == "true" {
-		services = append(services, service.Prometheus)
-	}
-	return services
 }
