@@ -19,7 +19,7 @@ This will restart the following Docker services:
 - Cardinal (Core game logic)
 - Nakama (Relay)`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}

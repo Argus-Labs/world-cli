@@ -15,7 +15,7 @@ var stopCmd = &cobra.Command{
 	Short: "Stop the EVM base shard and DA layer client.",
 	Long:  "Stop the EVM base shard and data availability layer client if they are running.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}

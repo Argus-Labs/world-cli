@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -169,7 +168,7 @@ func downloadAndUnzip(url string, targetDir string) error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.New(url)
+		return eris.New("Failed to download Cardinal Editor from " + url)
 	}
 	defer resp.Body.Close()
 
@@ -248,13 +247,13 @@ func sanitizeExtractPath(dst string, filePath string) (string, error) {
 	if strings.HasPrefix(dstPath, filepath.Clean(dst)) {
 		return dstPath, nil
 	}
-	return "", fmt.Errorf("%s: illegal file path", filePath)
+	return "", eris.Errorf("%s: illegal file path", filePath)
 }
 
 func copyDir(src string, dst string) error {
 	srcDir, err := os.ReadDir(src)
 	if err != nil {
-		return errors.New(src)
+		return eris.New("Failed to read directory " + src)
 	}
 
 	if err := os.MkdirAll(dst, 0755); err != nil {
@@ -365,7 +364,7 @@ func getModuleVersion(gomodPath, modulePath string) (string, error) {
 	}
 
 	// Return an error if the module is not found
-	return "", fmt.Errorf("module %s not found", modulePath)
+	return "", eris.Errorf("module %s not found", modulePath)
 }
 
 // fileExists checks if a file exists and is not a directory before we
@@ -400,7 +399,7 @@ func getVersionMap(url string) (map[string]string, error) {
 
 	// Check for HTTP error
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP error: %d - %s", resp.StatusCode, resp.Status)
+		return nil, eris.Errorf("HTTP error: %d - %s", resp.StatusCode, resp.Status)
 	}
 
 	// Read the response body

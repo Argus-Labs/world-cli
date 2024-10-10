@@ -2,8 +2,9 @@ package dependency
 
 import (
 	"errors"
-	"fmt"
 	"os/exec"
+
+	"github.com/rotisserie/eris"
 )
 
 var (
@@ -23,12 +24,6 @@ Learn how to install Go: https://go.dev/doc/install`,
 		Name: "Docker",
 		Cmd:  exec.Command("docker", "--version"),
 		Help: `Docker is required to build and run World Engine game shards.
-Learn how to install Docker: https://docs.docker.com/engine/install/`,
-	}
-	DockerCompose = Dependency{
-		Name: "Docker Compose",
-		Cmd:  exec.Command("docker", "compose", "version"),
-		Help: `Docker Compose is required to build and run World Engine game shards.
 Learn how to install Docker: https://docs.docker.com/engine/install/`,
 	}
 	DockerDaemon = Dependency{
@@ -52,7 +47,7 @@ type Dependency struct {
 
 func (d Dependency) Check() error {
 	if err := d.Cmd.Run(); err != nil {
-		return fmt.Errorf("dependency check %q failed with: %w", d.Name, err)
+		return eris.Wrapf(err, "dependency check for %q failed", d.Name)
 	}
 	return nil
 }

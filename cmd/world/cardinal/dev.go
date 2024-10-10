@@ -53,7 +53,7 @@ var devCmd = &cobra.Command{
 			return err
 		}
 
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}

@@ -22,7 +22,7 @@ var purgeCmd = &cobra.Command{
 	Long: `Stop and reset the state of your Cardinal game shard.
 This command stop all Docker services and remove all Docker volumes.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}

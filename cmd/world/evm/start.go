@@ -21,7 +21,7 @@ var startCmd = &cobra.Command{
 	Short: "Start the EVM base shard. Use --da-auth-token to pass in an auth token directly.",
 	Long:  "Start the EVM base shard. Requires connection to celestia DA.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ var startCmd = &cobra.Command{
 
 		err = dockerClient.Start(cmd.Context(), service.EVM)
 		if err != nil {
-			return fmt.Errorf("error starting %s docker container: %w", teacmd.DockerServiceEVM, err)
+			return eris.Wrapf(err, "error starting %s docker container", teacmd.DockerServiceEVM)
 		}
 
 		// Stop the DA service if it was started in dev mode
@@ -82,7 +82,7 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 	cfg.Timeout = -1
 	logger.Println("starting DA docker service for dev mode...")
 	if err := dockerClient.Start(ctx, service.CelestiaDevNet); err != nil {
-		return fmt.Errorf("error starting %s docker container: %w", daService, err)
+		return eris.Wrapf(err, "error starting %s docker container", daService)
 	}
 	logger.Println("started DA service...")
 
@@ -115,12 +115,12 @@ func validateProdDALayer(cfg *config.Config) error {
 		if len(cfg.DockerEnv[env]) > 0 {
 			continue
 		}
-		errs = append(errs, fmt.Errorf("missing %q", env))
+		errs = append(errs, eris.Errorf("missing %q", env))
 	}
 	if len(errs) > 0 {
 		// Prepend an error describing the overall problem
 		errs = append([]error{
-			errors.New("the [evm] section of your config is missing some required variables"),
+			eris.New("the [evm] section of your config is missing some required variables"),
 		}, errs...)
 		return errors.Join(errs...)
 	}
@@ -169,7 +169,7 @@ func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Cl
 	}
 
 	if token == "" {
-		return "", errors.New("got empty DA token")
+		return "", eris.New("got empty DA token")
 	}
 	return token, nil
 }
