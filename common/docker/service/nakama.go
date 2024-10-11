@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -34,12 +35,37 @@ func Nakama(cfg *config.Config) Service {
 		dbPassword = "very_unsecure_password_please_change" //nolint:gosec // This is a default password
 	}
 
+	traceEnabled := cfg.DockerEnv["NAKAMA_TRACE_ENABLED"]
+	if traceEnabled == "" || !cfg.Telemetry {
+		traceEnabled = "false"
+	}
+
+	traceSampleRate := cfg.DockerEnv["NAKAMA_TRACE_SAMPLE_RATE"]
+	if traceSampleRate == "" {
+		traceSampleRate = "0.6"
+	}
+
+	metricsEnabled := false
+	if cfg.Telemetry {
+		cfgMetricsEnabled, err := strconv.ParseBool(cfg.DockerEnv["NAKAMA_METRICS_ENABLED"])
+		if err == nil {
+			metricsEnabled = cfgMetricsEnabled
+		}
+	}
+
+	// prometheus metrics export is disabled if port is 0
+	// src: https://heroiclabs.com/docs/nakama/getting-started/configuration/#metrics
+	prometheusPort := 0
+	if metricsEnabled {
+		prometheusPort = 9100
+	}
+
 	exposedPorts := []int{7349, 7350, 7351}
 
 	return Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
-			Image: "ghcr.io/argus-labs/world-engine-nakama:1.2.7",
+			Image: "ghcr.io/argus-labs/world-engine-nakama:1.2.9",
 			Env: []string{
 				fmt.Sprintf("CARDINAL_CONTAINER=%s", getCardinalContainerName(cfg)),
 				fmt.Sprintf("CARDINAL_ADDR=%s:4040", getCardinalContainerName(cfg)),
@@ -47,15 +73,19 @@ func Nakama(cfg *config.Config) Service {
 				fmt.Sprintf("DB_PASSWORD=%s", dbPassword),
 				fmt.Sprintf("ENABLE_ALLOWLIST=%s", enableAllowList),
 				fmt.Sprintf("OUTGOING_QUEUE_SIZE=%s", outgoingQueueSize),
+				fmt.Sprintf("TRACE_ENABLED=%s", traceEnabled),
+				fmt.Sprintf("JAEGER_ADDR=%s:4317", getJaegerContainerName(cfg)),
+				fmt.Sprintf("JAEGER_SAMPLE_RATE=%s", traceSampleRate),
 			},
 			Entrypoint: []string{
 				"/bin/sh",
 				"-ec",
-				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO", //nolint:lll
+				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port %d", //nolint:lll
 					dbPassword,
 					getNakamaDBContainerName(cfg),
 					dbPassword,
-					getNakamaDBContainerName(cfg)),
+					getNakamaDBContainerName(cfg),
+					prometheusPort),
 			},
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{

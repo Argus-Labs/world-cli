@@ -35,7 +35,8 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	err = dockerClient.Purge(context.Background(), service.Nakama, service.Cardinal, service.Redis, service.NakamaDB)
+	err = dockerClient.Purge(context.Background(), service.Nakama,
+		service.Cardinal, service.Redis, service.NakamaDB, service.Jaeger, service.Prometheus)
 	if err != nil {
 		logger.Errorf("Failed to purge containers: %v", err)
 		os.Exit(1)
@@ -239,8 +240,8 @@ func redisIsDown(t *testing.T) bool {
 func cleanUp(t *testing.T, dockerClient *Client) {
 	t.Cleanup(func() {
 		assert.NilError(t, dockerClient.Purge(context.Background(), service.Nakama,
-			service.Cardinal, service.Redis,
-			service.NakamaDB), "Failed to purge container during cleanup")
+			service.Cardinal, service.Redis, service.NakamaDB, service.Jaeger, service.Prometheus),
+			"Failed to purge container during cleanup")
 
 		assert.NilError(t, dockerClient.Close())
 	})

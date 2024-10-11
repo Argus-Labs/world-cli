@@ -38,7 +38,8 @@ This will stop the following Docker services:
 		}
 		defer dockerClient.Close()
 
-		err = dockerClient.Stop(cmd.Context(), service.Nakama, service.Cardinal, service.NakamaDB, service.Redis)
+		err = dockerClient.Stop(cmd.Context(), service.Nakama, service.Cardinal,
+			service.NakamaDB, service.Redis, service.Jaeger, service.Prometheus)
 		if err != nil {
 			return err
 		}
