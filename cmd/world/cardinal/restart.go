@@ -5,7 +5,6 @@ import (
 
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
-	"pkg.world.dev/world-cli/common/docker/service"
 )
 
 // restartCmd restarts your Cardinal game shard stack
@@ -19,7 +18,7 @@ This will restart the following Docker services:
 - Cardinal (Core game logic)
 - Nakama (Relay)`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}
@@ -39,7 +38,7 @@ This will restart the following Docker services:
 		}
 		defer dockerClient.Close()
 
-		err = dockerClient.Restart(cmd.Context(), service.Cardinal, service.Nakama)
+		err = dockerClient.Restart(cmd.Context(), getServices(cfg)...)
 		if err != nil {
 			return err
 		}

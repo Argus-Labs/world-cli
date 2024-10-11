@@ -3,14 +3,13 @@ package root
 import (
 	"bytes"
 	"context"
-	"errors"
-	"fmt"
 	"net"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
 )
@@ -34,12 +33,12 @@ func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
 	}()
 
 	if err := cobra.Execute(); err != nil {
-		return nil, fmt.Errorf("root command failed with: %w", err)
+		return nil, eris.Errorf("root command failed with: %v", err)
 	}
 	lines := strings.Split(stdOut.String(), "\n")
 	errorStr := stdErr.String()
 	if len(errorStr) > 0 {
-		return lines, errors.New(errorStr)
+		return lines, eris.New(errorStr)
 	}
 
 	return lines, nil
@@ -49,11 +48,10 @@ func TestSubcommandsHaveHelpText(t *testing.T) {
 	lines, err := outputFromCmd(rootCmd, "help")
 	assert.NilError(t, err)
 	seenSubcommands := map[string]int{
-		"cardinal":   0,
-		"completion": 0,
-		"doctor":     0,
-		"help":       0,
-		"version":    0,
+		"cardinal": 0,
+		"doctor":   0,
+		"help":     0,
+		"version":  0,
 	}
 
 	for _, line := range lines {
@@ -78,7 +76,6 @@ func TestExecuteDoctorCommand(t *testing.T) {
 		"Git":                      0,
 		"Go":                       0,
 		"Docker":                   0,
-		"Docker Compose":           0,
 		"Docker daemon is running": 0,
 	}
 

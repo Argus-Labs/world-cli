@@ -1,13 +1,13 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 
 	"github.com/pelletier/go-toml"
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/logger"
@@ -20,10 +20,14 @@ const (
 	flagForConfigFile = "config"
 )
 
-// Items under these toml headers will be included in the environment variables when
-// running docker. An error will be generated if a duplicate key is found across
-// these sections.
-var dockerEnvHeaders = []string{"cardinal", "evm", "nakama", "common"}
+var (
+	// Items under these toml headers will be included in the environment variables when
+	// running docker. An error will be generated if a duplicate key is found across
+	// these sections.
+	dockerEnvHeaders = []string{"cardinal", "evm", "nakama", "common"}
+
+	configFile string // Config file flag value
+)
 
 type Config struct {
 	RootDir   string
@@ -38,11 +42,11 @@ type Config struct {
 }
 
 func AddConfigFlag(cmd *cobra.Command) {
-	cmd.PersistentFlags().String(flagForConfigFile, "", "a toml encoded config file")
+	cmd.PersistentFlags().StringVarP(&configFile, flagForConfigFile, "c", "", "a toml encoded config file")
 }
 
-func GetConfig(cmd *cobra.Command) (*Config, error) {
-	cfg, err := findAndLoadConfigFile(cmd)
+func GetConfig() (*Config, error) {
+	cfg, err := findAndLoadConfigFile()
 	if err != nil {
 		return nil, err
 	}
@@ -57,13 +61,9 @@ func GetConfig(cmd *cobra.Command) (*Config, error) {
 // 2. A config file set via an environment variable
 // 3. A config file named "world.toml" in the current directory
 // 4. A config file found in a parent directory.
-func findAndLoadConfigFile(cmd *cobra.Command) (*Config, error) {
+func findAndLoadConfigFile() (*Config, error) {
 	// First look for the config file in the config file flag.
-	if cmd.PersistentFlags().Changed(flagForConfigFile) {
-		configFile, err := cmd.PersistentFlags().GetString(flagForConfigFile)
-		if err != nil {
-			return nil, err
-		}
+	if configFile != "" {
 		return loadConfigFromFile(configFile)
 	}
 
@@ -93,7 +93,7 @@ func findAndLoadConfigFile(cmd *cobra.Command) (*Config, error) {
 		}
 	}
 
-	return nil, errors.New("no config file found")
+	return nil, eris.New("No config file found")
 }
 
 func loadConfigFromFile(filename string) (*Config, error) {
@@ -113,7 +113,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 	if rootDir, ok := data["root_dir"]; ok {
 		cfg.RootDir, ok = rootDir.(string)
 		if !ok {
-			return nil, errors.New("root_dir must be a string")
+			return nil, eris.New("root_dir must be a string")
 		}
 	} else {
 		cfg.RootDir, _ = filepath.Split(filename)
@@ -123,7 +123,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 	if gameDir, ok := data["game_dir"]; ok {
 		cfg.GameDir, ok = gameDir.(string)
 		if !ok {
-			return nil, errors.New("game_dir must be a string")
+			return nil, eris.New("game_dir must be a string")
 		}
 	} else {
 		cfg.GameDir = "cardinal"
@@ -136,7 +136,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 		}
 		for key, val := range m.(map[string]any) {
 			if _, ok := cfg.DockerEnv[key]; ok {
-				return nil, fmt.Errorf("duplicate env variable %q", key)
+				return nil, eris.Errorf("duplicate env variable %q", key)
 			}
 			cfg.DockerEnv[key] = fmt.Sprintf("%v", val)
 		}

@@ -12,7 +12,6 @@ import (
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
-	"pkg.world.dev/world-cli/common/docker/service"
 )
 
 /////////////////
@@ -59,7 +58,7 @@ This will start the following Docker services and its dependencies:
 - Nakama (Relay)
 - Redis (Cardinal dependency)`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}
@@ -90,7 +89,7 @@ This will start the following Docker services and its dependencies:
 		if logLevel != "" {
 			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
 			if err != nil {
-				return fmt.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels)
+				return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels)
 			}
 			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
 		}
@@ -101,7 +100,7 @@ This will start the following Docker services and its dependencies:
 		} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil {
 			// make sure the log level is valid when the flag is not set and using env var from config
 			// Error when CARDINAL_LOG_LEVEL is not a valid log level
-			return fmt.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
+			return eris.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
 				DockerCardinalEnvLogLevel, validLogLevels)
 		}
 
@@ -125,14 +124,7 @@ This will start the following Docker services and its dependencies:
 
 		// Start the World Engine stack
 		group.Go(func() error {
-			services := []service.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
-			if cfg.Telemetry && cfg.DockerEnv["NAKAMA_TRACE_ENABLED"] == "true" {
-				services = append(services, service.Jaeger)
-			}
-			if cfg.Telemetry && cfg.DockerEnv["NAKAMA_METRICS_ENABLED"] == "true" {
-				services = append(services, service.Prometheus)
-			}
-			if err := dockerClient.Start(ctx, services...); err != nil {
+			if err := dockerClient.Start(ctx, getServices(cfg)...); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
 			return eris.Wrap(ErrGracefulExit, "Stack terminated")

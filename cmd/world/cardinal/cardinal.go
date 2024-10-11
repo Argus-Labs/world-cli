@@ -3,7 +3,9 @@ package cardinal
 import (
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/dependency"
+	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -23,14 +25,27 @@ var BaseCmd = &cobra.Command{
 			dependency.DockerDaemon,
 		)
 	},
-	Run: func(cmd *cobra.Command, _ []string) {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := cmd.Help(); err != nil {
 			logger.Fatalf("Failed to execute cardinal command : %s", err.Error())
+			return err
 		}
+		return nil
 	},
 }
 
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
 	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
+}
+
+func getServices(cfg *config.Config) []service.Builder {
+	services := []service.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
+	if cfg.Telemetry && cfg.DockerEnv["NAKAMA_TRACE_ENABLED"] == "true" {
+		services = append(services, service.Jaeger)
+	}
+	if cfg.Telemetry && cfg.DockerEnv["NAKAMA_METRICS_ENABLED"] == "true" {
+		services = append(services, service.Prometheus)
+	}
+	return services
 }
