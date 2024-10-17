@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"sync"
 	"time"
 
@@ -155,7 +154,9 @@ func (c *Client) stopContainer(ctx context.Context, containerName string) error 
 	}
 
 	// Stop the container
-	err = c.client.ContainerStop(ctx, containerName, container.StopOptions{})
+	err = c.client.ContainerStop(ctx, containerName, container.StopOptions{
+		Signal: "SIGINT",
+	})
 	if err != nil {
 		return eris.Wrapf(err, "Failed to stop container %s", containerName)
 	}
@@ -198,7 +199,7 @@ func (c *Client) logMultipleContainers(ctx context.Context, services ...service.
 				case <-ctx.Done():
 					return
 				default:
-					err := c.logContainerOutput(ctx, id, strconv.Itoa(i))
+					err := c.logContainerOutput(ctx, id, i)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						fmt.Printf("Error logging container %s: %v. Reattaching...\n", id, err)
 						time.Sleep(2 * time.Second) //nolint:gomnd // Sleep for 2 seconds before reattaching
@@ -212,7 +213,19 @@ func (c *Client) logMultipleContainers(ctx context.Context, services ...service.
 	wg.Wait()
 }
 
-func (c *Client) logContainerOutput(ctx context.Context, containerID, styleNumber string) error {
+func (c *Client) logContainerOutput(ctx context.Context, containerID string, styleNumber int) error {
+	colors := []string{
+		"#00FF00", // Green
+		"#0000FF", // Blue
+		"#00FFFF", // Cyan
+		"#FF00FF", // Magenta
+		"#FFA500", // Orange
+		"#800080", // Purple
+		"#FFC0CB", // Pink
+		"#87CEEB", // Sky Blue
+		"#32CD32", // Lime Green
+	}
+
 	// Create options for logs
 	options := container.LogsOptions{
 		ShowStdout: true,
@@ -258,10 +271,10 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID, styleNumbe
 		// Print the cleaned log message
 		if streamType == 1 { // Stdout
 			// TODO: what content should be printed for stdout?
-			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, styleNumber), cleanLog)
+			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		} else if streamType == 2 { //nolint:gomnd // Stderr
 			// TODO: what content should be printed for stderr?
-			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, styleNumber), cleanLog)
+			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		}
 	}
 

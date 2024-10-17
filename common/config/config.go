@@ -42,7 +42,7 @@ type Config struct {
 }
 
 func AddConfigFlag(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&configFile, flagForConfigFile, "c", "", "a toml encoded config file")
+	cmd.Flags().StringVarP(&configFile, flagForConfigFile, "c", "", "a toml encoded config file")
 }
 
 func GetConfig() (*Config, error) {
