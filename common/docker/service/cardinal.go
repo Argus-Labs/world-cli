@@ -40,6 +40,51 @@ func Cardinal(cfg *config.Config) Service {
 		dockerfile = strings.ReplaceAll(dockerfile, mountCacheScript, "")
 	}
 
+	// Set env variables
+	const falseValue = "false"
+
+	// Set Base Shard Router Key
+	baseShardRouterKey := cfg.DockerEnv["BASE_SHARD_ROUTER_KEY"]
+	if baseShardRouterKey == "" {
+		baseShardRouterKey = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ01"
+	}
+
+	// Set Cardinal Log Level
+	cardinalLogLevel := cfg.DockerEnv["CARDINAL_LOG_LEVEL"]
+	if cardinalLogLevel == "" {
+		cardinalLogLevel = "info"
+	}
+
+	// Set Cardinal Log Pretty
+	cardinalLogPretty := cfg.DockerEnv["CARDINAL_LOG_PRETTY"]
+	if cardinalLogPretty == "" {
+		cardinalLogPretty = "true"
+	}
+
+	// Set Cardinal Rollup Enabled
+	cardinalRollupEnabled := cfg.DockerEnv["CARDINAL_ROLLUP_ENABLED"]
+	if cardinalRollupEnabled == "" {
+		cardinalRollupEnabled = falseValue
+	}
+
+	// Set Telemetry Profiler Enabled
+	telemetryProfilerEnabled := cfg.DockerEnv["TELEMETRY_PROFILER_ENABLED"]
+	if telemetryProfilerEnabled == "" {
+		telemetryProfilerEnabled = falseValue
+	}
+
+	// Set telemetry trace enabled
+	telemetryTraceEnabled := cfg.DockerEnv["TELEMETRY_TRACE_ENABLED"]
+	if telemetryTraceEnabled == "" {
+		telemetryTraceEnabled = falseValue
+	}
+
+	// Set router key
+	routerKey := cfg.DockerEnv["ROUTER_KEY"]
+	if routerKey == "" {
+		routerKey = "25a0f627050d11b1461b2728ea3f704e141312b1d4f2a21edcec4eccddd940c2"
+	}
+
 	service := Service{
 		Name: getCardinalContainerName(cfg),
 		Config: container.Config{
@@ -47,6 +92,13 @@ func Cardinal(cfg *config.Config) Service {
 			Env: []string{
 				fmt.Sprintf("REDIS_ADDRESS=%s:6379", getRedisContainerName(cfg)),
 				fmt.Sprintf("BASE_SHARD_SEQUENCER_ADDRESS=%s:9601", getEVMContainerName(cfg)),
+				fmt.Sprintf("BASE_SHARD_ROUTER_KEY=%s", baseShardRouterKey),
+				fmt.Sprintf("CARDINAL_LOG_LEVEL=%s", cardinalLogLevel),
+				fmt.Sprintf("CARDINAL_LOG_PRETTY=%s", cardinalLogPretty),
+				fmt.Sprintf("CARDINAL_ROLLUP_ENABLED=%s", cardinalRollupEnabled),
+				fmt.Sprintf("TELEMETRY_PROFILER_ENABLED=%s", telemetryProfilerEnabled),
+				fmt.Sprintf("TELEMETRY_TRACE_ENABLED=%s", telemetryTraceEnabled),
+				fmt.Sprintf("ROUTER_KEY=%s", routerKey),
 			},
 			ExposedPorts: getExposedPorts(exposedPorts),
 		},
