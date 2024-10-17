@@ -34,10 +34,7 @@ func Redis(cfg *config.Config) Service {
 	return Service{
 		Name: getRedisContainerName(cfg),
 		Config: container.Config{
-			Image: "redis:latest",
-			Env: []string{
-				fmt.Sprintf("REDIS_PASSWORD=%s", cfg.DockerEnv["REDIS_PASSWORD"]),
-			},
+			Image:        "redis:latest",
 			ExposedPorts: getExposedPorts(exposedPorts),
 		},
 		HostConfig: container.HostConfig{

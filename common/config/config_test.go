@@ -21,9 +21,9 @@ func cmdZero() *cobra.Command {
 func cmdWithConfig(t *testing.T, filename string) {
 	cmd := cmdZero()
 	AddConfigFlag(cmd)
-	assert.NilError(t, cmd.PersistentFlags().Set(flagForConfigFile, filename))
+	assert.NilError(t, cmd.Flags().Set(flagForConfigFile, filename))
 	t.Cleanup(func() {
-		assert.NilError(t, cmd.PersistentFlags().Set(flagForConfigFile, ""))
+		assert.NilError(t, cmd.Flags().Set(flagForConfigFile, ""))
 	})
 }
 
