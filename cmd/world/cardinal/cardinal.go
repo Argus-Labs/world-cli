@@ -37,6 +37,7 @@ var BaseCmd = &cobra.Command{
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
 	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
+	registerConfigAndVerboseFlags(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }
 
 func getServices(cfg *config.Config) []service.Builder {
