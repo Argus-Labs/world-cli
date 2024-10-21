@@ -34,7 +34,8 @@ func Jaeger(cfg *config.Config) Service {
 		HostConfig: container.HostConfig{
 			PortBindings: newPortMap(exposedPorts),
 			NetworkMode:  container.NetworkMode(cfg.DockerEnv["CARDINAL_NAMESPACE"]),
-			Mounts:       []mount.Mount{{Type: mount.TypeVolume, Source: cfg.DockerEnv["CARDINAL_NAMESPACE"], Target: "/badger"}},
+			Mounts: []mount.Mount{{Type: mount.TypeVolume,
+				Source: cfg.DockerEnv["CARDINAL_NAMESPACE"], Target: "/badger"}},
 		},
 	}
 }
