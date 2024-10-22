@@ -64,6 +64,6 @@ func PrintLogs() {
 // AddVerboseFlag set flag --log-debug
 func AddVerboseFlag(cmd ...*cobra.Command) {
 	for _, c := range cmd {
-		c.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable World CLI debug logs")
+		c.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable World CLI debug logs")
 	}
 }

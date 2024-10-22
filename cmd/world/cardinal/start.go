@@ -33,6 +33,7 @@ const (
 var (
 	// ValidLogLevels Valid log levels for zerolog
 	validLogLevels = strings.Join([]string{
+		zerolog.TraceLevel.String(),
 		zerolog.DebugLevel.String(),
 		zerolog.InfoLevel.String(),
 		zerolog.WarnLevel.String(),
@@ -40,7 +41,6 @@ var (
 		zerolog.FatalLevel.String(),
 		zerolog.PanicLevel.String(),
 		zerolog.Disabled.String(),
-		zerolog.TraceLevel.String(),
 	}, ", ")
 
 	ErrGracefulExit = eris.New("Process gracefully exited")
@@ -158,7 +158,8 @@ func init() {
 	registerEditorFlag(startCmd, true)
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
-	startCmd.Flags().String(flagLogLevel, "", "Set the log level")
+	startCmd.Flags().String(flagLogLevel, "",
+		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels))
 	startCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
 	startCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
 }

@@ -19,7 +19,6 @@ import (
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -74,9 +73,6 @@ func init() {
 
 	// Remove completion subcommand
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
-
-	config.AddConfigFlag(rootCmd)
-	logger.AddVerboseFlag(rootCmd)
 }
 
 func checkLatestVersion() error {
