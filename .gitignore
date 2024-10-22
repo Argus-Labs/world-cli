@@ -34,4 +34,4 @@ dist/
 /starter-game
 
 # Built binary
-world
+./world
