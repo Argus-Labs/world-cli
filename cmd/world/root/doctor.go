@@ -15,7 +15,6 @@ var DoctorDeps = []dependency.Dependency{
 	dependency.Git,
 	dependency.Go,
 	dependency.Docker,
-	dependency.DockerCompose,
 	dependency.DockerDaemon,
 }
 

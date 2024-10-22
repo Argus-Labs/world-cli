@@ -190,6 +190,7 @@ func TestBuild(t *testing.T) {
 		DockerEnv: map[string]string{
 			"CARDINAL_NAMESPACE": cardinalNamespace,
 		},
+		RootDir: dir,
 	}
 	cardinalService := service.Cardinal(cfg)
 	ctx := context.Background()

@@ -26,7 +26,7 @@ This will stop the following Docker services:
 - Nakama (Relay) + DB
 - Redis (Cardinal dependency)`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig(cmd)
+		cfg, err := config.GetConfig()
 		if err != nil {
 			return err
 		}
