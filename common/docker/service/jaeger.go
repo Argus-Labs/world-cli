@@ -29,6 +29,7 @@ func Jaeger(cfg *config.Config) Service {
 				"BADGER_EPHEMERAL=false",
 				"BADGER_DIRECTORY_VALUE=/badger/data",
 				"BADGER_DIRECTORY_KEY=/badger/key",
+				"QUERY_ADDITIONAL_HEADERS=Access-Control-Allow-Origin:*",
 			},
 		},
 		HostConfig: container.HostConfig{
