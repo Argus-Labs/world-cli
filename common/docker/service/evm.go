@@ -28,7 +28,7 @@ func EVM(cfg *config.Config) Service {
 
 	faucetEnabled := cfg.DockerEnv["FAUCET_ENABLED"]
 	if faucetEnabled == "" {
-		faucetEnabled = "false" //nolint:goconst // default values should be local to the service
+		faucetEnabled = "false"
 	}
 
 	faucetAddress := cfg.DockerEnv["FAUCET_ADDRESS"]
