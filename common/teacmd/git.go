@@ -47,6 +47,12 @@ func git(args ...string) (string, error) {
 }
 
 func GitCloneCmd(url string, targetDir string, initMsg string) error {
+	// check targetDir exists
+	if _, err := os.Stat(targetDir); err == nil {
+		return eris.Errorf("Game shard named '%s' already exists in this directory, "+
+			"please change the directory or use another name", targetDir)
+	}
+
 	_, err := git("clone", url, targetDir)
 	if err != nil {
 		return err

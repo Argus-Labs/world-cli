@@ -180,9 +180,11 @@ func TestBuild(t *testing.T) {
 	err = os.Chdir(dir)
 	assert.NilError(t, err)
 
+	sgtDir := dir + "/sgt"
+
 	// Pull the repository
 	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
-	err = teacmd.GitCloneCmd(templateGitURL, dir, "Initial commit from World CLI")
+	err = teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
 	assert.NilError(t, err)
 
 	// Preparation
@@ -190,7 +192,7 @@ func TestBuild(t *testing.T) {
 		DockerEnv: map[string]string{
 			"CARDINAL_NAMESPACE": cardinalNamespace,
 		},
-		RootDir: dir,
+		RootDir: sgtDir,
 	}
 	cardinalService := service.Cardinal(cfg)
 	ctx := context.Background()

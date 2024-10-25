@@ -116,9 +116,15 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	// set tea ouput to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
 
+	// checkout the repo
+	sgtDir := gameDir + "/sgt"
+	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
+	assert.NilError(t, err)
+
+	// Change dir
+	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
 
 	// Start cardinal
@@ -173,6 +179,9 @@ func TestDev(t *testing.T) {
 	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})
 
+	// checkout the repo
+	sgtDir := gameDir + "/sgt"
+	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
 
@@ -280,6 +289,9 @@ func TestEVMStart(t *testing.T) {
 	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})
 
+	// checkout the repo
+	sgtDir := gameDir + "/sgt"
+	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
 
