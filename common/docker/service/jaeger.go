@@ -31,6 +31,13 @@ func Jaeger(cfg *config.Config) Service {
 				"BADGER_DIRECTORY_KEY=/badger/key",
 				"QUERY_ADDITIONAL_HEADERS=Access-Control-Allow-Origin:*",
 			},
+			// running as the default user (uid 10001) doesn't work on mac because the volume is owned by
+			// root. A way to get around this is to create another container to change the owner of the
+			// /badger directory. since we're not able to start services following a dependency graph yet,
+			// we'll just run as root. world cli is also mainly used for local dev, so the security
+			// benefits of running as non-root doesn't really apply here.
+			// src: https://github.com/jaegertracing/jaeger/issues/4906
+			User: "root",
 		},
 		HostConfig: container.HostConfig{
 			PortBindings: newPortMap(exposedPorts),
