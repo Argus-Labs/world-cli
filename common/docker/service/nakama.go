@@ -37,7 +37,7 @@ func Nakama(cfg *config.Config) Service {
 
 	traceEnabled := cfg.DockerEnv["NAKAMA_TRACE_ENABLED"]
 	if traceEnabled == "" || !cfg.Telemetry {
-		traceEnabled = "false"
+		traceEnabled = "true"
 	}
 
 	traceSampleRate := cfg.DockerEnv["NAKAMA_TRACE_SAMPLE_RATE"]
@@ -45,7 +45,7 @@ func Nakama(cfg *config.Config) Service {
 		traceSampleRate = "0.6"
 	}
 
-	metricsEnabled := false
+	metricsEnabled := true
 	if cfg.Telemetry {
 		cfgMetricsEnabled, err := strconv.ParseBool(cfg.DockerEnv["NAKAMA_METRICS_ENABLED"])
 		if err == nil {
