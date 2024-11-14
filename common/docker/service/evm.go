@@ -2,8 +2,10 @@ package service
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"pkg.world.dev/world-cli/common/config"
 )
@@ -62,10 +64,26 @@ func EVM(cfg *config.Config) Service {
 			"thank slam unknown fury script among bread social switch glide wool clog flag enroll"
 	}
 
+	evmImage := "ghcr.io/argus-labs/world-engine-evm:latest"
+	if cfg.DockerEnv["EVM_IMAGE"] != "" {
+		evmImage = cfg.DockerEnv["EVM_IMAGE"]
+	}
+
+	var platform ocispec.Platform
+	if cfg.DockerEnv["EVM_IMAGE_PLATFORM"] != "" {
+		evmImagePlatform := strings.Split(cfg.DockerEnv["EVM_IMAGE_PLATFORM"], "/")
+		if len(evmImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+			platform = ocispec.Platform{
+				Architecture: evmImagePlatform[1],
+				OS:           evmImagePlatform[0],
+			}
+		}
+	}
+
 	return Service{
 		Name: getEVMContainerName(cfg),
 		Config: container.Config{
-			Image: "ghcr.io/argus-labs/world-engine-evm:1.4.1",
+			Image: evmImage,
 			Env: []string{
 				fmt.Sprintf("DA_BASE_URL=%s", daBaseURL),
 				fmt.Sprintf("DA_AUTH_TOKEN=%s", cfg.DockerEnv["DA_AUTH_TOKEN"]),
@@ -85,5 +103,6 @@ func EVM(cfg *config.Config) Service {
 			RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 			NetworkMode:   container.NetworkMode(cfg.DockerEnv["CARDINAL_NAMESPACE"]),
 		},
+		Platform: platform,
 	}
 }

@@ -64,7 +64,6 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 
 			// Remove the container
 			err := c.removeContainer(ctx, dockerService.Name)
-			fmt.Printf("Removing container %s\n", dockerService.Image)
 			if err != nil {
 				p.Send(multispinner.ProcessState{
 					Icon:   style.CrossIcon.Render(),

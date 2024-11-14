@@ -150,6 +150,10 @@ func downloadReleaseIfNotCached(downloadURL, configDir string) (string, string, 
 	editorDir := filepath.Join(configDir, "editor")
 
 	targetDir := filepath.Join(editorDir, release.Name)
+	if release.Assets == nil || (release.Assets != nil && len(release.Assets) == 0) {
+		return targetDir, release.Name, eris.New(fmt.Sprintf("No assets found in release %s", release.Name))
+	}
+
 	if _, err = os.Stat(targetDir); os.IsNotExist(err) {
 		return targetDir, release.Name, downloadAndUnzip(release.Assets[0].BrowserDownloadURL, targetDir)
 	}

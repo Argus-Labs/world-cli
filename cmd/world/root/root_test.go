@@ -239,7 +239,7 @@ func evmIsDown(t *testing.T) bool {
 
 func ServiceIsUp(name, address string, t *testing.T) bool {
 	up := false
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			time.Sleep(time.Second)
@@ -255,7 +255,7 @@ func ServiceIsUp(name, address string, t *testing.T) bool {
 
 func ServiceIsDown(name, address string, t *testing.T) bool {
 	down := false
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			down = true

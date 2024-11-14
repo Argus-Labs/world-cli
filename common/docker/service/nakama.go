@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -53,6 +54,25 @@ func Nakama(cfg *config.Config) Service {
 		}
 	}
 
+	nakamaImage := "ghcr.io/argus-labs/world-engine-nakama:latest"
+	if cfg.DockerEnv["NAKAMA_IMAGE"] != "" {
+		nakamaImage = cfg.DockerEnv["NAKAMA_IMAGE"]
+	}
+
+	platform := ocispec.Platform{
+		Architecture: "amd64",
+		OS:           "linux",
+	}
+	if cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"] != "" {
+		nakamaImagePlatform := strings.Split(cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"], "/")
+		if len(nakamaImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+			platform = ocispec.Platform{
+				Architecture: nakamaImagePlatform[1],
+				OS:           nakamaImagePlatform[0],
+			}
+		}
+	}
+
 	// prometheus metrics export is disabled if port is 0
 	// src: https://heroiclabs.com/docs/nakama/getting-started/configuration/#metrics
 	prometheusPort := 0
@@ -65,7 +85,7 @@ func Nakama(cfg *config.Config) Service {
 	return Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
-			Image: "ghcr.io/argus-labs/world-engine-nakama:1.2.9",
+			Image: nakamaImage,
 			Env: []string{
 				fmt.Sprintf("CARDINAL_CONTAINER=%s", getCardinalContainerName(cfg)),
 				fmt.Sprintf("CARDINAL_ADDR=%s:4040", getCardinalContainerName(cfg)),
@@ -100,9 +120,6 @@ func Nakama(cfg *config.Config) Service {
 			RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 			NetworkMode:   container.NetworkMode(cfg.DockerEnv["CARDINAL_NAMESPACE"]),
 		},
-		Platform: ocispec.Platform{
-			Architecture: "amd64",
-			OS:           "linux",
-		},
+		Platform: platform,
 	}
 }
