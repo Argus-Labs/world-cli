@@ -36,6 +36,11 @@ func GetConfig() (*Config, error) {
 		return nil, eris.Wrap(err, "failed to unmarshal config")
 	}
 
+	// Initialize DockerEnv if it's nil
+	if cfg.DockerEnv == nil {
+		cfg.DockerEnv = make(map[string]string)
+	}
+
 	return &cfg, nil
 }
 

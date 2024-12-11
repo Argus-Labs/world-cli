@@ -12,6 +12,11 @@ import (
 )
 
 func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName string) error {
+	// Validate network name
+	if networkName == "" {
+		return eris.New("network name cannot be empty")
+	}
+
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
 	p := tea.NewProgram(multispinner.CreateSpinner([]string{networkName}, cancel))
@@ -72,6 +77,7 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 			State: "created",
 			Done:  true,
 		})
+		errChan <- nil
 	}()
 
 	// Run the program
