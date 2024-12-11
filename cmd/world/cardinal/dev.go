@@ -16,10 +16,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
-	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/infrastructure/docker"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/utils"
 	"pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
 )
@@ -66,7 +66,7 @@ var devCmd = &cobra.Command{
 		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
 		var port int
 		if editor {
-			port, err = common.FindUnusedPort(cePortStart, cePortEnd)
+			port, err = utils.FindUnusedPort(cePortStart, cePortEnd)
 			if err != nil {
 				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
 			}
@@ -160,12 +160,12 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 	}
 
 	// Set world.toml environment variables
-	if err := common.WithEnv(cfg.DockerEnv); err != nil {
+	if err := utils.WithEnv(cfg.DockerEnv); err != nil {
 		return eris.Wrap(err, "Failed to set world.toml environment variables")
 	}
 
 	// Set dev mode environment variables
-	if err := common.WithEnv(
+	if err := utils.WithEnv(
 		map[string]string{
 			"RUNNER_IGNORED":      "assets, tmp, vendor",
 			"CARDINAL_PRETTY_LOG": strconv.FormatBool(prettyLog),

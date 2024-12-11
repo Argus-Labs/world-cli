@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
-	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/infrastructure/docker"
+	"pkg.world.dev/world-cli/infrastructure/utils"
 )
 
 /////////////////
@@ -132,7 +132,7 @@ This will start the following Docker services and its dependencies:
 
 		// Start Cardinal Editor is flag is set to true
 		if runEditor {
-			editorPort, err := common.FindUnusedPort(cePortStart, cePortEnd)
+			editorPort, err := utils.FindUnusedPort(cePortStart, cePortEnd)
 			if err != nil {
 				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
 			}

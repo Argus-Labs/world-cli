@@ -8,7 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/ui/style"
 )
 
 // Spinner is a component that displays a spinner while updating the logs
