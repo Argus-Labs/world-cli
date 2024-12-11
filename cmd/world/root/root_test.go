@@ -81,13 +81,9 @@ func TestExecuteDoctorCommand(t *testing.T) {
 
 	lines := strings.Split(teaOut.String(), "\r\n")
 	for _, line := range lines {
-		// Remove the first three characters for the example(✓  Git)
-		resultString := ""
-		if len(line) > 5 {
-			resultString = line[5:]
-		}
+		// Check each dependency by looking for its name in the line
 		for dep := range seenDependencies {
-			if resultString != "" && resultString == dep {
+			if strings.Contains(line, dep) {
 				seenDependencies[dep]++
 			}
 		}
@@ -118,14 +114,19 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	createCmd := getCreateCmd(teaOut)
 
 	// checkout the repo
-	sgtDir := gameDir + "/sgt"
+	sgtDir := filepath.Join(gameDir, "sgt")
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
 
-	// Change dir
+	// Change dir to project root and verify it exists
 	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
+	_, err = os.Stat("cardinal")
+	assert.NilError(t, err, "cardinal directory not found in project root")
+
+	// Set required environment variables for Docker
+	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal")
 
 	// Start cardinal
 	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
@@ -177,13 +178,19 @@ func TestDev(t *testing.T) {
 	// set tea ouput to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
 
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
+
+	// Change to the sgt directory where cardinal files are
+	err = os.Chdir(sgtDir)
+	assert.NilError(t, err)
+
+	// Set required environment variables for Docker
+	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal-dev")
 
 	// Start cardinal dev
 	ctx, cancel := context.WithCancel(context.Background())

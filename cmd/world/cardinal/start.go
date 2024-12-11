@@ -62,6 +62,17 @@ This will start the following Docker services and its dependencies:
 		if err != nil {
 			return err
 		}
+
+		// Ensure DockerEnv is initialized
+		if cfg.DockerEnv == nil {
+			cfg.DockerEnv = make(map[string]string)
+		}
+
+		// Ensure CARDINAL_NAMESPACE is set
+		if cfg.DockerEnv["CARDINAL_NAMESPACE"] == "" {
+			return eris.New("CARDINAL_NAMESPACE must be set before starting Cardinal")
+		}
+
 		// Parameters set at the command line overwrite toml values
 		if err := replaceBoolWithFlag(cmd, flagBuild, &cfg.Build); err != nil {
 			return err
