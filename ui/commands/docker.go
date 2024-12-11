@@ -5,6 +5,14 @@ import (
 	"fmt"
 
 	"pkg.world.dev/world-cli/infrastructure/docker"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
+)
+
+const (
+	// DockerServiceDA is the name of the DA service container
+	DockerServiceDA = service.ServiceName("celestia-da")
+	// DockerServiceEVM is the name of the EVM service container
+	DockerServiceEVM = service.ServiceName("evm")
 )
 
 // DockerCommand represents a command to be executed in a Docker container
