@@ -3,11 +3,11 @@ package cardinal
 import (
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/dependency"
-	"pkg.world.dev/world-cli/common/docker/service"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/cmd/world/root"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/logging"
+	"pkg.world.dev/world-cli/ui/style"
 )
 
 // BaseCmd is the base command for the cardinal subcommand
@@ -18,16 +18,16 @@ var BaseCmd = &cobra.Command{
 	Long:    style.CLIHeader("World CLI — CARDINAL", "Manage your Cardinal game shard project"),
 	GroupID: "core",
 	PreRunE: func(_ *cobra.Command, _ []string) error {
-		return dependency.Check(
-			dependency.Go,
-			dependency.Git,
-			dependency.Docker,
-			dependency.DockerDaemon,
+		return root.CheckDependencies(
+			root.DependencyGo,
+			root.DependencyGit,
+			root.DependencyDocker,
+			root.DependencyDockerDaemon,
 		)
 	},
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := cmd.Help(); err != nil {
-			logger.Fatalf("Failed to execute cardinal command : %s", err.Error())
+			logging.Fatalf("Failed to execute cardinal command : %s", err.Error())
 			return err
 		}
 		return nil

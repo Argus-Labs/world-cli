@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker"
-	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
 )
 
 /////////////////

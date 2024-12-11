@@ -17,11 +17,11 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"pkg.world.dev/world-cli/common"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker"
-	"pkg.world.dev/world-cli/common/docker/service"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/logging"
+	"pkg.world.dev/world-cli/ui/style"
 )
 
 const (
@@ -140,7 +140,7 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 			redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
 			conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
 			if err != nil {
-				logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
+				logging.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
 				time.Sleep(1 * time.Second)
 				continue
 			}

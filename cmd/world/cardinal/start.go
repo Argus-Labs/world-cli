@@ -10,8 +10,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"pkg.world.dev/world-cli/common"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker"
 )
 
 /////////////////
