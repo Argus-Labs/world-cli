@@ -14,11 +14,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/go-version"
-	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
+	"pkg.world.dev/world-cli/errors"
 	"pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
 )
@@ -79,7 +79,7 @@ func checkLatestVersion() error {
 	// Create a request with the context
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
 	if err != nil {
-		return eris.Wrap(err, "error creating request")
+		return errors.Wrap(err, "creating request")
 	}
 
 	// Create a new HTTP client and execute the request
@@ -88,13 +88,13 @@ func checkLatestVersion() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		logging.Debug(eris.Wrap(err, "error fetching the latest release"))
+		errors.LogError(err, "fetching latest release")
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logging.Debug(eris.Wrap(eris.New("status is not 200"), "error fetching the latest release"))
+		errors.LogError(errors.Errorf("unexpected status code: %d", resp.StatusCode), "fetching latest release")
 		return nil
 	}
 
@@ -102,21 +102,21 @@ func checkLatestVersion() error {
 	var release Release
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return eris.Wrap(err, "error reading the response body")
+		return errors.WrapIf(err, "reading response body")
 	}
 	if err = json.Unmarshal(bodyBytes, &release); err != nil {
-		return eris.Wrap(err, "error unmarshal the release data")
+		return errors.WrapIf(err, "unmarshaling release data")
 	}
 
 	if AppVersion != "" {
 		currentVersion, err := version.NewVersion(AppVersion)
 		if err != nil {
-			return eris.Wrap(err, "error parsing current version")
+			return errors.WrapIf(err, "parsing current version")
 		}
 
 		latestVersion, err := version.NewVersion(release.TagName)
 		if err != nil {
-			return eris.Wrap(err, "error parsing latest version")
+			return errors.WrapIf(err, "parsing latest version")
 		}
 
 		if currentVersion.LessThan(latestVersion) {
@@ -139,7 +139,7 @@ func checkLatestVersion() error {
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		sentry.CaptureException(err)
-		logging.Errors(err)
+		errors.LogError(err, "executing root command")
 	}
 	// print log stack
 	logging.PrintLogs()

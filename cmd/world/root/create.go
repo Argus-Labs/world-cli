@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/errors"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/ui/commands"
 	"pkg.world.dev/world-cli/ui/editor"
@@ -90,9 +91,8 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.depStatusErr = msg.Err
 		if msg.Err != nil {
 			return m, tea.Quit
-		} else {
-			return m, nil
 		}
+		return m, nil
 
 	case tea.KeyMsg: //nolint:exhaustive // not applicable
 		switch msg.Type {
@@ -114,6 +114,9 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If step 1 is started, dispatch the git clone command
 		if msg.Index == 1 {
 			err := commands.GitCloneCommand(TemplateGitURL, m.projectNameInput.Value(), "Initial commit from World CLI")
+			if err != nil {
+				err = errors.WrapIf(err, "cloning starter game template")
+			}
 			teaCmd := func() tea.Msg {
 				return commands.GitCloneFinishMsg{Err: err}
 			}
@@ -123,8 +126,11 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				teaCmd,
 			)
 		}
-		if msg.Index == 2 { //nolint:gomnd
+		if msg.Index == 2 {
 			err := editor.SetupCardinalEditor(".", "cardinal")
+			if err != nil {
+				err = errors.WrapIf(err, "setting up Cardinal editor")
+			}
 			teaCmd := func() tea.Msg {
 				return commands.GitCloneFinishMsg{Err: err}
 			}
@@ -155,7 +161,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If there is an error, log stderr then mark step as failed
 		if msg.Err != nil {
 			m.logs = append(m.logs, style.CrossIcon.Render()+msg.Err.Error())
-			return m, m.steps.CompleteStepCommand(msg.Err)
+			return m, m.steps.CompleteStepCommand(errors.WrapIf(msg.Err, "git operation failed"))
 		}
 
 		// Otherwise, mark step as completed
@@ -207,7 +213,7 @@ Otherwise, it will prompt you to enter a directory name.`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			p := tea.NewProgram(NewWorldCreateModel(args), tea.WithOutput(writer))
 			if _, err := p.Run(); err != nil {
-				return err
+				return errors.WrapIf(err, "running create command")
 			}
 			return nil
 		},

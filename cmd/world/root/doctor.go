@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/common/dependency"
+	"pkg.world.dev/world-cli/errors"
 	"pkg.world.dev/world-cli/ui/commands"
 	"pkg.world.dev/world-cli/ui/style"
 )
@@ -84,9 +85,13 @@ World CLI requires the following dependencies to be installed:
 		GroupID: "starter",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			p := tea.NewProgram(NewWorldDoctorModel(), tea.WithOutput(writer))
-			_, err := p.Run()
+			model, err := p.Run()
 			if err != nil {
-				return err
+				return errors.WrapIf(err, "running doctor command")
+			}
+
+			if m, ok := model.(WorldDoctorModel); ok && m.DepStatusErr != nil {
+				return errors.WrapIf(m.DepStatusErr, "checking dependencies")
 			}
 			return nil
 		},

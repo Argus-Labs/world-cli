@@ -2,14 +2,14 @@ package evm
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"net"
 
-	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
 	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/errors"
 	"pkg.world.dev/world-cli/infrastructure/docker"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
 	"pkg.world.dev/world-cli/logging"
@@ -23,23 +23,23 @@ var startCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {
-			return err
+			return errors.WrapIf(err, "getting config")
 		}
 
 		// Create docker client
 		dockerClient, err := docker.NewClient(cfg)
 		if err != nil {
-			return err
+			return errors.WrapIf(err, "creating docker client")
 		}
 		defer dockerClient.Close()
 
 		if err = validateDALayer(cmd, cfg, dockerClient); err != nil {
-			return err
+			return errors.WrapIf(err, "validating DA layer")
 		}
 
 		daToken, err := cmd.Flags().GetString(FlagDAAuthToken)
 		if err != nil {
-			return err
+			return errors.WrapIf(err, "getting DA auth token flag")
 		}
 		if daToken != "" {
 			cfg.DockerEnv[EnvDAAuthToken] = daToken
@@ -52,7 +52,7 @@ var startCmd = &cobra.Command{
 
 		err = dockerClient.Start(cmd.Context(), service.EVM)
 		if err != nil {
-			return eris.Wrapf(err, "error starting %s docker container", commands.DockerServiceEVM)
+			return errors.WrapIf(err, fmt.Sprintf("starting %s docker container", commands.DockerServiceEVM))
 		}
 
 		// Stop the DA service if it was started in dev mode
@@ -60,7 +60,7 @@ var startCmd = &cobra.Command{
 			// using context background because cmd.Context() is already done
 			err = dockerClient.Stop(context.Background(), service.CelestiaDevNet)
 			if err != nil {
-				return eris.Wrap(err, "Failed to stop DA service")
+				return errors.WrapIf(err, "stopping DA service")
 			}
 		}
 		return nil
@@ -73,8 +73,6 @@ func init() {
 	startCmd.Flags().Bool(FlagUseDevDA, false, "Use a locally running DA layer")
 }
 
-// validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
-// variable with the token from the locally running container.
 func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) error {
 	cfg.Build = true
 	cfg.Debug = false
@@ -82,13 +80,13 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 	cfg.Timeout = -1
 	logging.Println("starting DA docker service for dev mode...")
 	if err := dockerClient.Start(ctx, service.CelestiaDevNet); err != nil {
-		return eris.Wrapf(err, "error starting %s docker container", daService)
+		return errors.WrapIf(err, fmt.Sprintf("starting %s docker container", daService))
 	}
 	logging.Println("started DA service...")
 
 	daToken, err := getDAToken(ctx, cfg, dockerClient)
 	if err != nil {
-		return err
+		return errors.WrapIf(err, "getting DA token")
 	}
 	envOverrides := map[string]string{
 		EnvDAAuthToken:   daToken,
@@ -102,8 +100,6 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 	return nil
 }
 
-// validateProdDALayer assumes the DA layer is running somewhere else and validates the required world.toml
-// variables are non-empty.
 func validateProdDALayer(cfg *config.Config) error {
 	requiredEnvVariables := []string{
 		EnvDAAuthToken,
@@ -115,14 +111,14 @@ func validateProdDALayer(cfg *config.Config) error {
 		if len(cfg.DockerEnv[env]) > 0 {
 			continue
 		}
-		errs = append(errs, eris.Errorf("missing %q", env))
+		errs = append(errs, errors.Errorf("missing required environment variable %q", env))
 	}
 	if len(errs) > 0 {
 		// Prepend an error describing the overall problem
 		errs = append([]error{
-			eris.New("the [evm] section of your config is missing some required variables"),
+			errors.ErrInvalidConfig,
 		}, errs...)
-		return errors.Join(errs...)
+		return stderrors.Join(errs...)
 	}
 	return nil
 }
@@ -130,7 +126,7 @@ func validateProdDALayer(cfg *config.Config) error {
 func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docker.Client) error {
 	devDA, err := cmd.Flags().GetBool(FlagUseDevDA)
 	if err != nil {
-		return err
+		return errors.WrapIf(err, "getting use dev DA flag")
 	}
 	if devDA {
 		cfg.DevDA = true
@@ -151,7 +147,7 @@ func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Cl
 			"/home/celestia/bridge/keys",
 		})
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to create keys directory")
+		return "", errors.WrapIf(err, "creating keys directory")
 	}
 
 	token, err := dockerClient.Exec(ctx, containerName.Name,
@@ -165,11 +161,11 @@ func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Cl
 		})
 
 	if err != nil {
-		return "", eris.Wrapf(err, "Failed to get DA token")
+		return "", errors.WrapIf(err, "executing DA token command")
 	}
 
 	if token == "" {
-		return "", eris.New("got empty DA token")
+		return "", errors.Errorf("received empty DA token from celestia bridge")
 	}
 	return token, nil
 }
