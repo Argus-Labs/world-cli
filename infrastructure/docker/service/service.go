@@ -10,6 +10,10 @@ import (
 	logger "pkg.world.dev/world-cli/logging"
 )
 
+const (
+	defaultNamespace = "defaultnamespace"
+)
+
 var (
 	// BuildkitSupport is a flag to check if buildkit is supported
 	BuildkitSupport bool
@@ -48,21 +52,21 @@ func checkCardinalNamespace(cfg *globalconfig.Config) {
 	namespace := cfg.DockerEnv["CARDINAL_NAMESPACE"]
 	if namespace == "" {
 		// Set default namespace if not provided
-		logger.Warn("CARDINAL_NAMESPACE not provided, defaulting to defaultnamespace")
-		cfg.DockerEnv["CARDINAL_NAMESPACE"] = "defaultnamespace"
+		logger.Warn("CARDINAL_NAMESPACE not provided, defaulting to " + defaultNamespace)
+		cfg.DockerEnv["CARDINAL_NAMESPACE"] = defaultNamespace
 	} else {
 		// Validate namespace format
 		if len(namespace) < 2 || len(namespace) > 64 {
-			logger.Warn("Invalid CARDINAL_NAMESPACE length, defaulting to defaultnamespace")
-			cfg.DockerEnv["CARDINAL_NAMESPACE"] = "defaultnamespace"
+			logger.Warn("Invalid CARDINAL_NAMESPACE length, defaulting to " + defaultNamespace)
+			cfg.DockerEnv["CARDINAL_NAMESPACE"] = defaultNamespace
 			return
 		}
 		// Docker network names must contain only alphanumeric characters, underscores, periods, and hyphens
 		for _, char := range namespace {
 			if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
 				(char >= '0' && char <= '9') || char == '_' || char == '.' || char == '-') {
-				logger.Warn("Invalid characters in CARDINAL_NAMESPACE, defaulting to defaultnamespace")
-				cfg.DockerEnv["CARDINAL_NAMESPACE"] = "defaultnamespace"
+				logger.Warn("Invalid characters in CARDINAL_NAMESPACE, defaulting to " + defaultNamespace)
+				cfg.DockerEnv["CARDINAL_NAMESPACE"] = defaultNamespace
 				return
 			}
 		}

@@ -3,6 +3,7 @@ package root
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,6 +15,48 @@ import (
 	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
 )
+
+var (
+	testBaseDir string
+	origWorkDir string
+)
+
+func TestMain(m *testing.M) {
+	var err error
+	// Save original working directory
+	origWorkDir, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	// Create base test directory
+	testBaseDir, err = os.MkdirTemp("", "world-cli-test")
+	if err != nil {
+		panic(err)
+	}
+
+	// Set up environment variables with error checking
+	if err := os.Setenv("CARDINAL_NAMESPACE", "test-cardinal"); err != nil {
+		panic(err)
+	}
+
+	// Verify environment variable is set correctly
+	if val := os.Getenv("CARDINAL_NAMESPACE"); val != "test-cardinal" {
+		panic("CARDINAL_NAMESPACE environment variable not set correctly")
+	}
+
+	// Run tests
+	code := m.Run()
+
+	// Cleanup with error checking
+	if err := os.Chdir(origWorkDir); err != nil {
+		panic(fmt.Sprintf("failed to change directory in cleanup: %v", err))
+	}
+	if err := os.RemoveAll(testBaseDir); err != nil {
+		panic(fmt.Sprintf("failed to remove test directory: %v", err))
+	}
+	os.Exit(code)
+}
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
@@ -96,29 +139,27 @@ func TestExecuteDoctorCommand(t *testing.T) {
 }
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
-	// Set required environment variables for Docker before any operations
-	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal")
-
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-start")
+	// Create test directory within base test directory
+	testDir := filepath.Join(testBaseDir, "test-create-start-stop")
+	err := os.MkdirAll(testDir, 0755)
 	assert.NilError(t, err)
 
-	// Remove dir
+	// Change to test directory
+	err = os.Chdir(testDir)
+	assert.NilError(t, err)
+
+	// Ensure we return to original directory after test
 	defer func() {
-		err = os.RemoveAll(gameDir)
+		err = os.Chdir(origWorkDir)
 		assert.NilError(t, err)
 	}()
 
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
-
-	// set tea ouput to variable
+	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 
 	// checkout the repo
-	sgtDir := filepath.Join(gameDir, "sgt")
+	sgtDir := filepath.Join(testDir, "sgt")
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
@@ -165,29 +206,27 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 }
 
 func TestDev(t *testing.T) {
-	// Set required environment variables for Docker before any operations
-	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal-dev")
-
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
+	// Create test directory within base test directory
+	testDir := filepath.Join(testBaseDir, "test-dev")
+	err := os.MkdirAll(testDir, 0755)
 	assert.NilError(t, err)
 
-	// Remove dir
+	// Change to test directory
+	err = os.Chdir(testDir)
+	assert.NilError(t, err)
+
+	// Ensure we return to original directory after test
 	defer func() {
-		err = os.RemoveAll(gameDir)
+		err = os.Chdir(origWorkDir)
 		assert.NilError(t, err)
 	}()
 
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
-
-	// set tea ouput to variable
+	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 
 	// checkout the repo
-	sgtDir := filepath.Join(gameDir, "sgt")
+	sgtDir := filepath.Join(testDir, "sgt")
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
@@ -293,7 +332,7 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 
 func TestEVMStart(t *testing.T) {
 	// Set required environment variables for Docker before any operations
-	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal-evm")
+	t.Setenv("CARDINAL_NAMESPACE", "test-cardinal-evm")
 
 	// Create Cardinal
 	gameDir, err := os.MkdirTemp("", "game-template-dev")
@@ -328,8 +367,8 @@ func TestEVMStart(t *testing.T) {
 	_, err = os.Stat(cardinalDir)
 	assert.NilError(t, err, "cardinal directory not found in project root")
 
-	// Start EVM
-	rootCmd.SetArgs([]string{"evm", "start", "--detach"})
+	// Start EVM without detach flag
+	rootCmd.SetArgs([]string{"evm", "start"})
 	err = rootCmd.Execute()
 	assert.NilError(t, err)
 
