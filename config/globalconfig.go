@@ -7,7 +7,7 @@ import (
 
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/logging"
+	logger "pkg.world.dev/world-cli/logging"
 )
 
 const (
@@ -47,7 +47,7 @@ func GetWorldForgeCredential() (Credential, error) {
 	// Unmarshal the token
 	err = json.Unmarshal(file, &cred)
 	if err != nil {
-		logging.Error(eris.Wrap(err, "failed to unmarshal token"))
+		logger.Error(eris.Wrap(err, "failed to unmarshal token"))
 		return cred, err
 	}
 

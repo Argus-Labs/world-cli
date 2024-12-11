@@ -19,7 +19,8 @@ import (
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/logging"
+	"pkg.world.dev/world-cli/internal/dependencies"
+	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
@@ -88,13 +89,13 @@ func checkLatestVersion() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		logging.Debug(eris.Wrap(err, "error fetching the latest release"))
+		logger.Debug(eris.Wrap(err, "error fetching the latest release"))
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logging.Debug(eris.Wrap(eris.New("status is not 200"), "error fetching the latest release"))
+		logger.Debug(eris.Wrap(eris.New("status is not 200"), "error fetching the latest release"))
 		return nil
 	}
 
@@ -139,10 +140,10 @@ func checkLatestVersion() error {
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		sentry.CaptureException(err)
-		logging.Errors(err)
+		logger.Errors(err)
 	}
 	// print log stack
-	logging.PrintLogs()
+	logger.PrintLogs()
 }
 
 // contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or

@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 
 	"pkg.world.dev/world-cli/config"
-	"pkg.world.dev/world-cli/logging"
+	logger "pkg.world.dev/world-cli/logging"
 )
 
 func getRedisContainerName(cfg *config.Config) string {
@@ -26,7 +26,7 @@ func Redis(cfg *config.Config) Service {
 
 	intPort, err := strconv.Atoi(redisPort)
 	if err != nil {
-		logging.Error("Failed to convert redis port to int, defaulting to 6379", err)
+		logger.Error("Failed to convert redis port to int, defaulting to 6379", err)
 		intPort = 6379
 	}
 	exposedPorts := []int{intPort}

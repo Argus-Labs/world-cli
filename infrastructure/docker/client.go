@@ -11,8 +11,9 @@ import (
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/operations"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
-	"pkg.world.dev/world-cli/logging"
+	logger "pkg.world.dev/world-cli/logging"
 )
 
 const (
@@ -75,7 +76,7 @@ func (c *Client) Start(ctx context.Context,
 		if !c.cfg.Detach {
 			err := c.Stop(context.Background(), serviceBuilders...)
 			if err != nil {
-				logging.Error("Failed to stop containers", err)
+				logger.Error("Failed to stop containers", err)
 			}
 		}
 	}()

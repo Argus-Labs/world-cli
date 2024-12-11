@@ -6,8 +6,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
-	"pkg.world.dev/world-cli/ui/style"
 )
 
 // Spinner is a component that displays a loading spinner
@@ -23,7 +21,7 @@ func New() *Spinner {
 	return &Spinner{
 		frames: []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
 		speed:  time.Millisecond * 80,
-		style:  style.New(),
+		style:  lipgloss.NewStyle(),
 	}
 }
 
@@ -43,4 +41,17 @@ func (s *Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return nil
 		})
 	}
+}
+
+// Init initializes the spinner
+func (s *Spinner) Init() tea.Cmd {
+	return tea.Tick(s.speed, func(t time.Time) tea.Msg {
+		return nil
+	})
+}
+
+// WithStyle sets the style for the spinner
+func (s *Spinner) WithStyle(style lipgloss.Style) *Spinner {
+	s.style = style
+	return s
 }

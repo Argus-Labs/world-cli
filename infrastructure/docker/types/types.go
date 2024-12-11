@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 )
 
@@ -63,7 +64,7 @@ type Manager interface {
 type ContainerConfig struct {
 	*container.Config
 	HostConfig       *container.HostConfig
-	NetworkingConfig *types.NetworkingConfig
+	NetworkingConfig *network.NetworkingConfig
 }
 
 // StopOptions wraps Docker container stop options

@@ -20,6 +20,13 @@ const (
 // Bubble Tea Model //
 //////////////////////
 
+// Entry represents a step in the steps list
+type Entry struct {
+	Text   string
+	Status int
+	Err    error
+}
+
 type Model struct {
 	index   int
 	Steps   []Entry
