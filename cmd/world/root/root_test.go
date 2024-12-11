@@ -36,6 +36,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Set up environment variables with error checking
+	//nolint:tenv // testing.Setenv is not available in current Go version
 	if err := os.Setenv("CARDINAL_NAMESPACE", "test-cardinal"); err != nil {
 		panic(err)
 	}
@@ -294,7 +295,7 @@ func evmIsDown(t *testing.T) bool {
 
 func ServiceIsUp(name, address string, t *testing.T) bool {
 	up := false
-	maxAttempts := 30 // Reduce max attempts to 30
+	maxAttempts := 30                       // Reduce max attempts to 30
 	retryInterval := 200 * time.Millisecond // Shorter retry interval
 
 	for i := 0; i < maxAttempts; i++ {
@@ -313,7 +314,7 @@ func ServiceIsUp(name, address string, t *testing.T) bool {
 
 func ServiceIsDown(name, address string, t *testing.T) bool {
 	down := false
-	maxAttempts := 30 // Reduce max attempts to 30
+	maxAttempts := 30                       // Reduce max attempts to 30
 	retryInterval := 200 * time.Millisecond // Shorter retry interval
 
 	for i := 0; i < maxAttempts; i++ {
