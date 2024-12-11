@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/docker/docker/api/types"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
@@ -22,15 +22,33 @@ import (
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 
-	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	"pkg.world.dev/world-cli/ui/component/multispinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
-func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Service) error {
+// PullEventHandler handles Docker pull events and updates progress
+type PullEventHandler struct {
+	bar       *mpb.Bar
+	progress  *float64
+	errChan   chan<- error
+	imageName string
+}
+
+// NewPullEventHandler creates a new PullEventHandler instance
+func NewPullEventHandler(bar *mpb.Bar, progress *float64, errChan chan<- error, imageName string) *PullEventHandler {
+	return &PullEventHandler{
+		bar:       bar,
+		progress:  progress,
+		errChan:   errChan,
+		imageName: imageName,
+	}
+}
+
+func (c *Client) buildImages(ctx context.Context, dockerServices ...types.Service) error {
 	// Filter all services that need to be built
 	var (
-		serviceToBuild []service.Service
+		serviceToBuild []types.Service
 		imagesName     []string
 	)
 	for _, dockerService := range dockerServices {
@@ -121,7 +139,7 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 	return nil
 }
 
-func (c *Client) buildImage(ctx context.Context, dockerService service.Service) (*types.ImageBuildResponse, error) {
+func (c *Client) buildImage(ctx context.Context, dockerService types.Service) (*dockertypes.ImageBuildResponse, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
@@ -146,14 +164,14 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	// Read the tar archive
 	tarReader := bytes.NewReader(buf.Bytes())
 
-	buildOptions := types.ImageBuildOptions{
+	buildOptions := dockertypes.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
 		Tags:       []string{dockerService.Image},
 		Target:     dockerService.BuildTarget,
 	}
 
-	if service.BuildkitSupport {
-		buildOptions.Version = types.BuilderBuildKit
+	if types.BuildkitSupport {
+		buildOptions.Version = dockertypes.BuilderBuildKit
 	}
 
 	// Build the image
@@ -238,7 +256,7 @@ func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Prog
 		default:
 			var step string
 			var err error
-			if service.BuildkitSupport {
+			if types.BuildkitSupport {
 				// Parse the buildkit response
 				step, err = c.parseBuildkitResp(decoder, &stop)
 			} else {
@@ -318,28 +336,43 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 	var event map[string]interface{}
 	if err := decoder.Decode(&event); errors.Is(err, io.EOF) {
 		*stop = true
+		return "", nil
 	} else if err != nil {
 		return "", eris.Wrap(err, "Error decoding build output")
 	}
 
-	// Only show the step if it's a build step
-	step := ""
-	if val, ok := event["stream"]; ok && val != "" && strings.HasPrefix(val.(string), "Step") {
-		if step, ok = val.(string); ok && step != "" {
-			step = strings.TrimSpace(step)
-		}
-	} else if val, ok = event["error"]; ok && val != "" {
-		return "", eris.New(val.(string))
+	if step := c.extractStreamStep(event); step != "" {
+		return step, nil
 	}
 
-	return step, nil
+	return c.checkForErrors(event)
+}
+
+// extractStreamStep extracts build step information from stream events
+func (c *Client) extractStreamStep(event map[string]interface{}) string {
+	val, ok := event["stream"].(string)
+	if !ok || val == "" {
+		return ""
+	}
+	if strings.HasPrefix(val, "Step") {
+		return strings.TrimSpace(val)
+	}
+	return ""
+}
+
+// checkForErrors checks for error information in the event
+func (c *Client) checkForErrors(event map[string]interface{}) (string, error) {
+	if val, ok := event["error"].(string); ok && val != "" {
+		return "", eris.New(val)
+	}
+	return "", nil
 }
 
 // filterImages filters the images that need to be pulled
 // Remove duplicates
 // Remove images that are already pulled
 // Remove images that need to be built
-func (c *Client) filterImages(ctx context.Context, images map[string]string, services ...service.Service) {
+func (c *Client) filterImages(ctx context.Context, images map[string]string, services ...types.Service) {
 	for _, service := range services {
 		// check if the image exists
 		_, _, err := c.client.ImageInspectWithRaw(ctx, service.Image)
@@ -368,7 +401,7 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 }
 
 // Pulls the image if it does not exist
-func (c *Client) pullImages(ctx context.Context, services ...service.Service) error { //nolint:gocognit
+func (c *Client) pullImages(ctx context.Context, services ...types.Service) error {
 	// Filter the images that need to be pulled
 	images := make(map[string]string)
 	c.filterImages(ctx, images, services...)
@@ -390,7 +423,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 		platform := platform
 
 		// Create a new progress bar for this image
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -399,68 +432,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 		go func() {
 			defer wg.Done()
-
-			// Start pulling the image
-			responseBody, err := c.client.ImagePull(ctx, imageName, image.PullOptions{
-				Platform: platform,
-			})
-
-			if err != nil {
-				// Handle the error: log it and send it to the error channel
-				fmt.Printf("Error pulling image %s: %v\n", imageName, err)
-				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
-
-				// Stop the progress bar without clearing
-				bar.Abort(false)
-				return
-			}
-			defer responseBody.Close()
-
-			// Process each event and update the progress bar
-			decoder := json.NewDecoder(responseBody)
-			var current int
-			var event map[string]interface{}
-			for decoder.More() {
-				select {
-				case <-ctx.Done():
-					// Handle context cancellation
-					fmt.Printf("Pulling of image %s was canceled\n", imageName)
-					bar.Abort(false) // Stop the progress bar without clearing
-					return
-				default:
-					if err := decoder.Decode(&event); err != nil {
-						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
-						continue
-					}
-
-					// Check for errorDetail and error fields
-					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
-							errChan <- eris.New(errorMessage.(string))
-							continue
-						}
-					} else if errorMsg, ok := event["error"]; ok {
-						errChan <- eris.New(errorMsg.(string))
-						continue
-					}
-
-					// Handle progress updates
-					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
-							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
-							if calculatedCurrent > current {
-								bar.SetCurrent(int64(calculatedCurrent))
-								current = calculatedCurrent
-							}
-						}
-					}
-				}
-			}
-
-			// Finish the progress bar
-			// Handle if the current and total is not available in the response body
-			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			c.handleImagePull(ctx, imageName, platform, bar, errChan)
 		}()
 	}
 
@@ -481,4 +453,129 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 	}
 
 	return nil
+}
+
+// handleImagePull handles the pulling of a single image and updates its progress bar
+func (c *Client) handleImagePull(ctx context.Context, imageName, platform string, bar *mpb.Bar, errChan chan<- error) {
+	// Start pulling the image
+	responseBody, err := c.client.ImagePull(ctx, imageName, image.PullOptions{
+		Platform: platform,
+	})
+
+	if err != nil {
+		fmt.Printf("Error pulling image %s: %v\n", imageName, err)
+		errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
+		bar.Abort(false)
+		return
+	}
+	defer responseBody.Close()
+
+	// Process each event and update the progress bar
+	decoder := json.NewDecoder(responseBody)
+	var progress float64
+
+	for decoder.More() {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("Pulling of image %s was canceled\n", imageName)
+			bar.Abort(false)
+			return
+		default:
+			if err := c.handlePullEvent(decoder, bar, &progress, errChan, imageName); err != nil {
+				return
+			}
+		}
+	}
+
+	// Complete the progress bar
+	bar.SetCurrent(100)
+}
+
+// handlePullEvent processes a single Docker pull event and updates progress
+func (c *Client) handlePullEvent(
+	decoder *json.Decoder,
+	bar *mpb.Bar,
+	progress *float64,
+	errChan chan<- error,
+	imageName string,
+) error {
+	handler := NewPullEventHandler(bar, progress, errChan, imageName)
+	return handler.processEvent(decoder)
+}
+
+// processEvent decodes and processes a single Docker pull event
+func (h *PullEventHandler) processEvent(decoder *json.Decoder) error {
+	var event map[string]interface{}
+	if err := decoder.Decode(&event); err != nil {
+		msg := fmt.Sprintf("Error decoding event for %s: %v", h.imageName, err)
+		h.errChan <- eris.New(msg)
+		return nil
+	}
+
+	if err := h.handleError(event); err != nil {
+		return err
+	}
+
+	h.updateProgress(event)
+	return nil
+}
+
+// updateProgress updates the progress bar based on event data
+func (h *PullEventHandler) updateProgress(event map[string]interface{}) {
+	progressDetail, ok := event["progressDetail"].(map[string]interface{})
+	if !ok || progressDetail == nil {
+		return
+	}
+
+	current, ok := progressDetail["current"].(float64)
+	if !ok {
+		return
+	}
+
+	total, ok := progressDetail["total"].(float64)
+	if !ok || total <= 0 {
+		return
+	}
+
+	calculatedProgress := current * 100 / total
+	if calculatedProgress > *h.progress {
+		h.bar.SetCurrent(int64(calculatedProgress))
+		*h.progress = calculatedProgress
+	}
+}
+
+// handleError processes error information from Docker pull events
+func (h *PullEventHandler) handleError(event map[string]interface{}) error {
+	if err := h.processErrorDetail(event); err != nil {
+		return err
+	}
+	return h.processErrorMessage(event)
+}
+
+// processErrorDetail handles detailed error information
+func (h *PullEventHandler) processErrorDetail(event map[string]interface{}) error {
+	errorDetail, ok := event["errorDetail"].(map[string]interface{})
+	if !ok || errorDetail == nil {
+		return nil
+	}
+
+	msg, ok := errorDetail["message"].(string)
+	if !ok {
+		h.errChan <- eris.New("unknown error format in pull output")
+		return eris.New("unknown error format in pull output")
+	}
+
+	h.errChan <- eris.New(msg)
+	return eris.New(msg)
+}
+
+// processErrorMessage handles simple error messages
+func (h *PullEventHandler) processErrorMessage(event map[string]interface{}) error {
+	errorMsg, ok := event["error"].(string)
+	if !ok || errorMsg == "" {
+		return nil
+	}
+
+	h.errChan <- eris.New(errorMsg)
+	return eris.New(errorMsg)
 }

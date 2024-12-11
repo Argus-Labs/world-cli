@@ -8,12 +8,6 @@ import (
 	"github.com/rotisserie/eris"
 )
 
-// Dependency represents a system dependency
-type Dependency struct {
-	Name         string
-	VersionCheck func() error
-}
-
 var (
 	// DependencyGo checks for Go installation
 	DependencyGo = &Dependency{
@@ -58,6 +52,12 @@ var (
 		},
 	}
 )
+
+// Dependency represents a system dependency
+type Dependency struct {
+	Name         string
+	VersionCheck func() error
+}
 
 // Check verifies if all the given dependencies are installed and working
 func Check(deps ...*Dependency) error {

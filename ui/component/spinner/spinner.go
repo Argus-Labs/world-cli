@@ -36,7 +36,7 @@ func (s *Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return s, nil
 	default:
 		s.index = (s.index + 1) % len(s.frames)
-		return s, tea.Tick(s.speed, func(t time.Time) tea.Msg {
+		return s, tea.Tick(s.speed, func(_ time.Time) tea.Msg {
 			return nil
 		})
 	}
@@ -44,7 +44,7 @@ func (s *Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // Init initializes the spinner
 func (s *Spinner) Init() tea.Cmd {
-	return tea.Tick(s.speed, func(t time.Time) tea.Msg {
+	return tea.Tick(s.speed, func(_ time.Time) tea.Msg {
 		return nil
 	})
 }

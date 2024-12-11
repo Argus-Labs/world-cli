@@ -8,17 +8,18 @@ import (
 	"github.com/docker/go-connections/nat"
 
 	globalconfig "pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 )
 
 func getCelestiaDevNetContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-celestia-devnet", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func CelestiaDevNet(cfg *globalconfig.Config) Service {
+func CelestiaDevNet(cfg *globalconfig.Config) types.Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 
-	return Service{
+	return types.Service{
 		Name: getCelestiaDevNetContainerName(cfg),
 		Config: container.Config{
 			Image:        "ghcr.io/rollkit/local-celestia-devnet:latest",
@@ -27,7 +28,7 @@ func CelestiaDevNet(cfg *globalconfig.Config) Service {
 				Test:     []string{"CMD", "curl", "-f", "http://127.0.0.1:26659/head"},
 				Interval: 1 * time.Second,
 				Timeout:  1 * time.Second,
-				Retries:  20, //nolint:gomnd
+				Retries:  20,
 			},
 		},
 		HostConfig: container.HostConfig{

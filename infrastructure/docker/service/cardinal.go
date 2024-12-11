@@ -8,6 +8,7 @@ import (
 	"github.com/docker/go-connections/nat"
 
 	globalconfig "pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 
 	_ "embed"
 )
@@ -24,7 +25,7 @@ func getCardinalContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-cardinal", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Cardinal(cfg *globalconfig.Config) Service {
+func Cardinal(cfg *globalconfig.Config) types.Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 
@@ -85,7 +86,7 @@ func Cardinal(cfg *globalconfig.Config) Service {
 		routerKey = "25a0f627050d11b1461b2728ea3f704e141312b1d4f2a21edcec4eccddd940c2"
 	}
 
-	service := Service{
+	service := types.Service{
 		Name: getCardinalContainerName(cfg),
 		Config: container.Config{
 			Image: cfg.DockerEnv["CARDINAL_NAMESPACE"],
@@ -109,7 +110,7 @@ func Cardinal(cfg *globalconfig.Config) Service {
 		},
 		Dockerfile:  dockerfile,
 		BuildTarget: runtime,
-		Dependencies: []Service{
+		Dependencies: []types.Service{
 			{
 				Name: "golang:1.22-bookworm",
 				Config: container.Config{
@@ -126,8 +127,7 @@ func Cardinal(cfg *globalconfig.Config) Service {
 	}
 
 	// Add debug options
-	debug := cfg.Debug
-	if debug {
+	if cfg.Debug {
 		service.Config.ExposedPorts["40000/tcp"] = struct{}{}
 		service.HostConfig.PortBindings["40000/tcp"] = []nat.PortBinding{{HostPort: "40000"}}
 		service.HostConfig.CapAdd = []string{"SYS_PTRACE"}

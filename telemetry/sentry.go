@@ -42,7 +42,7 @@ func SentryFlush() {
 
 		// Flush buffered events before the program terminates.
 		// Set the timeout to the maximum duration the program can afford to wait.
-		sentry.Flush(5 * time.Second) //nolint:gomnd
+		sentry.Flush(5 * time.Second)
 		sentryInitialized = false
 	}
 }

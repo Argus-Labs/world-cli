@@ -10,16 +10,15 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	globalconfig "pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 )
 
 func getNakamaContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-nakama", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Nakama(cfg *globalconfig.Config) Service {
-	// Check cardinal namespace
-	checkCardinalNamespace(cfg)
-
+// getNakamaConfig returns the configuration values for Nakama service
+func getNakamaConfig(cfg *globalconfig.Config) (string, string, string, string, string, int) {
 	enableAllowList := cfg.DockerEnv["ENABLE_ALLOWLIST"]
 	if enableAllowList == "" {
 		enableAllowList = "false"
@@ -30,7 +29,6 @@ func Nakama(cfg *globalconfig.Config) Service {
 		outgoingQueueSize = "64"
 	}
 
-	// Set default password if not provided
 	dbPassword := cfg.DockerEnv["DB_PASSWORD"]
 	if dbPassword == "" {
 		dbPassword = "very_unsecure_password_please_change" //nolint:gosec // This is a default password
@@ -46,43 +44,49 @@ func Nakama(cfg *globalconfig.Config) Service {
 		traceSampleRate = "0.6"
 	}
 
-	metricsEnabled := true
+	prometheusPort := 0
 	if cfg.Telemetry {
 		cfgMetricsEnabled, err := strconv.ParseBool(cfg.DockerEnv["NAKAMA_METRICS_ENABLED"])
-		if err == nil {
-			metricsEnabled = cfgMetricsEnabled
+		if err == nil && cfgMetricsEnabled {
+			prometheusPort = 9100
 		}
 	}
 
-	nakamaImage := "ghcr.io/argus-labs/world-engine-nakama:latest"
-	if cfg.DockerEnv["NAKAMA_IMAGE"] != "" {
-		nakamaImage = cfg.DockerEnv["NAKAMA_IMAGE"]
-	}
+	return enableAllowList, outgoingQueueSize, dbPassword, traceEnabled, traceSampleRate, prometheusPort
+}
 
+// getNakamaPlatform returns the platform configuration for Nakama service
+func getNakamaPlatform(cfg *globalconfig.Config) ocispec.Platform {
 	platform := ocispec.Platform{
 		Architecture: "amd64",
 		OS:           "linux",
 	}
 	if cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"] != "" {
 		nakamaImagePlatform := strings.Split(cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"], "/")
-		if len(nakamaImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+		if len(nakamaImagePlatform) == 2 {
 			platform = ocispec.Platform{
 				Architecture: nakamaImagePlatform[1],
 				OS:           nakamaImagePlatform[0],
 			}
 		}
 	}
+	return platform
+}
 
-	// prometheus metrics export is disabled if port is 0
-	// src: https://heroiclabs.com/docs/nakama/getting-started/configuration/#metrics
-	prometheusPort := 0
-	if metricsEnabled {
-		prometheusPort = 9100
+func Nakama(cfg *globalconfig.Config) types.Service {
+	checkCardinalNamespace(cfg)
+
+	enableAllowList, outgoingQueueSize, dbPassword, traceEnabled, traceSampleRate, prometheusPort := getNakamaConfig(cfg)
+	platform := getNakamaPlatform(cfg)
+
+	nakamaImage := "ghcr.io/argus-labs/world-engine-nakama:latest"
+	if cfg.DockerEnv["NAKAMA_IMAGE"] != "" {
+		nakamaImage = cfg.DockerEnv["NAKAMA_IMAGE"]
 	}
 
 	exposedPorts := []int{7349, 7350, 7351}
 
-	return Service{
+	return types.Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
 			Image: nakamaImage,
@@ -100,7 +104,13 @@ func Nakama(cfg *globalconfig.Config) Service {
 			Entrypoint: []string{
 				"/bin/sh",
 				"-ec",
-				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port %d", //nolint:lll
+				fmt.Sprintf(
+					"/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && "+
+						"/nakama/nakama --config /nakama/data/local.yml "+
+						"--database.address root:%s@%s:26257/nakama "+
+						"--socket.outgoing_queue_size=64 "+
+						"--logger.level INFO "+
+						"--metrics.prometheus_port %d",
 					dbPassword,
 					getNakamaDBContainerName(cfg),
 					dbPassword,
@@ -112,7 +122,7 @@ func Nakama(cfg *globalconfig.Config) Service {
 				Test:     []string{"CMD", "/nakama/nakama", "healthcheck"},
 				Interval: 1 * time.Second,
 				Timeout:  1 * time.Second,
-				Retries:  20, //nolint:gomnd
+				Retries:  20,
 			},
 		},
 		HostConfig: container.HostConfig{

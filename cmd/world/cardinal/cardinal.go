@@ -5,6 +5,7 @@ import (
 
 	globalconfig "pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	"pkg.world.dev/world-cli/internal/dependencies"
 	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
@@ -40,8 +41,8 @@ func init() {
 	registerConfigAndVerboseFlags(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
 }
 
-func getServices(cfg *globalconfig.Config) []service.Builder {
-	services := []service.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
+func getServices(cfg *globalconfig.Config) []types.Builder {
+	services := []types.Builder{service.NakamaDB, service.Redis, service.Cardinal, service.Nakama}
 	if cfg.Telemetry && cfg.DockerEnv["NAKAMA_TRACE_ENABLED"] == "true" {
 		services = append(services, service.Jaeger)
 	}

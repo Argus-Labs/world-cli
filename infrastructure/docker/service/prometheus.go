@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 
 	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 )
 
 var containerCmd = `sh -s <<EOF
@@ -29,7 +30,7 @@ func getPrometheusContainerName(cfg *config.Config) string {
 	return fmt.Sprintf("%s-prometheus", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Prometheus(cfg *config.Config) Service {
+func Prometheus(cfg *config.Config) types.Service {
 	nakamaMetricsInterval := cfg.DockerEnv["NAKAMA_METRICS_INTERVAL"]
 	if nakamaMetricsInterval == "" {
 		nakamaMetricsInterval = "30"
@@ -40,7 +41,7 @@ func Prometheus(cfg *config.Config) Service {
 	containerCmd = strings.ReplaceAll(containerCmd, "__NAKAMA_CONTAINER__", getNakamaContainerName(cfg))
 	containerCmd = strings.ReplaceAll(containerCmd, "__NAKAMA_METRICS_INTERVAL__", nakamaMetricsInterval)
 
-	return Service{
+	return types.Service{
 		Name: getPrometheusContainerName(cfg),
 		Config: container.Config{
 			Image:      "prom/prometheus:v2.54.1",

@@ -8,13 +8,14 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	globalconfig "pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 )
 
 func getEVMContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-evm", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func EVM(cfg *globalconfig.Config) Service {
+func EVM(cfg *globalconfig.Config) types.Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 
@@ -72,7 +73,7 @@ func EVM(cfg *globalconfig.Config) Service {
 	var platform ocispec.Platform
 	if cfg.DockerEnv["EVM_IMAGE_PLATFORM"] != "" {
 		evmImagePlatform := strings.Split(cfg.DockerEnv["EVM_IMAGE_PLATFORM"], "/")
-		if len(evmImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+		if len(evmImagePlatform) == 2 {
 			platform = ocispec.Platform{
 				Architecture: evmImagePlatform[1],
 				OS:           evmImagePlatform[0],
@@ -80,7 +81,7 @@ func EVM(cfg *globalconfig.Config) Service {
 		}
 	}
 
-	return Service{
+	return types.Service{
 		Name: getEVMContainerName(cfg),
 		Config: container.Config{
 			Image: evmImage,

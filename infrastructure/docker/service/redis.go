@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 
 	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	logger "pkg.world.dev/world-cli/logging"
 )
 
@@ -15,7 +16,7 @@ func getRedisContainerName(cfg *config.Config) string {
 	return fmt.Sprintf("%s-redis", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Redis(cfg *config.Config) Service {
+func Redis(cfg *config.Config) types.Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 
@@ -31,7 +32,7 @@ func Redis(cfg *config.Config) Service {
 	}
 	exposedPorts := []int{intPort}
 
-	return Service{
+	return types.Service{
 		Name: getRedisContainerName(cfg),
 		Config: container.Config{
 			Image:        "redis:latest",

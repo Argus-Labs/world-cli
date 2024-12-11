@@ -5,7 +5,6 @@ import (
 
 	globalconfig "pkg.world.dev/world-cli/config"
 	logger "pkg.world.dev/world-cli/logging"
-	"pkg.world.dev/world-cli/ui/commands"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
@@ -15,8 +14,6 @@ const (
 	EnvDAAuthToken   = "DA_AUTH_TOKEN" //nolint:gosec // false positive
 	EnvDABaseURL     = "DA_BASE_URL"
 	EnvDANamespaceID = "DA_NAMESPACE_ID"
-
-	daService = commands.DockerServiceDA
 )
 
 var BaseCmd = &cobra.Command{

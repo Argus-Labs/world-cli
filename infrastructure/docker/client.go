@@ -11,12 +11,9 @@ import (
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/config"
-	"pkg.world.dev/world-cli/infrastructure/docker/service"
 	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	logger "pkg.world.dev/world-cli/logging"
 )
-
-type processType = types.ProcessType
 
 const (
 	START  = types.START
@@ -43,7 +40,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	}
 
 	// Set BuildkitSupport
-	service.BuildkitSupport = checkBuildkitSupport(cli)
+	types.BuildkitSupport = checkBuildkitSupport(cli)
 
 	return &Client{
 		client: cli,
@@ -56,7 +53,7 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) Start(ctx context.Context,
-	serviceBuilders ...service.Builder) error {
+	serviceBuilders ...types.Builder) error {
 	defer func() {
 		if !c.cfg.Detach {
 			err := c.Stop(context.Background(), serviceBuilders...)
@@ -78,7 +75,7 @@ func (c *Client) Start(ctx context.Context,
 	}
 
 	// get all services
-	dockerServices := make([]service.Service, 0)
+	dockerServices := make([]types.Service, 0)
 	for _, sb := range serviceBuilders {
 		ds := sb(c.cfg)
 		dockerServices = append(dockerServices, ds)
@@ -112,9 +109,9 @@ func (c *Client) Start(ctx context.Context,
 	return nil
 }
 
-func (c *Client) Stop(ctx context.Context, serviceBuilders ...service.Builder) error {
+func (c *Client) Stop(ctx context.Context, serviceBuilders ...types.Builder) error {
 	// get all services
-	dockerServices := make([]service.Service, 0)
+	dockerServices := make([]types.Service, 0)
 	for _, sb := range serviceBuilders {
 		ds := sb(c.cfg)
 		dockerServices = append(dockerServices, ds)
@@ -129,9 +126,9 @@ func (c *Client) Stop(ctx context.Context, serviceBuilders ...service.Builder) e
 	return nil
 }
 
-func (c *Client) Purge(ctx context.Context, serviceBuilders ...service.Builder) error {
+func (c *Client) Purge(ctx context.Context, serviceBuilders ...types.Builder) error {
 	// get all services
-	dockerServices := make([]service.Service, 0)
+	dockerServices := make([]types.Service, 0)
 	for _, sb := range serviceBuilders {
 		ds := sb(c.cfg)
 		dockerServices = append(dockerServices, ds)
@@ -152,7 +149,7 @@ func (c *Client) Purge(ctx context.Context, serviceBuilders ...service.Builder) 
 }
 
 func (c *Client) Restart(ctx context.Context,
-	serviceBuilders ...service.Builder) error {
+	serviceBuilders ...types.Builder) error {
 	// stop containers
 	err := c.Stop(ctx, serviceBuilders...)
 	if err != nil {
@@ -184,7 +181,7 @@ func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (st
 
 	// Read and demultiplex the output
 	var outputBuf bytes.Buffer
-	header := make([]byte, 8) //nolint:gomnd
+	header := make([]byte, 8) // Docker message header size (8 bytes)
 
 	for {
 		_, err := io.ReadFull(resp.Reader, header)

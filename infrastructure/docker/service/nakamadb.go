@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 
 	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	logger "pkg.world.dev/world-cli/logging"
 )
 
@@ -15,7 +16,7 @@ func getNakamaDBContainerName(cfg *config.Config) string {
 	return fmt.Sprintf("%s-nakama-db", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func NakamaDB(cfg *config.Config) Service {
+func NakamaDB(cfg *config.Config) types.Service {
 	exposedPorts := []int{26257, 8080}
 
 	// Set default password if not provided
@@ -25,7 +26,7 @@ func NakamaDB(cfg *config.Config) Service {
 		dbPassword = "very_unsecure_password_please_change" //nolint:gosec // This is a default password
 	}
 
-	return Service{
+	return types.Service{
 		Name: getNakamaDBContainerName(cfg),
 		Config: container.Config{
 			Image: "cockroachdb/cockroach:latest-v23.1",
@@ -38,9 +39,9 @@ func NakamaDB(cfg *config.Config) Service {
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{
 				Test:     []string{"CMD", "curl", "-f", "http://localhost:8080/health?ready=1"},
-				Interval: 3 * time.Second, //nolint:gomnd
-				Timeout:  3 * time.Second, //nolint:gomnd
-				Retries:  5,               //nolint:gomnd
+				Interval: 3 * time.Second,
+				Timeout:  3 * time.Second,
+				Retries:  5,
 			},
 		},
 		HostConfig: container.HostConfig{

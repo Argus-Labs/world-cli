@@ -16,14 +16,13 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/infrastructure/docker/service"
 	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	"pkg.world.dev/world-cli/ui/component/multispinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
 func (c *Client) processMultipleContainers(ctx context.Context, processType types.ProcessType,
-	services ...service.Service) error {
+	services ...types.Service) error {
 	// Collect the names of the services
 	dockerServicesNames := make([]string, len(services))
 	for i, dockerService := range services {
@@ -55,13 +54,13 @@ func (c *Client) processMultipleContainers(ctx context.Context, processType type
 			// call the respective function based on the process type
 			var err error
 			switch processType {
-			case STOP:
+			case types.STOP:
 				err = c.stopContainer(ctx, dockerService.Name)
-			case REMOVE:
+			case types.REMOVE:
 				err = c.removeContainer(ctx, dockerService.Name)
-			case START:
+			case types.START:
 				err = c.startContainer(ctx, dockerService)
-			case CREATE:
+			case types.CREATE:
 				err = eris.New("CREATE process type is not supported for containers")
 			default:
 				err = eris.New(fmt.Sprintf("Unknown process type: %d", processType))
@@ -111,7 +110,7 @@ func (c *Client) processMultipleContainers(ctx context.Context, processType type
 	return nil
 }
 
-func (c *Client) startContainer(ctx context.Context, service service.Service) error {
+func (c *Client) startContainer(ctx context.Context, service types.Service) error {
 	// Check if the container exists
 	exist, err := c.containerExists(ctx, service.Name)
 	if err != nil {
@@ -185,7 +184,7 @@ func (c *Client) removeContainer(ctx context.Context, containerName string) erro
 	return nil
 }
 
-func (c *Client) logMultipleContainers(ctx context.Context, services ...service.Service) {
+func (c *Client) logMultipleContainers(ctx context.Context, services ...types.Service) {
 	var wg sync.WaitGroup
 
 	// Start logging output for each container
@@ -201,7 +200,7 @@ func (c *Client) logMultipleContainers(ctx context.Context, services ...service.
 					err := c.logContainerOutput(ctx, id, i)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						fmt.Printf("Error logging container %s: %v. Reattaching...\n", id, err)
-						time.Sleep(2 * time.Second) //nolint:gomnd // Sleep for 2 seconds before reattaching
+						time.Sleep(2 * time.Second)
 					}
 				}
 			}
@@ -242,7 +241,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 	reader := bufio.NewReader(out)
 	for {
 		// Read the 8-byte header
-		header := make([]byte, 8) //nolint:gomnd // 8 bytes
+		header := make([]byte, 8)
 		if _, err := io.ReadFull(reader, header); err != nil {
 			if err == io.EOF {
 				break
@@ -269,10 +268,8 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 
 		// Print the cleaned log message
 		if streamType == 1 { // Stdout
-			// TODO: what content should be printed for stdout?
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
-		} else if streamType == 2 { //nolint:gomnd // Stderr
-			// TODO: what content should be printed for stderr?
+		} else if streamType == 2 { // Stderr
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		}
 	}

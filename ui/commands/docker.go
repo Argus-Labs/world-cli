@@ -5,14 +5,14 @@ import (
 	"errors"
 
 	"pkg.world.dev/world-cli/infrastructure/docker"
-	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 )
 
 const (
 	// DockerServiceDA is the name of the DA service container
-	DockerServiceDA = service.Name("celestia-da")
+	DockerServiceDA = types.Name("celestia-da")
 	// DockerServiceEVM is the name of the EVM service container
-	DockerServiceEVM = service.Name("evm")
+	DockerServiceEVM = types.Name("evm")
 )
 
 // DockerCommand represents a command to be executed in a Docker container

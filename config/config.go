@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -76,7 +77,8 @@ func initConfig() error {
 
 	// Read the config file
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		var configErr viper.ConfigFileNotFoundError
+		if !errors.As(err, &configErr) {
 			return eris.Wrap(err, "failed to read config file")
 		}
 		logger.Warn("No config file found, using defaults")

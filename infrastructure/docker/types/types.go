@@ -6,10 +6,10 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
-)
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-// ProcessType represents different Docker operations
-type ProcessType int
+	globalconfig "pkg.world.dev/world-cli/config"
+)
 
 const (
 	// START represents starting a container/service
@@ -47,6 +47,32 @@ var (
 		CREATE: "created",
 	}
 )
+
+// ProcessType represents different Docker operations
+type ProcessType int
+
+// Name represents the name of a Docker service
+type Name string
+
+// Builder is a function type that creates a Service configuration
+type Builder func(cfg *globalconfig.Config) Service
+
+// Service is a configuration for a docker container
+// It contains the name of the container and a function to get the container and host config
+type Service struct {
+	Name string
+	container.Config
+	container.HostConfig
+	network.NetworkingConfig
+	ocispec.Platform
+
+	// Dependencies are other services that need to be pull before this service
+	Dependencies []Service
+	// Dockerfile is the content of the Dockerfile
+	Dockerfile string
+	// BuildTarget is the target build of the Dockerfile e.g. builder or runtime
+	BuildTarget string
+}
 
 // ContainerOperation represents a Docker container operation
 type ContainerOperation struct {
