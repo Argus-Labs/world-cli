@@ -45,6 +45,14 @@ func New() Model {
 	}
 }
 
+// NewStep creates a new step with the given description
+func NewStep(description string) Entry {
+	return Entry{
+		Text:   description,
+		Status: INCOMPLETE,
+	}
+}
+
 //////////////////////////
 // Bubble Tea Lifecycle //
 //////////////////////////

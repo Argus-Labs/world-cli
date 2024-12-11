@@ -1,4 +1,4 @@
-package globalconfig
+package config
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/rotisserie/eris"
-
 	logger "pkg.world.dev/world-cli/logging"
 )
 
@@ -73,24 +72,4 @@ func SetWorldForgeToken(name string, token string) error {
 	}
 
 	return os.WriteFile(tokenFile, credJSON, 0600)
-}
-
-func SetupConfigDir() error {
-	fullConfigDir, err := GetConfigDir()
-	if err != nil {
-		return err
-	}
-
-	fs, err := os.Stat(fullConfigDir)
-	if !os.IsNotExist(err) {
-		// remove old .worldcli file
-		if !fs.IsDir() {
-			err = os.Remove(fullConfigDir)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return os.MkdirAll(fullConfigDir, 0755)
 }

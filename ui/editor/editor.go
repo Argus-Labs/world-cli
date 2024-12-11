@@ -3,10 +3,16 @@ package editor
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+
+	"github.com/rotisserie/eris"
 )
 
-// OpenEditor opens the default system editor for the given file
+const (
+	EditorDir = "cardinal-editor"
+)
+
 func OpenEditor(filename string) error {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -24,4 +30,18 @@ func OpenEditor(filename string) error {
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
+}
+
+func SetupCardinalEditor(rootDir, gameDir string) error {
+	editorPath := filepath.Join(rootDir, EditorDir)
+	if err := os.MkdirAll(editorPath, 0755); err != nil {
+		return eris.Wrapf(err, "failed to create editor directory at %s", editorPath)
+	}
+
+	gamePath := filepath.Join(rootDir, gameDir)
+	if err := os.Symlink(gamePath, filepath.Join(editorPath, "game")); err != nil && !os.IsExist(err) {
+		return eris.Wrapf(err, "failed to create symlink from %s to %s", gamePath, editorPath)
+	}
+
+	return nil
 }
