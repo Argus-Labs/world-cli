@@ -37,6 +37,11 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	// Ensure config directory exists
+	if err := config.SetupConfigDir(); err != nil {
+		panic(fmt.Sprintf("failed to setup config directory: %v", err))
+	}
+
 	// Initialize config with Docker environment variables
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -54,6 +59,12 @@ func TestMain(m *testing.M) {
 	cfg.DockerEnv["DA_BASE_URL"] = "http://localhost:26657"
 	cfg.DockerEnv["DA_NAMESPACE_ID"] = "test-namespace"
 
+	// Save config with environment variables
+	if err := config.SaveConfig(cfg); err != nil {
+		panic(fmt.Sprintf("failed to save config: %v", err))
+	}
+
+	// Set environment variables for the test process
 	{
 		if err := os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
 			panic(err)
@@ -344,14 +355,16 @@ func evmIsDown(t *testing.T) bool {
 
 func ServiceIsUp(name, address string, t *testing.T) bool {
 	up := false
-	maxAttempts := 30                       // Reduce max attempts to 30
-	retryInterval := 200 * time.Millisecond // Shorter retry interval
+	maxAttempts := 30                       // Maximum 30 attempts
+	retryInterval := 200 * time.Millisecond // 200ms between attempts
+	timeout := time.Second                  // 1 second timeout for each attempt
 
 	for i := 0; i < maxAttempts; i++ {
-		conn, err := net.DialTimeout("tcp", address, time.Second)
+		// Create connection with timeout
+		conn, err := net.DialTimeout("tcp", address, timeout)
 		if err != nil {
-			time.Sleep(retryInterval)
 			t.Logf("%s is not running, retrying... (attempt %d/%d)\n", name, i+1, maxAttempts)
+			time.Sleep(retryInterval)
 			continue
 		}
 		_ = conn.Close()
@@ -363,19 +376,20 @@ func ServiceIsUp(name, address string, t *testing.T) bool {
 
 func ServiceIsDown(name, address string, t *testing.T) bool {
 	down := false
-	maxAttempts := 30                       // Reduce max attempts to 30
-	retryInterval := 200 * time.Millisecond // Shorter retry interval
+	maxAttempts := 30                       // Maximum 30 attempts
+	retryInterval := 200 * time.Millisecond // 200ms between attempts
+	timeout := time.Second                  // 1 second timeout for each attempt
 
 	for i := 0; i < maxAttempts; i++ {
-		conn, err := net.DialTimeout("tcp", address, time.Second)
+		// Create connection with timeout
+		conn, err := net.DialTimeout("tcp", address, timeout)
 		if err != nil {
 			down = true
 			break
 		}
 		_ = conn.Close()
-		time.Sleep(retryInterval)
 		t.Logf("%s is still running, retrying... (attempt %d/%d)\n", name, i+1, maxAttempts)
-		continue
+		time.Sleep(retryInterval)
 	}
 	return down
 }
