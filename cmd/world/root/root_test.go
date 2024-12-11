@@ -13,10 +13,9 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
+	"gotest.tools/v3/assert"
 
 	"pkg.world.dev/world-cli/config"
-
-	"gotest.tools/v3/assert"
 )
 
 var (
@@ -56,18 +55,20 @@ func TestMain(m *testing.M) {
 	cfg.DockerEnv["DA_NAMESPACE_ID"] = "test-namespace"
 
 	// Set environment variables for test
-	//nolint:tenv // testing.Setenv cannot be used in TestMain
-	if err := os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
-		panic(err)
-	}
-	if err := os.Setenv("DA_AUTH_TOKEN", cfg.DockerEnv["DA_AUTH_TOKEN"]); err != nil {
-		panic(err)
-	}
-	if err := os.Setenv("DA_BASE_URL", cfg.DockerEnv["DA_BASE_URL"]); err != nil {
-		panic(err)
-	}
-	if err := os.Setenv("DA_NAMESPACE_ID", cfg.DockerEnv["DA_NAMESPACE_ID"]); err != nil {
-		panic(err)
+	//nolint:tenv // testing.Setenv cannot be used in TestMain because it requires *testing.T
+	{
+		if err := os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
+			panic(err)
+		}
+		if err := os.Setenv("DA_AUTH_TOKEN", cfg.DockerEnv["DA_AUTH_TOKEN"]); err != nil {
+			panic(err)
+		}
+		if err := os.Setenv("DA_BASE_URL", cfg.DockerEnv["DA_BASE_URL"]); err != nil {
+			panic(err)
+		}
+		if err := os.Setenv("DA_NAMESPACE_ID", cfg.DockerEnv["DA_NAMESPACE_ID"]); err != nil {
+			panic(err)
+		}
 	}
 
 	// Run tests
