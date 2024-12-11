@@ -5,7 +5,6 @@ import (
 	"os/exec"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/logging"
 )
 
 var (

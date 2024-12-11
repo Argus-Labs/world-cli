@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"pkg.world.dev/world-cli/config"
@@ -24,7 +25,7 @@ type Builder func(cfg *config.Config) Service
 // It contains the name of the container and a function to get the container and host config
 type Service struct {
 	Name string
-	container.Config
+	types.ContainerConfig
 	container.HostConfig
 	network.NetworkingConfig
 	ocispec.Platform

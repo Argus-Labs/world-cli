@@ -3,10 +3,11 @@ package operations
 
 import (
 	"context"
+	"io"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
@@ -25,15 +26,25 @@ func NewManager(cli *client.Client) *Manager {
 // ContainerOperation represents common container lifecycle operations
 type ContainerOperation struct {
 	Name       string
-	Config     *container.Config
+	Config     *types.ContainerConfig
 	HostConfig *container.HostConfig
 }
 
 // ServiceOperation wraps service-specific operations
 func (m *Manager) ServiceOperation(ctx context.Context, svc service.Service, op func(ContainerOperation) error) error {
+	config := &types.ContainerConfig{
+		Image:        svc.ContainerConfig.Image,
+		Cmd:          svc.ContainerConfig.Cmd,
+		Env:          svc.ContainerConfig.Env,
+		ExposedPorts: svc.ContainerConfig.ExposedPorts,
+		Labels:       svc.ContainerConfig.Labels,
+		StopSignal:   svc.ContainerConfig.StopSignal,
+		WorkingDir:   svc.ContainerConfig.WorkingDir,
+	}
+
 	operation := ContainerOperation{
 		Name:       svc.Name,
-		Config:     &svc.Config,
+		Config:     config,
 		HostConfig: &svc.HostConfig,
 	}
 	return op(operation)
@@ -54,7 +65,7 @@ func (m *Manager) StartContainer(ctx context.Context, op ContainerOperation) err
 	}
 
 	// Start the container
-	err = m.client.ContainerStart(ctx, op.Name, container.StartOptions{})
+	err = m.client.ContainerStart(ctx, op.Name, types.ContainerStartOptions{})
 	if err != nil {
 		return eris.Wrapf(err, "failed to start container %s", op.Name)
 	}
@@ -64,9 +75,7 @@ func (m *Manager) StartContainer(ctx context.Context, op ContainerOperation) err
 
 // StopContainer stops a container with proper error handling
 func (m *Manager) StopContainer(ctx context.Context, op ContainerOperation) error {
-	err := m.client.ContainerStop(ctx, op.Name, container.StopOptions{
-		Signal: "SIGINT",
-	})
+	err := m.client.ContainerStop(ctx, op.Name, nil)
 	if err != nil && !client.IsErrNotFound(err) {
 		return eris.Wrapf(err, "failed to stop container %s", op.Name)
 	}
@@ -82,7 +91,7 @@ func (m *Manager) RemoveContainer(ctx context.Context, op ContainerOperation) er
 	}
 
 	// Remove the container
-	err = m.client.ContainerRemove(ctx, op.Name, container.RemoveOptions{})
+	err = m.client.ContainerRemove(ctx, op.Name, types.ContainerRemoveOptions{})
 	if err != nil && !client.IsErrNotFound(err) {
 		return eris.Wrapf(err, "failed to remove container %s", op.Name)
 	}
@@ -91,18 +100,22 @@ func (m *Manager) RemoveContainer(ctx context.Context, op ContainerOperation) er
 
 // PullImage pulls a Docker image with proper error handling
 func (m *Manager) PullImage(ctx context.Context, imageName string) error {
-	_, err := m.client.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	out, err := m.client.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
 		return eris.Wrapf(err, "failed to pull image %s", imageName)
 	}
-	return nil
+	defer out.Close()
+	_, err = io.Copy(io.Discard, out)
+	return err
 }
 
 // BuildImage builds a Docker image with proper error handling
 func (m *Manager) BuildImage(ctx context.Context, options types.ImageBuildOptions) error {
-	_, err := m.client.ImageBuild(ctx, nil, options)
+	response, err := m.client.ImageBuild(ctx, nil, options)
 	if err != nil {
-		return eris.Wrapf(err, "failed to build image with options: %+v", options)
+		return eris.Wrapf(err, "failed to build image")
 	}
-	return nil
+	defer response.Body.Close()
+	_, err = io.Copy(io.Discard, response.Body)
+	return err
 }

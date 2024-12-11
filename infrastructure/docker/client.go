@@ -6,8 +6,9 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/config"
