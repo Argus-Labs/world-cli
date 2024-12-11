@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 
 	"pkg.world.dev/world-cli/config"
 
@@ -126,10 +125,18 @@ func Cardinal(cfg *config.Config) Service {
 	}
 
 	// Add debug options
-	debug := cfg.Debug
-	if debug {
-		service.Config.ExposedPorts["40000/tcp"] = struct{}{}
-		service.HostConfig.PortBindings["40000/tcp"] = []nat.PortBinding{{HostPort: "40000"}}
+	if cfg.Debug {
+		debugPorts := []int{40000}
+		debugExposedPorts := getExposedPorts(debugPorts)
+		debugPortBindings := newPortMap(debugPorts)
+
+		for port, exposed := range debugExposedPorts {
+			service.Config.ExposedPorts[port] = exposed
+		}
+		for port, bindings := range debugPortBindings {
+			service.HostConfig.PortBindings[port] = bindings
+		}
+
 		service.HostConfig.CapAdd = []string{"SYS_PTRACE"}
 		service.HostConfig.SecurityOpt = []string{"seccomp:unconfined"}
 	}
