@@ -23,7 +23,6 @@ const (
 )
 
 var (
-	processName       = types.ProcessName
 	processInitName   = types.ProcessInitName
 	processFinishName = types.ProcessFinishName
 )

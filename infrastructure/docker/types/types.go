@@ -11,9 +11,6 @@ import (
 	globalconfig "pkg.world.dev/world-cli/config"
 )
 
-// BuildkitSupport is a flag to check if buildkit is supported
-var BuildkitSupport bool
-
 const (
 	// START represents starting a container/service
 	START ProcessType = iota
@@ -25,32 +22,32 @@ const (
 	CREATE
 )
 
-var (
-	// ProcessName maps process types to their string representations
-	ProcessName = map[ProcessType]string{
-		START:  "start",
-		STOP:   "stop",
-		REMOVE: "remove",
-		// CREATE represents creating a container/service
-		CREATE: "create",
-	}
+// BuildkitSupport is a flag to check if buildkit is supported
+var BuildkitSupport bool
 
-	// ProcessInitName maps process types to their initialization string representations
-	ProcessInitName = map[ProcessType]string{
-		START:  "starting",
-		STOP:   "stopping",
-		REMOVE: "removing",
-		CREATE: "creating",
-	}
+// ProcessName maps process types to their string representations
+var ProcessName = map[ProcessType]string{
+	START:  "start",
+	STOP:   "stop",
+	REMOVE: "remove",
+	CREATE: "create",
+}
 
-	// ProcessFinishName maps process types to their completion string representations
-	ProcessFinishName = map[ProcessType]string{
-		START:  "started",
-		STOP:   "stopped",
-		REMOVE: "removed",
-		CREATE: "created",
-	}
-)
+// ProcessInitName maps process types to their initialization string representations
+var ProcessInitName = map[ProcessType]string{
+	START:  "starting",
+	STOP:   "stopping",
+	REMOVE: "removing",
+	CREATE: "creating",
+}
+
+// ProcessFinishName maps process types to their completion string representations
+var ProcessFinishName = map[ProcessType]string{
+	START:  "started",
+	STOP:   "stopped",
+	REMOVE: "removed",
+	CREATE: "created",
+}
 
 // ProcessType represents different Docker operations
 type ProcessType int
