@@ -13,7 +13,7 @@ import (
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/ui/commands"
 )
 
 var startCmd = &cobra.Command{
@@ -52,7 +52,7 @@ var startCmd = &cobra.Command{
 
 		err = dockerClient.Start(cmd.Context(), service.EVM)
 		if err != nil {
-			return eris.Wrapf(err, "error starting %s docker container", teacmd.DockerServiceEVM)
+			return eris.Wrapf(err, "error starting %s docker container", commands.DockerServiceEVM)
 		}
 
 		// Stop the DA service if it was started in dev mode

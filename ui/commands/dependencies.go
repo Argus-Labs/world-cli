@@ -1,4 +1,4 @@
-package teacmd
+package commands
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"pkg.world.dev/world-cli/common/dependency"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/ui/style"
 )
 
 type DependencyStatus struct {

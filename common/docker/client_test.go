@@ -12,7 +12,7 @@ import (
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/ui/commands"
 )
 
 const (
@@ -184,7 +184,7 @@ func TestBuild(t *testing.T) {
 
 	// Pull the repository
 	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
-	err = teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
+	err = commands.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
 	assert.NilError(t, err)
 
 	// Preparation

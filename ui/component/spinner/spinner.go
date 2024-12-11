@@ -1,4 +1,4 @@
-package teaspinner
+package spinner
 
 import (
 	"fmt"

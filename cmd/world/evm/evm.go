@@ -5,8 +5,8 @@ import (
 
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/teacmd"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/ui/commands"
+	"pkg.world.dev/world-cli/ui/style"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 	EnvDABaseURL     = "DA_BASE_URL"
 	EnvDANamespaceID = "DA_NAMESPACE_ID"
 
-	daService = teacmd.DockerServiceDA
+	daService = commands.DockerServiceDA
 )
 
 var BaseCmd = &cobra.Command{
