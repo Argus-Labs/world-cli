@@ -23,7 +23,7 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
-	"pkg.world.dev/world-cli/ui/component/spinner"
+	"pkg.world.dev/world-cli/ui/component/multispinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 

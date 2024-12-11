@@ -7,7 +7,7 @@ import (
 
 	"github.com/docker/docker/client"
 
-	"pkg.world.dev/world-cli/logging"
+	logger "pkg.world.dev/world-cli/logging"
 )
 
 func checkBuildkitSupport(cli *client.Client) bool {
@@ -15,14 +15,14 @@ func checkBuildkitSupport(cli *client.Client) bool {
 	defer func() {
 		err := cli.Close()
 		if err != nil {
-			logging.Error("Failed to close docker client", err)
+			logger.Error("Failed to close docker client", err)
 		}
 	}()
 
 	// Get Docker server version
 	version, err := cli.ServerVersion(ctx)
 	if err != nil {
-		logging.Warnf("Failed to get Docker server version: %v", err)
+		logger.Warnf("Failed to get Docker server version: %v", err)
 		return false
 	}
 
