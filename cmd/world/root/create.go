@@ -8,9 +8,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/ui/editor"
 	"pkg.world.dev/world-cli/ui/commands"
 	"pkg.world.dev/world-cli/ui/component/steps"
+	"pkg.world.dev/world-cli/ui/editor"
 	"pkg.world.dev/world-cli/ui/style"
 )
 

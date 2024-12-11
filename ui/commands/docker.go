@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"pkg.world.dev/world-cli/infrastructure/docker"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
@@ -10,9 +10,9 @@ import (
 
 const (
 	// DockerServiceDA is the name of the DA service container
-	DockerServiceDA = service.ServiceName("celestia-da")
+	DockerServiceDA = service.Name("celestia-da")
 	// DockerServiceEVM is the name of the EVM service container
-	DockerServiceEVM = service.ServiceName("evm")
+	DockerServiceEVM = service.Name("evm")
 )
 
 // DockerCommand represents a command to be executed in a Docker container
@@ -28,9 +28,9 @@ func NewDockerCommand(client *docker.Client) *DockerCommand {
 }
 
 // Execute runs the Docker command
-func (c *DockerCommand) Execute(ctx context.Context) error {
+func (c *DockerCommand) Execute(_ context.Context) error {
 	if c.client == nil {
-		return fmt.Errorf("docker client is not initialized")
+		return errors.New("docker client is not initialized")
 	}
 	return nil
 }

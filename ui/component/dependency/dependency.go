@@ -45,6 +45,15 @@ type Dependency struct {
 	Help string
 }
 
+// GetVersion returns the version of the dependency by running the command
+func (d Dependency) GetVersion() (string, error) {
+	output, err := d.Cmd.Output()
+	if err != nil {
+		return "", eris.Wrapf(err, "failed to get version for %q", d.Name)
+	}
+	return string(output), nil
+}
+
 func (d Dependency) Check() error {
 	if err := d.Cmd.Run(); err != nil {
 		return eris.Wrapf(err, "dependency check for %q failed", d.Name)

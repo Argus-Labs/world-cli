@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/rotisserie/eris"
+
 	logger "pkg.world.dev/world-cli/logging"
 )
 

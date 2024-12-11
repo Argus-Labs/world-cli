@@ -13,12 +13,15 @@ import (
 	logger "pkg.world.dev/world-cli/logging"
 )
 
+// Name represents the name of a Docker service
+type Name string
+
+type Builder func(cfg *globalconfig.Config) Service
+
 var (
 	// BuildkitSupport is a flag to check if buildkit is supported
 	BuildkitSupport bool
 )
-
-type Builder func(cfg *globalconfig.Config) Service
 
 // Service is a configuration for a docker container
 // It contains the name of the container and a function to get the container and host config

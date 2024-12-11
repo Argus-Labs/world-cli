@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/ui/component/dependency"
 	"pkg.world.dev/world-cli/ui/commands"
+	"pkg.world.dev/world-cli/ui/component/dependency"
 	"pkg.world.dev/world-cli/ui/style"
 )
 

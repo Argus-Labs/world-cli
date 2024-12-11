@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -40,7 +40,7 @@ func CheckDependenciesCmd(deps []dependency.Dependency) tea.Cmd {
 		var err error
 		for _, status := range depStatus {
 			if status.Error != nil {
-				err = fmt.Errorf("missing dependencies")
+				err = errors.New("missing dependencies")
 				break
 			}
 		}
@@ -60,7 +60,7 @@ func PrintDependencyStatus(status []DependencyStatus) (string, string) {
 	for _, dep := range status {
 		if dep.Error != nil {
 			depList.WriteString(style.CrossIcon.Render() + " " + dep.Name + "\n")
-			help.WriteString(fmt.Sprintf("- %s: %s\n", dep.Name, dep.Error))
+			help.WriteString("- " + dep.Name + ": " + dep.Error.Error() + "\n")
 		} else {
 			depList.WriteString(style.TickIcon.Render() + " " + dep.Name + " " + dep.Version + "\n")
 		}
