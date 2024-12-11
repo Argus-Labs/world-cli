@@ -9,7 +9,7 @@ import (
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/config/globalconfig"
 )
 
 const (

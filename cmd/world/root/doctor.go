@@ -6,9 +6,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/dependency"
-	"pkg.world.dev/world-cli/common/teacmd"
-	"pkg.world.dev/world-cli/tea/style"
+	"pkg.world.dev/world-cli/ui/component/dependency"
+	"pkg.world.dev/world-cli/ui/commands"
+	"pkg.world.dev/world-cli/ui/style"
 )
 
 var DoctorDeps = []dependency.Dependency{
@@ -23,7 +23,7 @@ var DoctorDeps = []dependency.Dependency{
 //////////////////////
 
 type WorldDoctorModel struct {
-	DepStatus    []teacmd.DependencyStatus
+	DepStatus    []commands.DependencyStatus
 	DepStatusErr error
 }
 
@@ -37,7 +37,7 @@ func NewWorldDoctorModel() WorldDoctorModel {
 
 // Init returns an initial command for the application to run
 func (m WorldDoctorModel) Init() tea.Cmd {
-	return teacmd.CheckDependenciesCmd(DoctorDeps)
+	return commands.CheckDependenciesCmd(DoctorDeps)
 }
 
 // Update handles incoming events and updates the model accordingly
@@ -48,7 +48,7 @@ func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		}
-	case teacmd.CheckDependenciesMsg:
+	case commands.CheckDependenciesMsg:
 		m.DepStatus = msg.DepStatus
 		m.DepStatusErr = msg.Err
 		return m, tea.Quit
@@ -58,7 +58,7 @@ func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the model to the screen
 func (m WorldDoctorModel) View() string {
-	depList, help := teacmd.PrintDependencyStatus(m.DepStatus)
+	depList, help := commands.PrintDependencyStatus(m.DepStatus)
 	out := style.Container.Render("--- World CLI Doctor ---") + "\n\n"
 	out += "Checking dependencies...\n"
 	out += depList + "\n" + help + "\n"

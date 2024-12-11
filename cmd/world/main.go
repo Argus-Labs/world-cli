@@ -6,10 +6,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"pkg.world.dev/world-cli/cmd/world/root"
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/config/globalconfig"
 	"pkg.world.dev/world-cli/telemetry"
 
-	_ "pkg.world.dev/world-cli/common/logger"
+	_ "pkg.world.dev/world-cli/logging"
 )
 
 // This variable will be overridden by ldflags during build
