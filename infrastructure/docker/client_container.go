@@ -17,13 +17,12 @@ import (
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	"pkg.world.dev/world-cli/ui/component/multispinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
-type processType int
-
-func (c *Client) processMultipleContainers(ctx context.Context, processType processType,
+func (c *Client) processMultipleContainers(ctx context.Context, processType types.ProcessType,
 	services ...service.Service) error {
 	// Collect the names of the services
 	dockerServicesNames := make([]string, len(services))
