@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"pkg.world.dev/world-cli/ui"
 )
 
 // Spinner is a component that displays a loading spinner
@@ -19,7 +21,7 @@ type Spinner struct {
 func New() *Spinner {
 	return &Spinner{
 		frames: []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
-		speed:  time.Millisecond * 80,
+		speed:  time.Millisecond * time.Duration(ui.SpinnerSpeed),
 		style:  lipgloss.NewStyle(),
 	}
 }

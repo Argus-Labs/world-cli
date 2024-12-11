@@ -1,14 +1,17 @@
 package style
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+	"pkg.world.dev/world-cli/ui"
+)
 
 var (
 	Container = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(1,
-		2).BorderForeground(lipgloss.Color("#874BFD"))
+		ui.ContainerPadding).BorderForeground(lipgloss.Color("#874BFD"))
 	cliHeaderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(0, 2).
+			Padding(0, ui.ContainerPadding).
 			BorderTop(true).
 			BorderLeft(true).
 			BorderRight(true).
@@ -16,7 +19,7 @@ var (
 			Bold(true).
 			Italic(true).
 			Align(lipgloss.Center).
-			Width(40)
+			Width(ui.HeaderWidth)
 )
 
 func CLIHeader(title string, description string) string {

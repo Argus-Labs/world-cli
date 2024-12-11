@@ -89,7 +89,7 @@ func updateLastLoggedTime(timestamp time.Time) error {
 
 	data := []byte(timestamp.Format(time.DateOnly))
 
-	return os.WriteFile(filePath, data, 0644) //nolint:gosec // not applicable
+	return os.WriteFile(filePath, data, config.TokenFilePerm) //nolint:gosec // not applicable
 }
 
 // isSameDay checks if two timestamps are from the same day.

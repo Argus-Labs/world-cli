@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"pkg.world.dev/world-cli/config"
 )
 
 // GitCloneFinishMsg represents a message indicating git clone operation completion
@@ -14,7 +16,7 @@ type GitCloneFinishMsg struct {
 // GitCloneCmd clones a git repository and initializes it
 func GitCloneCmd(url, dir, message string) error {
 	// Create the directory if it doesn't exist
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, config.GitDirPerm); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 

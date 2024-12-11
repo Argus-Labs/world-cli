@@ -27,8 +27,8 @@ func CelestiaDevNet(cfg *globalconfig.Config) types.Service {
 			Healthcheck: &container.HealthConfig{
 				Test:     []string{"CMD", "curl", "-f", "http://127.0.0.1:26659/head"},
 				Interval: 1 * time.Second,
-				Timeout:  1 * time.Second,
-				Retries:  20,
+				Timeout:  service.DefaultTimeout,
+				Retries:  service.DefaultRetries,
 			},
 		},
 		HostConfig: container.HostConfig{

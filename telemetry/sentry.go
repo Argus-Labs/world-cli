@@ -6,6 +6,8 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
+
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
 )
 
 var (
@@ -42,7 +44,7 @@ func SentryFlush() {
 
 		// Flush buffered events before the program terminates.
 		// Set the timeout to the maximum duration the program can afford to wait.
-		sentry.Flush(5 * time.Second)
+		sentry.Flush(service.DefaultTimeout)
 		sentryInitialized = false
 	}
 }

@@ -5,11 +5,12 @@ import (
 	"os/exec"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/config"
 )
 
 // CloneRepo clones a git repository to the specified directory
 func CloneRepo(url, dir, message string) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, config.GitDirPerm); err != nil {
 		return eris.Wrapf(err, "failed to create directory %s", dir)
 	}
 

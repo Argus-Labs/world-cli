@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/config"
 )
 
 const (
@@ -34,7 +35,7 @@ func OpenEditor(filename string) error {
 
 func SetupCardinalEditor(rootDir, gameDir string) error {
 	editorPath := filepath.Join(rootDir, EditorDir)
-	if err := os.MkdirAll(editorPath, 0755); err != nil {
+	if err := os.MkdirAll(editorPath, config.EditorDirPerm); err != nil {
 		return eris.Wrapf(err, "failed to create editor directory at %s", editorPath)
 	}
 

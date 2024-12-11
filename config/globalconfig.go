@@ -72,5 +72,5 @@ func SetWorldForgeToken(name string, token string) error {
 		return eris.Wrap(err, "failed to marshal token")
 	}
 
-	return os.WriteFile(tokenFile, credJSON, 0600)
+	return os.WriteFile(tokenFile, credJSON, TokenFilePerm)
 }

@@ -87,7 +87,7 @@ func AddConfigFlag(cmd *cobra.Command) {
 // SetupConfigDir creates the config directory if it doesn't exist
 func SetupConfigDir() error {
 	configDir := filepath.Join(os.Getenv("HOME"), ".world")
-	if err := os.MkdirAll(configDir, 0o755); err != nil {
+	if err := os.MkdirAll(configDir, ConfigDirPerm); err != nil {
 		return eris.Wrap(err, "failed to create config directory")
 	}
 	return nil

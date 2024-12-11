@@ -63,7 +63,7 @@ func getNakamaPlatform(cfg *globalconfig.Config) ocispec.Platform {
 	}
 	if cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"] != "" {
 		nakamaImagePlatform := strings.Split(cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"], "/")
-		if len(nakamaImagePlatform) == 2 {
+		if len(nakamaImagePlatform) == service.PlatformPartCount {
 			platform = ocispec.Platform{
 				Architecture: nakamaImagePlatform[1],
 				OS:           nakamaImagePlatform[0],
@@ -120,9 +120,9 @@ func Nakama(cfg *globalconfig.Config) types.Service {
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{
 				Test:     []string{"CMD", "/nakama/nakama", "healthcheck"},
-				Interval: 1 * time.Second,
-				Timeout:  1 * time.Second,
-				Retries:  20,
+				Interval: service.DefaultTimeout,
+				Timeout:  service.DefaultTimeout,
+				Retries:  service.DefaultRetries,
 			},
 		},
 		HostConfig: container.HostConfig{

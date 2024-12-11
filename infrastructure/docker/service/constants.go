@@ -4,9 +4,9 @@ import "time"
 
 const (
 	// Service Health Check
-	DefaultRetries     = 20
-	DefaultTimeout     = time.Second
-	DefaultInterval    = 3 * time.Second
+	DefaultRetries  = 20
+	DefaultTimeout  = time.Second
+	DefaultInterval = 3 * time.Second
 
 	// Platform Check
 	PlatformPartCount = 2

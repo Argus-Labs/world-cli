@@ -39,9 +39,9 @@ func NakamaDB(cfg *config.Config) types.Service {
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{
 				Test:     []string{"CMD", "curl", "-f", "http://localhost:8080/health?ready=1"},
-				Interval: 3 * time.Second,
-				Timeout:  3 * time.Second,
-				Retries:  5,
+				Interval: DBInterval,
+				Timeout:  DBTimeout,
+				Retries:  DBRetries,
 			},
 		},
 		HostConfig: container.HostConfig{
