@@ -1,0 +1,46 @@
+package spinner
+
+import (
+	"fmt"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"pkg.world.dev/world-cli/ui/style"
+)
+
+// Spinner is a component that displays a loading spinner
+type Spinner struct {
+	frames []string
+	speed  time.Duration
+	index  int
+	style  lipgloss.Style
+}
+
+// New creates a new spinner instance
+func New() *Spinner {
+	return &Spinner{
+		frames: []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
+		speed:  time.Millisecond * 80,
+		style:  style.New(),
+	}
+}
+
+// View returns the current frame of the spinner
+func (s *Spinner) View() string {
+	return s.style.Render(s.frames[s.index])
+}
+
+// Update advances the spinner animation
+func (s *Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case tea.KeyMsg:
+		return s, nil
+	default:
+		s.index = (s.index + 1) % len(s.frames)
+		return s, tea.Tick(s.speed, func(t time.Time) tea.Msg {
+			return nil
+		})
+	}
+}
