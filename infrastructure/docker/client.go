@@ -11,8 +11,8 @@ import (
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/config"
-	"pkg.world.dev/world-cli/infrastructure/docker/operations"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	logger "pkg.world.dev/world-cli/logging"
 )
 
