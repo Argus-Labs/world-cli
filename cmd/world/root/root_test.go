@@ -23,7 +23,6 @@ var (
 	origWorkDir string
 )
 
-//nolint:tenv // os.Setenv required in TestMain for setting up test environment before *testing.T is available
 func TestMain(m *testing.M) {
 	var err error
 	// Save original working directory
@@ -55,7 +54,6 @@ func TestMain(m *testing.M) {
 	cfg.DockerEnv["DA_BASE_URL"] = "http://localhost:26657"
 	cfg.DockerEnv["DA_NAMESPACE_ID"] = "test-namespace"
 
-	// Set environment variables for test
 	{
 		if err := os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
 			panic(err)
@@ -165,9 +163,19 @@ func TestExecuteDoctorCommand(t *testing.T) {
 }
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
+	// Get config and ensure environment variables are set
+	cfg, err := config.GetConfig()
+	assert.NilError(t, err)
+
+	// Set required environment variables for this test
+	t.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	t.Setenv("DA_AUTH_TOKEN", cfg.DockerEnv["DA_AUTH_TOKEN"])
+	t.Setenv("DA_BASE_URL", cfg.DockerEnv["DA_BASE_URL"])
+	t.Setenv("DA_NAMESPACE_ID", cfg.DockerEnv["DA_NAMESPACE_ID"])
+
 	// Create test directory within base test directory
 	testDir := filepath.Join(testBaseDir, "test-create-start-stop")
-	err := os.MkdirAll(testDir, 0755)
+	err = os.MkdirAll(testDir, 0755)
 	assert.NilError(t, err)
 
 	// Change to test directory
@@ -194,10 +202,13 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
 
-	// Verify cardinal directory exists and is accessible
-	cardinalDir := filepath.Join(sgtDir, "cardinal")
-	_, err = os.Stat(cardinalDir)
-	assert.NilError(t, err, "cardinal directory not found in project root")
+	// Update config with correct paths for this test
+	cfg.RootDir = sgtDir
+	cfg.GameDir = "cardinal"
+
+	// Save the updated config
+	err = config.SaveConfig(cfg)
+	assert.NilError(t, err)
 
 	// Start cardinal
 	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
@@ -232,9 +243,19 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 }
 
 func TestDev(t *testing.T) {
+	// Get config and ensure environment variables are set
+	cfg, err := config.GetConfig()
+	assert.NilError(t, err)
+
+	// Set required environment variables for this test
+	t.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	t.Setenv("DA_AUTH_TOKEN", cfg.DockerEnv["DA_AUTH_TOKEN"])
+	t.Setenv("DA_BASE_URL", cfg.DockerEnv["DA_BASE_URL"])
+	t.Setenv("DA_NAMESPACE_ID", cfg.DockerEnv["DA_NAMESPACE_ID"])
+
 	// Create test directory within base test directory
 	testDir := filepath.Join(testBaseDir, "test-dev")
-	err := os.MkdirAll(testDir, 0755)
+	err = os.MkdirAll(testDir, 0755)
 	assert.NilError(t, err)
 
 	// Change to test directory
@@ -246,10 +267,6 @@ func TestDev(t *testing.T) {
 		err = os.Chdir(origWorkDir)
 		assert.NilError(t, err)
 	}()
-
-	// Get config and update paths for this test
-	cfg, err := config.GetConfig()
-	assert.NilError(t, err)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -269,13 +286,8 @@ func TestDev(t *testing.T) {
 	cfg.RootDir = sgtDir
 	cfg.GameDir = "cardinal"
 
-	// Verify cardinal directory exists and is accessible
-	cardinalDir := filepath.Join(sgtDir, "cardinal")
-	_, err = os.Stat(cardinalDir)
-	assert.NilError(t, err, "cardinal directory not found in project root")
-
-	// Ensure environment variables are set for this test
-	t.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	// Save the updated config
+	err = config.SaveConfig(cfg)
 	assert.NilError(t, err)
 
 	// Start cardinal dev
@@ -369,29 +381,37 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 }
 
 func TestEVMStart(t *testing.T) {
-	// Set required environment variables for Docker before any operations
-	t.Setenv("CARDINAL_NAMESPACE", "test-cardinal-evm")
-
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
+	// Get config and ensure environment variables are set
+	cfg, err := config.GetConfig()
 	assert.NilError(t, err)
 
-	// Remove dir
+	// Set required environment variables for this test
+	t.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	t.Setenv("DA_AUTH_TOKEN", cfg.DockerEnv["DA_AUTH_TOKEN"])
+	t.Setenv("DA_BASE_URL", cfg.DockerEnv["DA_BASE_URL"])
+	t.Setenv("DA_NAMESPACE_ID", cfg.DockerEnv["DA_NAMESPACE_ID"])
+
+	// Create test directory within base test directory
+	testDir := filepath.Join(testBaseDir, "test-evm")
+	err = os.MkdirAll(testDir, 0755)
+	assert.NilError(t, err)
+
+	// Change to test directory
+	err = os.Chdir(testDir)
+	assert.NilError(t, err)
+
+	// Ensure we return to original directory after test
 	defer func() {
-		err = os.RemoveAll(gameDir)
+		err = os.Chdir(origWorkDir)
 		assert.NilError(t, err)
 	}()
 
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
-
-	// set tea ouput to variable
+	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 
 	// checkout the repo
-	sgtDir := filepath.Join(gameDir, "sgt")
+	sgtDir := filepath.Join(testDir, "sgt")
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
@@ -400,10 +420,13 @@ func TestEVMStart(t *testing.T) {
 	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
 
-	// Verify cardinal directory exists and is accessible
-	cardinalDir := filepath.Join(sgtDir, "cardinal")
-	_, err = os.Stat(cardinalDir)
-	assert.NilError(t, err, "cardinal directory not found in project root")
+	// Update config with correct paths for this test
+	cfg.RootDir = sgtDir
+	cfg.GameDir = "cardinal"
+
+	// Save the updated config
+	err = config.SaveConfig(cfg)
+	assert.NilError(t, err)
 
 	// Start EVM without detach flag
 	rootCmd.SetArgs([]string{"evm", "start"})

@@ -44,6 +44,41 @@ func GetConfig() (*Config, error) {
 	return &cfg, nil
 }
 
+// SaveConfig saves the configuration to the config file
+func SaveConfig(cfg *Config) error {
+	if err := initConfig(); err != nil {
+		return err
+	}
+
+	// Map Config struct fields to viper
+	viper.Set("root_dir", cfg.RootDir)
+	viper.Set("game_dir", cfg.GameDir)
+	viper.Set("build", cfg.Build)
+	viper.Set("debug", cfg.Debug)
+	viper.Set("detach", cfg.Detach)
+	viper.Set("timeout", cfg.Timeout)
+	viper.Set("telemetry", cfg.Telemetry)
+	viper.Set("dev_da", cfg.DevDA)
+	viper.Set("docker_env", cfg.DockerEnv)
+
+	// Save config to file
+	if err := viper.WriteConfig(); err != nil {
+		var configErr viper.ConfigFileNotFoundError
+		if errors.As(err, &configErr) {
+			// If config file doesn't exist, create it
+			configDir := filepath.Join(os.Getenv("HOME"), ".world")
+			configFile := filepath.Join(configDir, "config.toml")
+			if err := viper.WriteConfigAs(configFile); err != nil {
+				return eris.Wrap(err, "failed to create config file")
+			}
+			return nil
+		}
+		return eris.Wrap(err, "failed to save config")
+	}
+
+	return nil
+}
+
 // AddConfigFlag adds the config flag to the given command
 func AddConfigFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("config", "", "config file (default is $HOME/.world/config.toml)")
