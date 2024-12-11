@@ -19,7 +19,6 @@ import (
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/internal/dependencies"
 	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
 )

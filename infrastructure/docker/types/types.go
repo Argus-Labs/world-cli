@@ -74,7 +74,8 @@ type StopOptions struct {
 
 // RemoveOptions wraps Docker container remove options
 type RemoveOptions struct {
-	types.ContainerRemoveOptions
+	Force   bool
+	Volumes bool
 }
 
 // VolumeCreateOptions wraps Docker volume create options
