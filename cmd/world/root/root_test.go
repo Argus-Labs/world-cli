@@ -23,6 +23,7 @@ var (
 	origWorkDir string
 )
 
+//nolint:tenv // os.Setenv required in TestMain for setting up test environment before *testing.T is available
 func TestMain(m *testing.M) {
 	var err error
 	// Save original working directory
@@ -55,7 +56,6 @@ func TestMain(m *testing.M) {
 	cfg.DockerEnv["DA_NAMESPACE_ID"] = "test-namespace"
 
 	// Set environment variables for test
-	//nolint:tenv // os.Setenv required in TestMain for setting up test environment before *testing.T is available
 	{
 		if err := os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
 			panic(err)
