@@ -162,6 +162,9 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 }
 
 func TestDev(t *testing.T) {
+	// Set required environment variables for Docker before any operations
+	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal-dev")
+
 	// Create Cardinal
 	gameDir, err := os.MkdirTemp("", "game-template-dev")
 	assert.NilError(t, err)
@@ -181,17 +184,19 @@ func TestDev(t *testing.T) {
 	createCmd := getCreateCmd(teaOut)
 
 	// checkout the repo
-	sgtDir := gameDir + "/sgt"
+	sgtDir := filepath.Join(gameDir, "sgt")
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
 
-	// Change to the sgt directory where cardinal files are
+	// Change dir to project root and verify cardinal directory exists
 	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
 
-	// Set required environment variables for Docker
-	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal-dev")
+	// Verify cardinal directory exists and is accessible
+	cardinalDir := filepath.Join(sgtDir, "cardinal")
+	_, err = os.Stat(cardinalDir)
+	assert.NilError(t, err, "cardinal directory not found in project root")
 
 	// Start cardinal dev
 	ctx, cancel := context.WithCancel(context.Background())
@@ -278,6 +283,9 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 }
 
 func TestEVMStart(t *testing.T) {
+	// Set required environment variables for Docker before any operations
+	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal-evm")
+
 	// Create Cardinal
 	gameDir, err := os.MkdirTemp("", "game-template-dev")
 	assert.NilError(t, err)
@@ -295,28 +303,35 @@ func TestEVMStart(t *testing.T) {
 	// set tea ouput to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
 
 	// checkout the repo
-	sgtDir := gameDir + "/sgt"
+	sgtDir := filepath.Join(gameDir, "sgt")
 	createCmd.SetArgs([]string{sgtDir})
 	err = createCmd.Execute()
 	assert.NilError(t, err)
 
-	// Start evn dev
-	ctx, cancel := context.WithCancel(context.Background())
-	rootCmd.SetArgs([]string{"evm", "start", "--dev"})
-	go func() {
-		err := rootCmd.ExecuteContext(ctx)
-		assert.NilError(t, err)
-	}()
+	// Change dir to project root and verify cardinal directory exists
+	err = os.Chdir(sgtDir)
+	assert.NilError(t, err)
 
-	// Check and wait until evm is up
+	// Verify cardinal directory exists and is accessible
+	cardinalDir := filepath.Join(sgtDir, "cardinal")
+	_, err = os.Stat(cardinalDir)
+	assert.NilError(t, err, "cardinal directory not found in project root")
+
+	// Start EVM
+	rootCmd.SetArgs([]string{"evm", "start", "--detach"})
+	err = rootCmd.Execute()
+	assert.NilError(t, err)
+
+	// Check and wait until EVM is healthy
 	assert.Assert(t, evmIsUp(t), "EVM is not running")
 
-	// Shutdown the program
-	cancel()
+	// Stop EVM
+	rootCmd.SetArgs([]string{"evm", "stop"})
+	err = rootCmd.Execute()
+	assert.NilError(t, err)
 
-	// Check and wait until evm is down
+	// Check and wait until EVM shutdowns
 	assert.Assert(t, evmIsDown(t), "EVM is not successfully shutdown")
 }
