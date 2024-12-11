@@ -5,48 +5,49 @@ import (
 	"os/exec"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/logging"
 )
 
 var (
 	Git = Dependency{
 		Name: "Git",
-		Cmd:  exec.Command("git", "--version"),
+		Command: exec.Command("git", "--version"),
 		Help: `Git is required to clone the starter-game-template.
 Learn how to install Git: https://github.com/git-guides/install-git`,
 	}
 	Go = Dependency{
 		Name: "Go",
-		Cmd:  exec.Command("go", "version"),
+		Command: exec.Command("go", "version"),
 		Help: `Go is required to build and run World Engine game shards.
 Learn how to install Go: https://go.dev/doc/install`,
 	}
 	Docker = Dependency{
 		Name: "Docker",
-		Cmd:  exec.Command("docker", "--version"),
+		Command: exec.Command("docker", "--version"),
 		Help: `Docker is required to build and run World Engine game shards.
 Learn how to install Docker: https://docs.docker.com/engine/install/`,
 	}
 	DockerDaemon = Dependency{
 		Name: "Docker daemon is running",
-		Cmd:  exec.Command("docker", "info"),
+		Command: exec.Command("docker", "info"),
 		Help: `Docker daemon needs to be running.
 If you use Docker Desktop, make sure that you have ran it`,
 	}
 	AlwaysFail = Dependency{
 		Name: "Always fails",
-		Cmd:  exec.Command("false"),
+		Command: exec.Command("false"),
 		Help: `This dependency check will always fail. It can be used for testing.`,
 	}
 )
 
 type Dependency struct {
-	Name string
-	Cmd  *exec.Cmd
-	Help string
+	Name    string
+	Command *exec.Cmd
+	Help    string
 }
 
 func (d Dependency) Check() error {
-	if err := d.Cmd.Run(); err != nil {
+	if err := d.Command.Run(); err != nil {
 		return eris.Wrapf(err, "dependency check for %q failed", d.Name)
 	}
 	return nil

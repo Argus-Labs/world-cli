@@ -13,8 +13,8 @@ type GitCloneFinishMsg struct {
 	Err error
 }
 
-// GitCloneCmd clones a repository and sets up the initial commit
-func GitCloneCmd(url, dir, message string) error {
+// GitCloneCommand clones a repository
+func GitCloneCommand(url, dir string) error {
 	cmd := exec.Command("git", "clone", url, dir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

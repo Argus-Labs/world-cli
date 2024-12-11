@@ -37,7 +37,7 @@ func NewWorldDoctorModel() WorldDoctorModel {
 
 // Init returns an initial command for the application to run
 func (m WorldDoctorModel) Init() tea.Cmd {
-	return commands.CheckDependenciesCmd(DoctorDeps)
+	return commands.CheckDependenciesCommand(DoctorDeps)
 }
 
 // Update handles incoming events and updates the model accordingly

@@ -184,7 +184,7 @@ func TestBuild(t *testing.T) {
 
 	// Pull the repository
 	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
-	err = commands.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
+	err = commands.GitCloneCommand(templateGitURL, sgtDir, "Initial commit from World CLI")
 	assert.NilError(t, err)
 
 	// Preparation

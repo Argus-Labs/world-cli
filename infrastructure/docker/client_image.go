@@ -27,6 +27,43 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
+const (
+	progressPercentage = 100
+)
+
+func safeStringConversion(val interface{}) (string, error) {
+	if val == nil {
+		return "", nil
+	}
+	str, ok := val.(string)
+	if !ok {
+		return "", eris.Errorf("expected string, got %T", val)
+	}
+	return str, nil
+}
+
+func safeMapConversion(val interface{}) (map[string]interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	m, ok := val.(map[string]interface{})
+	if !ok {
+		return nil, eris.Errorf("expected map[string]interface{}, got %T", val)
+	}
+	return m, nil
+}
+
+func safeFloat64Conversion(val interface{}) (float64, error) {
+	if val == nil {
+		return 0, nil
+	}
+	f, ok := val.(float64)
+	if !ok {
+		return 0, eris.Errorf("expected float64, got %T", val)
+	}
+	return f, nil
+}
+
 func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Service) error {
 	// Filter all services that need to be built
 	var (
@@ -324,12 +361,20 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 
 	// Only show the step if it's a build step
 	step := ""
-	if val, ok := event["stream"]; ok && val != "" && strings.HasPrefix(val.(string), "Step") {
-		if step, ok = val.(string); ok && step != "" {
-			step = strings.TrimSpace(step)
+	if val, ok := event["stream"]; ok && val != "" {
+		streamStr, err := safeStringConversion(val)
+		if err != nil {
+			return "", eris.Wrap(err, "invalid stream format")
+		}
+		if strings.HasPrefix(streamStr, "Step") {
+			step = strings.TrimSpace(streamStr)
 		}
 	} else if val, ok = event["error"]; ok && val != "" {
-		return "", eris.New(val.(string))
+		errStr, err := safeStringConversion(val)
+		if err != nil {
+			return "", eris.Wrap(err, "invalid error message format")
+		}
+		return "", eris.New(errStr)
 	}
 
 	return step, nil
@@ -390,7 +435,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 		platform := platform
 
 		// Create a new progress bar for this image
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(progressPercentage,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -435,23 +480,48 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
-							errChan <- eris.New(errorMessage.(string))
+						errorDetailMap, err := safeMapConversion(errorDetail)
+						if err != nil {
+							errChan <- eris.Wrap(err, "invalid error detail format")
+							continue
+						}
+						if errorMessage, ok := errorDetailMap["message"]; ok {
+							errStr, err := safeStringConversion(errorMessage)
+							if err != nil {
+								errChan <- eris.Wrap(err, "invalid error message format")
+								continue
+							}
+							errChan <- eris.New(errStr)
 							continue
 						}
 					} else if errorMsg, ok := event["error"]; ok {
-						errChan <- eris.New(errorMsg.(string))
+						errStr, err := safeStringConversion(errorMsg)
+						if err != nil {
+							errChan <- eris.Wrap(err, "invalid error message format")
+							continue
+						}
+						errChan <- eris.New(errStr)
 						continue
 					}
 
 					// Handle progress updates
 					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
-							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
-							if calculatedCurrent > current {
-								bar.SetCurrent(int64(calculatedCurrent))
-								current = calculatedCurrent
-							}
+						progressDetailMap, err := safeMapConversion(progressDetail)
+						if err != nil {
+							continue // Skip this update if we can't parse the progress detail
+						}
+						total, err := safeFloat64Conversion(progressDetailMap["total"])
+						if err != nil || total <= 0 {
+							continue // Skip this update if we can't parse the total or it's invalid
+						}
+						current, err := safeFloat64Conversion(progressDetailMap["current"])
+						if err != nil {
+							continue // Skip this update if we can't parse the current value
+						}
+						calculatedCurrent := int(current * 100 / total)
+						if calculatedCurrent > current {
+							bar.SetCurrent(int64(calculatedCurrent))
+							current = calculatedCurrent
 						}
 					}
 				}
@@ -460,7 +530,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(progressPercentage)
 		}()
 	}
 

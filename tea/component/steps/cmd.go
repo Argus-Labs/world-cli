@@ -22,46 +22,46 @@ type SignalStepErrorMsg struct {
 }
 type SignalAllStepCompletedMsg struct{}
 
-// StartCmd starts the step component
-func (m Model) StartCmd() tea.Cmd {
+// StartCommand starts the step component
+func (m Model) StartCommand() tea.Cmd {
 	return func() tea.Msg {
 		return StartMsg{}
 	}
 }
 
-// CompleteStepCmd set the current step as completed
-func (m Model) CompleteStepCmd(err error) tea.Cmd {
+// CompleteStepCommand sets the current step as completed
+func (m Model) CompleteStepCommand(err error) tea.Cmd {
 	return func() tea.Msg {
 		return CompleteStepMsg{Err: err}
 	}
 }
 
-// SignalStepStartedCmd signals the start of a step
+// SignalStepStartedCommand signals the start of a step
 // This is useful for when you want to trigger a certain action when a certain step starts
-func (m Model) SignalStepStartedCmd(index int) tea.Cmd {
+func (m Model) SignalStepStartedCommand(index int) tea.Cmd {
 	return func() tea.Msg {
 		return SignalStepStartedMsg{Index: index}
 	}
 }
 
-// SignalStepCompletedCmd signals the finish of a step
+// SignalStepCompletedCommand signals the finish of a step
 // This is useful for when you want to trigger a certain action when a certain step finishes
-func (m Model) SignalStepCompletedCmd(index int) tea.Cmd {
+func (m Model) SignalStepCompletedCommand(index int) tea.Cmd {
 	return func() tea.Msg {
 		return SignalStepCompletedMsg{Index: index}
 	}
 }
 
-// SignalStepErrorCmd signals the finish of a step with an error
+// SignalStepErrorCommand signals the finish of a step with an error
 // This is useful for when you want to trigger a certain action when a certain step finishes with an error
-func (m Model) SignalStepErrorCmd(index int, err error) tea.Cmd {
+func (m Model) SignalStepErrorCommand(index int, err error) tea.Cmd {
 	return func() tea.Msg {
 		return SignalStepErrorMsg{Index: index, Err: err}
 	}
 }
 
-// SignalAllStepCompletedCmd signals the finish of all steps
-func (m Model) SignalAllStepCompletedCmd() tea.Cmd {
+// SignalAllStepCompletedCommand signals the finish of all steps
+func (m Model) SignalAllStepCompletedCommand() tea.Cmd {
 	return func() tea.Msg {
 		return SignalAllStepCompletedMsg{}
 	}

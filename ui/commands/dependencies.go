@@ -19,14 +19,14 @@ type CheckDependenciesMsg struct {
 	DepStatus []DependencyStatus
 }
 
-// CheckDependenciesCmd Iterate through required dependencies and check if they are installed.
+// CheckDependenciesCommand iterates through required dependencies and checks if they are installed.
 // Dispatch CheckDependenciesMsg if any dependency is missing.
-func CheckDependenciesCmd(deps []dependency.Dependency) tea.Cmd {
+func CheckDependenciesCommand(deps []dependency.Dependency) tea.Cmd {
 	return func() tea.Msg {
 		var res []DependencyStatus
 		var resErr error
 		for _, dep := range deps {
-			err := dep.Cmd.Run()
+			err := dep.Command.Run()
 			res = append(res, DependencyStatus{
 				Dependency:  dep,
 				IsInstalled: err == nil,

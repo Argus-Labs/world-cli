@@ -24,7 +24,7 @@ type NewLogMsg struct {
 	Log string
 }
 
-func NewLogCmd(log string) tea.Cmd {
+func NewLogCommand(log string) tea.Cmd {
 	return func() tea.Msg {
 		return NewLogMsg{Log: log}
 	}
@@ -77,9 +77,9 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 func (m WorldCreateModel) Init() tea.Cmd {
 	// If the project name was passed in as an argument, skip the 1st step
 	if m.projectNameInput.Value() != "" {
-		return tea.Sequence(textinput.Blink, m.steps.StartCmd(), m.steps.CompleteStepCmd(nil))
+		return tea.Sequence(textinput.Blink, m.steps.StartCommand(), m.steps.CompleteStepCommand(nil))
 	}
-	return tea.Sequence(textinput.Blink, m.steps.StartCmd())
+	return tea.Sequence(textinput.Blink, m.steps.StartCommand())
 }
 
 // Update handles incoming events and updates the model accordingly
@@ -101,7 +101,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.projectNameInput.SetValue("starter-game")
 			}
 			m.projectNameInput.Blur()
-			return m, m.steps.CompleteStepCmd(nil)
+			return m, m.steps.CompleteStepCommand(nil)
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		}
@@ -113,13 +113,13 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.SignalStepStartedMsg:
 		// If step 1 is started, dispatch the git clone command
 		if msg.Index == 1 {
-			err := commands.GitCloneCmd(TemplateGitURL, m.projectNameInput.Value(), "Initial commit from World CLI")
+			err := commands.GitCloneCommand(TemplateGitURL, m.projectNameInput.Value(), "Initial commit from World CLI")
 			teaCmd := func() tea.Msg {
 				return commands.GitCloneFinishMsg{Err: err}
 			}
 
 			return m, tea.Sequence(
-				NewLogCmd(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
+				NewLogCommand(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
 				teaCmd,
 			)
 		}
@@ -130,7 +130,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			return m, tea.Sequence(
-				NewLogCmd(style.ChevronIcon.Render()+"Setting up Cardinal Editor"),
+				NewLogCommand(style.ChevronIcon.Render()+"Setting up Cardinal Editor"),
 				teaCmd,
 			)
 		}
@@ -139,13 +139,13 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.SignalStepCompletedMsg:
 		// If step 1 is completed, log success message
 		if msg.Index == 1 {
-			return m, NewLogCmd(style.ChevronIcon.Render() +
+			return m, NewLogCommand(style.ChevronIcon.Render() +
 				"Successfully created a starter game shard in ./" + m.projectNameInput.Value())
 		}
 
 	case steps.SignalStepErrorMsg:
 		// Log error, then quit
-		return m, tea.Sequence(NewLogCmd(style.CrossIcon.Render()+"Error: "+msg.Err.Error()), tea.Quit)
+		return m, tea.Sequence(NewLogCommand(style.CrossIcon.Render()+"Error: "+msg.Err.Error()), tea.Quit)
 
 	case steps.SignalAllStepCompletedMsg:
 		// All done, quit
@@ -155,11 +155,11 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If there is an error, log stderr then mark step as failed
 		if msg.Err != nil {
 			m.logs = append(m.logs, style.CrossIcon.Render()+msg.Err.Error())
-			return m, m.steps.CompleteStepCmd(msg.Err)
+			return m, m.steps.CompleteStepCommand(msg.Err)
 		}
 
 		// Otherwise, mark step as completed
-		return m, m.steps.CompleteStepCmd(nil)
+		return m, m.steps.CompleteStepCommand(nil)
 
 	default:
 		var cmd tea.Cmd

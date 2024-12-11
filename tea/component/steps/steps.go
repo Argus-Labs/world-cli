@@ -57,7 +57,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.Steps[m.index].Status = FAILED
 			m.Steps[m.index].Err = msg.Err
 			// Send a signal that the step has failed with an error
-			return m, m.SignalStepErrorCmd(m.index, msg.Err)
+			return m, m.SignalStepErrorCommand(m.index, msg.Err)
 		}
 
 		m.Steps[m.index].Status = COMPLETE
@@ -65,11 +65,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		// Otherwise, we move on to the next step
 		if m.index == len(m.Steps)-1 {
 			// Send a signal that all the steps have been finished
-			return m, tea.Sequence(m.SignalStepCompletedCmd(m.index), m.SignalAllStepCompletedCmd())
+			return m, tea.Sequence(m.SignalStepCompletedCommand(m.index), m.SignalAllStepCompletedCommand())
 		} else {
 			m.index++
 			// Send a signal that the current step has been completed and the next step has started
-			return m, tea.Sequence(m.SignalStepCompletedCmd(m.index-1), m.SignalStepStartedCmd(m.index))
+			return m, tea.Sequence(m.SignalStepCompletedCommand(m.index-1), m.SignalStepStartedCommand(m.index))
 		}
 	default:
 		var cmd tea.Cmd
