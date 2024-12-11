@@ -11,6 +11,7 @@ import (
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/operations"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
 	"pkg.world.dev/world-cli/logging"
 )
@@ -46,8 +47,9 @@ var (
 )
 
 type Client struct {
-	client *client.Client
-	cfg    *config.Config
+	client    *client.Client
+	cfg       *config.Config
+	operations *operations.Manager
 }
 
 func NewClient(cfg *config.Config) (*Client, error) {
@@ -60,8 +62,9 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	service.BuildkitSupport = checkBuildkitSupport(cli)
 
 	return &Client{
-		client: cli,
-		cfg:    cfg,
+		client:     cli,
+		cfg:        cfg,
+		operations: operations.NewManager(cli),
 	}, nil
 }
 
@@ -69,111 +72,115 @@ func (c *Client) Close() error {
 	return c.client.Close()
 }
 
-func (c *Client) Start(ctx context.Context,
-	serviceBuilders ...service.Builder) error {
-	defer func() {
-		if !c.cfg.Detach {
-			err := c.Stop(context.Background(), serviceBuilders...)
-			if err != nil {
-				logging.Error("Failed to stop containers", err)
-			}
-		}
-	}()
-
+func (c *Client) Start(ctx context.Context, serviceBuilders ...service.Builder) error {
+	// Create network and volume if they don't exist
 	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
-	err := c.createNetworkIfNotExists(ctx, namespace)
-	if err != nil {
+	if err := c.createNetworkIfNotExists(ctx, namespace); err != nil {
 		return eris.Wrap(err, "Failed to create network")
 	}
 
-	err = c.processVolume(ctx, CREATE, namespace)
-	if err != nil {
+	if err := c.processVolume(ctx, CREATE, namespace); err != nil {
 		return eris.Wrap(err, "Failed to create volume")
 	}
 
-	// get all services
-	dockerServices := make([]service.Service, 0)
+	// Initialize services
+	dockerServices := make([]service.Service, 0, len(serviceBuilders))
 	for _, sb := range serviceBuilders {
-		ds := sb(c.cfg)
-		dockerServices = append(dockerServices, ds)
+		dockerServices = append(dockerServices, sb(c.cfg))
 	}
 
-	// Pull all images before starting containers
-	err = c.pullImages(ctx, dockerServices...)
-	if err != nil {
+	// Pull and build images
+	if err := c.pullImages(ctx, dockerServices...); err != nil {
 		return eris.Wrap(err, "Failed to pull images")
 	}
 
-	// Build all images before starting containers
 	if c.cfg.Build {
-		err = c.buildImages(ctx, dockerServices...)
-		if err != nil {
+		if err := c.buildImages(ctx, dockerServices...); err != nil {
 			return eris.Wrap(err, "Failed to build images")
 		}
 	}
 
-	// Start all containers
-	err = c.processMultipleContainers(ctx, START, dockerServices...)
-	if err != nil {
-		return eris.Wrap(err, "Failed to start containers")
+	// Start containers using operations manager
+	for _, ds := range dockerServices {
+		if err := c.operations.ServiceOperation(ctx, ds, func(op operations.ContainerOperation) error {
+			return c.operations.StartContainer(ctx, op)
+		}); err != nil {
+			return eris.Wrapf(err, "Failed to start container %s", ds.Name)
+		}
 	}
 
-	// log containers if not detached
+	// Log containers if not detached
 	if !c.cfg.Detach {
 		c.logMultipleContainers(ctx, dockerServices...)
+	}
+
+	// Stop containers when context is done if not detached
+	if !c.cfg.Detach {
+		go func() {
+			<-ctx.Done()
+			err := c.Stop(context.Background(), serviceBuilders...)
+			if err != nil {
+				logging.Error("Failed to stop containers", err)
+			}
+		}()
 	}
 
 	return nil
 }
 
 func (c *Client) Stop(ctx context.Context, serviceBuilders ...service.Builder) error {
-	// get all services
-	dockerServices := make([]service.Service, 0)
+	// Initialize services
+	dockerServices := make([]service.Service, 0, len(serviceBuilders))
 	for _, sb := range serviceBuilders {
-		ds := sb(c.cfg)
-		dockerServices = append(dockerServices, ds)
+		dockerServices = append(dockerServices, sb(c.cfg))
 	}
 
-	// Stop all containers
-	err := c.processMultipleContainers(ctx, STOP, dockerServices...)
-	if err != nil {
-		return eris.Wrap(err, "Failed to stop containers")
+	// Stop containers using operations manager
+	for _, ds := range dockerServices {
+		if err := c.operations.ServiceOperation(ctx, ds, func(op operations.ContainerOperation) error {
+			return c.operations.StopContainer(ctx, op)
+		}); err != nil {
+			return eris.Wrapf(err, "Failed to stop container %s", ds.Name)
+		}
 	}
 
 	return nil
 }
 
 func (c *Client) Purge(ctx context.Context, serviceBuilders ...service.Builder) error {
-	// get all services
-	dockerServices := make([]service.Service, 0)
+	// Initialize services
+	dockerServices := make([]service.Service, 0, len(serviceBuilders))
 	for _, sb := range serviceBuilders {
-		ds := sb(c.cfg)
-		dockerServices = append(dockerServices, ds)
+		dockerServices = append(dockerServices, sb(c.cfg))
 	}
 
-	// remove all containers
-	err := c.processMultipleContainers(ctx, REMOVE, dockerServices...)
-	if err != nil {
-		return eris.Wrap(err, "Failed to remove containers")
+	// Remove containers using operations manager
+	for _, ds := range dockerServices {
+		if err := c.operations.ServiceOperation(ctx, ds, func(op operations.ContainerOperation) error {
+			return c.operations.RemoveContainer(ctx, op)
+		}); err != nil {
+			return eris.Wrapf(err, "Failed to remove container %s", ds.Name)
+		}
 	}
 
-	err = c.processVolume(ctx, REMOVE, c.cfg.DockerEnv["CARDINAL_NAMESPACE"])
-	if err != nil {
+	// Remove volume
+	if err := c.processVolume(ctx, REMOVE, c.cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *Client) Restart(ctx context.Context,
-	serviceBuilders ...service.Builder) error {
-	// stop containers
-	err := c.Stop(ctx, serviceBuilders...)
-	if err != nil {
-		return err
+func (c *Client) Restart(ctx context.Context, serviceBuilders ...service.Builder) error {
+	if err := c.Stop(ctx, serviceBuilders...); err != nil {
+		return eris.Wrap(err, "Failed to stop containers during restart")
 	}
 
-	return c.Start(ctx, serviceBuilders...)
+	if err := c.Start(ctx, serviceBuilders...); err != nil {
+		return eris.Wrap(err, "Failed to start containers during restart")
+	}
+
+	return nil
 }
 
 func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (string, error) {
