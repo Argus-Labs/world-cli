@@ -14,6 +14,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
+	"pkg.world.dev/world-cli/config"
 )
 
 var (
@@ -35,15 +36,36 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	// Set up environment variables with error checking
-	//nolint:tenv // testing.Setenv is not available in current Go version
-	if err := os.Setenv("CARDINAL_NAMESPACE", "test-cardinal"); err != nil {
-		panic(err)
+	// Initialize config with Docker environment variables
+	cfg, err := config.GetConfig()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get config: %v", err))
 	}
 
-	// Verify environment variable is set correctly
-	if val := os.Getenv("CARDINAL_NAMESPACE"); val != "test-cardinal" {
-		panic("CARDINAL_NAMESPACE environment variable not set correctly")
+	// Set up Docker environment variables
+	if cfg.DockerEnv == nil {
+		cfg.DockerEnv = make(map[string]string)
+	}
+
+	// Set required environment variables
+	cfg.DockerEnv["CARDINAL_NAMESPACE"] = "test-cardinal"
+	cfg.DockerEnv["DA_AUTH_TOKEN"] = "test-token"
+	cfg.DockerEnv["DA_BASE_URL"] = "http://localhost:26657"
+	cfg.DockerEnv["DA_NAMESPACE_ID"] = "test-namespace"
+
+	// Set environment variables for backward compatibility
+	//nolint:tenv // testing.Setenv is not available in current Go version
+	if err := os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"]); err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("DA_AUTH_TOKEN", cfg.DockerEnv["DA_AUTH_TOKEN"]); err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("DA_BASE_URL", cfg.DockerEnv["DA_BASE_URL"]); err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("DA_NAMESPACE_ID", cfg.DockerEnv["DA_NAMESPACE_ID"]); err != nil {
+		panic(err)
 	}
 
 	// Run tests
@@ -222,6 +244,10 @@ func TestDev(t *testing.T) {
 		assert.NilError(t, err)
 	}()
 
+	// Get config and update paths for this test
+	cfg, err := config.GetConfig()
+	assert.NilError(t, err)
+
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
@@ -236,10 +262,18 @@ func TestDev(t *testing.T) {
 	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
 
+	// Update config with correct paths for this test
+	cfg.RootDir = sgtDir
+	cfg.GameDir = "cardinal"
+
 	// Verify cardinal directory exists and is accessible
 	cardinalDir := filepath.Join(sgtDir, "cardinal")
 	_, err = os.Stat(cardinalDir)
 	assert.NilError(t, err, "cardinal directory not found in project root")
+
+	// Ensure environment variables are set for this test
+	err = os.Setenv("CARDINAL_NAMESPACE", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	assert.NilError(t, err)
 
 	// Start cardinal dev
 	ctx, cancel := context.WithCancel(context.Background())
