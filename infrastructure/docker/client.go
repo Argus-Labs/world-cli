@@ -16,34 +16,19 @@ import (
 	logger "pkg.world.dev/world-cli/logging"
 )
 
+type processType = types.ProcessType
+
 const (
-	START processType = iota
-	STOP
-	REMOVE
-	CREATE
+	START  = types.START
+	STOP   = types.STOP
+	REMOVE = types.REMOVE
+	CREATE = types.CREATE
 )
 
 var (
-	processName = map[processType]string{
-		START:  "start",
-		STOP:   "stop",
-		REMOVE: "remove",
-		CREATE: "create",
-	}
-
-	processInitName = map[processType]string{
-		START:  "starting",
-		STOP:   "stopping",
-		REMOVE: "removing",
-		CREATE: "creating",
-	}
-
-	processFinishName = map[processType]string{
-		START:  "started",
-		STOP:   "stopped",
-		REMOVE: "removed",
-		CREATE: "created",
-	}
+	processName     = types.ProcessName
+	processInitName = types.ProcessInitName
+	processFinishName = types.ProcessFinishName
 )
 
 type Client struct {
