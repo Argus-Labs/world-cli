@@ -9,7 +9,7 @@ import (
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/config"
 )
 
 const (
@@ -73,7 +73,7 @@ func getLastLoggedTime() (time.Time, error) {
 
 // getTimestampFilePath returns the path to the timestamp file.
 func getTimestampFilePath() (string, error) {
-	configDir, err := globalconfig.GetConfigDir()
+	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return "", err
 	}

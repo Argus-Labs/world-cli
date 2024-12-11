@@ -9,8 +9,8 @@ import (
 	"github.com/docker/go-connections/nat"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/logging"
 )
 
 var (
@@ -65,7 +65,7 @@ func newPortMap(ports []int) nat.PortMap {
 func checkCardinalNamespace(cfg *config.Config) {
 	if cfg.DockerEnv["CARDINAL_NAMESPACE"] == "" {
 		// Set default namespace if not provided
-		logger.Warn("CARDINAL_NAMESPACE not provided, defaulting to defaultnamespace")
+		logging.Warn("CARDINAL_NAMESPACE not provided, defaulting to defaultnamespace")
 		cfg.DockerEnv["CARDINAL_NAMESPACE"] = "defaultnamespace"
 	}
 }

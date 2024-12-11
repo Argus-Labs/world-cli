@@ -3,8 +3,8 @@ package cardinal
 import (
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/logging"
 )
 
 func registerEditorFlag(cmd *cobra.Command, defaultEnable bool) {
@@ -14,6 +14,6 @@ func registerEditorFlag(cmd *cobra.Command, defaultEnable bool) {
 func registerConfigAndVerboseFlags(cmds ...*cobra.Command) {
 	for _, cmd := range cmds {
 		config.AddConfigFlag(cmd)
-		logger.AddVerboseFlag(cmd)
+		logging.AddVerboseFlag(cmd)
 	}
 }

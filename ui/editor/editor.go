@@ -16,8 +16,8 @@ import (
 	"github.com/rotisserie/eris"
 	"golang.org/x/mod/modfile"
 
-	"pkg.world.dev/world-cli/common/globalconfig"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/logging"
 )
 
 const (
@@ -59,7 +59,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	// Get the version map
 	cardinalVersionMap, err := getVersionMap(versionMapURL)
 	if err != nil {
-		logger.Warn("Failed to get version map, using default version map")
+		logging.Warn("Failed to get version map, using default version map")
 		cardinalVersionMap = defaultCardinalVersionMap
 	}
 
@@ -88,7 +88,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 		os.RemoveAll(targetEditorDir)
 	}
 
-	configDir, err := globalconfig.GetConfigDir()
+	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return err
 	}

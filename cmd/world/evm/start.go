@@ -9,10 +9,10 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker"
-	"pkg.world.dev/world-cli/common/docker/service"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/commands"
 )
 
@@ -80,11 +80,11 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 	cfg.Debug = false
 	cfg.Detach = true
 	cfg.Timeout = -1
-	logger.Println("starting DA docker service for dev mode...")
+	logging.Println("starting DA docker service for dev mode...")
 	if err := dockerClient.Start(ctx, service.CelestiaDevNet); err != nil {
 		return eris.Wrapf(err, "error starting %s docker container", daService)
 	}
-	logger.Println("started DA service...")
+	logging.Println("started DA service...")
 
 	daToken, err := getDAToken(ctx, cfg, dockerClient)
 	if err != nil {
@@ -96,7 +96,7 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 		EnvDANamespaceID: "67480c4a88c4d12935d4",
 	}
 	for key, value := range envOverrides {
-		logger.Printf("overriding config value %q to %q\n", key, value)
+		logging.Printf("overriding config value %q to %q\n", key, value)
 		cfg.DockerEnv[key] = value
 	}
 	return nil

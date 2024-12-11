@@ -9,7 +9,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/config"
 )
 
 func getNakamaContainerName(cfg *config.Config) string {

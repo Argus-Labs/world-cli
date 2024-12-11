@@ -9,8 +9,6 @@ import (
 	"github.com/pelletier/go-toml"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-
-	"pkg.world.dev/world-cli/common/logger"
 )
 
 const (
@@ -142,7 +140,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 		}
 	}
 
-	logger.Debugf("successfully loaded config from %q", filename)
+	fmt.Printf("successfully loaded config from %q\n", filename)
 
 	return &cfg, nil
 }

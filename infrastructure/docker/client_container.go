@@ -16,7 +16,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
 )

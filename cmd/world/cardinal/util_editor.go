@@ -10,7 +10,7 @@ import (
 	"github.com/rotisserie/eris"
 	"golang.org/x/sync/errgroup"
 
-	"pkg.world.dev/world-cli/common/editor"
+	"pkg.world.dev/world-cli/ui/editor"
 )
 
 const ceReadTimeout = 5 * time.Second

@@ -12,7 +12,7 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/config"
 )
 
 const (
@@ -51,10 +51,6 @@ func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
 	if err := cmd.Run(); err != nil {
 		var exitCode *exec.ExitError
 		if errors.As(err, &exitCode) {
-			// Ignore exit codes 130, 137, and 143 as they are expected to be returned on termination.
-			// Exit code 130: Container terminated by Ctrl+C
-			// Exit code 137: Container terminated by SIGKILL
-			// Exit code 143: Container terminated by SIGTERM
 			expectedExitCodes := []int{130, 137, 143}
 			if slices.Contains(expectedExitCodes, exitCode.ExitCode()) {
 				return nil
@@ -66,10 +62,6 @@ func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
 	return nil
 }
 
-// DockerStart starts a given docker container by name.
-// Rebuilds the image if `build` is true
-// Runs in detach mode if `detach` is true
-// Runs with the debug docker compose, if `debug` is true
 func DockerStart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
 		return eris.New("no service names provided")
@@ -96,7 +88,6 @@ func DockerStart(cfg *config.Config, services []DockerService) error {
 	return nil
 }
 
-// DockerStartAll starts both cardinal and nakama
 func DockerStartAll(cfg *config.Config) error {
 	services := []DockerService{
 		DockerServiceNakama,
@@ -113,7 +104,6 @@ func DockerStartAll(cfg *config.Config) error {
 	return DockerStart(cfg, services)
 }
 
-// DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
 func DockerRestart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
 		return eris.New("no service names provided")
@@ -133,8 +123,6 @@ func DockerRestart(cfg *config.Config, services []DockerService) error {
 	return nil
 }
 
-// DockerStop stops running specified docker containers (does not remove volumes).
-// If you want to reset all the services state, use DockerPurge
 func DockerStop(services []DockerService) error {
 	if services == nil {
 		return eris.New("no service names provided")
@@ -145,7 +133,6 @@ func DockerStop(services []DockerService) error {
 	return nil
 }
 
-// DockerStopAll stops all running docker containers (does not remove volumes).
 func DockerStopAll() error {
 	return DockerStop([]DockerService{
 		DockerServiceCardinal,
@@ -156,26 +143,18 @@ func DockerStopAll() error {
 	})
 }
 
-// DockerPurge stops and deletes all docker containers and data volumes
-// This will completely wipe the state, if you only want to stop the containers, use DockerStop
 func DockerPurge() error {
 	return dockerCompose("down", "--volumes")
 }
 
-// dockerArgs converts a string of docker args and slice of DockerService to a single slice of strings.
-// We do this so we can pass variadic args cleanly.
 func dockerArgs(args string, services []DockerService, flags ...string) []string {
 	argsSlice := strings.Split(args, " ")
 
 	res := make([]string, 0, len(argsSlice)+len(services)+len(flags))
 
-	// split prefix and append them to slice of strings
 	res = append(res, argsSlice...)
-
-	// append flags to slice of strings
 	res = append(res, flags...)
 
-	// convert DockerService to string and append them to slice of strings
 	for _, s := range services {
 		res = append(res, string(s))
 	}

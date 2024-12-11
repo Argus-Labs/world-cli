@@ -3,8 +3,8 @@ package cardinal
 import (
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker"
 )
 
 // restartCmd restarts your Cardinal game shard stack
