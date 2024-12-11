@@ -7,8 +7,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/logging"
 )
 
 func getNakamaDBContainerName(cfg *config.Config) string {
@@ -21,7 +21,7 @@ func NakamaDB(cfg *config.Config) Service {
 	// Set default password if not provided
 	dbPassword := cfg.DockerEnv["DB_PASSWORD"]
 	if dbPassword == "" {
-		logger.Warn("Using default DB_PASSWORD, please change it.")
+		logging.Warn("Using default DB_PASSWORD, please change it.")
 		dbPassword = "very_unsecure_password_please_change" //nolint:gosec // This is a default password
 	}
 

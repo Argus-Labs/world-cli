@@ -6,7 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 
-	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/config"
 )
 
 var containerCmd = `sh -s <<EOF

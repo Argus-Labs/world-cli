@@ -6,7 +6,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 
-	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/config"
 )
 
 func getJaegerContainerName(cfg *config.Config) string {
