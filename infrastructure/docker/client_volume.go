@@ -8,19 +8,19 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/ui/component/multispinner"
+	"pkg.world.dev/world-cli/ui/component/spinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
 func (c *Client) processVolume(ctx context.Context, processType processType, volumeName string) error {
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
-	p := tea.NewProgram(multispinner.CreateSpinner([]string{volumeName}, cancel))
+	p := tea.NewProgram(spinner.CreateSpinner([]string{volumeName}, cancel))
 
 	errChan := make(chan error, 1)
 
 	go func() {
-		p.Send(multispinner.ProcessState{
+		p.Send(spinner.ProcessState{
 			State: processInitName[processType],
 			Type:  "volume",
 			Name:  volumeName,
@@ -28,7 +28,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 
 		volumes, err := c.client.VolumeList(ctx, volume.ListOptions{})
 		if err != nil {
-			p.Send(multispinner.ProcessState{
+			p.Send(spinner.ProcessState{
 				Icon:   style.CrossIcon.Render(),
 				Type:   "volume",
 				Name:   volumeName,
@@ -64,7 +64,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 		}
 
 		if err != nil {
-			p.Send(multispinner.ProcessState{
+			p.Send(spinner.ProcessState{
 				Icon:   style.CrossIcon.Render(),
 				Type:   "volume",
 				Name:   volumeName,
@@ -76,7 +76,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 			return
 		}
 
-		p.Send(multispinner.ProcessState{
+		p.Send(spinner.ProcessState{
 			Icon:  style.TickIcon.Render(),
 			Type:  "volume",
 			Name:  volumeName,
@@ -87,7 +87,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 
 	// Run the program
 	if _, err := p.Run(); err != nil {
-		return eris.Wrap(err, "Failed to run multispinner")
+		return eris.Wrap(err, "Failed to run spinner")
 	}
 
 	// Close the error channel and check for errors

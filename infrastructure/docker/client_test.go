@@ -1,4 +1,4 @@
-package infrastructure/docker
+package docker
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker/service"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/config"
+	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/logging"
+	"pkg.world.dev/world-cli/ui/commands"
 )
 
 const (
@@ -31,14 +31,14 @@ func TestMain(m *testing.M) {
 
 	dockerClient, err := NewClient(cfg)
 	if err != nil {
-		logger.Errorf("Failed to create docker client: %v", err)
+		logging.Errorf("Failed to create docker client: %v", err)
 		os.Exit(1)
 	}
 
 	err = dockerClient.Purge(context.Background(), service.Nakama,
 		service.Cardinal, service.Redis, service.NakamaDB, service.Jaeger, service.Prometheus)
 	if err != nil {
-		logger.Errorf("Failed to purge containers: %v", err)
+		logging.Errorf("Failed to purge containers: %v", err)
 		os.Exit(1)
 	}
 
@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 
 	err = dockerClient.Close()
 	if err != nil {
-		logger.Errorf("Failed to close docker client: %v", err)
+		logging.Errorf("Failed to close docker client: %v", err)
 		os.Exit(1)
 	}
 
@@ -184,7 +184,7 @@ func TestBuild(t *testing.T) {
 
 	// Pull the repository
 	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
-	err = teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
+	err = commands.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
 	assert.NilError(t, err)
 
 	// Preparation

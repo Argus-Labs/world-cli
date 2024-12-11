@@ -7,19 +7,19 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/ui/component/multispinner"
+	"pkg.world.dev/world-cli/ui/component/spinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
 func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName string) error {
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
-	p := tea.NewProgram(multispinner.CreateSpinner([]string{networkName}, cancel))
+	p := tea.NewProgram(spinner.CreateSpinner([]string{networkName}, cancel))
 
 	errChan := make(chan error, 1)
 
 	go func() {
-		p.Send(multispinner.ProcessState{
+		p.Send(spinner.ProcessState{
 			State: "creating",
 			Type:  "network",
 			Name:  networkName,
@@ -27,7 +27,7 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 
 		networks, err := c.client.NetworkList(ctx, network.ListOptions{})
 		if err != nil {
-			p.Send(multispinner.ProcessState{
+			p.Send(spinner.ProcessState{
 				Icon:   style.CrossIcon.Render(),
 				Type:   "network",
 				Name:   networkName,
@@ -52,7 +52,7 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 				Driver: "bridge",
 			})
 			if err != nil {
-				p.Send(multispinner.ProcessState{
+				p.Send(spinner.ProcessState{
 					Icon:   style.CrossIcon.Render(),
 					Type:   "network",
 					Name:   networkName,
@@ -65,7 +65,7 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 			}
 		}
 
-		p.Send(multispinner.ProcessState{
+		p.Send(spinner.ProcessState{
 			Icon:  style.TickIcon.Render(),
 			Type:  "network",
 			Name:  networkName,
@@ -76,7 +76,7 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 
 	// Run the program
 	if _, err := p.Run(); err != nil {
-		return eris.Wrap(err, "Failed to run multispinner")
+		return eris.Wrap(err, "Failed to run spinner")
 	}
 
 	// Close the error channel and check for errors
