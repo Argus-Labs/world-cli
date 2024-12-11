@@ -7,14 +7,14 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 )
 
-func getCelestiaDevNetContainerName(cfg *config.Config) string {
+func getCelestiaDevNetContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-celestia-devnet", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func CelestiaDevNet(cfg *config.Config) Service {
+func CelestiaDevNet(cfg *globalconfig.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 

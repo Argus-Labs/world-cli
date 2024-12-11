@@ -9,14 +9,14 @@ import (
 	"github.com/docker/docker/api/types/container"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 )
 
-func getNakamaContainerName(cfg *config.Config) string {
+func getNakamaContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-nakama", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Nakama(cfg *config.Config) Service {
+func Nakama(cfg *globalconfig.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 

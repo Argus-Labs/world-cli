@@ -9,10 +9,10 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/infrastructure/docker"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
-	"pkg.world.dev/world-cli/logging"
+	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/commands"
 )
 
@@ -21,7 +21,7 @@ var startCmd = &cobra.Command{
 	Short: "Start the EVM base shard. Use --da-auth-token to pass in an auth token directly.",
 	Long:  "Start the EVM base shard. Requires connection to celestia DA.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig()
+		cfg, err := globalconfig.GetConfig()
 		if err != nil {
 			return err
 		}
@@ -75,16 +75,16 @@ func init() {
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
 // variable with the token from the locally running container.
-func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) error {
+func validateDevDALayer(ctx context.Context, cfg *globalconfig.Config, dockerClient *docker.Client) error {
 	cfg.Build = true
 	cfg.Debug = false
 	cfg.Detach = true
 	cfg.Timeout = -1
-	logging.Println("starting DA docker service for dev mode...")
+	logger.Println("starting DA docker service for dev mode...")
 	if err := dockerClient.Start(ctx, service.CelestiaDevNet); err != nil {
 		return eris.Wrapf(err, "error starting %s docker container", commands.DockerServiceDA)
 	}
-	logging.Println("started DA service...")
+	logger.Println("started DA service...")
 
 	daToken, err := getDAToken(ctx, cfg, dockerClient)
 	if err != nil {
@@ -96,7 +96,7 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 		EnvDANamespaceID: "67480c4a88c4d12935d4",
 	}
 	for key, value := range envOverrides {
-		logging.Printf("overriding config value %q to %q\n", key, value)
+		logger.Printf("overriding config value %q to %q\n", key, value)
 		cfg.DockerEnv[key] = value
 	}
 	return nil
@@ -104,7 +104,7 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 
 // validateProdDALayer assumes the DA layer is running somewhere else and validates the required world.toml
 // variables are non-empty.
-func validateProdDALayer(cfg *config.Config) error {
+func validateProdDALayer(cfg *globalconfig.Config) error {
 	requiredEnvVariables := []string{
 		EnvDAAuthToken,
 		EnvDABaseURL,
@@ -127,7 +127,7 @@ func validateProdDALayer(cfg *config.Config) error {
 	return nil
 }
 
-func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docker.Client) error {
+func validateDALayer(cmd *cobra.Command, cfg *globalconfig.Config, dockerClient *docker.Client) error {
 	devDA, err := cmd.Flags().GetBool(FlagUseDevDA)
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docke
 	return validateProdDALayer(cfg)
 }
 
-func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) (string, error) {
+func getDAToken(ctx context.Context, cfg *globalconfig.Config, dockerClient *docker.Client) (string, error) {
 	fmt.Println("Getting DA token")
 
 	containerName := service.CelestiaDevNet(cfg)

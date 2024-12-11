@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 
 	_ "embed"
 )
@@ -20,11 +20,11 @@ const (
 //go:embed cardinal.Dockerfile
 var dockerfileContent string
 
-func getCardinalContainerName(cfg *config.Config) string {
+func getCardinalContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-cardinal", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Cardinal(cfg *config.Config) Service {
+func Cardinal(cfg *globalconfig.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 

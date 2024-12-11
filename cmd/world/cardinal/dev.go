@@ -16,11 +16,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/infrastructure/docker"
 	"pkg.world.dev/world-cli/infrastructure/docker/service"
 	"pkg.world.dev/world-cli/infrastructure/utils"
-	"pkg.world.dev/world-cli/logging"
+	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
@@ -53,7 +53,7 @@ var devCmd = &cobra.Command{
 			return err
 		}
 
-		cfg, err := config.GetConfig()
+		cfg, err := globalconfig.GetConfig()
 		if err != nil {
 			return err
 		}
@@ -125,7 +125,7 @@ func init() {
 // startCardinalDevMode runs cardinal in dev mode.
 // If watch is true, it uses fresh for hot reload support
 // Otherwise, it runs cardinal using `go run .`
-func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error { //nolint:gocognit
+func startCardinalDevMode(ctx context.Context, cfg *globalconfig.Config, prettyLog bool) error { //nolint:gocognit
 	fmt.Println("Starting Cardinal...")
 	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop\n"))
 
@@ -140,7 +140,7 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 			redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
 			conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
 			if err != nil {
-				logging.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
+				logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -231,7 +231,7 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 ///////////////////
 
 // startRedis runs Redis in a Docker container
-func startRedis(ctx context.Context, cfg *config.Config) error {
+func startRedis(ctx context.Context, cfg *globalconfig.Config) error {
 	// Create an error group for managing redis lifecycle
 	group := new(errgroup.Group)
 

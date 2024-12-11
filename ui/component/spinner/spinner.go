@@ -1,7 +1,6 @@
 package spinner
 
 import (
-	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"

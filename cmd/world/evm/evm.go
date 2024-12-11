@@ -3,8 +3,8 @@ package evm
 import (
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/config"
-	"pkg.world.dev/world-cli/logging"
+	globalconfig "pkg.world.dev/world-cli/config"
+	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/commands"
 	"pkg.world.dev/world-cli/ui/style"
 )
@@ -34,7 +34,7 @@ func init() {
 
 func registerConfigAndVerboseFlags(cmds ...*cobra.Command) {
 	for _, cmd := range cmds {
-		config.AddConfigFlag(cmd)
-		logging.AddVerboseFlag(cmd)
+		globalconfig.AddConfigFlag(cmd)
+		logger.AddVerboseFlag(cmd)
 	}
 }

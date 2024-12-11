@@ -9,7 +9,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 	logger "pkg.world.dev/world-cli/logging"
 )
 
@@ -18,7 +18,7 @@ var (
 	BuildkitSupport bool
 )
 
-type Builder func(cfg *config.Config) Service
+type Builder func(cfg *globalconfig.Config) Service
 
 // Service is a configuration for a docker container
 // It contains the name of the container and a function to get the container and host config
@@ -62,7 +62,7 @@ func newPortMap(ports []int) nat.PortMap {
 	return portMap
 }
 
-func checkCardinalNamespace(cfg *config.Config) {
+func checkCardinalNamespace(cfg *globalconfig.Config) {
 	if cfg.DockerEnv["CARDINAL_NAMESPACE"] == "" {
 		// Set default namespace if not provided
 		logger.Warn("CARDINAL_NAMESPACE not provided, defaulting to defaultnamespace")

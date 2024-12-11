@@ -6,14 +6,14 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 
-	"pkg.world.dev/world-cli/config"
+	globalconfig "pkg.world.dev/world-cli/config"
 )
 
-func getJaegerContainerName(cfg *config.Config) string {
+func getJaegerContainerName(cfg *globalconfig.Config) string {
 	return fmt.Sprintf("%s-jaeger", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Jaeger(cfg *config.Config) Service {
+func Jaeger(cfg *globalconfig.Config) Service {
 	exposedPorts := []int{16686}
 
 	return Service{
