@@ -418,22 +418,18 @@ func (c *Client) pullImages(ctx context.Context, services ...types.Service) erro
 
 	// Pull each image concurrently
 	for imageName, platform := range images {
-		// Capture imageName and platform in the loop
-		imageName := imageName
-		platform := platform
-
 		// Create a new progress bar for this image
-		bar := p.AddBar(100,
+		bar := p.AddBar(types.ProgressBarMax,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
 			),
 		)
 
-		go func() {
+		go func(imageName, platform string) {
 			defer wg.Done()
 			c.handleImagePull(ctx, imageName, platform, bar, errChan)
-		}()
+		}(imageName, platform)
 	}
 
 	// Wait for all progress bars to complete
@@ -488,7 +484,7 @@ func (c *Client) handleImagePull(ctx context.Context, imageName, platform string
 	}
 
 	// Complete the progress bar
-	bar.SetCurrent(100)
+	bar.SetCurrent(types.ProgressBarMax)
 }
 
 // handlePullEvent processes a single Docker pull event and updates progress
@@ -537,7 +533,7 @@ func (h *PullEventHandler) updateProgress(event map[string]interface{}) {
 		return
 	}
 
-	calculatedProgress := current * 100 / total
+	calculatedProgress := current * float64(types.ProgressBarMax) / total
 	if calculatedProgress > *h.progress {
 		h.bar.SetCurrent(int64(calculatedProgress))
 		*h.progress = calculatedProgress

@@ -180,7 +180,7 @@ func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (st
 
 	// Read and demultiplex the output
 	var outputBuf bytes.Buffer
-	header := make([]byte, 8) // Docker message header size (8 bytes)
+	header := make([]byte, types.DockerHeaderSize) // Docker message header size
 
 	for {
 		_, err := io.ReadFull(resp.Reader, header)
@@ -194,7 +194,7 @@ func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (st
 		stream := header[0]
 		size := binary.BigEndian.Uint32(header[4:8])
 
-		if stream == 1 { // stdout
+		if stream == types.StdoutStreamType { // stdout
 			if _, err := io.CopyN(&outputBuf, resp.Reader, int64(size)); err != nil {
 				return "", eris.Wrapf(err, "Failed to read stdout")
 			}

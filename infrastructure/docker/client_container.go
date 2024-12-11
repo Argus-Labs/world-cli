@@ -200,7 +200,7 @@ func (c *Client) logMultipleContainers(ctx context.Context, services ...types.Se
 					err := c.logContainerOutput(ctx, id, i)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						fmt.Printf("Error logging container %s: %v. Reattaching...\n", id, err)
-						time.Sleep(2 * time.Second)
+						time.Sleep(types.ServiceTimeout)
 					}
 				}
 			}
@@ -241,7 +241,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 	reader := bufio.NewReader(out)
 	for {
 		// Read the 8-byte header
-		header := make([]byte, 8)
+		header := make([]byte, types.DockerHeaderSize)
 		if _, err := io.ReadFull(reader, header); err != nil {
 			if err == io.EOF {
 				break
@@ -267,9 +267,9 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 		cleanLog := removeFirstAnsiEscapeCode(string(payload))
 
 		// Print the cleaned log message
-		if streamType == 1 { // Stdout
+		if streamType == types.StdoutStreamType { // Stdout
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
-		} else if streamType == 2 { // Stderr
+		} else if streamType == types.StderrStreamType { // Stderr
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		}
 	}
