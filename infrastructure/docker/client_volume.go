@@ -8,11 +8,12 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/rotisserie/eris"
 
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	"pkg.world.dev/world-cli/ui/component/multispinner"
 	"pkg.world.dev/world-cli/ui/style"
 )
 
-func (c *Client) processVolume(ctx context.Context, processType processType, volumeName string) error {
+func (c *Client) processVolume(ctx context.Context, processType types.ProcessType, volumeName string) error {
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
 	p := tea.NewProgram(multispinner.CreateSpinner([]string{volumeName}, cancel))
@@ -21,7 +22,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 
 	go func() {
 		p.Send(multispinner.ProcessState{
-			State: processInitName[processType],
+			State: types.ProcessInitName[processType],
 			Type:  "volume",
 			Name:  volumeName,
 		})
@@ -32,7 +33,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 				Icon:   style.CrossIcon.Render(),
 				Type:   "volume",
 				Name:   volumeName,
-				State:  processInitName[processType],
+				State:  types.ProcessInitName[processType],
 				Detail: err.Error(),
 				Done:   true,
 			})
@@ -49,16 +50,16 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 		}
 
 		switch processType {
-		case CREATE:
+		case types.CREATE:
 			if !volumeExist {
 				_, err = c.client.VolumeCreate(ctx, volume.CreateOptions{Name: volumeName})
 			}
-		case REMOVE:
+		case types.REMOVE:
 			if volumeExist {
 				err = c.client.VolumeRemove(ctx, volumeName, true)
 			}
-		case START, STOP:
-			err = eris.New(fmt.Sprintf("%s process type is not supported for volumes", processName[processType]))
+		case types.START, types.STOP:
+			err = eris.New(fmt.Sprintf("%s process type is not supported for volumes", types.ProcessName[processType]))
 		default:
 			err = eris.New(fmt.Sprintf("Unknown process type: %d", processType))
 		}
@@ -68,11 +69,11 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 				Icon:   style.CrossIcon.Render(),
 				Type:   "volume",
 				Name:   volumeName,
-				State:  processInitName[processType],
+				State:  types.ProcessInitName[processType],
 				Detail: err.Error(),
 				Done:   true,
 			})
-			errChan <- eris.Wrapf(err, "Failed to %s volume %s", processName[processType], volumeName)
+			errChan <- eris.Wrapf(err, "Failed to %s volume %s", types.ProcessName[processType], volumeName)
 			return
 		}
 
@@ -80,7 +81,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 			Icon:  style.TickIcon.Render(),
 			Type:  "volume",
 			Name:  volumeName,
-			State: processFinishName[processType],
+			State: types.ProcessFinishName[processType],
 			Done:  true,
 		})
 	}()

@@ -11,6 +11,9 @@ import (
 	globalconfig "pkg.world.dev/world-cli/config"
 )
 
+// BuildkitSupport is a flag to check if buildkit is supported
+var BuildkitSupport bool
+
 const (
 	// START represents starting a container/service
 	START ProcessType = iota
@@ -28,6 +31,7 @@ var (
 		START:  "start",
 		STOP:   "stop",
 		REMOVE: "remove",
+		// CREATE represents creating a container/service
 		CREATE: "create",
 	}
 

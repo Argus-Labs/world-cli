@@ -12,13 +12,15 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	globalconfig "pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/infrastructure/docker"
-	"pkg.world.dev/world-cli/infrastructure/docker/service"
+	"pkg.world.dev/world-cli/infrastructure/docker/types"
 	"pkg.world.dev/world-cli/infrastructure/utils"
 	logger "pkg.world.dev/world-cli/logging"
 	"pkg.world.dev/world-cli/ui/style"
@@ -245,10 +247,27 @@ func startRedis(ctx context.Context, cfg *globalconfig.Config) error {
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
 
+	// Create Redis builder function
+	redisBuilder := func(cfg *globalconfig.Config) types.Service {
+		return types.Service{
+			Name: fmt.Sprintf("%s-redis", cfg.DockerEnv["CARDINAL_NAMESPACE"]),
+			Config: container.Config{
+				Image: "redis:latest",
+			},
+			HostConfig: container.HostConfig{
+				PortBindings: map[nat.Port][]nat.PortBinding{
+					"6379/tcp": {{HostPort: "6379"}},
+				},
+				RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+				NetworkMode:   container.NetworkMode(cfg.DockerEnv["CARDINAL_NAMESPACE"]),
+			},
+		}
+	}
+
 	// Start Redis container
 	group.Go(func() error {
 		cfg.Detach = true
-		if err := dockerClient.Start(ctx, service.Redis); err != nil {
+		if err := dockerClient.Start(ctx, redisBuilder); err != nil {
 			cancel()
 			return eris.Wrap(err, "Encountered an error with Redis")
 		}
@@ -256,13 +275,10 @@ func startRedis(ctx context.Context, cfg *globalconfig.Config) error {
 	})
 
 	// Goroutine to handle termination
-	// There are two ways that a termination sequence can be triggered:
-	// 1) The redis start goroutine returns a non-nil error
-	// 2) The parent context is canceled for whatever reason.
 	group.Go(func() error {
 		<-ctx.Done()
 		// Using context background because cmd context is already done
-		if err := dockerClient.Stop(context.Background(), service.Redis); err != nil {
+		if err := dockerClient.Stop(context.Background(), redisBuilder); err != nil {
 			return err
 		}
 		return nil
