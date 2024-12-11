@@ -96,6 +96,9 @@ func TestExecuteDoctorCommand(t *testing.T) {
 }
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
+	// Set required environment variables for Docker before any operations
+	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal")
+
 	// Create Cardinal
 	gameDir, err := os.MkdirTemp("", "game-template-start")
 	assert.NilError(t, err)
@@ -120,14 +123,14 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	err = createCmd.Execute()
 	assert.NilError(t, err)
 
-	// Change dir to project root and verify it exists
+	// Change dir to project root and verify cardinal directory exists
 	err = os.Chdir(sgtDir)
 	assert.NilError(t, err)
-	_, err = os.Stat("cardinal")
-	assert.NilError(t, err, "cardinal directory not found in project root")
 
-	// Set required environment variables for Docker
-	os.Setenv("CARDINAL_NAMESPACE", "test-cardinal")
+	// Verify cardinal directory exists and is accessible
+	cardinalDir := filepath.Join(sgtDir, "cardinal")
+	_, err = os.Stat(cardinalDir)
+	assert.NilError(t, err, "cardinal directory not found in project root")
 
 	// Start cardinal
 	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
@@ -252,11 +255,14 @@ func evmIsDown(t *testing.T) bool {
 
 func ServiceIsUp(name, address string, t *testing.T) bool {
 	up := false
-	for i := 0; i < 120; i++ {
+	maxAttempts := 30 // Reduce max attempts to 30
+	retryInterval := 200 * time.Millisecond // Shorter retry interval
+
+	for i := 0; i < maxAttempts; i++ {
 		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
-			time.Sleep(time.Second)
-			t.Logf("%s is not running, retrying...\n", name)
+			time.Sleep(retryInterval)
+			t.Logf("%s is not running, retrying... (attempt %d/%d)\n", name, i+1, maxAttempts)
 			continue
 		}
 		_ = conn.Close()
@@ -268,15 +274,18 @@ func ServiceIsUp(name, address string, t *testing.T) bool {
 
 func ServiceIsDown(name, address string, t *testing.T) bool {
 	down := false
-	for i := 0; i < 120; i++ {
+	maxAttempts := 30 // Reduce max attempts to 30
+	retryInterval := 200 * time.Millisecond // Shorter retry interval
+
+	for i := 0; i < maxAttempts; i++ {
 		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			down = true
 			break
 		}
 		_ = conn.Close()
-		time.Sleep(time.Second)
-		t.Logf("%s is still running, retrying...\n", name)
+		time.Sleep(retryInterval)
+		t.Logf("%s is still running, retrying... (attempt %d/%d)\n", name, i+1, maxAttempts)
 		continue
 	}
 	return down
