@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"pkg.world.dev/world-cli/cmd/world/root"
-	"pkg.world.dev/world-cli/config/globalconfig"
+	"pkg.world.dev/world-cli/config"
 	"pkg.world.dev/world-cli/telemetry"
 
 	_ "pkg.world.dev/world-cli/logging"
@@ -44,7 +44,7 @@ func main() {
 	defer telemetry.SentryFlush()
 
 	// Set up config directory "~/.worldcli/"
-	err := globalconfig.SetupConfigDir()
+	err := config.SetupConfigDir()
 	if err != nil {
 		log.Err(err).Msg("could not setup config folder")
 		return
