@@ -35,7 +35,7 @@ func init() {
 	if Env == "" {
 		Env = "DEV"
 	}
-	root.Env = Env
+	globalconfig.Env = Env
 }
 
 func main() {
