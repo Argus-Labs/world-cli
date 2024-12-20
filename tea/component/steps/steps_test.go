@@ -56,7 +56,7 @@ func TestModel_Update(t *testing.T) {
 
 	// Test complete step message with error
 	errorMsg := CompleteStepMsg{Err: assert.AnError}
-	newModel, _ := model.Update(errorMsg)
+	newModel, _ = model.Update(errorMsg)
 	assert.Equal(t, FAILED, newModel.Steps[1].Status, "Step should be marked as failed on error")
 	assert.Equal(t, assert.AnError, newModel.Steps[1].Err, "Error should be stored in the step")
 }
