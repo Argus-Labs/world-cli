@@ -44,7 +44,7 @@ func New() Model {
 
 // Init returns an initial command for the application to run
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 // Update handles incoming events and updates the model accordingly
