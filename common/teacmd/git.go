@@ -42,11 +42,15 @@ func git(args ...string) (string, error) {
 	env := map[string]string{
 		"GIT_COMMITTER_NAME":  "World CLI",
 		"GIT_COMMITTER_EMAIL": "no-reply@world.dev",
+		"GIT_TERMINAL_PROMPT": "0", // Disable git terminal prompts
 	}
 
 	_, err := sh.Exec(env, &outBuff, &errBuff, "git", args...)
 	if err != nil {
-		return "", err
+		return "", eris.Wrapf(err, "git command failed: %s", errBuff.String())
+	}
+	if errBuff.Len() > 0 {
+		return outBuff.String(), eris.Errorf("git command stderr: %s", errBuff.String())
 	}
 	return outBuff.String(), nil
 }
