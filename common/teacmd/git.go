@@ -52,11 +52,6 @@ func git(args ...string) (string, error) {
 }
 
 func GitCloneCmd(url string, targetDir string, initMsg string, progressChan chan<- GitCloneProgressMsg) error {
-	defer func() {
-		if progressChan != nil {
-			close(progressChan)
-		}
-	}()
 
 	// check targetDir exists
 	if _, err := os.Stat(targetDir); err == nil {
