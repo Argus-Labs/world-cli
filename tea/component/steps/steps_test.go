@@ -3,6 +3,7 @@ package steps
 import (
 	"testing"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,9 +15,11 @@ func TestModel_Init(t *testing.T) {
 	// Get the init command
 	cmd := model.Init()
 
-	// Verify that the command is not nil (it should be the spinner's Tick command)
-	assert.NotNil(t, cmd, "Init should return the spinner's Tick command")
+	// Verify that the command is not nil
+	assert.NotNil(t, cmd, "Init should return a non-nil command")
 
-	// Verify that the returned command is a tea.Cmd
-	var _ tea.Cmd = cmd // Type assertion to ensure cmd implements tea.Cmd
+	// Execute the command and verify it produces a spinner.TickMsg
+	msg := cmd()
+	_, ok := msg.(spinner.TickMsg)
+	assert.True(t, ok, "Init should return a command that produces spinner.TickMsg")
 }
