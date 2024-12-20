@@ -10,6 +10,7 @@ import (
 
 	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/tea/component/gitspinner"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -41,6 +42,8 @@ type WorldCreateModel struct { //nolint:decorder
 	args             []string
 	depStatus        []teacmd.DependencyStatus
 	depStatusErr     error
+	gitSpinner       gitspinner.Model
+	progressChan     chan teacmd.GitCloneProgressMsg
 }
 
 func NewWorldCreateModel(args []string) WorldCreateModel {
@@ -66,6 +69,8 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 		steps:            createSteps,
 		projectNameInput: pnInput,
 		args:             args,
+		gitSpinner:       gitspinner.New(),
+		progressChan:     make(chan teacmd.GitCloneProgressMsg),
 	}
 }
 
@@ -106,6 +111,12 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
+	case teacmd.GitCloneProgressMsg:
+		var cmd tea.Cmd
+		model, cmd := m.gitSpinner.Update(msg)
+		m.gitSpinner = model.(gitspinner.Model)
+		return m, cmd
+
 	case NewLogMsg:
 		m.logs = append(m.logs, msg.Log)
 		return m, nil
@@ -113,14 +124,17 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case steps.SignalStepStartedMsg:
 		// If step 1 is started, dispatch the git clone command
 		if msg.Index == 1 {
-			err := teacmd.GitCloneCmd(TemplateGitURL, m.projectNameInput.Value(), "Initial commit from World CLI")
-			teaCmd := func() tea.Msg {
-				return teacmd.GitCloneFinishMsg{Err: err}
-			}
+			go func() {
+				err := teacmd.GitCloneCmd(TemplateGitURL, m.projectNameInput.Value(), "Initial commit from World CLI", m.progressChan)
+				if err != nil {
+					m.progressChan <- teacmd.GitCloneProgressMsg{Status: "Error: " + err.Error()}
+				}
+				close(m.progressChan)
+			}()
 
 			return m, tea.Sequence(
 				NewLogCmd(style.ChevronIcon.Render()+"Cloning starter-game-template..."),
-				teaCmd,
+				m.gitSpinner.Init(),
 			)
 		}
 		if msg.Index == 2 { //nolint:gomnd
@@ -183,6 +197,8 @@ func (m WorldCreateModel) View() string {
 	output += "\n\n"
 	output += style.QuestionIcon.Render() + "What is your game shard name? " + m.projectNameInput.View()
 	output += "\n\n"
+	output += m.gitSpinner.View()
+	output += "\n"
 	output += strings.Join(m.logs, "\n")
 	output += "\n\n"
 

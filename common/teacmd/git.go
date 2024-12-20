@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +31,10 @@ type GitCloneFinishMsg struct {
 	Err error
 }
 
+type GitCloneProgressMsg struct {
+	Status string
+}
+
 func git(args ...string) (string, error) {
 	var outBuff, errBuff bytes.Buffer
 
@@ -46,71 +51,97 @@ func git(args ...string) (string, error) {
 	return outBuff.String(), nil
 }
 
-func GitCloneCmd(url string, targetDir string, initMsg string) error {
+func GitCloneCmd(url string, targetDir string, initMsg string, progressChan chan<- GitCloneProgressMsg) error {
+	defer func() {
+		if progressChan != nil {
+			close(progressChan)
+		}
+	}()
+
 	// check targetDir exists
 	if _, err := os.Stat(targetDir); err == nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Game shard named '%s' already exists", targetDir)}
 		return eris.Errorf("Game shard named '%s' already exists in this directory, "+
 			"please change the directory or use another name", targetDir)
 	}
 
+	progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Cloning %s into %s...", url, targetDir)}
 	_, err := git("clone", url, targetDir)
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to clone repository: %v", err)}
 		return err
 	}
+	progressChan <- GitCloneProgressMsg{Status: "Clone completed, checking out latest tag..."}
+
 	err = os.Chdir(targetDir)
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to change directory: %v", err)}
 		return err
 	}
 
 	rev, err := git("rev-list", "--tags", "--max-count=1")
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to get latest tag: %v", err)}
 		return err
 	}
 
 	tag, err := git("describe", "--tags", strings.TrimSpace(rev))
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to describe tag: %v", err)}
 		return err
 	}
 
 	_, err = git("checkout", strings.TrimSpace(tag))
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to checkout tag: %v", err)}
 		return err
 	}
+	progressChan <- GitCloneProgressMsg{Status: "Latest tag checked out, initializing repository..."}
 
 	err = os.RemoveAll(".git")
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to remove .git directory: %v", err)}
 		return err
 	}
 
 	_, err = git("init")
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to initialize repository: %v", err)}
 		return err
 	}
+	progressChan <- GitCloneProgressMsg{Status: "Repository initialized, updating module names..."}
 
 	err = refactorModuleName(oldModuleName, filepath.Base(targetDir))
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to update module names: %v", err)}
 		return err
 	}
 
 	rtrKey, err := generateRandomHexString(routerKeyLength)
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to generate router key: %v", err)}
 		return err
 	}
 
 	err = appendToToml(tomlFile, tomlSectionCommon, map[string]any{routerKey: rtrKey})
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to update configuration: %v", err)}
 		return err
 	}
+	progressChan <- GitCloneProgressMsg{Status: "Configuration updated, committing changes..."}
 
 	_, err = git("add", "-A")
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to stage changes: %v", err)}
 		return err
 	}
 
 	_, err = git("commit", "--author=\"World CLI <no-reply@world.dev>\"", "-m", initMsg)
 	if err != nil {
+		progressChan <- GitCloneProgressMsg{Status: fmt.Sprintf("Error: Failed to commit changes: %v", err)}
 		return err
 	}
+	progressChan <- GitCloneProgressMsg{Status: "Repository setup completed successfully"}
 
 	return nil
 }

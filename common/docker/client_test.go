@@ -184,7 +184,9 @@ func TestBuild(t *testing.T) {
 
 	// Pull the repository
 	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
-	err = teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
+	progressChan := make(chan teacmd.GitCloneProgressMsg)
+	err = teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI", progressChan)
+	close(progressChan)
 	assert.NilError(t, err)
 
 	// Preparation

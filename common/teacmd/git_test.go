@@ -51,8 +51,20 @@ func TestGitCloneCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// clean up before test
 			cleanUpDir(tt.param.targetDir)
+			progressChan := make(chan GitCloneProgressMsg)
 
-			err := GitCloneCmd(tt.param.url, tt.param.targetDir, tt.param.initMsg)
+			// Create a goroutine to read progress messages
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				for msg := range progressChan {
+					t.Logf("Progress: %s", msg.Status)
+				}
+			}()
+
+			err := GitCloneCmd(tt.param.url, tt.param.targetDir, tt.param.initMsg, progressChan)
+			<-done // Wait for progress messages to be processed
+
 			if tt.wantErr {
 				assert.Equal(t, sh.ExitStatus(err), tt.expected)
 			} else {
@@ -63,7 +75,6 @@ func TestGitCloneCmd(t *testing.T) {
 			cleanUpDir(tt.param.targetDir)
 		})
 	}
-}
 
 func cleanUpDir(targetDir string) {
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
