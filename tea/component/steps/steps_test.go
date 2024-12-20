@@ -15,8 +15,9 @@ func TestModel_Init(t *testing.T) {
 	// Get the init command
 	cmd := model.Init()
 
-	// Verify that the command is not nil
+	// Verify that the command is not nil and implements tea.Cmd
 	assert.NotNil(t, cmd, "Init should return a non-nil command")
+	var _ tea.Cmd = cmd
 
 	// Execute the command and verify it produces a spinner.TickMsg
 	msg := cmd()
