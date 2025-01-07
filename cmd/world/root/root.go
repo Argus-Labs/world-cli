@@ -19,6 +19,7 @@ import (
 
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
+	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -70,6 +71,9 @@ func init() {
 	// Register subcommands
 	rootCmd.AddCommand(cardinal.BaseCmd)
 	rootCmd.AddCommand(evm.BaseCmd)
+
+	// Register forge subcommand
+	rootCmd.AddCommand(forge.BaseCmd)
 
 	// Remove completion subcommand
 	rootCmd.CompletionOptions.DisableDefaultCmd = true

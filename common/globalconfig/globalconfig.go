@@ -11,16 +11,16 @@ import (
 )
 
 const (
-	configDir          = ".worldcli"
-	credentialFileName = "credential.json" //nolint:gosec // This is not a credential
+	configDir            = ".worldcli"
+	globalConfigFileName = "config.json"
 )
 
-type Credential struct {
-	Token string `json:"token"`
-	Name  string `json:"name"`
-}
+var (
+	// Env is the environment the CLI is running in
+	Env = "DEV"
+)
 
-func GetConfigDir() (string, error) {
+var GetConfigDir = func() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -29,50 +29,57 @@ func GetConfigDir() (string, error) {
 	return filepath.Join(homeDir, configDir), nil
 }
 
-func GetWorldForgeCredential() (Credential, error) {
-	var cred Credential
+type Credential struct {
+	Token string `json:"token"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+}
+
+type GlobalConfig struct {
+	OrganizationID string     `json:"organization_id"`
+	ProjectID      string     `json:"project_id"`
+	Credential     Credential `json:"credential"`
+}
+
+func GetGlobalConfig() (GlobalConfig, error) {
+	var config GlobalConfig
 
 	fullConfigDir, err := GetConfigDir()
 	if err != nil {
-		return cred, err
+		return config, err
 	}
 
-	tokenFile := filepath.Join(fullConfigDir, credentialFileName)
+	configFile := filepath.Join(fullConfigDir, globalConfigFileName)
 
-	file, err := os.ReadFile(tokenFile)
+	file, err := os.ReadFile(configFile)
 	if err != nil {
-		return cred, err
+		return config, err
 	}
 
-	// Unmarshal the token
-	err = json.Unmarshal(file, &cred)
+	// Unmarshal the config
+	err = json.Unmarshal(file, &config)
 	if err != nil {
-		logger.Error(eris.Wrap(err, "failed to unmarshal token"))
-		return cred, err
+		logger.Error(eris.Wrap(err, "failed to unmarshal config"))
+		return config, err
 	}
 
-	return cred, nil
+	return config, nil
 }
 
-func SetWorldForgeToken(name string, token string) error {
+func SaveGlobalConfig(globalConfig GlobalConfig) error {
 	fullConfigDir, err := GetConfigDir()
 	if err != nil {
 		return eris.Wrap(err, "failed to get config dir")
 	}
 
-	tokenFile := filepath.Join(fullConfigDir, credentialFileName)
+	configFile := filepath.Join(fullConfigDir, globalConfigFileName)
 
-	cred := Credential{
-		Token: token,
-		Name:  name,
-	}
-
-	credJSON, err := json.Marshal(cred)
+	configJSON, err := json.Marshal(globalConfig)
 	if err != nil {
-		return eris.Wrap(err, "failed to marshal token")
+		return eris.Wrap(err, "failed to marshal config")
 	}
 
-	return os.WriteFile(tokenFile, credJSON, 0600)
+	return os.WriteFile(configFile, configJSON, 0600)
 }
 
 func SetupConfigDir() error {
