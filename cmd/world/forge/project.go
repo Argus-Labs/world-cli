@@ -12,6 +12,8 @@ import (
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
+const MaxProjectNameLen = 50
+
 type project struct {
 	ID          string `json:"id"`
 	OrgID       string `json:"org_id"`
@@ -187,7 +189,7 @@ func inputProjectNameAndSlug() (string, string, error) {
 		}
 
 		// Check length (arbitrary max of 50 chars)
-		if len(name) > 50 {
+		if len(name) > MaxProjectNameLen {
 			fmt.Printf("Error: Project name cannot be longer than 50 characters\n")
 			attempts++
 			continue

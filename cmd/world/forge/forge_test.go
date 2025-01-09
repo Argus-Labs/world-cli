@@ -34,7 +34,7 @@ func (s *ForgeTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	// Create test server on port 8001
-	listener, err := net.Listen("tcp", ":8081")
+	listener, err := net.Listen("tcp", ":8001")
 	s.Require().NoError(err)
 
 	// Create test server

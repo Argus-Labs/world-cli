@@ -134,6 +134,7 @@ func destroy(ctx context.Context) error {
 	return nil
 }
 
+//nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
 func status(ctx context.Context) error {
 	globalConfig, err := globalconfig.GetGlobalConfig()
 	if err != nil {
@@ -158,11 +159,18 @@ func status(ctx context.Context) error {
 	var response map[string]any
 	err = json.Unmarshal(result, &response)
 	if err != nil {
-		return eris.Wrap(err, "Failed to unmarshal deployment status")
+		return eris.Wrap(err, "Failed to unmarshal deployment response")
 	}
 	var data map[string]any
 	if response["data"] != nil {
-		data = response["data"].(map[string]any)
+		// data = null is returned when there are no deployments, so we have to check for that before we
+		// try to cast the response into a json object map, since this is not an error but the cast would
+		// fail
+		var ok bool
+		data, ok = response["data"].(map[string]any)
+		if !ok {
+			return eris.New("Failed to unmarshal deployment data")
+		}
 	}
 	fmt.Println("Deployment Status")
 	fmt.Println("-----------------")
@@ -179,17 +187,35 @@ func status(ctx context.Context) error {
 	if data["type"] != "deploy" {
 		return eris.Errorf("Deployment status does not match type %s", data["type"])
 	}
-	executorID := data["executor_id"].(string)
-	dt, dte := time.Parse(time.RFC3339, data["execution_time"].(string))
+	executorID, ok := data["executor_id"].(string)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment executor_id")
+	}
+	executionTimeStr, ok := data["execution_time"].(string)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment execution_time")
+	}
+	dt, dte := time.Parse(time.RFC3339, executionTimeStr)
 	if dte != nil {
-		return eris.Wrapf(dte, "Failed to parse execution time %s", dt)
+		return eris.Wrapf(dte, "Failed to parse deployment execution_time %s", dt)
 	}
-	buildNumber := int(data["build_number"].(float64))
-	bt, bte := time.Parse(time.RFC3339, data["build_start_time"].(string))
+	bnf, ok := data["build_number"].(float64)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment build_number")
+	}
+	buildNumber := int(bnf)
+	buildTimeStr, ok := data["build_time"].(string)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment build_time")
+	}
+	bt, bte := time.Parse(time.RFC3339, buildTimeStr)
 	if bte != nil {
-		return eris.Wrapf(bte, "Failed to parse build start time %s", bt)
+		return eris.Wrapf(bte, "Failed to parse deployment build_time %s", bt)
 	}
-	buildState := data["build_state"].(string)
+	buildState, ok := data["build_state"].(string)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment build_state")
+	}
 	if buildState != "finished" {
 		fmt.Printf("Build:        #%d started %s by %s - %s\n", buildNumber, dt.Format(time.RFC822), executorID, buildState)
 		return nil
@@ -207,9 +233,15 @@ func status(ctx context.Context) error {
 	}
 	err = json.Unmarshal(result, &response)
 	if err != nil {
-		return eris.Wrap(err, "Failed to unmarshal deployment status")
+		return eris.Wrap(err, "Failed to unmarshal health response")
 	}
-	instances := response["data"].([]any)
+	if response["data"] == nil {
+		return eris.New("Failed to unmarshal health data")
+	}
+	instances, ok := response["data"].([]any)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment status")
+	}
 	if len(instances) == 0 {
 		fmt.Println("** No deployed instances found **")
 		return nil
@@ -217,46 +249,89 @@ func status(ctx context.Context) error {
 	fmt.Printf("(%d deployed instances)\n", len(instances))
 	currRegion := ""
 	for _, instance := range instances {
-		info := instance.(map[string]any)
-		region := info["region"].(string)
-		instanceNum := int(info["instance"].(float64))
-		cardinalInfo := info["cardinal"].(map[string]any)
-		nakamaInfo := info["nakama"].(map[string]any)
-		cardinalURL := cardinalInfo["url"].(string)
+		info, ok := instance.(map[string]any)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d info", instance)
+		}
+		region, ok := info["region"].(string)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d region", instance)
+		}
+		instancef, ok := info["instance"].(float64)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d instance number", instance)
+		}
+		instanceNum := int(instancef)
+		cardinalInfo, ok := info["cardinal"].(map[string]any)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d cardinal data", instance)
+		}
+		nakamaInfo, ok := info["nakama"].(map[string]any)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d nakama data", instance)
+		}
+		cardinalURL, ok := cardinalInfo["url"].(string)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d cardinal url", instance)
+		}
 		cardinalHost := strings.Split(cardinalURL, "/")[2]
-		cardinalOK := cardinalInfo["ok"].(bool)
-		cardinalResultCode := int(cardinalInfo["result_code"].(float64))
-		cardinalResultStr := cardinalInfo["result_str"].(string)
-		nakamaURL := nakamaInfo["url"].(string)
+		cardinalOK, ok := cardinalInfo["ok"].(bool)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d cardinal ok flag", instance)
+		}
+		cardinalResultCodef, ok := cardinalInfo["result_code"].(float64)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_code", instance)
+		}
+		cardinalResultCode := int(cardinalResultCodef)
+		cardinalResultStr, ok := cardinalInfo["result_str"].(string)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_str", instance)
+		}
+		nakamaURL, ok := nakamaInfo["url"].(string)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d nakama url", instance)
+		}
 		nakamaHost := strings.Split(nakamaURL, "/")[2]
-		nakamaOK := nakamaInfo["ok"].(bool)
-		nakamaResultCode := int(nakamaInfo["result_code"].(float64))
-		nakamaResultStr := nakamaInfo["result_str"].(string)
-
+		nakamaOK, ok := nakamaInfo["ok"].(bool)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d nakama ok", instance)
+		}
+		nakamaResultCodef, ok := nakamaInfo["result_code"].(float64)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d result_code", instance)
+		}
+		nakamaResultCode := int(nakamaResultCodef)
+		nakamaResultStr, ok := nakamaInfo["result_str"].(string)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal deployment instance %d result_str", instance)
+		}
 		if region != currRegion {
 			currRegion = region
 			fmt.Printf("• %s\n", currRegion)
 		}
 		fmt.Printf("  %d)", instanceNum)
 		fmt.Printf("\tCardinal: %s - ", cardinalHost)
-		if cardinalOK {
+		switch {
+		case cardinalOK:
 			fmt.Print("OK\n")
-		} else if cardinalResultCode == 0 {
+		case cardinalResultCode == 0:
 			fmt.Printf("FAIL %s\n", statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
-		} else {
+		default:
 			fmt.Printf("FAIL %d %s\n", cardinalResultCode, statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
 		}
 		fmt.Printf("\tNakama:   %s - ", nakamaHost)
-		if nakamaOK {
+		switch {
+		case nakamaOK:
 			fmt.Print("OK\n")
-		} else if nakamaResultCode == 0 {
+		case nakamaResultCode == 0:
 			fmt.Printf("FAIL %s\n", statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
-		} else {
+		default:
 			fmt.Printf("FAIL %d %s\n", nakamaResultCode, statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
 		}
 	}
-	//fmt.Println()
-	//fmt.Println(string(result))
+	// fmt.Println()
+	// fmt.Println(string(result))
 
 	return nil
 }
