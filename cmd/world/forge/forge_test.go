@@ -71,6 +71,12 @@ func (s *ForgeTestSuite) SetupTest() {
 					s.handleGetToken(w, r)
 				case "/api/organization/empty-org-id/project":
 					s.writeJSON(w, map[string]interface{}{"data": []project{}})
+				case "/api/deployment/test-project-id":
+					s.handleStatusDeployed(w, r)
+				case "/api/deployment/undeployed-project-id":
+					s.handleStatusUndeployed(w, r)
+				case "/api/health/test-project-id":
+					s.handleHealth(w, r)
 				default:
 					http.Error(w, "Not found", http.StatusNotFound)
 				}
@@ -200,6 +206,55 @@ func (s *ForgeTestSuite) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, map[string]interface{}{"data": "deployment started"})
 }
 
+func (s *ForgeTestSuite) handleStatusDeployed(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.writeJSONString(w, `{"data":{
+		"project_id":"test-project-id",
+		"type":"deploy",
+		"executor_id":"test-executor-id",
+		"execution_time":"2001-01-01T01:02:00Z",
+		"build_number":1,
+		"build_time":"2001-01-01T01:01:00Z",
+		"build_state":"finished"
+	}}`)
+}
+
+func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.writeJSONString(w, `{"data":[
+	{
+		"region":"us-east-1",
+		"instance":1,
+		"cardinal":{
+			"url":"https://cardinal.test.com/health",
+			"ok":true,
+            "result_code":200,
+			"result_str":"{}"
+		},
+		"nakama":{
+			"url":"https://nakama.test.com/healthcheck",
+			"ok":false,
+            "result_code":0,
+			"result_str":""
+		}
+    }
+	]}`)
+}
+
+func (s *ForgeTestSuite) handleStatusUndeployed(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.writeJSONString(w, `{}`)
+}
+
 func (s *ForgeTestSuite) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -238,6 +293,11 @@ func (s *ForgeTestSuite) writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(data)
 	s.Require().NoError(err)
+}
+
+func (s *ForgeTestSuite) writeJSONString(w http.ResponseWriter, data string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(data))
 }
 
 func (s *ForgeTestSuite) TestGetSelectedOrganization() {
@@ -506,6 +566,79 @@ func (s *ForgeTestSuite) TestDeploy() {
 			s.Require().NoError(err)
 
 			err = deploy(s.ctx)
+			if tc.expectedError {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestStatus() {
+	testCases := []struct {
+		name          string
+		config        globalconfig.GlobalConfig
+		expectedError bool
+	}{
+		{
+			name: "Success - Valid deployment",
+			config: globalconfig.GlobalConfig{
+				ProjectID: "test-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - Valid undeployed project",
+			config: globalconfig.GlobalConfig{
+				ProjectID: "undeployed-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Invalid project ID",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				ProjectID:      "invalid-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			expectedError: true,
+		},
+		{
+			name: "Error - No organization selected",
+			config: globalconfig.GlobalConfig{
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - No project selected",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			err := globalconfig.SaveGlobalConfig(tc.config)
+			s.Require().NoError(err)
+
+			err = status(s.ctx)
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {
