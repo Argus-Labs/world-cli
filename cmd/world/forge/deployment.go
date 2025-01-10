@@ -184,8 +184,8 @@ func status(ctx context.Context) error {
 	if data["project_id"] != projectID {
 		return eris.Errorf("Deployment status does not match project id %s", projectID)
 	}
-	if data["type"] != "deploy" {
-		return eris.Errorf("Deployment status does not match type %s", data["type"])
+	if data["type"] != "deploy" && data["type"] != "destroy" && data["type"] != "reset" {
+		return eris.Errorf("Unknown deployment type %s", data["type"])
 	}
 	executorID, ok := data["executor_id"].(string)
 	if !ok {

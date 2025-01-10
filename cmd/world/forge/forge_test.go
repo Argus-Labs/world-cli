@@ -297,7 +297,8 @@ func (s *ForgeTestSuite) writeJSON(w http.ResponseWriter, data interface{}) {
 
 func (s *ForgeTestSuite) writeJSONString(w http.ResponseWriter, data string) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(data))
+	_, err := w.Write([]byte(data))
+	s.Require().NoError(err)
 }
 
 func (s *ForgeTestSuite) TestGetSelectedOrganization() {
