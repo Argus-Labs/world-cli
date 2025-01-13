@@ -230,17 +230,14 @@ func status(ctx context.Context) error {
 			return nil
 		}
 		fmt.Printf("Build:        #%d on %s by %s\n", buildNumber, dt.Format(time.RFC822), executorID)
-		break
 	case "destroy":
 		fmt.Printf("Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
 		if buildState != "failed" {
 			return nil // if destroy failed, continue on to show health, otherwise stop here.
 		}
-		break
 	case "reset":
 		fmt.Printf("Reset:        on %s by %s\n", dt.Format(time.RFC822), executorID)
 		// results can be "passed" or "failed", but either way continue to show the health
-		break
 	default:
 		return eris.Errorf("Unknown deployment type %s", deployType)
 	}
