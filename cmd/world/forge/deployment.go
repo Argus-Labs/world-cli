@@ -203,25 +203,25 @@ func status(ctx context.Context) error {
 	if dte != nil {
 		return eris.Wrapf(dte, "Failed to parse deployment execution_time %s", executionTimeStr)
 	}
-	bnf, ok := data["build_number"].(float64)
-	if !ok {
-		return eris.New("Failed to unmarshal deployment build_number")
-	}
-	buildNumber := int(bnf)
-	buildStartTimeStr, ok := data["build_start_time"].(string)
-	if !ok {
-		return eris.New("Failed to unmarshal deployment build_start_time")
-	}
-	bt, bte := time.Parse(time.RFC3339, buildStartTimeStr)
-	if bte != nil {
-		return eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
-	}
 	buildState, ok := data["build_state"].(string)
 	if !ok {
 		return eris.New("Failed to unmarshal deployment build_state")
 	}
-	switch {
-	case deployType == "deploy":
+	switch deployType {
+	case "deploy":
+		bnf, ok := data["build_number"].(float64)
+		if !ok {
+			return eris.New("Failed to unmarshal deployment build_number")
+		}
+		buildNumber := int(bnf)
+		buildStartTimeStr, ok := data["build_start_time"].(string)
+		if !ok {
+			return eris.New("Failed to unmarshal deployment build_start_time")
+		}
+		bt, bte := time.Parse(time.RFC3339, buildStartTimeStr)
+		if bte != nil {
+			return eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
+		}
 		// buildkite states (used with deployType deploy) are:
 		//   creating, scheduled, running, passed, failing, failed, blocked, canceling, canceled, skipped, not_run
 		if buildState != "passed" { // if we have any build state other than passed, stop here
@@ -230,14 +230,17 @@ func status(ctx context.Context) error {
 			return nil
 		}
 		fmt.Printf("Build:        #%d on %s by %s\n", buildNumber, dt.Format(time.RFC822), executorID)
-	case deployType == "destroy":
+		break
+	case "destroy":
 		fmt.Printf("Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
 		if buildState != "failed" {
 			return nil // if destroy failed, continue on to show health, otherwise stop here.
 		}
-	case deployType == "reset":
+		break
+	case "reset":
 		fmt.Printf("Reset:        on %s by %s\n", dt.Format(time.RFC822), executorID)
 		// results can be "passed" or "failed", but either way continue to show the health
+		break
 	default:
 		return eris.Errorf("Unknown deployment type %s", deployType)
 	}
@@ -260,7 +263,7 @@ func status(ctx context.Context) error {
 	}
 	instances, ok := response["data"].([]any)
 	if !ok {
-		return eris.New("Failed to unmarshal deployment status")
+		return eris.Errorf("Failed to unmarshal health data: expected array, got %T", response["data"])
 	}
 	if len(instances) == 0 {
 		fmt.Println("** No deployed instances found **")
