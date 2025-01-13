@@ -184,8 +184,12 @@ func status(ctx context.Context) error {
 	if data["project_id"] != projectID {
 		return eris.Errorf("Deployment status does not match project id %s", projectID)
 	}
-	if data["type"] != "deploy" && data["type"] != "destroy" && data["type"] != "reset" {
-		return eris.Errorf("Unknown deployment type %s", data["type"])
+	deployType, ok := data["type"].(string)
+	if !ok {
+		return eris.New("Failed to unmarshal deployment type")
+	}
+	if deployType != "deploy" && deployType != "destroy" && deployType != "reset" {
+		return eris.Errorf("Unknown deployment type %s", deployType)
 	}
 	executorID, ok := data["executor_id"].(string)
 	if !ok {
@@ -197,30 +201,46 @@ func status(ctx context.Context) error {
 	}
 	dt, dte := time.Parse(time.RFC3339, executionTimeStr)
 	if dte != nil {
-		return eris.Wrapf(dte, "Failed to parse deployment execution_time %s", dt)
+		return eris.Wrapf(dte, "Failed to parse deployment execution_time %s", executionTimeStr)
 	}
 	bnf, ok := data["build_number"].(float64)
 	if !ok {
 		return eris.New("Failed to unmarshal deployment build_number")
 	}
 	buildNumber := int(bnf)
-	buildTimeStr, ok := data["build_time"].(string)
+	buildStartTimeStr, ok := data["build_start_time"].(string)
 	if !ok {
-		return eris.New("Failed to unmarshal deployment build_time")
+		return eris.New("Failed to unmarshal deployment build_start_time")
 	}
-	bt, bte := time.Parse(time.RFC3339, buildTimeStr)
+	bt, bte := time.Parse(time.RFC3339, buildStartTimeStr)
 	if bte != nil {
-		return eris.Wrapf(bte, "Failed to parse deployment build_time %s", bt)
+		return eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
 	}
 	buildState, ok := data["build_state"].(string)
 	if !ok {
 		return eris.New("Failed to unmarshal deployment build_state")
 	}
-	if buildState != "finished" {
-		fmt.Printf("Build:        #%d started %s by %s - %s\n", buildNumber, dt.Format(time.RFC822), executorID, buildState)
-		return nil
+	switch {
+	case deployType == "deploy":
+		// buildkite states (used with deployType deploy) are:
+		//   creating, scheduled, running, passed, failing, failed, blocked, canceling, canceled, skipped, not_run
+		if buildState != "passed" { // if we have any build state other than passed, stop here
+			fmt.Printf("Build:        #%d started %s by %s - %s\n", buildNumber, bt.Format(time.RFC822),
+				executorID, buildState)
+			return nil
+		}
+		fmt.Printf("Build:        #%d on %s by %s\n", buildNumber, dt.Format(time.RFC822), executorID)
+	case deployType == "destroy":
+		fmt.Printf("Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
+		if buildState != "failed" {
+			return nil // if destroy failed, continue on to show health, otherwise stop here.
+		}
+	case deployType == "reset":
+		fmt.Printf("Reset:        on %s by %s\n", dt.Format(time.RFC822), executorID)
+		// results can be "passed" or "failed", but either way continue to show the health
+	default:
+		return eris.Errorf("Unknown deployment type %s", deployType)
 	}
-	fmt.Printf("Build:        #%d on %s by %s\n", buildNumber, dt.Format(time.RFC822), executorID)
 	fmt.Print("Health:       ")
 
 	// fmt.Println()

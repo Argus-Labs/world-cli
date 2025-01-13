@@ -217,8 +217,8 @@ func (s *ForgeTestSuite) handleStatusDeployed(w http.ResponseWriter, r *http.Req
 		"executor_id":"test-executor-id",
 		"execution_time":"2001-01-01T01:02:00Z",
 		"build_number":1,
-		"build_time":"2001-01-01T01:01:00Z",
-		"build_state":"finished"
+		"build_start_time":"2001-01-01T01:01:00Z",
+		"build_state":"passed"
 	}}`)
 }
 
