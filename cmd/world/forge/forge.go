@@ -11,7 +11,7 @@ import (
 
 const (
 	// For local development
-	worldForgeBaseURLLocal = "http://localhost:8081"
+	worldForgeBaseURLLocal = "http://localhost:8001"
 
 	// For production
 	worldForgeBaseURLProd = "https://forge.world.dev"
@@ -173,6 +173,17 @@ var (
 			return destroy(cmd.Context())
 		},
 	}
+
+	statusCmd = &cobra.Command{
+		Use:   "status",
+		Short: "Show status of a project",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return status(cmd.Context())
+		},
+	}
 )
 
 func init() {
@@ -206,5 +217,6 @@ func init() {
 	// Add deployment commands
 	deploymentCmd.AddCommand(deployCmd)
 	deploymentCmd.AddCommand(destroyCmd)
+	deploymentCmd.AddCommand(statusCmd)
 	BaseCmd.AddCommand(deploymentCmd)
 }
