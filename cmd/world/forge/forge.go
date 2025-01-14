@@ -36,10 +36,38 @@ var BaseCmd = &cobra.Command{
 	Use:   "forge",
 	Short: "Forge is a tool for managing World Forge projects",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		err := cmd.Help()
-		if err != nil {
-			return eris.Wrap(err, "Failed to show help")
+		if !checkLogin() {
+			return nil
 		}
+
+		// Get user info
+		globalConfig, err := globalconfig.GetGlobalConfig()
+		if err != nil {
+			return eris.Wrap(err, "Failed to get user")
+		}
+
+		fmt.Println("✨ World Forge Status ✨")
+		fmt.Println("=====================")
+		fmt.Println("\n👤 User Information")
+		fmt.Println("------------------")
+		fmt.Printf("ID:   %s\n", globalConfig.Credential.ID)
+		fmt.Printf("Name: %s\n", globalConfig.Credential.Name)
+
+		// Show organization list
+		err = showOrganizationList(cmd.Context())
+		if err != nil {
+			return eris.Wrap(err, "Failed to show organization list")
+		}
+
+		// Show project list
+		err = showProjectList(cmd.Context())
+		if err != nil {
+			return eris.Wrap(err, "Failed to show project list")
+		}
+
+		// add separator
+		fmt.Println("\n================================================")
+
 		return nil
 	},
 }
@@ -93,6 +121,14 @@ var (
 			}
 			fmt.Println("Switched to organization: ", org.Name)
 			return nil
+		},
+	}
+
+	inviteUserToOrganizationCmd = &cobra.Command{
+		Use:   "invite",
+		Short: "Invite a user to an organization",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return inviteUserToOrganization(cmd.Context())
 		},
 	}
 )
@@ -218,6 +254,7 @@ func init() {
 	// Add organization commands
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)
+	organizationCmd.AddCommand(inviteUserToOrganizationCmd)
 	BaseCmd.AddCommand(organizationCmd)
 
 	// Add project commands

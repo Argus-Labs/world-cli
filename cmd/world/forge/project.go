@@ -40,18 +40,23 @@ func showProjectList(ctx context.Context) error {
 		return nil
 	}
 
-	selectedProject, err := getSelectedProject(ctx)
+	project, err := getSelectedProject(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
 
-	fmt.Println("Your projects:")
-	fmt.Println("--------------")
-	for _, project := range projects {
-		if project.ID == selectedProject.ID {
-			fmt.Printf("* %s (%s) [SELECTED]\n", project.Name, project.Slug)
-		} else {
-			fmt.Printf("  %s (%s)\n", project.Name, project.Slug)
+	fmt.Println("\n📁 Project Information")
+	fmt.Println("--------------------")
+	if project.Name == "" {
+		fmt.Println("No project selected")
+	} else {
+		fmt.Println("\nAvailable Projects:")
+		for _, prj := range projects {
+			if prj.ID == project.ID {
+				fmt.Printf("* %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
+			} else {
+				fmt.Printf("  %s (%s)\n", prj.Name, prj.Slug)
+			}
 		}
 	}
 

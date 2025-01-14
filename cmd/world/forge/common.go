@@ -105,7 +105,15 @@ func sendRequest(ctx context.Context, method, url string, body interface{}) ([]b
 		if resp.StatusCode == http.StatusUnauthorized {
 			return nil, eris.New("Unauthorized. Please login again using 'world forge login' command")
 		}
-		return nil, eris.Errorf("Unexpected status code: %d", resp.StatusCode)
+
+		// parse response body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, eris.Wrap(err, "Failed to read response body")
+		}
+		// get message from response body
+		message := gjson.GetBytes(body, "message").String()
+		return nil, eris.New(message)
 	}
 
 	// Read response body

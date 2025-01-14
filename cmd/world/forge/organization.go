@@ -30,23 +30,28 @@ type createOrgRequest struct {
 }
 
 func showOrganizationList(ctx context.Context) error {
-	selectedOrg, err := getSelectedOrganization(ctx)
+	organization, err := getSelectedOrganization(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organization")
 	}
 
-	orgList, err := getListOfOrganizations(ctx)
+	organizations, err := getListOfOrganizations(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organization list")
 	}
 
-	fmt.Println("Your organizations:")
-	fmt.Println("------------------")
-	for _, org := range orgList {
-		if org.ID == selectedOrg.ID {
-			fmt.Printf("* %s (%s) [SELECTED]\n", org.Name, org.Slug)
-		} else {
-			fmt.Printf("  %s (%s)\n", org.Name, org.Slug)
+	fmt.Println("\n🏢 Organization Information")
+	fmt.Println("-------------------------")
+	if organization.Name == "" {
+		fmt.Println("No organization selected")
+	} else {
+		fmt.Println("\nAvailable Organizations:")
+		for _, org := range organizations {
+			if org.ID == organization.ID {
+				fmt.Printf("* %s (%s) [SELECTED]\n", org.Name, org.Slug)
+			} else {
+				fmt.Printf("  %s (%s)\n", org.Name, org.Slug)
+			}
 		}
 	}
 	return nil
@@ -212,4 +217,40 @@ func createOrganization(ctx context.Context) (organization, error) {
 	}
 
 	return *org, nil
+}
+
+func inviteUserToOrganization(ctx context.Context) error {
+	// Input user id
+	fmt.Print("Enter user ID: ")
+	userID, err := getInput()
+	if err != nil {
+		return eris.Wrap(err, "Failed to read user ID")
+	}
+
+	if userID == "" {
+		return eris.New("User ID cannot be empty")
+	}
+
+	payload := map[string]string{
+		"invited_user_id": userID,
+	}
+
+	org, err := getSelectedOrganization(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get organization")
+	}
+
+	if org.ID == "" {
+		printNoSelectedOrganization()
+		return nil
+	}
+
+	// Send request
+	_, err = sendRequest(ctx, http.MethodPost, fmt.Sprintf("%s/%s/invite", organizationURL, org.ID), payload)
+	if err != nil {
+		return eris.Wrap(err, "Failed to invite user to organization")
+	}
+
+	fmt.Println("User invited to organization")
+	return nil
 }
