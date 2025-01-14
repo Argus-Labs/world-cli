@@ -61,6 +61,8 @@ func (s *ForgeTestSuite) SetupTest() {
 					s.handleDeploy(w, r)
 				case "/api/organization/test-org-id/project/test-project-id/destroy":
 					s.handleDestroy(w, r)
+				case "/api/organization/test-org-id/project/test-project-id/reset":
+					s.handleReset(w, r)
 				case "/api/organization/invalid-org-id/project/test-project-id/deploy":
 					http.Error(w, "Organization not found", http.StatusNotFound)
 				case "/api/organization/test-org-id/project/invalid-project-id/deploy":
@@ -375,6 +377,14 @@ func (s *ForgeTestSuite) handleGetToken(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (s *ForgeTestSuite) handleReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.writeJSON(w, map[string]interface{}{"data": "reset started"})
+}
+
 func (s *ForgeTestSuite) writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(data)
@@ -652,7 +662,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
-			err = deploy(s.ctx)
+			err = deployment(s.ctx, "deploy")
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {
@@ -843,7 +853,95 @@ func (s *ForgeTestSuite) TestDestroy() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			err = destroy(s.ctx)
+			err = deployment(s.ctx, "destroy")
+			if tc.expectedError {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestReset() {
+	testCases := []struct {
+		name          string
+		config        globalconfig.GlobalConfig
+		input         string
+		expectedError bool
+	}{
+		{
+			name: "Success",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			input:         "y",
+			expectedError: false,
+		},
+		{
+			name: "Error - Invalid organization ID",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "invalid-org-id",
+				ProjectID:      "test-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			input:         "y",
+			expectedError: true,
+		},
+		{
+			name: "Error - Invalid project ID",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				ProjectID:      "invalid-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			input:         "y",
+			expectedError: true,
+		},
+		{
+			name: "Error - No organization selected",
+			config: globalconfig.GlobalConfig{
+				ProjectID: "test-project-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			input:         "y",
+			expectedError: false,
+		},
+		{
+			name: "Error - No project selected",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			input:         "y",
+			expectedError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Setup test config
+			err := globalconfig.SaveGlobalConfig(tc.config)
+			s.Require().NoError(err)
+
+			getInput = func() (string, error) {
+				return tc.input, nil
+			}
+			defer func() { getInput = originalGetInput }()
+
+			err = deployment(s.ctx, "reset")
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {

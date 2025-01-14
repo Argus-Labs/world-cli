@@ -159,7 +159,7 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			return deploy(cmd.Context())
+			return deployment(cmd.Context(), "deploy")
 		},
 	}
 
@@ -170,7 +170,18 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			return destroy(cmd.Context())
+			return deployment(cmd.Context(), "destroy")
+		},
+	}
+
+	resetCmd = &cobra.Command{
+		Use:   "reset",
+		Short: "Reset a project",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return deployment(cmd.Context(), "reset")
 		},
 	}
 
@@ -218,5 +229,6 @@ func init() {
 	deploymentCmd.AddCommand(deployCmd)
 	deploymentCmd.AddCommand(destroyCmd)
 	deploymentCmd.AddCommand(statusCmd)
+	deploymentCmd.AddCommand(resetCmd)
 	BaseCmd.AddCommand(deploymentCmd)
 }
