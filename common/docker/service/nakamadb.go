@@ -16,7 +16,7 @@ func getNakamaDBContainerName(cfg *config.Config) string {
 }
 
 func NakamaDB(cfg *config.Config) Service {
-	exposedPorts := []int{26257, 8080}
+	exposedPorts := []int{5432, 8080}
 
 	// Set default password if not provided
 	dbPassword := cfg.DockerEnv["DB_PASSWORD"]
@@ -28,16 +28,14 @@ func NakamaDB(cfg *config.Config) Service {
 	return Service{
 		Name: getNakamaDBContainerName(cfg),
 		Config: container.Config{
-			Image: "cockroachdb/cockroach:latest-v23.1",
-			Cmd:   []string{"start-single-node", "--insecure", "--store=attrs=ssd,path=/var/lib/cockroach/,size=20%"},
+			Image: "postgres:12.2-alpine",
 			Env: []string{
-				"COCKROACH_DATABASE=nakama",
-				"COCKROACH_USER=root",
-				fmt.Sprintf("COCKROACH_PASSWORD=%s", dbPassword),
+				"POSTGRES_DB=nakama",
+				fmt.Sprintf("POSTGRES_PASSWORD=%s", dbPassword),
 			},
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{
-				Test:     []string{"CMD", "curl", "-f", "http://localhost:8080/health?ready=1"},
+				Test:     []string{"CMD", "pg_isready", "-U", "postgres", "-d", "nakama"},
 				Interval: 3 * time.Second, //nolint:gomnd
 				Timeout:  3 * time.Second, //nolint:gomnd
 				Retries:  5,               //nolint:gomnd
@@ -47,7 +45,7 @@ func NakamaDB(cfg *config.Config) Service {
 			PortBindings:  newPortMap(exposedPorts),
 			RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 			Mounts: []mount.Mount{{Type: mount.TypeVolume, Source: cfg.DockerEnv["CARDINAL_NAMESPACE"],
-				Target: "/var/lib/cockroach"}},
+				Target: "/var/lib/postgresql/data"}},
 			NetworkMode: container.NetworkMode(cfg.DockerEnv["CARDINAL_NAMESPACE"]),
 		},
 	}

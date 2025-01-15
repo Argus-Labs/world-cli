@@ -82,6 +82,8 @@ func Nakama(cfg *config.Config) Service {
 
 	exposedPorts := []int{7349, 7350, 7351}
 
+	databaseAddress := fmt.Sprintf("postgres:%s@%s:5432/nakama", dbPassword, getNakamaDBContainerName(cfg))
+
 	return Service{
 		Name: getNakamaContainerName(cfg),
 		Config: container.Config{
@@ -100,12 +102,11 @@ func Nakama(cfg *config.Config) Service {
 			Entrypoint: []string{
 				"/bin/sh",
 				"-ec",
-				fmt.Sprintf("/nakama/nakama migrate up --database.address root:%s@%s:26257/nakama && /nakama/nakama --config /nakama/data/local.yml --database.address root:%s@%s:26257/nakama --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port %d", //nolint:lll
-					dbPassword,
-					getNakamaDBContainerName(cfg),
-					dbPassword,
-					getNakamaDBContainerName(cfg),
-					prometheusPort),
+				fmt.Sprintf(`/nakama/nakama migrate up --database.address %s && /nakama/nakama --database.address %s --config /nakama/data/local.yml --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port %d`,
+					databaseAddress,
+					databaseAddress,
+					prometheusPort,
+				),
 			},
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{
