@@ -130,6 +130,10 @@ func status(ctx context.Context) error {
 	if !ok {
 		return eris.New("Failed to unmarshal deployment executor_id")
 	}
+	executorName, ok := data["executor_name"].(string)
+	if ok {
+		executorID = executorName
+	}
 	executionTimeStr, ok := data["execution_time"].(string)
 	if !ok {
 		return eris.New("Failed to unmarshal deployment execution_time")
