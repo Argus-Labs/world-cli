@@ -102,7 +102,7 @@ func Nakama(cfg *config.Config) Service {
 			Entrypoint: []string{
 				"/bin/sh",
 				"-ec",
-				fmt.Sprintf(`/nakama/nakama migrate up --database.address %s && /nakama/nakama --database.address %s --config /nakama/data/local.yml --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port %d`,
+				fmt.Sprintf(`/nakama/nakama migrate up --database.address %s && /nakama/nakama --database.address %s --config /nakama/data/local.yml --socket.outgoing_queue_size=64 --logger.level INFO --metrics.prometheus_port %d`, //nolint:lll
 					databaseAddress,
 					databaseAddress,
 					prometheusPort,
