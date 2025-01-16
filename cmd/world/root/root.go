@@ -2,12 +2,11 @@ package root
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,7 +25,7 @@ import (
 
 const (
 	// latestReleaseURL is the URL to fetch the latest release of the CLI
-	latestReleaseURL = "https://api.github.com/repos/Argus-Labs/world-cli/releases/latest"
+	latestReleaseURL = "https://github.com/Argus-Labs/world-cli/releases/latest"
 	// httpTimeout is the timeout for the HTTP client
 	httpTimeout = 2 * time.Second
 )
@@ -89,6 +88,10 @@ func checkLatestVersion() error {
 	// Create a new HTTP client and execute the request
 	client := &http.Client{
 		Timeout: httpTimeout,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			// Return an error to prevent following redirects
+			return http.ErrUseLastResponse
+		},
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -97,20 +100,17 @@ func checkLatestVersion() error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		logger.Debug(eris.Wrap(eris.New("status is not 200"), "error fetching the latest release"))
+	// Check if the status code is 302
+	// GitHub responds with a 302 redirect to the actual latest release URL, which contains the version number
+	if resp.StatusCode != http.StatusFound {
+		logger.Debug(eris.Wrap(eris.New("status is not 302"), "error fetching the latest release"))
 		return nil
 	}
 
-	// Unmarshal the response body into the Release structure
-	var release Release
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return eris.Wrap(err, "error reading the response body")
-	}
-	if err = json.Unmarshal(bodyBytes, &release); err != nil {
-		return eris.Wrap(err, "error unmarshal the release data")
-	}
+	// Get the latest release URL from the response
+	redirectURL := resp.Header.Get("Location")
+	// Get the latest release version from the URL
+	latestReleaseVersion := strings.TrimPrefix(redirectURL, "https://github.com/Argus-Labs/world-cli/releases/tag/")
 
 	if AppVersion != "" {
 		currentVersion, err := version.NewVersion(AppVersion)
@@ -118,7 +118,7 @@ func checkLatestVersion() error {
 			return eris.Wrap(err, "error parsing current version")
 		}
 
-		latestVersion, err := version.NewVersion(release.TagName)
+		latestVersion, err := version.NewVersion(latestReleaseVersion)
 		if err != nil {
 			return eris.Wrap(err, "error parsing latest version")
 		}

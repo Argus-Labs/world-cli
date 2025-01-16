@@ -21,7 +21,11 @@ func TestSetupCardinalEditor(t *testing.T) {
 	t.Run("setup cardinal editor", func(t *testing.T) {
 		assert.NilError(t, cleanUpDir(testDir))
 
-		editorDir, _, err := downloadReleaseIfNotCached(latestReleaseURL, testDir)
+		latestVersion, err := getLatestReleaseVersion()
+		assert.NilError(t, err)
+		downloadURL := fmt.Sprintf(downloadURLPattern, latestVersion, latestVersion)
+
+		editorDir, err := downloadReleaseIfNotCached(latestVersion, downloadURL, testDir)
 		assert.NilError(t, err)
 
 		// check if editor directory exists

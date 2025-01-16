@@ -5,7 +5,7 @@ on:
     types: [created]
 
 env:
-  GORELEASER_VERSION: v1.24.0
+  GORELEASER_VERSION: '~> v2'
   GO_VERSION: 1.21.1
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Run World CLI goreleaser
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: ${{ env.GORELEASER_VERSION }}

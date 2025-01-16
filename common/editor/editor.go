@@ -23,8 +23,7 @@ import (
 const (
 	EditorDir = ".editor"
 
-	releaseURL       = "https://api.github.com/repos/Argus-Labs/cardinal-editor/releases"
-	latestReleaseURL = releaseURL + "/latest"
+	downloadURLPattern = "https://github.com/Argus-Labs/cardinal-editor/releases/download/%s/cardinal-editor-%s.zip"
 
 	httpTimeout = 2 * time.Second
 
@@ -69,11 +68,17 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 		return eris.Wrap(err, "failed to get cardinal version")
 	}
 
-	downloadURL := latestReleaseURL
-	downloadVersion, versionIsExist := cardinalVersionMap[cardinalVersion]
-	if versionIsExist {
-		downloadURL = fmt.Sprintf("%s/tags/%s", releaseURL, downloadVersion)
+	downloadVersion, versionExists := cardinalVersionMap[cardinalVersion]
+	if !versionExists {
+		// Get the latest release version
+		latestReleaseVersion, err := getLatestReleaseVersion()
+		if err != nil {
+			return eris.Wrap(err, "failed to get latest release version")
+		}
+		downloadVersion = latestReleaseVersion
 	}
+
+	downloadURL := fmt.Sprintf(downloadURLPattern, downloadVersion, downloadVersion)
 
 	// Check if the Cardinal Editor directory exists
 	targetEditorDir := filepath.Join(rootDir, EditorDir)
@@ -93,7 +98,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 		return err
 	}
 
-	editorDir, downloadVersion, err := downloadReleaseIfNotCached(downloadURL, configDir)
+	editorDir, err := downloadReleaseIfNotCached(downloadVersion, downloadURL, configDir)
 	if err != nil {
 		return err
 	}
@@ -122,43 +127,16 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 }
 
 // downloadReleaseIfNotCached : downloads the latest release of the Cardinal Editor if it is not already cached.
-// returns editor directory path, version and error
-func downloadReleaseIfNotCached(downloadURL, configDir string) (string, string, error) {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, downloadURL, nil)
-	if err != nil {
-		return "", "", err
-	}
-
-	client := &http.Client{
-		Timeout: httpTimeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-
-	var release Release
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", err
-	}
-	if err = json.Unmarshal(bodyBytes, &release); err != nil {
-		return "", "", err
-	}
-
+// returns editor directory path, and error
+func downloadReleaseIfNotCached(version, downloadURL, configDir string) (string, error) {
 	editorDir := filepath.Join(configDir, "editor")
+	targetDir := filepath.Join(editorDir, version)
 
-	targetDir := filepath.Join(editorDir, release.Name)
-	if release.Assets == nil || (release.Assets != nil && len(release.Assets) == 0) {
-		return targetDir, release.Name, eris.New(fmt.Sprintf("No assets found in release %s", release.Name))
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		return targetDir, downloadAndUnzip(downloadURL, targetDir)
 	}
 
-	if _, err = os.Stat(targetDir); os.IsNotExist(err) {
-		return targetDir, release.Name, downloadAndUnzip(release.Assets[0].BrowserDownloadURL, targetDir)
-	}
-
-	return targetDir, release.Name, nil
+	return targetDir, nil
 }
 
 func downloadAndUnzip(url string, targetDir string) error {
@@ -420,4 +398,38 @@ func getVersionMap(url string) (map[string]string, error) {
 	}
 
 	return result, nil
+}
+
+func getLatestReleaseVersion() (string, error) {
+	latestReleaseURL := "https://github.com/Argus-Labs/cardinal-editor/releases/latest"
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{
+		Timeout: httpTimeout,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			// Return an error to prevent following redirects
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// Check if the status code is 302
+	// GitHub responds with a 302 redirect to the actual latest release URL, which contains the version number
+	if resp.StatusCode != http.StatusFound {
+		return "", eris.New("Failed to fetch the latest release of Cardinal Editor")
+	}
+
+	redirectURL := resp.Header.Get("Location")
+	latestReleaseVersion := strings.TrimPrefix(redirectURL, "https://github.com/Argus-Labs/cardinal-editor/releases/tag/")
+
+	return latestReleaseVersion, nil
 }
