@@ -44,7 +44,7 @@ func New() Model {
 
 // Init returns an initial command for the application to run
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 // Update handles incoming events and updates the model accordingly
@@ -54,10 +54,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m, m.spinner.Tick
 	case CompleteStepMsg:
 		if msg.Err != nil {
+			// When there's an error, mark the current step as complete and move to the next
+			m.Steps[m.index].Status = COMPLETE
+			m.index++
+			// Then mark the new current step as failed
 			m.Steps[m.index].Status = FAILED
 			m.Steps[m.index].Err = msg.Err
+			m.index++
 			// Send a signal that the step has failed with an error
-			return m, m.SignalStepErrorCmd(m.index, msg.Err)
+			return m, m.SignalStepErrorCmd(m.index-1, msg.Err)
 		}
 
 		m.Steps[m.index].Status = COMPLETE
