@@ -59,6 +59,11 @@ func Nakama(cfg *config.Config) Service {
 		nakamaImage = cfg.DockerEnv["NAKAMA_IMAGE"]
 	}
 
+	jwtSecret := ""
+	if cfg.DockerEnv["JWT_SECRET"] != "" {
+		jwtSecret = cfg.DockerEnv["JWT_SECRET"]
+	}
+
 	platform := ocispec.Platform{
 		Architecture: "amd64",
 		OS:           "linux",
@@ -98,6 +103,7 @@ func Nakama(cfg *config.Config) Service {
 				fmt.Sprintf("TRACE_ENABLED=%s", traceEnabled),
 				fmt.Sprintf("JAEGER_ADDR=%s:4317", getJaegerContainerName(cfg)),
 				fmt.Sprintf("JAEGER_SAMPLE_RATE=%s", traceSampleRate),
+				fmt.Sprintf("JWT_SECRET=%s", jwtSecret),
 			},
 			Entrypoint: []string{
 				"/bin/sh",
