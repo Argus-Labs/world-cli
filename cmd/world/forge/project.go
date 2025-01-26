@@ -342,3 +342,70 @@ func selectProject(ctx context.Context) (project, error) {
 
 	return project{}, eris.New("Maximum attempts reached for selecting project")
 }
+
+func deleteProject(ctx context.Context) error {
+	project, err := getSelectedProject(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get project")
+	}
+
+	// Print project details with formatting
+	fmt.Println("\n🗑️  Project Deletion")
+	fmt.Println("------------------")
+	fmt.Printf("Project Name: %s\n", project.Name)
+	fmt.Printf("Project Slug: %s\n\n", project.Slug)
+
+	// Warning message
+	fmt.Println("⚠️  WARNING")
+	fmt.Println("  This will permanently delete:")
+	fmt.Println("  • All deployments")
+	fmt.Println("  • All logs")
+	fmt.Println("  • All associated resources")
+	fmt.Println("")
+
+	// Confirmation prompt
+	fmt.Printf("❓ Are you sure you want to delete %s? (Y/n): ", project.Name)
+	confirmation, err := getInput()
+	if err != nil {
+		return eris.Wrap(err, "Failed to read confirmation")
+	}
+
+	if confirmation != "Y" {
+		if confirmation == "y" {
+			fmt.Println("You need to put Y (uppercase) to confirm deletion")
+			fmt.Println("\n❌ Project deletion canceled")
+			return nil
+		}
+
+		fmt.Println("\n❌ Project deletion canceled")
+		return nil
+	}
+
+	// Send request
+	url := fmt.Sprintf(projectURLPattern+"/%s", baseURL, project.OrgID, project.ID)
+	body, err := sendRequest(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return eris.Wrap(err, "Failed to delete project")
+	}
+
+	// Parse response
+	_, err = parseResponse[any](body)
+	if err != nil {
+		return eris.Wrap(err, "Failed to parse response")
+	}
+
+	fmt.Printf("Project deleted successfully: %s (%s)\n", project.Name, project.Slug)
+
+	// Remove project from config
+	config, err := globalconfig.GetGlobalConfig()
+	if err != nil {
+		return eris.Wrap(err, "Failed to get config")
+	}
+	config.ProjectID = ""
+	err = globalconfig.SaveGlobalConfig(config)
+	if err != nil {
+		return eris.Wrap(err, "Failed to save config")
+	}
+
+	return nil
+}

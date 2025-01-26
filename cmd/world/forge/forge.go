@@ -172,6 +172,17 @@ var (
 			return createProject(cmd.Context())
 		},
 	}
+
+	deleteProjectCmd = &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a project",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return deleteProject(cmd.Context())
+		},
+	}
 )
 
 // Deployment commands
@@ -260,6 +271,7 @@ func init() {
 	// Add project commands
 	projectCmd.AddCommand(createProjectCmd)
 	projectCmd.AddCommand(switchProjectCmd)
+	projectCmd.AddCommand(deleteProjectCmd)
 	BaseCmd.AddCommand(projectCmd)
 
 	// Add deployment commands
