@@ -183,6 +183,17 @@ var (
 			return deleteProject(cmd.Context())
 		},
 	}
+
+	updateProjectCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update a project",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return updateProject(cmd.Context())
+		},
+	}
 )
 
 // Deployment commands
@@ -272,6 +283,7 @@ func init() {
 	projectCmd.AddCommand(createProjectCmd)
 	projectCmd.AddCommand(switchProjectCmd)
 	projectCmd.AddCommand(deleteProjectCmd)
+	projectCmd.AddCommand(updateProjectCmd)
 	BaseCmd.AddCommand(projectCmd)
 
 	// Add deployment commands

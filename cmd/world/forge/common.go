@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,14 @@ var getInput = func() (string, error) {
 		return "", eris.Wrap(err, "Failed to read input")
 	}
 	return strings.TrimSpace(input), nil
+}
+
+var getInputInt = func() (int, error) {
+	input, err := getInput()
+	if err != nil {
+		return 0, eris.Wrap(err, "Failed to read input")
+	}
+	return strconv.Atoi(input)
 }
 
 // sendRequest sends an HTTP request with auth token and returns the response body
