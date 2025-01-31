@@ -56,6 +56,9 @@ func deployment(ctx context.Context, deployType string) error {
 	fmt.Printf("Project Slug: %s\n", prj.Slug)
 	fmt.Printf("Repository:   %s\n\n", prj.RepoURL)
 
+	if deployType == "forceDeploy" {
+		deployType = "deploy?force=true"
+	}
 	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL, organizationID, projectID, deployType)
 	_, err = sendRequest(ctx, http.MethodPost, deployURL, nil)
 	if err != nil {
