@@ -1464,7 +1464,9 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"", // repoToken (empty for public repo)
+				"",        // repoToken (empty for public repo)
+				"testenv", // environment
+				"10",      // tick rate
 			},
 			expectedError: false,
 		},
@@ -1492,7 +1494,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				},
 			},
 			inputs:        []string{},
-			expectedError: false,
+			expectedError: true,
 		},
 		{
 			name: "Error - Invalid organization ID",
