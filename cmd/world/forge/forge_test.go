@@ -1580,7 +1580,11 @@ func (s *ForgeTestSuite) TestCreateProject() {
 
 			// Simulate region selection
 			regionSelector = tea.NewProgram(
-				multiselect.InitialMultiselectModel(s.ctx, []string{"us-east-1", "us-west-1", "eu-west-1"}),
+				multiselect.InitialMultiselectModel(
+					s.ctx,
+					[]string{"us-east-1", "us-west-1", "eu-west-1"},
+				),
+				tea.WithInput(nil),
 			)
 			defer func() { regionSelector = nil }()
 
