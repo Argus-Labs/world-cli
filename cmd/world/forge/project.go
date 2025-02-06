@@ -16,6 +16,8 @@ import (
 
 const MaxProjectNameLen = 50
 
+var regionSelector *tea.Program
+
 type project struct {
 	ID          string        `json:"id"`
 	OrgID       string        `json:"org_id"`
@@ -558,6 +560,7 @@ func inputTickRate(ctx context.Context) (int, error) {
 // using the bubbletea TUI library. Returns error if no regions selected after max attempts
 // or context cancellation.
 func chooseRegion(ctx context.Context) ([]string, error) {
+	// TODO: get regions from backend
 	regions := []string{
 		"us-east-1",
 		"us-west-1",
@@ -588,8 +591,10 @@ func chooseRegion(ctx context.Context) ([]string, error) {
 }
 
 func runRegionSelector(ctx context.Context, regions []string) ([]string, error) {
-	p := tea.NewProgram(multiselect.InitialMultiselectModel(ctx, regions))
-	m, err := p.Run()
+	if regionSelector == nil {
+		regionSelector = tea.NewProgram(multiselect.InitialMultiselectModel(ctx, regions))
+	}
+	m, err := regionSelector.Run()
 	if err != nil {
 		return nil, eris.Wrap(err, "failed to run region selector")
 	}
