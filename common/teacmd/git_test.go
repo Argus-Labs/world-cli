@@ -29,7 +29,7 @@ func TestGitCloneCmd(t *testing.T) {
 		{
 			name:     "error clone wrong address",
 			wantErr:  true,
-			expected: 128,
+			expected: 1,
 			param: param{
 				url:       "wrong address",
 				targetDir: "targetDir",

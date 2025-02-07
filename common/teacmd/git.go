@@ -41,75 +41,77 @@ func git(args ...string) (string, error) {
 
 	_, err := sh.Exec(env, &outBuff, &errBuff, "git", args...)
 	if err != nil {
-		return "", err
+		return "", eris.Errorf("git %v failed: %s", args, errBuff.String())
 	}
-	return outBuff.String(), nil
+	return strings.TrimSpace(outBuff.String()), nil
 }
 
-func GitCloneCmd(url string, targetDir string, initMsg string) error {
-	// check targetDir exists
+func GitCloneCmd(url, targetDir, initMsg string) error {
+	// Check if targetDir exists
 	if _, err := os.Stat(targetDir); err == nil {
 		return eris.Errorf("Game shard named '%s' already exists in this directory, "+
 			"please change the directory or use another name", targetDir)
 	}
 
-	_, err := git("clone", url, targetDir)
+	// Get latest tag from remote
+	rev, err := git("ls-remote", "--tags", "--sort=-v:refname", url)
 	if err != nil {
-		return err
-	}
-	err = os.Chdir(targetDir)
-	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to fetch tags from remote")
 	}
 
-	rev, err := git("rev-list", "--tags", "--max-count=1")
+	// Extract latest tag
+	lines := strings.Split(rev, "\n")
+	if len(lines) == 0 {
+		return eris.New("no tags found in the repository")
+	}
+	latestTag := strings.TrimPrefix(strings.Fields(lines[len(lines)-1])[1], "refs/tags/")
+
+	// Clone only the latest tag with depth 1
+	_, err = git("clone", "--branch", latestTag, "--depth", "1", url, targetDir)
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to clone repository")
 	}
 
-	tag, err := git("describe", "--tags", strings.TrimSpace(rev))
-	if err != nil {
-		return err
+	// Change directory to targetDir
+	if err := os.Chdir(targetDir); err != nil {
+		return eris.Wrapf(err, "failed to change directory")
 	}
 
-	_, err = git("checkout", strings.TrimSpace(tag))
-	if err != nil {
-		return err
+	// Remove the .git folder to reset commit history
+	if err := os.RemoveAll(".git"); err != nil {
+		return eris.Wrapf(err, "failed to remove .git folder")
 	}
 
-	err = os.RemoveAll(".git")
-	if err != nil {
-		return err
-	}
-
+	// Reinitialize Git
 	_, err = git("init")
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to initialize git")
 	}
 
-	err = refactorModuleName(oldModuleName, filepath.Base(targetDir))
-	if err != nil {
-		return err
+	// Refactor module name
+	if err := refactorModuleName(oldModuleName, filepath.Base(targetDir)); err != nil {
+		return eris.Wrapf(err, "failed to refactor module name")
 	}
 
+	// Generate router key and update TOML
 	rtrKey, err := generateRandomHexString(routerKeyLength)
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to generate router key")
 	}
 
-	err = appendToToml(tomlFile, tomlSectionCommon, map[string]any{routerKey: rtrKey})
-	if err != nil {
-		return err
+	if err := appendToToml(tomlFile, tomlSectionCommon, map[string]any{routerKey: rtrKey}); err != nil {
+		return eris.Wrapf(err, "failed to append to TOML")
 	}
 
+	// Commit the changes
 	_, err = git("add", "-A")
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to stage changes")
 	}
 
 	_, err = git("commit", "--author=\"World CLI <no-reply@world.dev>\"", "-m", initMsg)
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to commit changes")
 	}
 
 	return nil
@@ -120,7 +122,7 @@ func refactorModuleName(oldModuleName, newModuleName string) error {
 	// Update import paths in all Go files
 	err := filepath.Walk(cardinalDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			return eris.Wrapf(err, "failed to walk directory")
 		}
 		if !info.IsDir() && strings.HasSuffix(path, ".go") {
 			return replaceInFile(path, oldModuleName, newModuleName)
@@ -129,7 +131,7 @@ func refactorModuleName(oldModuleName, newModuleName string) error {
 	})
 
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to refactor module name")
 	}
 
 	// Update the go.mod file
@@ -141,7 +143,7 @@ func refactorModuleName(oldModuleName, newModuleName string) error {
 func replaceInFile(filePath, oldStr, newStr string) error {
 	file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to open file")
 	}
 	defer file.Close()
 
@@ -151,21 +153,21 @@ func replaceInFile(filePath, oldStr, newStr string) error {
 		lines = append(lines, strings.ReplaceAll(scanner.Text(), oldStr, newStr))
 	}
 	if err := scanner.Err(); err != nil {
-		return err
+		return eris.Wrapf(err, "failed to scan file")
 	}
 
 	if err := file.Truncate(0); err != nil {
-		return err
+		return eris.Wrapf(err, "failed to truncate file")
 	}
 	if _, err := file.Seek(0, 0); err != nil {
-		return err
+		return eris.Wrapf(err, "failed to seek file")
 	}
 
 	writer := bufio.NewWriter(file)
 	for _, line := range lines {
 		_, err := writer.WriteString(line + "\n")
 		if err != nil {
-			return err
+			return eris.Wrapf(err, "failed to write line")
 		}
 	}
 	return writer.Flush()
