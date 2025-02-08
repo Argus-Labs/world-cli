@@ -14,6 +14,12 @@ import (
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
+const (
+	DeploymentTypeDeploy  = "deploy"
+	DeploymentTypeDestroy = "destroy"
+	DeploymentTypeReset   = "reset"
+)
+
 var statusFailRegEx = regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
 
 // Deployment a project
@@ -56,6 +62,9 @@ func deployment(ctx context.Context, deployType string) error {
 	fmt.Printf("Project Slug: %s\n", prj.Slug)
 	fmt.Printf("Repository:   %s\n\n", prj.RepoURL)
 
+	if deployType == "forceDeploy" {
+		deployType = "deploy?force=true"
+	}
 	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL, organizationID, projectID, deployType)
 	_, err = sendRequest(ctx, http.MethodPost, deployURL, nil)
 	if err != nil {
@@ -123,7 +132,9 @@ func status(ctx context.Context) error {
 	if !ok {
 		return eris.New("Failed to unmarshal deployment type")
 	}
-	if deployType != "deploy" && deployType != "destroy" && deployType != "reset" {
+	if deployType != DeploymentTypeDeploy &&
+		deployType != DeploymentTypeDestroy &&
+		deployType != DeploymentTypeReset {
 		return eris.Errorf("Unknown deployment type %s", deployType)
 	}
 	executorID, ok := data["executor_id"].(string)
@@ -147,7 +158,7 @@ func status(ctx context.Context) error {
 		return eris.New("Failed to unmarshal deployment build_state")
 	}
 	switch deployType {
-	case "deploy":
+	case DeploymentTypeDeploy:
 		bnf, ok := data["build_number"].(float64)
 		if !ok {
 			return eris.New("Failed to unmarshal deployment build_number")
@@ -169,12 +180,12 @@ func status(ctx context.Context) error {
 			return nil
 		}
 		fmt.Printf("Build:        #%d on %s by %s\n", buildNumber, dt.Format(time.RFC822), executorID)
-	case "destroy":
+	case DeploymentTypeDestroy:
 		fmt.Printf("Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
 		if buildState != "failed" {
 			return nil // if destroy failed, continue on to show health, otherwise stop here.
 		}
-	case "reset":
+	case DeploymentTypeReset:
 		fmt.Printf("Reset:        on %s by %s\n", dt.Format(time.RFC822), executorID)
 		// results can be "passed" or "failed", but either way continue to show the health
 	default:
