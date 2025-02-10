@@ -10,10 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/suite"
 
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
 var (
@@ -1447,10 +1450,11 @@ func (s *ForgeTestSuite) TestShowProjectList() {
 
 func (s *ForgeTestSuite) TestCreateProject() {
 	testCases := []struct {
-		name          string
-		config        globalconfig.GlobalConfig
-		inputs        []string // For name, slug, repoURL, repoToken
-		expectedError bool
+		name                string
+		config              globalconfig.GlobalConfig
+		inputs              []string     // For name, slug, repoURL, repoToken
+		regionSelectActions []tea.KeyMsg // Simulate region selection
+		expectedError       bool
 	}{
 		{
 			name: "Success - Create project with public repo",
@@ -1464,7 +1468,13 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"", // repoToken (empty for public repo)
+				"",        // repoToken (empty for public repo)
+				"testenv", // environment
+				"10",      // tick rate
+			},
+			regionSelectActions: []tea.KeyMsg{
+				tea.KeyMsg{Type: tea.KeySpace}, // select region
+				tea.KeyMsg{Type: tea.KeyEnter}, // confirm
 			},
 			expectedError: false,
 		},
@@ -1492,7 +1502,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				},
 			},
 			inputs:        []string{},
-			expectedError: false,
+			expectedError: true,
 		},
 		{
 			name: "Error - Invalid organization ID",
@@ -1567,6 +1577,28 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				}
 				defer func() { getInput = originalGetInput }()
 			}
+
+			// Simulate region selection
+			regionSelector = tea.NewProgram(
+				multiselect.InitialMultiselectModel(
+					s.ctx,
+					[]string{"us-east-1", "us-west-1", "eu-west-1"},
+				),
+				tea.WithInput(nil),
+			)
+			defer func() { regionSelector = nil }()
+
+			// Send region select actions
+			go func() {
+				// wait for 1s to make sure the program is initialized
+				time.Sleep(1 * time.Second)
+				for _, action := range tc.regionSelectActions {
+					// send action to region selector
+					regionSelector.Send(action)
+					// wait for 100ms to make sure the action is processed
+					time.Sleep(100 * time.Millisecond)
+				}
+			}()
 
 			err = createProject(s.ctx)
 			if tc.expectedError {
