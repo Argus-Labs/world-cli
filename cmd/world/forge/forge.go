@@ -217,7 +217,12 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "deploy")
+			force, _ := cmd.Flags().GetBool("force")
+			deployType := "deploy"
+			if force {
+				deployType = "forceDeploy"
+			}
+			return deployment(cmd.Context(), deployType)
 		},
 	}
 
@@ -287,6 +292,8 @@ func init() {
 	BaseCmd.AddCommand(projectCmd)
 
 	// Add deployment commands
+	deployCmd.Flags().Bool("force", false,
+		"Start the deploy even if one is currently running. Cancels current running deploy.")
 	deploymentCmd.AddCommand(deployCmd)
 	deploymentCmd.AddCommand(destroyCmd)
 	deploymentCmd.AddCommand(statusCmd)
