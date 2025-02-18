@@ -1469,6 +1469,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
 				"",        // repoToken (empty for public repo)
+				"",        // repoPath (empty for default root path of repo)
 				"testenv", // environment
 				"10",      // tick rate
 			},
