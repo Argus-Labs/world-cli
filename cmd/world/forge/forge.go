@@ -131,6 +131,14 @@ var (
 			return inviteUserToOrganization(cmd.Context())
 		},
 	}
+
+	changeUserRoleInOrganizationCmd = &cobra.Command{
+		Use:   "role",
+		Short: "Change a users role in an organization",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return updateUserRoleInOrganization(cmd.Context())
+		},
+	}
 )
 
 // Project commands
@@ -293,6 +301,7 @@ func init() {
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)
 	organizationCmd.AddCommand(inviteUserToOrganizationCmd)
+	organizationCmd.AddCommand(changeUserRoleInOrganizationCmd)
 	BaseCmd.AddCommand(organizationCmd)
 
 	// Add project commands
