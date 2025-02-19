@@ -30,6 +30,7 @@ type project struct {
 	DeletedTime string        `json:"deleted_time"`
 	RepoURL     string        `json:"repo_url"`
 	RepoToken   string        `json:"repo_token"`
+	RepoPath    string        `json:"repo_path"`
 	Config      projectConfig `json:"config"`
 }
 
@@ -152,6 +153,7 @@ func createProject(ctx context.Context) error {
 		"slug":       projectModel.Slug,
 		"repo_url":   projectModel.RepoURL,
 		"repo_token": projectModel.RepoToken,
+		"repo_path":  projectModel.RepoPath,
 		"org_id":     projectModel.OrgID,
 		"config":     projectModel.Config,
 	})
@@ -282,6 +284,37 @@ func inputRepoURLAndToken(ctx context.Context) (string, string, error) {
 	}
 
 	return "", "", eris.New("Maximum attempts reached for repository validation")
+}
+
+func inputRepoPath(ctx context.Context, repoURL, repoToken string) (string, error) {
+	// Get repository Path
+	var repoPath string
+	var err error
+	attempts := 0
+	maxAttempts := 5
+	for attempts < maxAttempts {
+		// Get repository URL
+		fmt.Print("Enter repository Cardinal path [Enter for default empty path]: ")
+		repoPath, err = getInput()
+		if err != nil {
+			return "", eris.Wrap(err, "Failed to read repository path")
+		}
+
+		// strip off any leading slash
+		repoPath = strings.TrimPrefix(repoPath, "/")
+
+		// Validate the path exists using the new validateRepoPath function
+		if len(repoPath) > 0 {
+			if err := validateRepoPath(ctx, repoURL, repoToken, repoPath); err != nil {
+				fmt.Printf("Error: %v\n", err)
+				attempts++
+				continue
+			}
+		}
+
+		return repoPath, nil
+	}
+	return "", eris.New("Maximum attempts reached for entering repo path")
 }
 
 func selectProject(ctx context.Context) (project, error) {
@@ -431,6 +464,7 @@ func updateProject(ctx context.Context) error {
 		"slug":       projectModel.Slug,
 		"repo_url":   projectModel.RepoURL,
 		"repo_token": projectModel.RepoToken,
+		"repo_path":  projectModel.RepoPath,
 		"config":     projectModel.Config,
 	})
 	if err != nil {
@@ -480,6 +514,12 @@ func projectInput(ctx context.Context) (project, error) {
 	}
 	project.RepoURL = repoURL
 	project.RepoToken = repoToken
+
+	repoPath, err := inputRepoPath(ctx, repoURL, repoToken)
+	if err != nil {
+		return project, eris.Wrap(err, "Failed to get repository path")
+	}
+	project.RepoPath = repoPath
 
 	// Env Name
 	envName, err := inputEnvName(ctx)

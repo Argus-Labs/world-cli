@@ -49,6 +49,18 @@ func validateRepoToken(ctx context.Context, repoURL, token string) error {
 	}
 }
 
+// params: ctx, repoURL, token, path
+func validateRepoPath(_ context.Context, _, _, path string) error {
+	if strings.Contains(path, " ") {
+		return fmt.Errorf("invalid path: %s", path)
+	}
+	// I don't think we need to verify that the path actually exists in the repo,
+	// but if we decide to here's where we would do that. If it doesn't exist then
+	// any deploy attempt will fail in the World Forge Worker at the checkout action
+	// Hints at possible GitHub implementation here: https://github.com/orgs/community/discussions/68413
+	return nil
+}
+
 // validateGitHub validates the token and repository for GitHub.
 func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the owner and repo name from the URL
