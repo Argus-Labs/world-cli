@@ -70,6 +70,14 @@ func (s *ForgeTestSuite) SetupTest() {
 					http.Error(w, "Organization not found", http.StatusNotFound)
 				case "/api/organization/test-org-id/project/invalid-project-id/deploy":
 					http.Error(w, "Project not found", http.StatusNotFound)
+				case "/api/organization/test-org-id/invite":
+					s.handleInvite(w, r)
+				case "/api/organization/test-org-id/role":
+					s.handleRole(w, r)
+				case "/api/organization/invalid-org-id/invite":
+					http.Error(w, "Organization not found", http.StatusNotFound)
+				case "/api/organization/invalid-org-id/role":
+					http.Error(w, "Organization not found", http.StatusNotFound)
 				case "/api/user/login":
 					s.handleLogin(w, r)
 				case "/api/user/login/get-token":
@@ -130,6 +138,14 @@ func (s *ForgeTestSuite) TearDownTest() {
 
 	// Restore original functions
 	globalconfig.GetConfigDir = originalGetConfigDir
+}
+
+func (s *ForgeTestSuite) handleInvite(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, map[string]interface{}{"data": ""})
+}
+
+func (s *ForgeTestSuite) handleRole(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, map[string]interface{}{"data": ""})
 }
 
 func (s *ForgeTestSuite) handleOrganizationList(w http.ResponseWriter, r *http.Request) {
@@ -1762,6 +1778,97 @@ func (s *ForgeTestSuite) TestSelectProject() {
 	}
 }
 
+func (s *ForgeTestSuite) TestGetRoleInput() {
+	testCases := []struct {
+		name          string
+		input         string
+		allowNone     bool
+		expectedInput string
+		expectError   bool
+	}{
+		{
+			name:          "Default Role is member",
+			input:         "\n",
+			allowNone:     true,
+			expectedInput: "member",
+			expectError:   false,
+		},
+		{
+			name:          "Admin",
+			input:         "admin\n",
+			allowNone:     true,
+			expectedInput: "admin",
+			expectError:   false,
+		},
+		{
+			name:          "Owner",
+			input:         "owner\n",
+			allowNone:     true,
+			expectedInput: "owner",
+			expectError:   false,
+		},
+		{
+			name:          "Member",
+			input:         "member\n",
+			allowNone:     true,
+			expectedInput: "member",
+			expectError:   false,
+		},
+		{
+			name:          "None enabled",
+			input:         "none\nYes\n",
+			allowNone:     true,
+			expectedInput: "none",
+			expectError:   true, // can't actually test this because it's two separate inputs
+		},
+		{
+			name:          "None disabled",
+			input:         "none\n",
+			allowNone:     false,
+			expectedInput: "",
+			expectError:   true,
+		},
+		{
+			name:          "Bad Role",
+			input:         "garbage\n",
+			allowNone:     true,
+			expectedInput: "",
+			expectError:   true,
+		},
+	}
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Create a temporary file for stdin
+			tmpfile, err := os.CreateTemp("", "stdin")
+			s.Require().NoError(err)
+			defer os.Remove(tmpfile.Name())
+
+			_, err = tmpfile.WriteString(tc.input)
+			s.Require().NoError(err)
+
+			_, err = tmpfile.Seek(0, 0)
+			s.Require().NoError(err)
+
+			// Save original stdin
+			oldStdin := os.Stdin
+			defer func() { os.Stdin = oldStdin }()
+
+			// Set stdin to our test file
+			os.Stdin = tmpfile
+
+			// Test getInput
+			result, err := getRoleInput(tc.allowNone)
+			if tc.expectError {
+				s.Require().Error(err)
+				s.Empty(result)
+			} else {
+				s.Require().NoError(err)
+				s.Equal(tc.expectedInput, result)
+			}
+		})
+	}
+}
+
 func (s *ForgeTestSuite) TestGetInput() {
 	testCases := []struct {
 		name          string
@@ -1829,6 +1936,238 @@ func (s *ForgeTestSuite) TestGetInput() {
 			} else {
 				s.Require().NoError(err)
 				s.Equal(tc.expectedInput, result)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestInviteUserToOrganization() {
+	testCases := []struct {
+		name          string
+		config        globalconfig.GlobalConfig
+		inputs        []string // For user id, role
+		expectedError bool
+	}{
+		{
+			name: "Success - Default role",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"",             // role
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - admin role",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"admin",        // role
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - No organization selected",
+			config: globalconfig.GlobalConfig{
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs:        []string{},
+			expectedError: true,
+		},
+		{
+			name: "Error - Invalid organization ID",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "invalid-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"",             // role
+			},
+			expectedError: true,
+		},
+		{
+			name: "Error - Invalid Role: None",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"none",         // invalid role
+				"none",
+				"none",
+				"none",
+				"none",
+			},
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Setup test config
+			err := globalconfig.SaveGlobalConfig(tc.config)
+			s.Require().NoError(err)
+
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func() (string, error) {
+					input := tc.inputs[inputIndex]
+					inputIndex++
+					return input, nil
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+			defer func() { regionSelector = nil }()
+
+			err = inviteUserToOrganization(s.ctx)
+			if tc.expectedError {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
+	testCases := []struct {
+		name          string
+		config        globalconfig.GlobalConfig
+		inputs        []string // For user id, role
+		expectedError bool
+	}{
+		{
+			name: "Success - Default role",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"",             // role
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - admin role",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"admin",        // role
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - none with confirm remove",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"none",         // role
+				"Yes",          // confirm removal
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - No organization selected",
+			config: globalconfig.GlobalConfig{
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs:        []string{},
+			expectedError: true,
+		},
+		{
+			name: "Error - Invalid organization ID",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "invalid-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"",             // role
+			},
+			expectedError: true,
+		},
+		{
+			name: "Error - Role none dont confirm remove",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"test-user-id", // user-id
+				"none",         // invalid role
+				"no",
+				"none",
+				"",
+				"none",
+				"bah",
+				"none",
+				"NO",
+				"none",
+				"y",
+			},
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Setup test config
+			err := globalconfig.SaveGlobalConfig(tc.config)
+			s.Require().NoError(err)
+
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func() (string, error) {
+					input := tc.inputs[inputIndex]
+					inputIndex++
+					return input, nil
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+			defer func() { regionSelector = nil }()
+
+			err = updateUserRoleInOrganization(s.ctx)
+			if tc.expectedError {
+				s.Error(err)
+			} else {
+				s.NoError(err)
 			}
 		})
 	}

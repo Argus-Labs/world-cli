@@ -188,9 +188,9 @@ func createOrganization(ctx context.Context) (organization, error) {
 		}
 
 		if !isAlphanumeric(orgSlug) {
-			fmt.Printf("Error: Slug must contain only letters (a-z|A-Z) and numbers (0-9) "+
-				"(attempt %d/%d)\n", attempts+1, maxAttempts)
 			attempts++
+			fmt.Printf("Error: Slug must contain only letters (a-z|A-Z) and numbers (0-9) "+
+				"(attempt %d/%d)\n", attempts, maxAttempts)
 			continue
 		}
 
@@ -231,8 +231,14 @@ func inviteUserToOrganization(ctx context.Context) error {
 		return eris.New("User ID cannot be empty")
 	}
 
+	role, err := getRoleInput(false)
+	if err != nil {
+		return eris.Wrap(err, "Failed to read role input")
+	}
+
 	payload := map[string]string{
 		"invited_user_id": userID,
+		"role":            role,
 	}
 
 	org, err := getSelectedOrganization(ctx)
@@ -253,4 +259,89 @@ func inviteUserToOrganization(ctx context.Context) error {
 
 	fmt.Println("User invited to organization")
 	return nil
+}
+
+func updateUserRoleInOrganization(ctx context.Context) error {
+	// Input user id
+	fmt.Print("Enter user ID: ")
+	userID, err := getInput()
+	if err != nil {
+		return eris.Wrap(err, "Failed to read user ID")
+	}
+
+	if userID == "" {
+		return eris.New("User ID cannot be empty")
+	}
+
+	role, err := getRoleInput(true)
+	if err != nil {
+		return eris.Wrap(err, "Failed to read role input")
+	}
+
+	payload := map[string]string{
+		"target_user_id": userID,
+		"role":           role,
+	}
+
+	org, err := getSelectedOrganization(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get organization")
+	}
+
+	if org.ID == "" {
+		printNoSelectedOrganization()
+		return nil
+	}
+
+	// Send request
+	_, err = sendRequest(ctx, http.MethodPost, fmt.Sprintf("%s/%s/role", organizationURL, org.ID), payload)
+	if err != nil {
+		return eris.Wrap(err, "Failed to set user role in organization")
+	}
+
+	fmt.Println("User role changed in organization")
+	return nil
+}
+
+func getRoleInput(allowNone bool) (string, error) {
+	// Get and validate role
+	attempts := 0
+	maxAttempts := 5
+	var opts string
+	if allowNone {
+		opts = "owner, admin, member, or none"
+	} else {
+		opts = "owner, admin, or member"
+	}
+	for attempts < maxAttempts {
+		fmt.Printf("Enter organization role (%s) [Enter for member]: ", opts)
+		role, err := getInput()
+		if err != nil {
+			return "", eris.Wrap(err, "Failed to read organization role")
+		}
+		attempts++
+		// default to member
+		if role == "" {
+			fmt.Println("Using default role of member.")
+			role = "member"
+		}
+		if allowNone && role == "none" {
+			fmt.Print("Role \"none\" removes user from this organization. Confirm removal? (Yes/no): ")
+			answer, err := getInput()
+			if err != nil {
+				return "", eris.Wrap(err, "Failed to read remove confirmation")
+			}
+			if answer != "Yes" {
+				fmt.Println("User not removed.")
+				continue // let them try again
+			}
+			return role, nil
+		}
+		if role == "admin" || role == "owner" || role == "member" {
+			return role, nil
+		}
+		fmt.Printf("Error: Role must be one of %s. (attempt %d/%d)\n",
+			opts, attempts, maxAttempts)
+	}
+	return "", eris.New("Maximum attempts reached for entering role")
 }
