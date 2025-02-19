@@ -258,6 +258,17 @@ var (
 			return status(cmd.Context())
 		},
 	}
+
+	promoteCmd = &cobra.Command{
+		Use:   "promote",
+		Short: "Promote a project from dev to prod environment",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return deployment(cmd.Context(), "promote")
+		},
+	}
 )
 
 func init() {
@@ -298,5 +309,6 @@ func init() {
 	deploymentCmd.AddCommand(destroyCmd)
 	deploymentCmd.AddCommand(statusCmd)
 	deploymentCmd.AddCommand(resetCmd)
+	deploymentCmd.AddCommand(promoteCmd)
 	BaseCmd.AddCommand(deploymentCmd)
 }

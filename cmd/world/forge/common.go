@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	requestTimeout = 2 * time.Second
+	requestTimeout = 5 * time.Second
 	httpClient     = &http.Client{
 		Timeout: requestTimeout,
 	}
@@ -71,6 +71,17 @@ var getInputInt = func() (int, error) {
 
 // sendRequest sends an HTTP request with auth token and returns the response body
 func sendRequest(ctx context.Context, method, url string, body interface{}) ([]byte, error) {
+	// Prepare request body and headers
+	req, err := prepareRequest(ctx, method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make request with retries
+	return makeRequestWithRetries(req)
+}
+
+func prepareRequest(ctx context.Context, method, url string, body interface{}) (*http.Request, error) {
 	var bodyReader io.Reader
 
 	if body != nil {
@@ -93,45 +104,57 @@ func sendRequest(ctx context.Context, method, url string, body interface{}) ([]b
 		return nil, eris.Wrap(err, "Failed to create request")
 	}
 
-	// Add authorization header
+	// Add headers
 	req.Header.Add("Authorization", "Bearer "+cred.Credential.Token)
-
-	// Add content-type header for requests with body
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	// Make request with timeout
+	return req, nil
+}
+
+func makeRequestWithRetries(req *http.Request) ([]byte, error) {
+	maxRetries := 5
+	var lastErr error
+
+	for i := 0; i < maxRetries; i++ {
+		if lastErr != nil {
+			fmt.Printf("Failed to make request: %s\n", lastErr)
+			fmt.Println("Retrying...")
+			time.Sleep(1 * time.Second)
+		}
+
+		respBody, err := doRequest(req)
+		if err == nil {
+			return respBody, nil
+		}
+		lastErr = err
+	}
+
+	return nil, eris.Wrapf(lastErr, "Failed after %d retries", maxRetries)
+}
+
+func doRequest(req *http.Request) ([]byte, error) {
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to make request")
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	// Check status code
 	if resp.StatusCode != http.StatusOK {
-		// if 401 show message to login again
 		if resp.StatusCode == http.StatusUnauthorized {
 			return nil, eris.New("Unauthorized. Please login again using 'world forge login' command")
 		}
 
-		// parse response body
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, eris.Wrap(err, "Failed to read response body")
+			return nil, err
 		}
-		// get message from response body
 		message := gjson.GetBytes(body, "message").String()
 		return nil, eris.New(message)
 	}
 
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to read response body")
-	}
-
-	return respBody, nil
+	return io.ReadAll(resp.Body)
 }
 
 func parseResponse[T any](body []byte) (*T, error) {

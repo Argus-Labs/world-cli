@@ -54,17 +54,31 @@ func GitCloneCmd(url, targetDir, initMsg string) error {
 	}
 
 	// Get latest tag from remote
-	rev, err := git("ls-remote", "--tags", "--sort=-v:refname", url)
+	output, err := git("ls-remote", "--tags", "--sort=-v:refname", url)
 	if err != nil {
 		return eris.Wrapf(err, "failed to fetch tags from remote")
 	}
 
-	// Extract latest tag
-	lines := strings.Split(rev, "\n")
-	if len(lines) == 0 {
-		return eris.New("no tags found in the repository")
+	// Parse the output to get the latest tag
+	var latestTag string
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skip annotated tag objects (ends with ^{})
+		if strings.Contains(line, "^{}") {
+			continue
+		}
+		// Extract tag name from the line
+		fields := strings.Fields(line)
+		if len(fields) >= 2 { //nolint:gomnd // git output is always 2 fields commit hash and tag name
+			latestTag = strings.TrimPrefix(fields[1], "refs/tags/")
+			break // Take the first tag (since they're already sorted)
+		}
 	}
-	latestTag := strings.TrimPrefix(strings.Fields(lines[len(lines)-1])[1], "refs/tags/")
+
+	if latestTag == "" {
+		return eris.New("no tags found in repository")
+	}
 
 	// Clone only the latest tag with depth 1
 	_, err = git("clone", "--branch", latestTag, "--depth", "1", url, targetDir)
