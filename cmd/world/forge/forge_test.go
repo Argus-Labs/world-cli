@@ -995,6 +995,41 @@ func (s *ForgeTestSuite) TestParseResponse() {
 	}
 }
 
+func (s *ForgeTestSuite) TestValidateRepoPath() {
+	testCases := []struct {
+		name          string
+		path          string
+		expectedError bool
+	}{
+		{name: "Good Path",
+			path:          "rampage",
+			expectedError: false,
+		},
+		{name: "Bad Path",
+			path:          "spaces not allowed",
+			expectedError: true,
+		},
+		{name: "Empty Path",
+			path:          "",
+			expectedError: false,
+		},
+		{name: "Multilevel Path",
+			path:          "/this/path/is/fine",
+			expectedError: false,
+		},
+	}
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			err := validateRepoPath(s.ctx, "fake_repo_url", "fake_token", tc.path)
+			if tc.expectedError {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
 func (s *ForgeTestSuite) TestValidateRepoToken() {
 	testCases := []struct {
 		name          string
