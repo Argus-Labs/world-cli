@@ -319,6 +319,7 @@ func getRoleInput(allowNone bool) (string, error) {
 		if err != nil {
 			return "", eris.Wrap(err, "Failed to read organization role")
 		}
+		attempts++
 		// default to member
 		if role == "" {
 			fmt.Println("Using default role of member.")
@@ -339,9 +340,8 @@ func getRoleInput(allowNone bool) (string, error) {
 		if role == "admin" || role == "owner" || role == "member" {
 			return role, nil
 		}
-		attempts++
 		fmt.Printf("Error: Role must be one of %s. (attempt %d/%d)\n",
 			opts, attempts, maxAttempts)
 	}
-	return "", eris.New("Maximum attempts reached for entering role slug")
+	return "", eris.New("Maximum attempts reached for entering role")
 }
