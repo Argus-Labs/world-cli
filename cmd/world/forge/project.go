@@ -35,7 +35,6 @@ type project struct {
 }
 
 type projectConfig struct {
-	EnvName  string   `json:"env_name"`
 	TickRate int      `json:"tick_rate"`
 	Region   []string `json:"region"`
 }
@@ -521,13 +520,6 @@ func projectInput(ctx context.Context) (project, error) {
 	}
 	project.RepoPath = repoPath
 
-	// Env Name
-	envName, err := inputEnvName(ctx)
-	if err != nil {
-		return project, eris.Wrap(err, "Failed to get environment name")
-	}
-	project.Config.EnvName = envName
-
 	// Tick Rate
 	tickRate, err := inputTickRate(ctx)
 	if err != nil {
@@ -543,34 +535,6 @@ func projectInput(ctx context.Context) (project, error) {
 	project.Config.Region = regions
 
 	return project, nil
-}
-
-// inputEnvName prompts the user to enter an environment name (e.g. dev, staging, prod)
-// and validates that it is not empty. Returns error after max attempts or context cancellation.
-func inputEnvName(ctx context.Context) (string, error) {
-	attempts := 0
-	maxAttempts := 5
-	for attempts < maxAttempts {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		default:
-			fmt.Print("Enter environment name (e.g. 'dev', 'staging', 'prod'): ")
-			envName, err := getInput()
-			if err != nil {
-				attempts++
-				fmt.Printf("Error: Failed to read environment name\n")
-				continue
-			}
-			if envName == "" {
-				attempts++
-				fmt.Printf("Error: Environment name cannot be empty\n")
-				continue
-			}
-			return envName, nil
-		}
-	}
-	return "", eris.New("Maximum attempts reached for entering environment name")
 }
 
 // inputTickRate prompts the user to enter a tick rate value (default is 1)

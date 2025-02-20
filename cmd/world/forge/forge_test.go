@@ -1519,10 +1519,9 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"",        // repoToken (empty for public repo)
-				"",        // repoPath (empty for default root path of repo)
-				"testenv", // environment
-				"10",      // tick rate
+				"",   // repoToken (empty for public repo)
+				"",   // repoPath (empty for default root path of repo)
+				"10", // tick rate
 			},
 			regionSelectActions: []tea.KeyMsg{
 				tea.KeyMsg{Type: tea.KeySpace}, // select region
