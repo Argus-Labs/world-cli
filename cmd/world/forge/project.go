@@ -139,7 +139,45 @@ func getListOfProjects(ctx context.Context) ([]project, error) {
 	return *projects, nil
 }
 
+// Get list of projects in selected organization
+func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, error) {
+	selectedOrg, err := getSelectedOrganization(ctx)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get organization")
+	}
+
+	if selectedOrg.ID == "" {
+		printNoSelectedOrganization()
+		return nil, nil
+	}
+
+	url := fmt.Sprintf(projectURLPattern, baseURL, selectedOrg.ID)
+	url += "/00000000-0000-0000-0000-000000000000/regions"
+	body, err := sendRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get regions")
+	}
+
+	regionMap, err := parseResponse[map[string]string](body)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to parse regions")
+	}
+
+	regions := make([]string, 0, len(*regionMap))
+	for _, region := range *regionMap {
+		regions = append(regions, region)
+	}
+
+	return regions, nil
+}
+
 func createProject(ctx context.Context) error {
+	regions, err := getListOfAvailableRegionsForNewProject(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get available regions")
+	}
+	fmt.Println(regions)
+
 	projectModel, err := projectInput(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
