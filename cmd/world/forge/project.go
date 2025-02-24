@@ -190,7 +190,7 @@ func createProject(ctx context.Context) error {
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
 	}
-	//fmt.Println(regions)
+	// fmt.Println(regions)
 
 	projectModel, err := projectInput(ctx, regions)
 	if err != nil {

@@ -231,7 +231,7 @@ func (s *ForgeTestSuite) handleProjectGet(w http.ResponseWriter, _ *http.Request
 	s.writeJSON(w, map[string]interface{}{"data": proj})
 }
 
-func (s *ForgeTestSuite) handleGetRegions(w http.ResponseWriter, r *http.Request) {
+func (s *ForgeTestSuite) handleGetRegions(w http.ResponseWriter, _ *http.Request) {
 	result := map[string]string{
 		"38f46cb3-63a3-4955-ae5f-6c31595fd970": "ap-southeast-1",
 		"4ee8a580-879f-47c8-a183-de6d50329dc1": "us-east-1",
