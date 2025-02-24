@@ -70,6 +70,8 @@ func (s *ForgeTestSuite) SetupTest() {
 					http.Error(w, "Organization not found", http.StatusNotFound)
 				case "/api/organization/test-org-id/project/invalid-project-id/deploy":
 					http.Error(w, "Project not found", http.StatusNotFound)
+				case "/api/organization/test-org-id/project/00000000-0000-0000-0000-000000000000/regions":
+					s.handleGetRegions(w, r)
 				case "/api/organization/test-org-id/invite":
 					s.handleInvite(w, r)
 				case "/api/organization/test-org-id/role":
@@ -227,6 +229,16 @@ func (s *ForgeTestSuite) handleProjectGet(w http.ResponseWriter, _ *http.Request
 		RepoURL: "https://github.com/test/repo",
 	}
 	s.writeJSON(w, map[string]interface{}{"data": proj})
+}
+
+func (s *ForgeTestSuite) handleGetRegions(w http.ResponseWriter, r *http.Request) {
+	result := map[string]string{
+		"38f46cb3-63a3-4955-ae5f-6c31595fd970": "ap-southeast-1",
+		"4ee8a580-879f-47c8-a183-de6d50329dc1": "us-east-1",
+		"71d61857-f803-4135-80a7-68b3e6f55443": "eu-central-1",
+		"f80a422c-eb8d-4d6d-8244-0f065773cb20": "us-west-2",
+	}
+	s.writeJSON(w, map[string]interface{}{"data": result})
 }
 
 func (s *ForgeTestSuite) handleDeploy(w http.ResponseWriter, r *http.Request) {

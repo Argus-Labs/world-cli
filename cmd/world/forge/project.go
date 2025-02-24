@@ -139,20 +139,8 @@ func getListOfProjects(ctx context.Context) ([]project, error) {
 	return *projects, nil
 }
 
-// Get list of projects in selected organization
-func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, error) {
-	selectedOrg, err := getSelectedOrganization(ctx)
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get organization")
-	}
-
-	if selectedOrg.ID == "" {
-		printNoSelectedOrganization()
-		return nil, nil
-	}
-
-	url := fmt.Sprintf(projectURLPattern, baseURL, selectedOrg.ID)
-	url += "/00000000-0000-0000-0000-000000000000/regions"
+func getListRegions(ctx context.Context, orgID, projID string) ([]string, error) {
+	url := fmt.Sprintf(projectURLPattern+"/%s/regions", baseURL, orgID, projID)
 	body, err := sendRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get regions")
@@ -171,14 +159,40 @@ func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, erro
 	return regions, nil
 }
 
+// Get list of projects in selected organization
+func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, error) {
+	selectedOrg, err := getSelectedOrganization(ctx)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get organization")
+	}
+	if selectedOrg.ID == "" {
+		printNoSelectedOrganization()
+		return nil, nil
+	}
+	return getListRegions(ctx, selectedOrg.ID, "00000000-0000-0000-0000-000000000000")
+}
+
+// Get list of projects in selected organization
+func getListOfAvailableRegionsForProject(ctx context.Context) ([]string, error) {
+	selectedProj, err := getSelectedProject(ctx)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get project")
+	}
+	if selectedProj.ID == "" {
+		printNoSelectedProject()
+		return nil, nil
+	}
+	return getListRegions(ctx, selectedProj.OrgID, selectedProj.ID)
+}
+
 func createProject(ctx context.Context) error {
 	regions, err := getListOfAvailableRegionsForNewProject(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
 	}
-	fmt.Println(regions)
+	//fmt.Println(regions)
 
-	projectModel, err := projectInput(ctx)
+	projectModel, err := projectInput(ctx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
@@ -488,8 +502,14 @@ func updateProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
 
+	regions, err := getListOfAvailableRegionsForProject(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get available regions")
+	}
+	fmt.Println(regions)
+
 	// get project input
-	projectModel, err := projectInput(ctx)
+	projectModel, err := projectInput(ctx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
@@ -518,7 +538,7 @@ func updateProject(ctx context.Context) error {
 	return nil
 }
 
-func projectInput(ctx context.Context) (project, error) {
+func projectInput(ctx context.Context, regions []string) (project, error) {
 	project := project{}
 
 	// Get organization
@@ -566,11 +586,11 @@ func projectInput(ctx context.Context) (project, error) {
 	project.Config.TickRate = tickRate
 
 	// Regions
-	regions, err := chooseRegion(ctx)
+	chosenRegions, err := chooseRegion(ctx, regions)
 	if err != nil {
 		return project, eris.Wrap(err, "Failed to choose region")
 	}
-	project.Config.Region = regions
+	project.Config.Region = chosenRegions
 
 	return project, nil
 }
@@ -601,17 +621,7 @@ func inputTickRate(ctx context.Context) (int, error) {
 // chooseRegion displays an interactive menu for selecting one or more AWS regions
 // using the bubbletea TUI library. Returns error if no regions selected after max attempts
 // or context cancellation.
-func chooseRegion(ctx context.Context) ([]string, error) {
-	// TODO: get regions from backend
-	regions := []string{
-		"us-east-1",
-		"us-west-1",
-		"eu-west-1",
-		"eu-central-1",
-		"ap-southeast-1",
-		"ap-northeast-1",
-	}
-
+func chooseRegion(ctx context.Context, regions []string) ([]string, error) {
 	for attempts := 0; attempts < 5; attempts++ {
 		select {
 		case <-ctx.Done():
