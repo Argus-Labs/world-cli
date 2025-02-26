@@ -24,6 +24,14 @@ func InitialMultiselectModel(ctx context.Context, items []string) Model {
 	}
 }
 
+func UpdateMultiselectModel(ctx context.Context, items []string, selected map[int]bool) Model {
+	return Model{
+		Items:    items,
+		Selected: selected,
+		Ctx:      ctx,
+	}
+}
+
 // Init initializes the bubbletea model
 func (m Model) Init() tea.Cmd {
 	return nil

@@ -93,7 +93,7 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("GitHub repository and token are valid!")
+		fmt.Println("✅ GitHub repository and token validation successful! 🎉")
 		return nil
 	}
 	return fmt.Errorf("GitHub validation failed: %s", resp.Status)

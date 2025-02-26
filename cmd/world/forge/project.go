@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -32,6 +34,8 @@ type project struct {
 	RepoToken   string        `json:"repo_token"`
 	RepoPath    string        `json:"repo_path"`
 	Config      projectConfig `json:"config"`
+
+	update bool `json:"-"`
 }
 
 type projectConfig struct {
@@ -156,6 +160,7 @@ func getListRegions(ctx context.Context, orgID, projID string) ([]string, error)
 		regions = append(regions, region)
 	}
 
+	sort.Strings(regions)
 	return regions, nil
 }
 
@@ -192,21 +197,24 @@ func createProject(ctx context.Context) error {
 	}
 	// fmt.Println(regions)
 
-	projectModel, err := projectInput(ctx, regions)
+	p := project{
+		update: false,
+	}
+	err = p.projectInput(ctx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
 
 	// Send request
-	url := fmt.Sprintf(projectURLPattern, baseURL, projectModel.OrgID)
+	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID)
 	body, err := sendRequest(ctx, http.MethodPost, url, map[string]interface{}{
-		"name":       projectModel.Name,
-		"slug":       projectModel.Slug,
-		"repo_url":   projectModel.RepoURL,
-		"repo_token": projectModel.RepoToken,
-		"repo_path":  projectModel.RepoPath,
-		"org_id":     projectModel.OrgID,
-		"config":     projectModel.Config,
+		"name":       p.Name,
+		"slug":       p.Slug,
+		"repo_url":   p.RepoURL,
+		"repo_token": p.RepoToken,
+		"repo_path":  p.RepoPath,
+		"org_id":     p.OrgID,
+		"config":     p.Config,
 	})
 	if err != nil {
 		return eris.Wrap(err, "Failed to create project")
@@ -221,60 +229,94 @@ func createProject(ctx context.Context) error {
 	return nil
 }
 
-func inputProjectName(ctx context.Context) (string, error) {
-	attempts := 0
+func (p *project) inputProjectName(ctx context.Context) error {
 	maxAttempts := 5
-	for attempts < maxAttempts {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		default:
-			fmt.Print("Enter project name: ")
-			name, err := getInput()
-			if err != nil {
-				return "", eris.Wrap(err, "Failed to read project name")
-			}
+	attempts := 0
 
-			// Check for empty string
-			if name == "" {
-				fmt.Printf("Error: Project name cannot be empty\n")
-				attempts++
-				continue
-			}
+	for {
+		if attempts >= maxAttempts {
+			return eris.New("Maximum attempts reached for entering project name")
+		}
 
-			// Check length (arbitrary max of 50 chars)
-			if len(name) > MaxProjectNameLen {
-				fmt.Printf("Error: Project name cannot be longer than 50 characters\n")
-				attempts++
-				continue
-			}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 
-			// Check for problematic characters
-			if strings.ContainsAny(name, "<>:\"/\\|?*") {
-				fmt.Printf("Error: Project name contains invalid characters\n")
-				attempts++
-				continue
-			}
+		name, err := p.promptForName()
+		if err != nil {
+			return err
+		}
 
-			return name, nil
+		err = p.validateAndSetName(name, &attempts)
+		if err == nil {
+			return nil
 		}
 	}
-
-	return "", eris.New("Maximum attempts reached for entering project name")
 }
 
-func inputProjectSlug(ctx context.Context) (string, error) {
+func (p *project) promptForName() (string, error) {
+	if p.Name != "" {
+		fmt.Printf("Change project name [Enter for \"%s\"]: ", p.Name)
+	} else {
+		fmt.Print("Enter project name: ")
+	}
+
+	name, err := getInput()
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to read project name")
+	}
+
+	if name == "" && p.update {
+		name = p.Name
+	}
+
+	return name, nil
+}
+
+func (p *project) validateAndSetName(name string, attempts *int) error {
+	if name == "" {
+		fmt.Printf("Error: Project name cannot be empty\n")
+		*attempts++
+		return eris.New("empty name")
+	}
+
+	if len(name) > MaxProjectNameLen {
+		fmt.Printf("Error: Project name cannot be longer than 50 characters\n")
+		*attempts++
+		return eris.New("name too long")
+	}
+
+	if strings.ContainsAny(name, "<>:\"/\\|?*") {
+		fmt.Printf("Error: Project name contains invalid characters\n")
+		*attempts++
+		return eris.New("invalid characters")
+	}
+
+	p.Name = name
+	return nil
+}
+
+func (p *project) inputProjectSlug(ctx context.Context) error {
 	attempts := 0
 	maxAttempts := 5
 	for attempts < maxAttempts {
 		select {
 		case <-ctx.Done():
-			return "", ctx.Err()
+			return ctx.Err()
 		default:
-			fmt.Print("Enter project slug (5 characters, alphanumeric only): ")
+			if p.Slug != "" {
+				fmt.Printf("Change project slug [Enter for \"%s\"] (5 characters, alphanumeric only): ", p.Slug)
+			} else {
+				fmt.Print("Enter project slug (5 characters, alphanumeric only): ")
+			}
 			slug, err := getInput()
 			if err != nil {
-				return "", eris.Wrap(err, "Failed to read project slug")
+				return eris.Wrap(err, "Failed to read project slug")
+			}
+
+			// set existing slug if empty
+			if slug == "" && p.update {
+				slug = p.Slug
 			}
 
 			// Validate slug
@@ -290,54 +332,109 @@ func inputProjectSlug(ctx context.Context) (string, error) {
 				continue
 			}
 
-			return slug, nil
+			p.Slug = slug
+			return nil
 		}
 	}
 
-	return "", eris.New("Maximum attempts reached for project slug")
+	return eris.New("Maximum attempts reached for project slug")
 }
 
-func inputRepoURLAndToken(ctx context.Context) (string, string, error) {
-	// Get repository URL and token, then validate them together
-	var repoURL, repoToken string
-	var err error
+func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 	attempts := 0
 	maxAttempts := 5
 	for attempts < maxAttempts {
-		// Get repository URL
-		fmt.Print("Enter repository URL (https format): ")
-		repoURL, err = getInput()
-		if err != nil {
-			return "", "", eris.Wrap(err, "Failed to read repository URL")
-		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			repoURL, err := p.promptForRepoURL()
+			if err != nil {
+				return err
+			}
 
-		if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
-			fmt.Printf("Error: Repository URL must start with http:// or https://\n")
-			attempts++
-			continue
-		}
+			if err := p.validateRepoURL(repoURL, &attempts); err != nil {
+				continue
+			}
 
-		// Get repository token
-		fmt.Print("Enter repository personal access token (leave empty for public repositories): ")
-		repoToken, err = getInput()
-		if err != nil {
-			return "", "", eris.Wrap(err, "Failed to read personal access token")
-		}
+			repoToken, err := p.promptForRepoToken()
+			if err != nil {
+				return err
+			}
 
-		// Validate repository access using the new validateRepoToken function
-		if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			attempts++
-			continue
-		}
+			repoToken = p.processRepoToken(repoToken)
 
-		return repoURL, repoToken, nil
+			if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
+				fmt.Printf("Error: %v\n", err)
+				attempts++
+				continue
+			}
+
+			p.RepoURL = repoURL
+			p.RepoToken = repoToken
+			return nil
+		}
 	}
 
-	return "", "", eris.New("Maximum attempts reached for repository validation")
+	return eris.New("Maximum attempts reached for repository validation")
 }
 
-func inputRepoPath(ctx context.Context, repoURL, repoToken string) (string, error) {
+func (p *project) promptForRepoURL() (string, error) {
+	if p.RepoURL != "" {
+		fmt.Printf("Change repository URL [Enter for \"%s\"] (https format): ", p.RepoURL)
+	} else {
+		fmt.Print("Enter repository URL (https format): ")
+	}
+
+	repoURL, err := getInput()
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to read repository URL")
+	}
+
+	if repoURL == "" && p.update {
+		repoURL = p.RepoURL
+	}
+
+	return repoURL, nil
+}
+
+func (p *project) validateRepoURL(repoURL string, attempts *int) error {
+	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
+		fmt.Printf("Error: Repository URL must start with http:// or https://\n")
+		*attempts++
+		return eris.New("invalid URL format")
+	}
+	return nil
+}
+
+func (p *project) promptForRepoToken() (string, error) {
+	if p.update {
+		fmt.Print("Change repository personal access token " +
+			"[Leave empty to use existing token or type 'public' for public repositories]: ")
+	} else {
+		fmt.Print("Enter repository personal access token " +
+			"[Leave empty or type 'public' for public repositories]: ")
+	}
+
+	repoToken, err := getInput()
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to read personal access token")
+	}
+
+	return repoToken, nil
+}
+
+func (p *project) processRepoToken(repoToken string) string {
+	if repoToken == "" && p.update {
+		return p.RepoToken
+	}
+	if repoToken == "public" {
+		return ""
+	}
+	return repoToken
+}
+
+func (p *project) inputRepoPath(ctx context.Context) error {
 	// Get repository Path
 	var repoPath string
 	var err error
@@ -345,27 +442,37 @@ func inputRepoPath(ctx context.Context, repoURL, repoToken string) (string, erro
 	maxAttempts := 5
 	for attempts < maxAttempts {
 		// Get repository URL
-		fmt.Print("Enter repository Cardinal path [Enter for default empty path]: ")
+		if p.update {
+			fmt.Printf("Change repository Cardinal path [Enter for \"%s\"] (empty for default path): ", p.RepoPath)
+		} else {
+			fmt.Print("Enter repository Cardinal path (empty for default path): ")
+		}
 		repoPath, err = getInput()
 		if err != nil {
-			return "", eris.Wrap(err, "Failed to read repository path")
+			return eris.Wrap(err, "Failed to read repository path")
 		}
 
 		// strip off any leading slash
 		repoPath = strings.TrimPrefix(repoPath, "/")
 
+		// set existing path if empty
+		if repoPath == "" && p.update {
+			repoPath = p.RepoPath
+		}
+
 		// Validate the path exists using the new validateRepoPath function
 		if len(repoPath) > 0 {
-			if err := validateRepoPath(ctx, repoURL, repoToken, repoPath); err != nil {
+			if err := validateRepoPath(ctx, p.RepoURL, p.RepoToken, repoPath); err != nil {
 				fmt.Printf("Error: %v\n", err)
 				attempts++
 				continue
 			}
 		}
 
-		return repoPath, nil
+		p.RepoPath = repoPath
+		return nil
 	}
-	return "", eris.New("Maximum attempts reached for entering repo path")
+	return eris.New("Maximum attempts reached for entering repo path")
 }
 
 func selectProject(ctx context.Context) (project, error) {
@@ -497,7 +604,7 @@ func deleteProject(ctx context.Context) error {
 
 func updateProject(ctx context.Context) error {
 	// get selected project
-	project, err := getSelectedProject(ctx)
+	p, err := getSelectedProject(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
@@ -506,23 +613,25 @@ func updateProject(ctx context.Context) error {
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
 	}
-	fmt.Println(regions)
+
+	// set update to true
+	p.update = true
 
 	// get project input
-	projectModel, err := projectInput(ctx, regions)
+	err = p.projectInput(ctx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
 
 	// Send request
-	url := fmt.Sprintf(projectURLPattern, baseURL, project.OrgID) + "/" + project.ID
+	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID) + "/" + p.ID
 	body, err := sendRequest(ctx, http.MethodPut, url, map[string]interface{}{
-		"name":       projectModel.Name,
-		"slug":       projectModel.Slug,
-		"repo_url":   projectModel.RepoURL,
-		"repo_token": projectModel.RepoToken,
-		"repo_path":  projectModel.RepoPath,
-		"config":     projectModel.Config,
+		"name":       p.Name,
+		"slug":       p.Slug,
+		"repo_url":   p.RepoURL,
+		"repo_token": p.RepoToken,
+		"repo_path":  p.RepoPath,
+		"config":     p.Config,
 	})
 	if err != nil {
 		return eris.Wrap(err, "Failed to update project")
@@ -533,127 +642,144 @@ func updateProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
-	fmt.Printf("Project updated successfully: %s (%s)\n", projectModel.Name, projectModel.Slug)
+	fmt.Printf("Project updated successfully: %s (%s)\n", p.Name, p.Slug)
 
 	return nil
 }
 
-func projectInput(ctx context.Context, regions []string) (project, error) {
-	project := project{}
-
+func (p *project) projectInput(ctx context.Context, regions []string) error {
 	// Get organization
 	org, err := getSelectedOrganization(ctx)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to get organization")
+		return eris.Wrap(err, "Failed to get organization")
 	}
-	project.OrgID = org.ID
+	p.OrgID = org.ID
 
 	if org.ID == "" {
 		printNoSelectedOrganization()
-		return project, nil
+		return nil
 	}
 
-	name, err := inputProjectName(ctx)
+	err = p.inputProjectName(ctx)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to get project name")
+		return eris.Wrap(err, "Failed to get project name")
 	}
-	project.Name = name
 
-	slug, err := inputProjectSlug(ctx)
+	err = p.inputProjectSlug(ctx)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to get project slug")
+		return eris.Wrap(err, "Failed to get project slug")
 	}
-	project.Slug = slug
 
-	repoURL, repoToken, err := inputRepoURLAndToken(ctx)
+	err = p.inputRepoURLAndToken(ctx)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to get repository URL and token")
+		return eris.Wrap(err, "Failed to get repository URL and token")
 	}
-	project.RepoURL = repoURL
-	project.RepoToken = repoToken
 
-	repoPath, err := inputRepoPath(ctx, repoURL, repoToken)
+	err = p.inputRepoPath(ctx)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to get repository path")
+		return eris.Wrap(err, "Failed to get repository path")
 	}
-	project.RepoPath = repoPath
 
 	// Tick Rate
-	tickRate, err := inputTickRate(ctx)
+	err = p.inputTickRate(ctx)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to get environment name")
+		return eris.Wrap(err, "Failed to get environment name")
 	}
-	project.Config.TickRate = tickRate
 
 	// Regions
-	chosenRegions, err := chooseRegion(ctx, regions)
+	err = p.chooseRegion(ctx, regions)
 	if err != nil {
-		return project, eris.Wrap(err, "Failed to choose region")
+		return eris.Wrap(err, "Failed to choose region")
 	}
-	project.Config.Region = chosenRegions
 
-	return project, nil
+	return nil
 }
 
 // inputTickRate prompts the user to enter a tick rate value (default is 1)
 // and validates that it is a valid number. Returns error after max attempts or context cancellation.
-func inputTickRate(ctx context.Context) (int, error) {
+func (p *project) inputTickRate(ctx context.Context) error {
 	attempts := 0
 	maxAttempts := 5
 	for attempts < maxAttempts {
 		select {
 		case <-ctx.Done():
-			return 0, ctx.Err()
+			return ctx.Err()
 		default:
-			fmt.Print("Enter tick rate (e.g. 10, 20, 30, default is 1): ")
-			tickRate, err := getInputInt()
+			if p.Config.TickRate != 0 {
+				fmt.Printf("Change tick rate [Enter for \"%d\"] (e.g. 10, 20, 30, default is 1): ", p.Config.TickRate)
+			} else {
+				fmt.Print("Enter tick rate (e.g. 10, 20, 30, default is 1): ")
+			}
+			tickRate, err := getInput()
 			if err != nil {
 				attempts++
 				fmt.Printf("Error: Invalid input. Please enter a number\n")
 				continue
 			}
-			return tickRate, nil
+
+			// set existing tick rate if empty
+			if tickRate == "" && p.update {
+				tickRate = strconv.Itoa(p.Config.TickRate)
+			}
+
+			p.Config.TickRate, err = strconv.Atoi(tickRate)
+			if err != nil {
+				attempts++
+				fmt.Printf("Error: Invalid input. Please enter a number\n")
+				continue
+			}
+			return nil
 		}
 	}
-	return 0, eris.New("Maximum attempts reached for entering tick rate")
+	return eris.New("Maximum attempts reached for entering tick rate")
 }
 
 // chooseRegion displays an interactive menu for selecting one or more AWS regions
 // using the bubbletea TUI library. Returns error if no regions selected after max attempts
 // or context cancellation.
-func chooseRegion(ctx context.Context, regions []string) ([]string, error) {
+func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 	for attempts := 0; attempts < 5; attempts++ {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return ctx.Err()
 		default:
-			selectedRegions, err := runRegionSelector(ctx, regions)
+			err := p.runRegionSelector(ctx, regions)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 				continue
 			}
-			if len(selectedRegions) > 0 {
-				return selectedRegions, nil
+			if len(p.Config.Region) > 0 {
+				return nil
 			}
 			fmt.Println("Error: At least one region must be selected")
 		}
 	}
 
-	return nil, eris.New("Maximum attempts reached for selecting regions")
+	return eris.New("Maximum attempts reached for selecting regions")
 }
 
-func runRegionSelector(ctx context.Context, regions []string) ([]string, error) {
+func (p *project) runRegionSelector(ctx context.Context, regions []string) error {
 	if regionSelector == nil {
-		regionSelector = tea.NewProgram(multiselect.InitialMultiselectModel(ctx, regions))
+		if p.update {
+			selectedRegions := make(map[int]bool)
+			for i, region := range regions {
+				if slices.Contains(p.Config.Region, region) {
+					selectedRegions[i] = true
+				}
+			}
+			regionSelector = tea.NewProgram(multiselect.UpdateMultiselectModel(ctx, regions, selectedRegions))
+		} else {
+			regionSelector = tea.NewProgram(multiselect.InitialMultiselectModel(ctx, regions))
+		}
 	}
 	m, err := regionSelector.Run()
 	if err != nil {
-		return nil, eris.Wrap(err, "failed to run region selector")
+		return eris.Wrap(err, "failed to run region selector")
 	}
 
 	model, ok := m.(multiselect.Model)
 	if !ok {
-		return nil, eris.New("failed to get selected regions")
+		return eris.New("failed to get selected regions")
 	}
 
 	var selectedRegions []string
@@ -663,5 +789,7 @@ func runRegionSelector(ctx context.Context, regions []string) ([]string, error) 
 		}
 	}
 
-	return selectedRegions, nil
+	p.Config.Region = selectedRegions
+
+	return nil
 }
