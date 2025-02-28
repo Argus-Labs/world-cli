@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	DeploymentTypeDeploy  = "deploy"
-	DeploymentTypeDestroy = "destroy"
-	DeploymentTypeReset   = "reset"
+	DeploymentTypeDeploy   = "deploy"
+	DeploymentTypeDestroy  = "destroy"
+	DeploymentTypeReset    = "reset"
+	DeploymentStatusFailed = "failed"
+	DeploymentStatusPassed = "passed"
 )
 
 var statusFailRegEx = regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
@@ -168,26 +170,67 @@ func status(ctx context.Context) error {
 		if !ok {
 			return eris.New("Failed to unmarshal deployment build_start_time")
 		}
-		bt, bte := time.Parse(time.RFC3339, buildStartTimeStr)
+		bst, bte := time.Parse(time.RFC3339, buildStartTimeStr)
 		if bte != nil {
 			return eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
 		}
+		buildEndTimeStr, ok := data["build_end_time"].(string)
+		if !ok {
+			buildEndTimeStr = buildStartTimeStr // we don't know how long this took
+		}
+		bet, bte := time.Parse(time.RFC3339, buildEndTimeStr)
+		if bte != nil {
+			return eris.Wrapf(bte, "Failed to parse deployment build_end_time %s", buildEndTimeStr)
+		}
+		if bet.Before(bst) {
+			bet = bst // we don't know how long this took
+		}
+		buildDuration := bet.Sub(bst)
 		// buildkite states (used with deployType deploy) are:
 		//   creating, scheduled, running, passed, failing, failed, blocked, canceling, canceled, skipped, not_run
-		if buildState != "passed" { // if we have any build state other than passed, stop here
-			fmt.Printf("Build:        #%d started %s by %s - %s\n", buildNumber, bt.Format(time.RFC822),
-				executorID, buildState)
-			return nil
+
+		switch buildState {
+		case DeploymentStatusPassed:
+			fmt.Printf("✅ Build:        #%d %s completed %s (%s ago) by %s\n", buildNumber,
+				formattedDuration(buildDuration),
+				bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID)
+		case DeploymentStatusFailed:
+			fmt.Printf("❌ Build:        #%d %s failed at %s (%s ago)\n", buildNumber, buildDuration.String(),
+				bet.Format(time.RFC822), formattedDuration(time.Since(bet)))
+			return nil // don't report health
+		default:
+			fmt.Printf("🔄 Build:        #%d started %s (%s ago) by %s - %s\n", buildNumber,
+				bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState)
+			return nil // don't report health
 		}
-		fmt.Printf("Build:        #%d on %s by %s\n", buildNumber, dt.Format(time.RFC822), executorID)
 	case DeploymentTypeDestroy:
-		fmt.Printf("Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
-		if buildState != "failed" {
-			return nil // if destroy failed, continue on to show health, otherwise stop here.
+		switch buildState {
+		case DeploymentStatusPassed:
+			fmt.Printf("✅ Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
+			return nil
+		case DeploymentStatusFailed:
+			fmt.Printf("❌ Destroy:      failed on %s by %s", dt.Format(time.RFC822), executorID)
+			// if destroy failed, continue on to show health
+		default:
+			fmt.Printf("🔄 Destroy:      started %s (%s ago) by %s - %s", dt.Format(time.RFC822),
+				formattedDuration(time.Since(dt)), executorID, buildState)
+			return nil // don't report health
 		}
 	case DeploymentTypeReset:
 		fmt.Printf("Reset:        on %s by %s\n", dt.Format(time.RFC822), executorID)
 		// results can be "passed" or "failed", but either way continue to show the health
+		switch buildState {
+		case DeploymentStatusPassed:
+			fmt.Printf("✅ Reset:    on %s by %s", dt.Format(time.RFC822), executorID)
+			return nil
+		case DeploymentStatusFailed:
+			fmt.Printf("❌ Reset:    failed on %s by %s", dt.Format(time.RFC822), executorID)
+			// if destroy failed, continue on to show health
+		default:
+			fmt.Printf("🔄 Reset:    started %s (%s ago) by %s - %s", dt.Format(time.RFC822),
+				formattedDuration(time.Since(dt)), executorID, buildState)
+			return nil // don't report health
+		}
 	default:
 		return eris.Errorf("Unknown deployment type %s", deployType)
 	}
@@ -281,27 +324,37 @@ func status(ctx context.Context) error {
 			fmt.Printf("• %s\n", currRegion)
 		}
 		fmt.Printf("  %d)", instanceNum)
-		fmt.Printf("\tCardinal: %s - ", cardinalHost)
 		switch {
 		case cardinalOK:
-			fmt.Print("OK\n")
+			fmt.Printf("\t✅ Cardinal: %s - OK\n", cardinalHost)
 		case cardinalResultCode == 0:
-			fmt.Printf("FAIL %s\n", statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
+			fmt.Printf("\t❌ Cardinal: %s - FAIL %s\n", cardinalHost,
+				statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
 		default:
-			fmt.Printf("FAIL %d %s\n", cardinalResultCode, statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
+			fmt.Printf("\t❌ Cardinal: %s - FAIL %d %s\n", cardinalHost, cardinalResultCode,
+				statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
 		}
-		fmt.Printf("\tNakama:   %s - ", nakamaHost)
 		switch {
 		case nakamaOK:
-			fmt.Print("OK\n")
+			fmt.Printf("\t✅ Nakama:   %s - OK\n", nakamaHost)
 		case nakamaResultCode == 0:
-			fmt.Printf("FAIL %s\n", statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
+			fmt.Printf("\t❌ Nakama:   %s - FAIL %s\n", nakamaHost,
+				statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
 		default:
-			fmt.Printf("FAIL %d %s\n", nakamaResultCode, statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
+			fmt.Printf("\t❌ Nakama:   %s - FAIL %d %s\n", nakamaHost, nakamaResultCode,
+				statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
 		}
 	}
 	// fmt.Println()
 	// fmt.Println(string(result))
 
 	return nil
+}
+
+func formattedDuration(d time.Duration) string {
+	const hoursPerDay = 24
+	if d.Hours() >= hoursPerDay {
+		return fmt.Sprintf("%dd %dh", int(d.Hours()/hoursPerDay), int(d.Hours())%hoursPerDay)
+	}
+	return d.Round(time.Second).String()
 }
