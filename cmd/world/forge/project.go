@@ -21,19 +21,20 @@ const MaxProjectNameLen = 50
 var regionSelector *tea.Program
 
 type project struct {
-	ID          string        `json:"id"`
-	OrgID       string        `json:"org_id"`
-	OwnerID     string        `json:"owner_id"`
-	Name        string        `json:"name"`
-	Slug        string        `json:"slug"`
-	CreatedTime string        `json:"created_time"`
-	UpdatedTime string        `json:"updated_time"`
-	Deleted     bool          `json:"deleted"`
-	DeletedTime string        `json:"deleted_time"`
-	RepoURL     string        `json:"repo_url"`
-	RepoToken   string        `json:"repo_token"`
-	RepoPath    string        `json:"repo_path"`
-	Config      projectConfig `json:"config"`
+	ID           string        `json:"id"`
+	OrgID        string        `json:"org_id"`
+	OwnerID      string        `json:"owner_id"`
+	Name         string        `json:"name"`
+	Slug         string        `json:"slug"`
+	CreatedTime  string        `json:"created_time"`
+	UpdatedTime  string        `json:"updated_time"`
+	Deleted      bool          `json:"deleted"`
+	DeletedTime  string        `json:"deleted_time"`
+	RepoURL      string        `json:"repo_url"`
+	RepoToken    string        `json:"repo_token"`
+	RepoPath     string        `json:"repo_path"`
+	DeploySecret string        `json:"deploy_secret,omitempty"`
+	Config       projectConfig `json:"config"`
 
 	update bool `json:"-"`
 }
@@ -60,17 +61,19 @@ func showProjectList(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
 
-	fmt.Println("\n📁 Project Information")
-	fmt.Println("--------------------")
+	fmt.Println("\n📁 ✨ Project Information ✨")
+	fmt.Println("============================")
 	if project.Name == "" {
-		fmt.Println("No project selected")
+		fmt.Println("\n❌ No project selected")
+		fmt.Println("\nℹ️  Use 'world forge project select' to choose a project")
 	} else {
-		fmt.Println("\nAvailable Projects:")
+		fmt.Println("\n📋 Available Projects:")
+		fmt.Println("---------------------------")
 		for _, prj := range projects {
 			if prj.ID == project.ID {
-				fmt.Printf("* %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
+				fmt.Printf("🌟 %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
 			} else {
-				fmt.Printf("  %s (%s)\n", prj.Name, prj.Slug)
+				fmt.Printf("📎 %s (%s)\n", prj.Name, prj.Slug)
 			}
 		}
 	}
@@ -190,10 +193,10 @@ func getListOfAvailableRegionsForProject(ctx context.Context) ([]string, error) 
 	return getListRegions(ctx, selectedProj.OrgID, selectedProj.ID)
 }
 
-func createProject(ctx context.Context) error {
+func createProject(ctx context.Context) (*project, error) {
 	regions, err := getListOfAvailableRegionsForNewProject(ctx)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get available regions")
+		return nil, eris.Wrap(err, "Failed to get available regions")
 	}
 	// fmt.Println(regions)
 
@@ -202,7 +205,7 @@ func createProject(ctx context.Context) error {
 	}
 	err = p.projectInput(ctx, regions)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get project input")
+		return nil, eris.Wrap(err, "Failed to get project input")
 	}
 
 	// Send request
@@ -217,21 +220,55 @@ func createProject(ctx context.Context) error {
 		"config":     p.Config,
 	})
 	if err != nil {
-		return eris.Wrap(err, "Failed to create project")
+		return nil, eris.Wrap(err, "Failed to create project")
 	}
 
 	prj, err := parseResponse[project](body)
 	if err != nil {
-		return eris.Wrap(err, "Failed to parse response")
+		return nil, eris.Wrap(err, "Failed to parse response")
 	}
 
-	fmt.Printf("Project created successfully: %s (%s)\n", prj.Name, prj.Slug)
-	return nil
+	// Select project
+	config, err := globalconfig.GetGlobalConfig()
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get config")
+	}
+	config.ProjectID = prj.ID
+
+	err = globalconfig.SaveGlobalConfig(config)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to select project")
+	}
+
+	fmt.Printf("\n✨ Project '%s' created successfully! ✨\n", prj.Name)
+	fmt.Printf("📋 Project Details:\n")
+	fmt.Printf("  • Name: %s\n", prj.Name)
+	fmt.Printf("  • Slug: %s\n", prj.Slug)
+	fmt.Printf("  • ID: %s\n", prj.ID)
+	fmt.Printf("  • Repository URL: %s\n", prj.RepoURL)
+	fmt.Printf("  • Repository Path: %s\n", prj.RepoPath)
+	fmt.Printf("  • Tick Rate: %d\n", prj.Config.TickRate)
+	fmt.Printf("  • Regions:\n")
+	for _, region := range prj.Config.Region {
+		fmt.Printf("    - %s\n", region)
+	}
+	fmt.Printf("  • Deploy Secret (for deploy via CI/CD pipeline tools):\n")
+	fmt.Printf("      %s\n", prj.DeploySecret)
+	fmt.Printf("ℹ️ Deploy Secret will not be shown again. Save it now in a secure location.\n")
+
+	return prj, nil
 }
 
 func (p *project) inputProjectName(ctx context.Context) error {
 	maxAttempts := 5
 	attempts := 0
+
+	fmt.Println("\n🎨 ✨ Project Name Configuration ✨")
+	fmt.Println("=================================")
+	fmt.Println("\nℹ️  Project name requirements:")
+	fmt.Println("  • Must not be empty")
+	fmt.Printf("  • Maximum length: %d characters\n", MaxProjectNameLen)
+	fmt.Println("  • Cannot contain: < > : \" / \\ | ? *")
 
 	for {
 		if attempts >= maxAttempts {
@@ -249,16 +286,20 @@ func (p *project) inputProjectName(ctx context.Context) error {
 
 		err = p.validateAndSetName(name, &attempts)
 		if err == nil {
+			fmt.Printf("\n✅ Project name \"%s\" accepted!\n", name)
 			return nil
 		}
 	}
 }
 
 func (p *project) promptForName() (string, error) {
+	fmt.Println("\n📝 ✨ Project Name Configuration ✨")
+	fmt.Println("================================")
 	if p.Name != "" {
-		fmt.Printf("Change project name [Enter for \"%s\"]: ", p.Name)
+		fmt.Printf("\n📋 Current name: \"%s\"\n", p.Name)
+		fmt.Print("\n✨ Enter new name (or press Enter to keep current): ")
 	} else {
-		fmt.Print("Enter project name: ")
+		fmt.Print("\n✨ Enter project name: ")
 	}
 
 	name, err := getInput()
@@ -274,20 +315,23 @@ func (p *project) promptForName() (string, error) {
 }
 
 func (p *project) validateAndSetName(name string, attempts *int) error {
+	maxAttempts := 5
 	if name == "" {
-		fmt.Printf("Error: Project name cannot be empty\n")
+		fmt.Printf("\n❌ Error: Project name cannot be empty (attempt %d/%d)\n", *attempts+1, maxAttempts)
 		*attempts++
 		return eris.New("empty name")
 	}
 
 	if len(name) > MaxProjectNameLen {
-		fmt.Printf("Error: Project name cannot be longer than 50 characters\n")
+		fmt.Printf("\n❌ Error: Project name cannot be longer than %d characters (attempt %d/%d)\n",
+			MaxProjectNameLen, *attempts+1, maxAttempts)
 		*attempts++
 		return eris.New("name too long")
 	}
 
 	if strings.ContainsAny(name, "<>:\"/\\|?*") {
-		fmt.Printf("Error: Project name contains invalid characters\n")
+		fmt.Printf("\n❌ Error: Project name contains invalid characters (attempt %d/%d)\n"+
+			"   Invalid characters: < > : \" / \\ | ? *\n", *attempts+1, maxAttempts)
 		*attempts++
 		return eris.New("invalid characters")
 	}
@@ -304,11 +348,19 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			fmt.Println("\n🔖 ✨ Project Slug Configuration ✨")
+			fmt.Println("================================")
 			if p.Slug != "" {
-				fmt.Printf("Change project slug [Enter for \"%s\"] (5 characters, alphanumeric only): ", p.Slug)
+				fmt.Printf("\n📝 Current slug: \"%s\"\n", p.Slug)
+				fmt.Print("\n✨ Enter new slug (or press Enter to keep current)")
 			} else {
-				fmt.Print("Enter project slug (5 characters, alphanumeric only): ")
+				fmt.Print("\n✨ Enter new project slug")
 			}
+			fmt.Print("\n\n📋 Requirements:")
+			fmt.Print("\n   • Exactly 5 characters")
+			fmt.Print("\n   • Letters (a-z|A-Z) and numbers (0-9) only")
+			fmt.Print("\n\n👉 Slug: ")
+
 			slug, err := getInput()
 			if err != nil {
 				return eris.Wrap(err, "Failed to read project slug")
@@ -321,13 +373,14 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 
 			// Validate slug
 			if len(slug) != 5 { //nolint:gomnd
-				fmt.Printf("Error: Slug must be exactly 5 characters\n")
+				fmt.Printf("\n❌ Error: Slug must be exactly 5 characters (attempt %d/%d)\n", attempts+1, maxAttempts)
 				attempts++
 				continue
 			}
 
 			if !isAlphanumeric(slug) {
-				fmt.Printf("Error: Slug must contain only letters (a-z|A-Z) and numbers (0-9)\n")
+				fmt.Printf("\n❌ Error: Slug must contain only letters (a-z|A-Z) and numbers (0-9) (attempt %d/%d)\n",
+					attempts+1, maxAttempts)
 				attempts++
 				continue
 			}
@@ -380,10 +433,16 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 }
 
 func (p *project) promptForRepoURL() (string, error) {
+	fmt.Printf("\n🔗 Repository URL Configuration")
+	fmt.Printf("\n============================")
+	fmt.Printf("\n\n✨ Enter repository URL:")
 	if p.RepoURL != "" {
-		fmt.Printf("Change repository URL [Enter for \"%s\"] (https format): ", p.RepoURL)
+		fmt.Printf("\n   • Press Enter to keep: %s", p.RepoURL)
+		fmt.Printf("\n   • Or enter new URL (https format)")
+		fmt.Printf("\n\nURL: ")
 	} else {
-		fmt.Print("Enter repository URL (https format): ")
+		fmt.Printf("\n   • Must use https format")
+		fmt.Printf("\n\nURL: ")
 	}
 
 	repoURL, err := getInput()
@@ -400,7 +459,11 @@ func (p *project) promptForRepoURL() (string, error) {
 
 func (p *project) validateRepoURL(repoURL string, attempts *int) error {
 	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
-		fmt.Printf("Error: Repository URL must start with http:// or https://\n")
+		fmt.Printf("\n❌ Error: Invalid Repository URL Format\n")
+		fmt.Printf("============================\n")
+		fmt.Printf("🔍 The URL must start with:\n")
+		fmt.Printf("   • http://\n")
+		fmt.Printf("   • https://\n\n")
 		*attempts++
 		return eris.New("invalid URL format")
 	}
@@ -409,11 +472,20 @@ func (p *project) validateRepoURL(repoURL string, attempts *int) error {
 
 func (p *project) promptForRepoToken() (string, error) {
 	if p.update {
-		fmt.Print("Change repository personal access token " +
-			"[Leave empty to use existing token or type 'public' for public repositories]: ")
+		fmt.Printf("\n🔑 Update Repository Access Token\n")
+		fmt.Printf("==============================\n")
+		fmt.Printf("\n✨ Enter new token (options):\n")
+		fmt.Printf("   • Press Enter to keep existing token\n")
+		fmt.Printf("   • Type 'public' for public repositories\n")
+		fmt.Printf("   • Enter new token for private repositories\n")
+		fmt.Printf("\nToken: ")
 	} else {
-		fmt.Print("Enter repository personal access token " +
-			"[Leave empty or type 'public' for public repositories]: ")
+		fmt.Printf("\n🔑 Repository Access Token\n")
+		fmt.Printf("=======================\n")
+		fmt.Printf("\n✨ Enter token (options):\n")
+		fmt.Printf("   • Type 'public' for public repositories\n")
+		fmt.Printf("   • Enter token for private repositories\n")
+		fmt.Printf("\nToken: ")
 	}
 
 	repoToken, err := getInput()
@@ -443,9 +515,14 @@ func (p *project) inputRepoPath(ctx context.Context) error {
 	for attempts < maxAttempts {
 		// Get repository URL
 		if p.update {
-			fmt.Printf("Change repository Cardinal path [Enter for \"%s\"] (empty for default path): ", p.RepoPath)
+			fmt.Printf("\n📂 Change Repository Cardinal Path\n")
+			fmt.Printf("================================\n")
+			fmt.Printf("Current path: \"%s\"\n", p.RepoPath)
+			fmt.Printf("\n✨ Enter new path (or press Enter to keep current, empty for default): ")
 		} else {
-			fmt.Print("Enter repository Cardinal path (empty for default path): ")
+			fmt.Printf("\n📂 Set Repository Cardinal Path\n")
+			fmt.Printf("============================\n")
+			fmt.Printf("\n✨ Enter path (empty for default): ")
 		}
 		repoPath, err = getInput()
 		if err != nil {
@@ -463,7 +540,7 @@ func (p *project) inputRepoPath(ctx context.Context) error {
 		// Validate the path exists using the new validateRepoPath function
 		if len(repoPath) > 0 {
 			if err := validateRepoPath(ctx, p.RepoURL, p.RepoToken, repoPath); err != nil {
-				fmt.Printf("Error: %v\n", err)
+				fmt.Printf("\n❌ Error: %v\n", err)
 				attempts++
 				continue
 			}
@@ -488,16 +565,19 @@ func selectProject(ctx context.Context) (project, error) {
 	}
 
 	// Display projects as a numbered list
-	fmt.Println("\nAvailable projects:")
+	fmt.Println("\n📁 ✨ Available Projects ✨")
+	fmt.Println("==========================")
+	fmt.Println("\n📋 Project List:")
+	fmt.Println("--------------")
 	for i, proj := range projects {
-		fmt.Printf("%d. %s (%s)\n", i+1, proj.Name, proj.Slug)
+		fmt.Printf("  %d. 📂 %s\n     └─ 🔖 Slug: %s\n", i+1, proj.Name, proj.Slug)
 	}
 
 	// Get user input
 	attempts := 0
 	maxAttempts := 5
 	for attempts < maxAttempts {
-		fmt.Print("\nEnter project number (or 'q' to quit): ")
+		fmt.Print("\n✨ Enter project number (or 'q' to quit): ")
 		input, err := getInput()
 		if err != nil {
 			return project{}, eris.Wrap(err, "Failed to read input")
@@ -505,13 +585,15 @@ func selectProject(ctx context.Context) (project, error) {
 
 		input = strings.TrimSpace(input)
 		if input == "q" {
+			fmt.Println("\n❌ Project selection canceled")
 			return project{}, eris.New("Project selection canceled")
 		}
 
 		// Parse selection
 		num, err := strconv.Atoi(input)
 		if err != nil || num < 1 || num > len(projects) {
-			fmt.Printf("Invalid selection. Please enter a number between 1 and %d\n", len(projects))
+			fmt.Printf("\n❌ Invalid selection. Please enter a number between 1 and %d (attempt %d/%d)\n",
+				len(projects), attempts+1, maxAttempts)
 			attempts++
 			continue
 		}
@@ -529,6 +611,7 @@ func selectProject(ctx context.Context) (project, error) {
 			return project{}, eris.Wrap(err, "Failed to save project")
 		}
 
+		fmt.Printf("\n✅ Selected project: %s\n", selectedProject.Name)
 		return selectedProject, nil
 	}
 
@@ -541,22 +624,24 @@ func deleteProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get project")
 	}
 
-	// Print project details with formatting
-	fmt.Println("\n🗑️  Project Deletion")
-	fmt.Println("------------------")
-	fmt.Printf("Project Name: %s\n", project.Name)
-	fmt.Printf("Project Slug: %s\n\n", project.Slug)
+	// Print project details with fancy formatting
+	fmt.Println("\n🗑️  ✨ Project Deletion ✨")
+	fmt.Println("===========================")
+	fmt.Printf("\n📋 Project Details:")
+	fmt.Printf("\n  • 📝 Name: %s", project.Name)
+	fmt.Printf("\n  • 🔖 Slug: %s\n", project.Slug)
 
-	// Warning message
-	fmt.Println("⚠️  WARNING")
-	fmt.Println("  This will permanently delete:")
-	fmt.Println("  • All deployments")
-	fmt.Println("  • All logs")
-	fmt.Println("  • All associated resources")
+	// Warning message with fancy formatting
+	fmt.Println("\n⚠️  WARNING!")
+	fmt.Println("===========")
+	fmt.Println("\n❗ This action will permanently delete:")
+	fmt.Println("  • 🚀 All deployments")
+	fmt.Println("  • 📜 All logs")
+	fmt.Println("  • 🔧 All associated resources")
 	fmt.Println("")
 
-	// Confirmation prompt
-	fmt.Printf("❓ Are you sure you want to delete %s? (Y/n): ", project.Name)
+	// Confirmation prompt with fancy formatting
+	fmt.Printf("❓ Type 'Y' (uppercase) to confirm deletion of '%s': ", project.Name)
 	confirmation, err := getInput()
 	if err != nil {
 		return eris.Wrap(err, "Failed to read confirmation")
@@ -564,12 +649,12 @@ func deleteProject(ctx context.Context) error {
 
 	if confirmation != "Y" {
 		if confirmation == "y" {
-			fmt.Println("You need to put Y (uppercase) to confirm deletion")
-			fmt.Println("\n❌ Project deletion canceled")
+			fmt.Println("\n❌ Error: You must type 'Y' (uppercase) to confirm deletion")
+			fmt.Println("\n🚫 Project deletion canceled")
 			return nil
 		}
 
-		fmt.Println("\n❌ Project deletion canceled")
+		fmt.Println("\n🚫 Project deletion canceled")
 		return nil
 	}
 
@@ -586,7 +671,9 @@ func deleteProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
-	fmt.Printf("Project deleted successfully: %s (%s)\n", project.Name, project.Slug)
+	fmt.Println("\n✨ Success! ✨")
+	fmt.Println("==============")
+	fmt.Printf("\n✅ Project deleted: %s (%s)\n", project.Name, project.Slug)
 
 	// Remove project from config
 	config, err := globalconfig.GetGlobalConfig()
@@ -617,11 +704,16 @@ func updateProject(ctx context.Context) error {
 	// set update to true
 	p.update = true
 
+	fmt.Println("\n📝 ✨ Project Update ✨")
+	fmt.Println("=======================")
+
 	// get project input
 	err = p.projectInput(ctx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
+
+	fmt.Println("\n🔄 Updating project...")
 
 	// Send request
 	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID) + "/" + p.ID
@@ -642,7 +734,18 @@ func updateProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
-	fmt.Printf("Project updated successfully: %s (%s)\n", p.Name, p.Slug)
+	fmt.Printf("\n✨ Project '%s' updated successfully! ✨\n", p.Name)
+	fmt.Printf("📋 Project Details:\n")
+	fmt.Printf("  • Name: %s\n", p.Name)
+	fmt.Printf("  • Slug: %s\n", p.Slug)
+	fmt.Printf("  • ID: %s\n", p.ID)
+	fmt.Printf("  • Repository URL: %s\n", p.RepoURL)
+	fmt.Printf("  • Repository Path: %s\n", p.RepoPath)
+	fmt.Printf("  • Tick Rate: %d\n", p.Config.TickRate)
+	fmt.Printf("  • Regions:\n")
+	for _, region := range p.Config.Region {
+		fmt.Printf("    - %s\n", region)
+	}
 
 	return nil
 }
@@ -705,15 +808,20 @@ func (p *project) inputTickRate(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			fmt.Println("\n⚡ Tick Rate Configuration")
+			fmt.Println("========================")
 			if p.Config.TickRate != 0 {
-				fmt.Printf("Change tick rate [Enter for \"%d\"] (e.g. 10, 20, 30, default is 1): ", p.Config.TickRate)
+				fmt.Printf("\n🔄 Current tick rate: %d\n", p.Config.TickRate)
+				fmt.Print("✨ Enter new tick rate [press Enter to keep current]\n")
 			} else {
-				fmt.Print("Enter tick rate (e.g. 10, 20, 30, default is 1): ")
+				fmt.Print("\n✨ Enter tick rate for your project:\n")
 			}
+			fmt.Print("   └─ Examples: 10, 20, 30 (default is 1): ")
+
 			tickRate, err := getInput()
 			if err != nil {
 				attempts++
-				fmt.Printf("Error: Invalid input. Please enter a number\n")
+				fmt.Printf("\n❌ Invalid input. Please enter a number (attempt %d/%d)\n", attempts, maxAttempts)
 				continue
 			}
 
@@ -725,9 +833,10 @@ func (p *project) inputTickRate(ctx context.Context) error {
 			p.Config.TickRate, err = strconv.Atoi(tickRate)
 			if err != nil {
 				attempts++
-				fmt.Printf("Error: Invalid input. Please enter a number\n")
+				fmt.Printf("\n❌ Invalid input. Please enter a number (attempt %d/%d)\n", attempts, maxAttempts)
 				continue
 			}
+			fmt.Printf("\n✅ Tick rate set to: %d\n", p.Config.TickRate)
 			return nil
 		}
 	}
@@ -745,16 +854,20 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 		default:
 			err := p.runRegionSelector(ctx, regions)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
+				fmt.Printf("\n❌ Error: %v\n", err)
 				continue
 			}
 			if len(p.Config.Region) > 0 {
 				return nil
 			}
-			fmt.Println("Error: At least one region must be selected")
+			fmt.Println("\n⚠️  Error: At least one region must be selected")
+			fmt.Printf("\n🔄 Attempt %d/5 - Please try again\n", attempts+1)
 		}
 	}
 
+	fmt.Println("\n❌ Region Selection Failed")
+	fmt.Println("========================")
+	fmt.Println("\nℹ️  Maximum attempts reached. Please try the command again.")
 	return eris.New("Maximum attempts reached for selecting regions")
 }
 
@@ -792,4 +905,62 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) error
 	p.Config.Region = selectedRegions
 
 	return nil
+}
+
+// handleProjectSelection manages the project selection logic
+func handleProjectSelection(ctx context.Context, projectID string) (string, error) {
+	projects, err := getListOfProjects(ctx)
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to get projects")
+	}
+
+	switch numProjects := len(projects); {
+	case numProjects == 1:
+		return projects[0].ID, nil
+	case numProjects > 1:
+		return handleMultipleProjects(ctx, projectID, projects)
+	default:
+		return handleNoProjects(ctx)
+	}
+}
+
+// handleMultipleProjects handles the case when there are multiple projects
+func handleMultipleProjects(ctx context.Context, projectID string, projects []project) (string, error) {
+	for _, project := range projects {
+		if project.ID == projectID {
+			return projectID, nil
+		}
+	}
+
+	project, err := selectProject(ctx)
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to select project")
+	}
+	return project.ID, nil
+}
+
+// handleNoProjects handles the case when there are no projects
+func handleNoProjects(ctx context.Context) (string, error) {
+	// Confirmation prompt
+	fmt.Printf("❓ You don't have any projects in this organization. Do you want to create a new project now? (Y/n): ")
+	confirmation, err := getInput()
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to read confirmation")
+	}
+
+	if confirmation != "Y" {
+		if confirmation == "y" {
+			fmt.Println("You need to put Y (uppercase) to confirm creation")
+			fmt.Println("\n❌ Project creation canceled")
+			return "", nil
+		}
+
+		return "", nil
+	}
+
+	project, err := createProject(ctx)
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to create project")
+	}
+	return project.ID, nil
 }

@@ -30,8 +30,17 @@ func login(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to open browser")
 	}
 
+	// Keep the selected org and project to be used after login
+	config, err := globalconfig.GetGlobalConfig()
+	if err != nil {
+		// no config found, so we need to select the org and project
+		config = globalconfig.GlobalConfig{}
+	}
+
+	orgID := config.OrganizationID
+	projectID := config.ProjectID
+
 	// Wait for user to login
-	fmt.Println("Waiting for user to login...")
 	url = fmt.Sprintf("%s?key=%s", getTokenURL, key)
 	token, err := getToken(ctx, url)
 	if err != nil {
@@ -44,18 +53,58 @@ func login(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get name from token")
 	}
 
-	fmt.Println("Login successful")
-	fmt.Println("Welcome, ", cred.Name)
-	fmt.Println("Your ID is: ", cred.ID)
-
-	// Save token and name to config file
-	config := globalconfig.GlobalConfig{
-		Credential: cred,
-	}
+	// Save credential to config
+	config.Credential = cred
 	err = globalconfig.SaveGlobalConfig(config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save credential")
 	}
+
+	// Handle organization selection
+	orgID, err = handleOrganizationSelection(ctx, orgID)
+	if err != nil {
+		orgID = ""
+	}
+
+	// save orgID to config
+	config.OrganizationID = orgID
+	err = globalconfig.SaveGlobalConfig(config)
+	if err != nil {
+		return eris.Wrap(err, "Failed to save organization ID")
+	}
+
+	// Handle project selection
+	projectID, err = handleProjectSelection(ctx, projectID)
+	if err != nil {
+		projectID = ""
+	}
+
+	// save projectID to config
+	config.ProjectID = projectID
+
+	// Save config
+	err = globalconfig.SaveGlobalConfig(config)
+	if err != nil {
+		return eris.Wrap(err, "Failed to save credential")
+	}
+
+	// show the org list
+	err = showOrganizationList(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to show organization list")
+	}
+
+	// show the project list
+	err = showProjectList(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to show project list")
+	}
+
+	fmt.Println("\n✨ Login successful! ✨")
+	fmt.Println("=====================")
+	fmt.Printf("\n👋 Welcome, %s!\n", cred.Name)
+	fmt.Printf("🆔 Your ID is: %s\n", cred.ID)
+	fmt.Println("\n🚀 You're all set to start using World Forge!")
 
 	return nil
 }
@@ -70,7 +119,7 @@ func getToken(ctx context.Context, url string) (string, error) {
 		case <-ctx.Done():
 			return "", ctx.Err()
 		case <-time.After(3 * time.Second): //nolint:gomnd
-			fmt.Println("Logging in... attempt", attempts)
+			fmt.Printf("\r🔄 Logging in... attempt %d", attempts)
 
 			// Create request with context
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -85,6 +134,7 @@ func getToken(ctx context.Context, url string) (string, error) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusOK {
+				fmt.Println("\n✨ Login token received successfully!")
 				// Read the token from the response
 				response, err := io.ReadAll(resp.Body)
 				if err != nil {
@@ -99,6 +149,7 @@ func getToken(ctx context.Context, url string) (string, error) {
 			attempts++
 		}
 	}
+	fmt.Println() // Add newline before error
 	return "", eris.New("max attempts reached while waiting for token")
 }
 

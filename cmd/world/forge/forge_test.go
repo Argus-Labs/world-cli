@@ -3,6 +3,7 @@ package forge
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -197,12 +198,20 @@ func (s *ForgeTestSuite) handleOrganizationGet(w http.ResponseWriter, r *http.Re
 
 func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		parsedBody, err := io.ReadAll(r.Body)
+		s.Require().NoError(err)
+		defer r.Body.Close()
+
+		body := map[string]interface{}{}
+		err = json.Unmarshal(parsedBody, &body)
+		s.Require().NoError(err)
+
 		proj := project{
 			ID:      "test-project-id",
 			OrgID:   "test-org-id",
-			Name:    r.FormValue("name"),
-			Slug:    r.FormValue("slug"),
-			RepoURL: r.FormValue("repo_url"),
+			Name:    body["name"].(string),
+			Slug:    body["slug"].(string),
+			RepoURL: body["repo_url"].(string),
 		}
 		s.writeJSON(w, map[string]interface{}{"data": proj})
 		return
@@ -1518,6 +1527,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 		inputs              []string     // For name, slug, repoURL, repoToken
 		regionSelectActions []tea.KeyMsg // Simulate region selection
 		expectedError       bool
+		expectedProject     *project
 	}{
 		{
 			name: "Success - Create project with public repo",
@@ -1540,6 +1550,10 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				tea.KeyMsg{Type: tea.KeyEnter}, // confirm
 			},
 			expectedError: false,
+			expectedProject: &project{
+				Name: "Test Project",
+				Slug: "testp",
+			},
 		},
 		// {
 		// 	name: "Success - Create project with private repo",
@@ -1564,8 +1578,9 @@ func (s *ForgeTestSuite) TestCreateProject() {
 					Token: "test-token",
 				},
 			},
-			inputs:        []string{},
-			expectedError: true,
+			inputs:          []string{},
+			expectedError:   true,
+			expectedProject: nil,
 		},
 		{
 			name: "Error - Invalid organization ID",
@@ -1581,7 +1596,8 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"https://github.com/test/repo",
 				"",
 			},
-			expectedError: true,
+			expectedError:   true,
+			expectedProject: nil,
 		},
 		{
 			name: "Error - Invalid project slug",
@@ -1601,7 +1617,8 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"https://github.com/test/repo",
 				"",
 			},
-			expectedError: true,
+			expectedError:   true,
+			expectedProject: nil,
 		},
 		{
 			name: "Error - Invalid repo URL",
@@ -1621,7 +1638,8 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"invalid-url", // invalid URL 5th attempts
 				"",
 			},
-			expectedError: true,
+			expectedError:   true,
+			expectedProject: nil,
 		},
 	}
 
@@ -1663,11 +1681,15 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				}
 			}()
 
-			err = createProject(s.ctx)
+			prj, err := createProject(s.ctx)
 			if tc.expectedError {
 				s.Error(err)
 			} else {
 				s.NoError(err)
+				if tc.expectedProject != nil {
+					s.Equal(tc.expectedProject.Name, prj.Name)
+					s.Equal(tc.expectedProject.Slug, prj.Slug)
+				}
 			}
 		})
 	}

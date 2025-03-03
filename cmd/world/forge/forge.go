@@ -97,13 +97,10 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			org, err := createOrganization(cmd.Context())
+			_, err := createOrganization(cmd.Context())
 			if err != nil {
 				return eris.Wrap(err, "Failed to create organization")
 			}
-			fmt.Println("Organization created successfully")
-			fmt.Println("Organization Name: ", org.Name)
-			fmt.Println("Organization Slug: ", org.Slug)
 			return nil
 		},
 	}
@@ -177,7 +174,11 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			return createProject(cmd.Context())
+			_, err := createProject(cmd.Context())
+			if err != nil {
+				return eris.Wrap(err, "Failed to create project")
+			}
+			return nil
 		},
 	}
 

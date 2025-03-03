@@ -162,22 +162,39 @@ func parseResponse[T any](body []byte) (*T, error) {
 	return &data, nil
 }
 
+func printNoOrganizations() {
+	fmt.Println("\n🏢 No Organizations Found")
+	fmt.Println("=========================")
+	fmt.Println("\n❌ You don't have any organizations yet.")
+	fmt.Println("\nℹ️  Use 'world forge organization create' to create one.")
+}
+
 func printNoSelectedOrganization() {
-	fmt.Println("You don't have any organization selected.")
-	fmt.Println("Use 'world forge organization switch' to select one.")
-	fmt.Println()
+	fmt.Println("\n🏢 No Organization Selected")
+	fmt.Println("==========================")
+	fmt.Println("\n❌ You don't have any organization selected.")
+	fmt.Println("\nℹ️  Use 'world forge organization switch' to select one")
 }
 
 func printNoSelectedProject() {
-	fmt.Println("You don't have any project selected.")
-	fmt.Println("Use 'world forge project switch' to select one.")
-	fmt.Println()
+	fmt.Println("\n📁 No Project Selected")
+	fmt.Println("=====================")
+	fmt.Println("\n❌ You don't have any project selected.")
+	fmt.Println("\nℹ️  Use 'world forge project switch' to select one")
 }
 
 func printNoProjectsInOrganization() {
-	fmt.Println("You don't have any projects in this organization yet.")
-	fmt.Println("Use 'world forge project create' to create one.")
-	fmt.Println()
+	fmt.Println("\n📦 No Projects Found")
+	fmt.Println("====================")
+	fmt.Println("\n❌ You don't have any projects in this organization yet.")
+	fmt.Println("\nℹ️  Use 'world forge project create' to create your first project!")
+}
+
+func printAuthenticationRequired() {
+	fmt.Println("\n🔒 Authentication Required")
+	fmt.Println("========================")
+	fmt.Println("\n❌ You are not currently logged in")
+	fmt.Println("\nℹ️  Use 'world forge login' to authenticate")
 }
 
 func isAlphanumeric(s string) bool {
@@ -192,14 +209,12 @@ func isAlphanumeric(s string) bool {
 func checkLogin() bool {
 	cred, err := globalconfig.GetGlobalConfig()
 	if err != nil {
-		fmt.Println("You are not logged in. Please login first")
-		fmt.Println("Use 'world forge login' to login")
+		printAuthenticationRequired()
 		return false
 	}
 
 	if cred.Credential.Token == "" {
-		fmt.Println("You are not logged in. Please login first")
-		fmt.Println("Use 'world forge login' to login")
+		printAuthenticationRequired()
 		return false
 	}
 
