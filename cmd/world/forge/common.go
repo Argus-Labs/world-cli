@@ -110,7 +110,7 @@ func makeRequestWithRetries(req *http.Request) ([]byte, error) {
 
 	for i := 0; i < maxRetries; i++ {
 		if lastErr != nil {
-			fmt.Printf("Failed to make request: %s\n", lastErr)
+			fmt.Printf("Failed to make request [%s]: %s\n", req.URL, lastErr.Error())
 			fmt.Println("Retrying...")
 			time.Sleep(1 * time.Second)
 		}
