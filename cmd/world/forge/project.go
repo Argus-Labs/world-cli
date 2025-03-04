@@ -406,6 +406,11 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 				return err
 			}
 
+			// if repoURL prefix is not http or https, add https:// to the repoURL
+			if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
+				repoURL = "https://" + repoURL
+			}
+
 			if err := p.validateRepoURL(repoURL, &attempts); err != nil {
 				continue
 			}

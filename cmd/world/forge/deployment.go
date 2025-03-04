@@ -24,6 +24,17 @@ const (
 
 var statusFailRegEx = regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
 
+type deploymentPreview struct {
+	OrgName        string   `json:"org_name"`
+	OrgSlug        string   `json:"org_slug"`
+	ProjectName    string   `json:"project_name"`
+	ProjectSlug    string   `json:"project_slug"`
+	ExecutorName   string   `json:"executor_name"`
+	DeploymentType string   `json:"deployment_type"`
+	TickRate       int      `json:"tick_rate"`
+	Regions        []string `json:"regions"`
+}
+
 // Deployment a project
 func deployment(ctx context.Context, deployType string) error {
 	globalConfig, err := globalconfig.GetGlobalConfig()
@@ -44,25 +55,32 @@ func deployment(ctx context.Context, deployType string) error {
 		return nil
 	}
 
-	// Get organization details
-	org, err := getSelectedOrganization(ctx)
+	// preview deployment
+	err = previewDeployment(ctx, deployType, organizationID, projectID)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get organization details")
+		return eris.Wrap(err, "Failed to preview deployment")
 	}
 
-	// Get project details
-	prj, err := getSelectedProject(ctx)
+	// prompt user to confirm deployment
+	fmt.Println("\n🔄  Confirm Deployment ✨")
+	fmt.Println("=========================")
+	fmt.Println("\n🔍  Review the deployment details above.")
+	fmt.Printf("\n❓ Do you want to proceed with the deployment? (Y/n): ")
+
+	confirmation, err := getInput()
 	if err != nil {
-		return eris.Wrap(err, "Failed to get project details")
+		return eris.Wrap(err, "Failed to read confirmation")
 	}
 
-	fmt.Println("Deployment Details")
-	fmt.Println("-----------------")
-	fmt.Printf("Organization: %s\n", org.Name)
-	fmt.Printf("Org Slug:     %s\n", org.Slug)
-	fmt.Printf("Project:      %s\n", prj.Name)
-	fmt.Printf("Project Slug: %s\n", prj.Slug)
-	fmt.Printf("Repository:   %s\n\n", prj.RepoURL)
+	if confirmation != "Y" {
+		if confirmation == "y" {
+			fmt.Println("You need to put Y (uppercase) to confirm deployment")
+			fmt.Println("\n❌ Deployment cancelled")
+			return nil
+		}
+		fmt.Println("\n❌ Deployment cancelled")
+		return nil
+	}
 
 	if deployType == "forceDeploy" {
 		deployType = "deploy?force=true"
@@ -347,6 +365,44 @@ func status(ctx context.Context) error {
 	}
 	// fmt.Println()
 	// fmt.Println(string(result))
+
+	return nil
+}
+
+func previewDeployment(ctx context.Context, deployType string, organizationID string, projectID string) error {
+	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s?preview=true",
+		baseURL, organizationID, projectID, deployType)
+	resultBytes, err := sendRequest(ctx, http.MethodPost, deployURL, nil)
+	if err != nil {
+		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+	}
+
+	type deploymentPreviewResponse struct {
+		Data deploymentPreview `json:"data"`
+	}
+	var response deploymentPreviewResponse
+	err = json.Unmarshal(resultBytes, &response)
+	if err != nil {
+		return eris.Wrap(err, "Failed to unmarshal deployment preview")
+	}
+	fmt.Println("\n✨ Deployment Preview ✨")
+	fmt.Println("=======================")
+	fmt.Println("\n📋 Basic Information")
+	fmt.Println("------------------")
+	fmt.Printf("🏢 Organization:     %s\n", response.Data.OrgName)
+	fmt.Printf("🔖 Org Slug:        %s\n", response.Data.OrgSlug)
+	fmt.Printf("📁 Project:         %s\n", response.Data.ProjectName)
+	fmt.Printf("🏷️  Project Slug:    %s\n", response.Data.ProjectSlug)
+
+	fmt.Println("\n⚙️  Configuration")
+	fmt.Println("--------------")
+	fmt.Printf("👤 Executor:        %s\n", response.Data.ExecutorName)
+	fmt.Printf("🚀 Deployment Type: %s\n", response.Data.DeploymentType)
+	fmt.Printf("⚡ Tick Rate:       %d\n", response.Data.TickRate)
+
+	fmt.Println("\n🌎 Deployment Regions")
+	fmt.Println("------------------")
+	fmt.Printf("📍 %s\n", strings.Join(response.Data.Regions, ", "))
 
 	return nil
 }

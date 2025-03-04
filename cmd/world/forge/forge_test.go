@@ -255,6 +255,25 @@ func (s *ForgeTestSuite) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// check if preview flag is set
+	preview := r.URL.Query().Get("preview")
+	if preview == "true" {
+		deploymentPreview := deploymentPreview{
+			ProjectName:    "Test Project",
+			ProjectSlug:    "testp",
+			OrgName:        "Test Org",
+			OrgSlug:        "testo",
+			ExecutorName:   "Test Executor",
+			DeploymentType: "deploy",
+			TickRate:       10,
+			Regions:        []string{"ap-southeast-1", "us-east-1", "eu-central-1", "us-west-2"},
+		}
+
+		s.writeJSON(w, map[string]interface{}{"data": deploymentPreview})
+		return
+	}
+
 	s.writeJSON(w, map[string]interface{}{"data": "deployment started"})
 }
 
@@ -388,6 +407,25 @@ func (s *ForgeTestSuite) handleDestroy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// check if preview flag is set
+	preview := r.URL.Query().Get("preview")
+	if preview == "true" {
+		deploymentPreview := deploymentPreview{
+			ProjectName:    "Test Project",
+			ProjectSlug:    "testp",
+			OrgName:        "Test Org",
+			OrgSlug:        "testo",
+			ExecutorName:   "Test Executor",
+			DeploymentType: "deploy",
+			TickRate:       10,
+			Regions:        []string{"ap-southeast-1", "us-east-1", "eu-central-1", "us-west-2"},
+		}
+
+		s.writeJSON(w, map[string]interface{}{"data": deploymentPreview})
+		return
+	}
+
 	s.writeJSON(w, map[string]interface{}{"data": "destroy started"})
 }
 
@@ -422,6 +460,25 @@ func (s *ForgeTestSuite) handleReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// check if preview flag is set
+	preview := r.URL.Query().Get("preview")
+	if preview == "true" {
+		deploymentPreview := deploymentPreview{
+			ProjectName:    "Test Project",
+			ProjectSlug:    "testp",
+			OrgName:        "Test Org",
+			OrgSlug:        "testo",
+			ExecutorName:   "Test Executor",
+			DeploymentType: "deploy",
+			TickRate:       10,
+			Regions:        []string{"ap-southeast-1", "us-east-1", "eu-central-1", "us-west-2"},
+		}
+
+		s.writeJSON(w, map[string]interface{}{"data": deploymentPreview})
+		return
+	}
+
 	s.writeJSON(w, map[string]interface{}{"data": "reset started"})
 }
 
@@ -640,6 +697,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 	testCases := []struct {
 		name          string
 		config        globalconfig.GlobalConfig
+		input         string
 		expectedError bool
 	}{
 		{
@@ -651,6 +709,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 					Token: "test-token",
 				},
 			},
+			input:         "Y",
 			expectedError: false,
 		},
 		{
@@ -662,6 +721,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 					Token: "test-token",
 				},
 			},
+			input:         "Y",
 			expectedError: true,
 		},
 		{
@@ -673,6 +733,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 					Token: "test-token",
 				},
 			},
+			input:         "Y",
 			expectedError: true,
 		},
 		{
@@ -693,6 +754,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 					Token: "test-token",
 				},
 			},
+			input:         "Y",
 			expectedError: false,
 		},
 	}
@@ -701,6 +763,11 @@ func (s *ForgeTestSuite) TestDeploy() {
 		s.Run(tc.name, func() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
+
+			getInput = func() (string, error) {
+				return tc.input, nil
+			}
+			defer func() { getInput = originalGetInput }()
 
 			err = deployment(s.ctx, "deploy")
 			if tc.expectedError {
@@ -1631,11 +1698,16 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			inputs: []string{
 				"Test Project",
 				"testp",
-				"invalid-url", // invalid URL 1st attempts
-				"invalid-url", // invalid URL 2nd attempts
-				"invalid-url", // invalid URL 3rd attempts
-				"invalid-url", // invalid URL 4th attempts
-				"invalid-url", // invalid URL 5th attempts
+				"invalid-url",   // invalid URL 1st attempts
+				"invalid-token", // invalid token 1st attempts
+				"invalid-url",   // invalid URL 2nd attempts
+				"invalid-token", // invalid token 2nd attempts
+				"invalid-url",   // invalid URL 3rd attempts
+				"invalid-token", // invalid token 3rd attempts
+				"invalid-url",   // invalid URL 4th attempts
+				"invalid-token", // invalid token 4th attempts
+				"invalid-url",   // invalid URL 5th attempts
+				"invalid-token", // invalid token 5th attempts
 				"",
 			},
 			expectedError:   true,
