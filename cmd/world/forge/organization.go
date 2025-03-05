@@ -227,23 +227,20 @@ func createOrganization(ctx context.Context) (*organization, error) {
 	attempts := 0
 	maxAttempts := 5
 	for attempts < maxAttempts {
-		fmt.Print("\n🔖 Enter organization slug (5 characters, alphanumeric only): ")
+		fmt.Print("\n🔖 Enter organization slug (3-15 characters, " +
+			"lowercase letters, numbers, and underscores allowed): ")
 		orgSlug, err = getInput()
 		if err != nil {
 			return nil, eris.Wrap(err, "Failed to read organization slug")
 		}
 
 		// Validate slug
-		if len(orgSlug) != 5 { //nolint:gomnd
-			fmt.Printf("\n❌ Error: Slug must be exactly 5 characters (attempt %d/%d)\n", attempts+1, maxAttempts)
+		minLength := 3
+		maxLength := 15
+		err = slugCheck(orgSlug, minLength, maxLength)
+		if err != nil {
+			fmt.Printf("\n❌ Error: %s (attempt %d/%d)\n", err, attempts+1, maxAttempts)
 			attempts++
-			continue
-		}
-
-		if !isAlphanumeric(orgSlug) {
-			attempts++
-			fmt.Printf("\n❌ Error: Slug must contain only letters (a-z|A-Z) and numbers (0-9) "+
-				"(attempt %d/%d)\n", attempts, maxAttempts)
 			continue
 		}
 

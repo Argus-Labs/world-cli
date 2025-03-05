@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -219,4 +220,21 @@ func checkLogin() bool {
 	}
 
 	return true
+}
+
+func slugCheck(slug string, minLength int, maxLength int) error {
+	if len(slug) < minLength || len(slug) > maxLength {
+		return eris.Errorf("Slug must be between %d and %d characters", minLength, maxLength)
+	}
+
+	// Check if slug contains only allowed characters
+	matched, err := regexp.MatchString("^[a-z0-9_]+$", slug)
+	if err != nil {
+		return eris.Wrap(err, "Error validating slug format")
+	}
+	if !matched {
+		return eris.New("Slug can only contain lowercase letters, numbers, and underscores")
+	}
+
+	return nil
 }

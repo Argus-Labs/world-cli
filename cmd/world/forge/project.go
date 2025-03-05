@@ -357,8 +357,8 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 				fmt.Print("\n✨ Enter new project slug")
 			}
 			fmt.Print("\n\n📋 Requirements:")
-			fmt.Print("\n   • Exactly 5 characters")
-			fmt.Print("\n   • Letters (a-z|A-Z) and numbers (0-9) only")
+			fmt.Print("\n   • 3-25 characters")
+			fmt.Print("\n   • Lowercase letters, numbers, and underscores allowed")
 			fmt.Print("\n\n👉 Slug: ")
 
 			slug, err := getInput()
@@ -372,15 +372,11 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 			}
 
 			// Validate slug
-			if len(slug) != 5 { //nolint:gomnd
-				fmt.Printf("\n❌ Error: Slug must be exactly 5 characters (attempt %d/%d)\n", attempts+1, maxAttempts)
-				attempts++
-				continue
-			}
-
-			if !isAlphanumeric(slug) {
-				fmt.Printf("\n❌ Error: Slug must contain only letters (a-z|A-Z) and numbers (0-9) (attempt %d/%d)\n",
-					attempts+1, maxAttempts)
+			minLength := 3
+			maxLength := 25
+			err = slugCheck(slug, minLength, maxLength)
+			if err != nil {
+				fmt.Printf("\n❌ Error: %s (attempt %d/%d)\n", err, attempts+1, maxAttempts)
 				attempts++
 				continue
 			}

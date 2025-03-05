@@ -1421,13 +1421,13 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 		},
 		{
 			name:          "Error - Invalid slug length",
-			input:         "testorgs",
+			input:         "testorgs12345678910",
 			expectedError: true,
 			expectedOrg:   nil,
 		},
 		{
-			name:          "Error - Non-alphanumeric slug",
-			input:         "te_st",
+			name:          "Error - Non-alphanumeric dots dash underscore slug",
+			input:         "te_st()",
 			expectedError: true,
 			expectedOrg:   nil,
 		},
@@ -1676,11 +1676,11 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			},
 			inputs: []string{
 				"Test Project",
-				"test-", // invalid slug 1st attempts
-				"test-", // invalid slug 2nd attempts
-				"test-", // invalid slug 3rd attempts
-				"test-", // invalid slug 4th attempts
-				"test-", // invalid slug 5th attempts
+				"te",    // invalid slug 1st attempts
+				"te.st", // invalid slug 2nd attempts
+				"",      // invalid slug 3rd attempts
+				"a---a", // invalid slug 4th attempts
+				"()@",   // invalid slug 5th attempts
 				"https://github.com/test/repo",
 				"",
 			},
