@@ -420,7 +420,7 @@ func formattedDuration(d time.Duration) string {
 		return fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%minPerHour)
 	}
 	if d.Seconds() > secPerMinute {
-		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Minutes())%secPerMinute)
+		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%secPerMinute)
 	}
 	return fmt.Sprintf("%ds", int(d.Seconds()))
 }
