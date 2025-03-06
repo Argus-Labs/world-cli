@@ -192,6 +192,9 @@ func status(ctx context.Context) error {
 		if bte != nil {
 			return eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
 		}
+		if bst.Before(dt) {
+			bst = dt // we don't have a real build start time yet because build kite hasn't run yet
+		}
 		buildEndTimeStr, ok := data["build_end_time"].(string)
 		if !ok {
 			buildEndTimeStr = buildStartTimeStr // we don't know how long this took
@@ -209,43 +212,42 @@ func status(ctx context.Context) error {
 
 		switch buildState {
 		case DeploymentStatusPassed:
-			fmt.Printf("✅ Build:        #%d %s completed %s (%s ago) by %s\n", buildNumber,
+			fmt.Printf("✅ Build:     #%d (duration %s) completed %s (%s ago) by %s\n", buildNumber,
 				formattedDuration(buildDuration),
 				bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID)
 		case DeploymentStatusFailed:
-			fmt.Printf("❌ Build:        #%d %s failed at %s (%s ago)\n", buildNumber, buildDuration.String(),
+			fmt.Printf("❌ Build:     #%d (duration %s) failed at %s (%s ago)\n", buildNumber, formattedDuration(buildDuration),
 				bet.Format(time.RFC822), formattedDuration(time.Since(bet)))
 			return nil // don't report health
 		default:
-			fmt.Printf("🔄 Build:        #%d started %s (%s ago) by %s - %s\n", buildNumber,
+			fmt.Printf("🔄 Build:     #%d started %s (%s ago) by %s - %s\n", buildNumber,
 				bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState)
 			return nil // don't report health
 		}
 	case DeploymentTypeDestroy:
 		switch buildState {
 		case DeploymentStatusPassed:
-			fmt.Printf("✅ Destroyed:    on %s by %s", dt.Format(time.RFC822), executorID)
+			fmt.Printf("✅ Destroyed: on %s by %s\n", dt.Format(time.RFC822), executorID)
 			return nil
 		case DeploymentStatusFailed:
-			fmt.Printf("❌ Destroy:      failed on %s by %s", dt.Format(time.RFC822), executorID)
+			fmt.Printf("❌ Destroy:   failed on %s by %s\n", dt.Format(time.RFC822), executorID)
 			// if destroy failed, continue on to show health
 		default:
-			fmt.Printf("🔄 Destroy:      started %s (%s ago) by %s - %s", dt.Format(time.RFC822),
+			fmt.Printf("🔄 Destroy:   started %s (%s ago) by %s - %s\n", dt.Format(time.RFC822),
 				formattedDuration(time.Since(dt)), executorID, buildState)
 			return nil // don't report health
 		}
 	case DeploymentTypeReset:
-		fmt.Printf("Reset:        on %s by %s\n", dt.Format(time.RFC822), executorID)
 		// results can be "passed" or "failed", but either way continue to show the health
 		switch buildState {
 		case DeploymentStatusPassed:
-			fmt.Printf("✅ Reset:    on %s by %s", dt.Format(time.RFC822), executorID)
+			fmt.Printf("✅ Reset:     on %s by %s\n", dt.Format(time.RFC822), executorID)
 			return nil
 		case DeploymentStatusFailed:
-			fmt.Printf("❌ Reset:    failed on %s by %s", dt.Format(time.RFC822), executorID)
+			fmt.Printf("❌ Reset:     failed on %s by %s\n", dt.Format(time.RFC822), executorID)
 			// if destroy failed, continue on to show health
 		default:
-			fmt.Printf("🔄 Reset:    started %s (%s ago) by %s - %s", dt.Format(time.RFC822),
+			fmt.Printf("🔄 Reset:     started %s (%s ago) by %s - %s\n", dt.Format(time.RFC822),
 				formattedDuration(time.Since(dt)), executorID, buildState)
 			return nil // don't report health
 		}
@@ -409,8 +411,16 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 
 func formattedDuration(d time.Duration) string {
 	const hoursPerDay = 24
-	if d.Hours() >= hoursPerDay {
+	const minPerHour = 60
+	const secPerMinute = 60
+	if d.Hours() > hoursPerDay {
 		return fmt.Sprintf("%dd %dh", int(d.Hours()/hoursPerDay), int(d.Hours())%hoursPerDay)
 	}
-	return d.Round(time.Second).String()
+	if d.Minutes() > minPerHour {
+		return fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%minPerHour)
+	}
+	if d.Seconds() > secPerMinute {
+		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%secPerMinute)
+	}
+	return fmt.Sprintf("%ds", int(d.Seconds()))
 }
