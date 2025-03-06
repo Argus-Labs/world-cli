@@ -110,15 +110,20 @@ func makeRequestWithRetries(req *http.Request) ([]byte, error) {
 	var lastErr error
 
 	for i := 0; i < maxRetries; i++ {
-		if lastErr != nil {
-			fmt.Printf("Failed to make request [%s]: %s\n", req.URL, lastErr.Error())
-			fmt.Println("Retrying...")
-			time.Sleep(1 * time.Second)
-		}
-
 		respBody, err := doRequest(req)
 		if err == nil {
 			return respBody, nil
+		}
+
+		// Don't retry if unauthorized
+		if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world forge login' command") {
+			return nil, err
+		}
+
+		if i < maxRetries-1 { // Don't print retry message on last attempt
+			fmt.Printf("Failed to make request [%s]: %s\n", req.URL, err.Error())
+			fmt.Println("Retrying...")
+			time.Sleep(1 * time.Second)
 		}
 		lastErr = err
 	}
