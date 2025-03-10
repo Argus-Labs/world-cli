@@ -1608,9 +1608,15 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"",   // repoToken (empty for public repo)
-				"",   // repoPath (empty for default root path of repo)
-				"10", // tick rate
+				"",           // repoToken (empty for public repo)
+				"",           // repoPath (empty for default root path of repo)
+				"10",         // tick rate
+				"Y",          // enable discord notifications
+				"test-token", // discord token
+				"1234567890", // discord channel ID
+				"Y",          // enable slack notifications
+				"test-token", // slack token
+				"1234567890", // slack channel ID
 			},
 			regionSelectActions: []tea.KeyMsg{
 				tea.KeyMsg{Type: tea.KeySpace}, // select region
