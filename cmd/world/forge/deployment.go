@@ -273,142 +273,140 @@ func status(ctx context.Context) error {
 			checkHealth = true
 		}
 	}
-	if checkHealth {
-		// fmt.Println()
-		//	fmt.Println(string(result))
 
-		healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, projectID)
-		result, err = sendRequest(ctx, http.MethodGet, healthURL, nil)
-		if err != nil {
-			return eris.Wrap(err, "Failed to get health")
+	if !checkHealth {
+		return nil
+	}
+
+	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, projectID)
+	result, err = sendRequest(ctx, http.MethodGet, healthURL, nil)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get health")
+	}
+	err = json.Unmarshal(result, &response)
+	if err != nil {
+		return eris.Wrap(err, "Failed to unmarshal health response")
+	}
+	if response["data"] == nil {
+		return eris.New("Failed to unmarshal health data")
+	}
+	envMap, ok := response["data"].(map[string]any)
+	if !ok {
+		return eris.New("Failed to unmarshal health data")
+	}
+	for env, val := range envMap {
+		if !shouldShowHealth[env] {
+			continue
 		}
-		err = json.Unmarshal(result, &response)
-		if err != nil {
-			return eris.Wrap(err, "Failed to unmarshal health response")
-		}
-		if response["data"] == nil {
-			return eris.New("Failed to unmarshal health data")
-		}
-		envMap, ok := response["data"].(map[string]any)
+		data, ok := val.(map[string]any)
 		if !ok {
-			return eris.New("Failed to unmarshal health data")
+			return eris.Errorf("Failed to unmarshal response for environment %s", env)
 		}
-		for env, val := range envMap {
-			if shouldShowHealth[env] {
-				data, ok := val.(map[string]any)
-				if !ok {
-					return eris.Errorf("Failed to unmarshal response for environment %s", env)
-				}
-				instances, ok := data["deployed_instances"].([]any)
-				if !ok {
-					return eris.Errorf("Failed to unmarshal health data: expected array, got %T", response["deployed_instaces"])
-				}
-				// ok will be true if everything is up. offline will be true if everything is down
-				// neither will be set if status is mixed
-				switch {
-				case data["ok"] == true:
-					fmt.Printf("✅ Health:    [%s] ", strings.ToUpper(env))
-				case data["offline"] == true:
-					fmt.Printf("❌ Health:    [%s] ", strings.ToUpper(env))
-				default:
-					fmt.Printf("⚠️ Health:    [%s] ", strings.ToUpper(env))
-				}
-				if len(instances) == 0 {
-					fmt.Println("** No deployed instances found **")
-					return nil
-				}
-				fmt.Printf("(%d deployed instances)\n", len(instances))
-				currRegion := ""
-				for _, instance := range instances {
-					info, ok := instance.(map[string]any)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d info", instance)
-					}
-					region, ok := info["region"].(string)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d region", instance)
-					}
-					instancef, ok := info["instance"].(float64)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d instance number", instance)
-					}
-					instanceNum := int(instancef)
-					cardinalInfo, ok := info["cardinal"].(map[string]any)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d cardinal data", instance)
-					}
-					nakamaInfo, ok := info["nakama"].(map[string]any)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d nakama data", instance)
-					}
-					cardinalURL, ok := cardinalInfo["url"].(string)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d cardinal url", instance)
-					}
-					cardinalHost := strings.Split(cardinalURL, "/")[2]
-					cardinalOK, ok := cardinalInfo["ok"].(bool)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d cardinal ok flag", instance)
-					}
-					cardinalResultCodef, ok := cardinalInfo["result_code"].(float64)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_code", instance)
-					}
-					cardinalResultCode := int(cardinalResultCodef)
-					cardinalResultStr, ok := cardinalInfo["result_str"].(string)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_str", instance)
-					}
-					nakamaURL, ok := nakamaInfo["url"].(string)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d nakama url", instance)
-					}
-					nakamaHost := strings.Split(nakamaURL, "/")[2]
-					nakamaOK, ok := nakamaInfo["ok"].(bool)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d nakama ok", instance)
-					}
-					nakamaResultCodef, ok := nakamaInfo["result_code"].(float64)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d result_code", instance)
-					}
-					nakamaResultCode := int(nakamaResultCodef)
-					nakamaResultStr, ok := nakamaInfo["result_str"].(string)
-					if !ok {
-						return eris.Errorf("Failed to unmarshal deployment instance %d result_str", instance)
-					}
-					if region != currRegion {
-						currRegion = region
-						fmt.Printf("• %s\n", currRegion)
-					}
-					fmt.Printf("  %d)", instanceNum)
-					switch {
-					case cardinalOK:
-						fmt.Printf("\t✅ Cardinal: %s - OK\n", cardinalHost)
-					case cardinalResultCode == 0:
-						fmt.Printf("\t❌ Cardinal: %s - FAIL %s\n", cardinalHost,
-							statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
-					default:
-						fmt.Printf("\t❌ Cardinal: %s - FAIL %d %s\n", cardinalHost, cardinalResultCode,
-							statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
-					}
-					switch {
-					case nakamaOK:
-						fmt.Printf("\t✅ Nakama:   %s - OK\n", nakamaHost)
-					case nakamaResultCode == 0:
-						fmt.Printf("\t❌ Nakama:   %s - FAIL %s\n", nakamaHost,
-							statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
-					default:
-						fmt.Printf("\t❌ Nakama:   %s - FAIL %d %s\n", nakamaHost, nakamaResultCode,
-							statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
-					}
-				}
+		instances, ok := data["deployed_instances"].([]any)
+		if !ok {
+			return eris.Errorf("Failed to unmarshal health data: expected array, got %T", response["deployed_instaces"])
+		}
+		// ok will be true if everything is up. offline will be true if everything is down
+		// neither will be set if status is mixed
+		switch {
+		case data["ok"] == true:
+			fmt.Printf("✅ Health:    [%s] ", strings.ToUpper(env))
+		case data["offline"] == true:
+			fmt.Printf("❌ Health:    [%s] ", strings.ToUpper(env))
+		default:
+			fmt.Printf("⚠️ Health:    [%s] ", strings.ToUpper(env))
+		}
+		if len(instances) == 0 {
+			fmt.Println("** No deployed instances found **")
+			return nil
+		}
+		fmt.Printf("(%d deployed instances)\n", len(instances))
+		currRegion := ""
+		for _, instance := range instances {
+			info, ok := instance.(map[string]any)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d info", instance)
+			}
+			region, ok := info["region"].(string)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d region", instance)
+			}
+			instancef, ok := info["instance"].(float64)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d instance number", instance)
+			}
+			instanceNum := int(instancef)
+			cardinalInfo, ok := info["cardinal"].(map[string]any)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal data", instance)
+			}
+			nakamaInfo, ok := info["nakama"].(map[string]any)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d nakama data", instance)
+			}
+			cardinalURL, ok := cardinalInfo["url"].(string)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal url", instance)
+			}
+			cardinalHost := strings.Split(cardinalURL, "/")[2]
+			cardinalOK, ok := cardinalInfo["ok"].(bool)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal ok flag", instance)
+			}
+			cardinalResultCodef, ok := cardinalInfo["result_code"].(float64)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_code", instance)
+			}
+			cardinalResultCode := int(cardinalResultCodef)
+			cardinalResultStr, ok := cardinalInfo["result_str"].(string)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_str", instance)
+			}
+			nakamaURL, ok := nakamaInfo["url"].(string)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d nakama url", instance)
+			}
+			nakamaHost := strings.Split(nakamaURL, "/")[2]
+			nakamaOK, ok := nakamaInfo["ok"].(bool)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d nakama ok", instance)
+			}
+			nakamaResultCodef, ok := nakamaInfo["result_code"].(float64)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d result_code", instance)
+			}
+			nakamaResultCode := int(nakamaResultCodef)
+			nakamaResultStr, ok := nakamaInfo["result_str"].(string)
+			if !ok {
+				return eris.Errorf("Failed to unmarshal deployment instance %d result_str", instance)
+			}
+			if region != currRegion {
+				currRegion = region
+				fmt.Printf("• %s\n", currRegion)
+			}
+			fmt.Printf("  %d)", instanceNum)
+			switch {
+			case cardinalOK:
+				fmt.Printf("\t✅ Cardinal: %s - OK\n", cardinalHost)
+			case cardinalResultCode == 0:
+				fmt.Printf("\t❌ Cardinal: %s - FAIL %s\n", cardinalHost,
+					statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
+			default:
+				fmt.Printf("\t❌ Cardinal: %s - FAIL %d %s\n", cardinalHost, cardinalResultCode,
+					statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
+			}
+			switch {
+			case nakamaOK:
+				fmt.Printf("\t✅ Nakama:   %s - OK\n", nakamaHost)
+			case nakamaResultCode == 0:
+				fmt.Printf("\t❌ Nakama:   %s - FAIL %s\n", nakamaHost,
+					statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
+			default:
+				fmt.Printf("\t❌ Nakama:   %s - FAIL %d %s\n", nakamaHost, nakamaResultCode,
+					statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
 			}
 		}
 	}
-	// fmt.Println()
-	// fmt.Println(string(result))
-
 	return nil
 }
 
