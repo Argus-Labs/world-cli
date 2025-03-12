@@ -282,7 +282,7 @@ func (s *ForgeTestSuite) handleStatusDeployed(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	s.writeJSONString(w, `{"data":{
+	s.writeJSONString(w, `{"data":{"dev":{
 		"project_id":"test-project-id",
 		"type":"deploy",
 		"executor_id":"test-executor-id",
@@ -290,7 +290,7 @@ func (s *ForgeTestSuite) handleStatusDeployed(w http.ResponseWriter, r *http.Req
 		"build_number":1,
 		"build_start_time":"2001-01-01T01:01:00Z",
 		"build_state":"passed"
-	}}`)
+	}}}`)
 }
 
 func (s *ForgeTestSuite) handleStatusFailedBuild(w http.ResponseWriter, r *http.Request) {
@@ -298,7 +298,7 @@ func (s *ForgeTestSuite) handleStatusFailedBuild(w http.ResponseWriter, r *http.
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	s.writeJSONString(w, `{"data":{
+	s.writeJSONString(w, `{"data":{"dev":{
 		"project_id":"failedbuild-project-id",
 		"type":"deploy",
 		"executor_id":"test-executor-id",
@@ -306,7 +306,7 @@ func (s *ForgeTestSuite) handleStatusFailedBuild(w http.ResponseWriter, r *http.
 		"build_number":1,
 		"build_start_time":"2001-01-01T01:01:00Z",
 		"build_state":"failed"
-	}}`)
+	}}}`)
 }
 
 func (s *ForgeTestSuite) handleStatusDestroyed(w http.ResponseWriter, r *http.Request) {
@@ -314,13 +314,13 @@ func (s *ForgeTestSuite) handleStatusDestroyed(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	s.writeJSONString(w, `{"data":{
+	s.writeJSONString(w, `{"data":{"dev":{
 		"project_id":"destroyed-project-id",
 		"type":"destroy",
 		"executor_id":"test-executor-id",
 		"execution_time":"2001-01-01T01:02:00Z",
 		"build_state":"passed"
-	}}`)
+	}}}`)
 }
 
 func (s *ForgeTestSuite) handleStatusReset(w http.ResponseWriter, r *http.Request) {
@@ -328,13 +328,13 @@ func (s *ForgeTestSuite) handleStatusReset(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	s.writeJSONString(w, `{"data":{
+	s.writeJSONString(w, `{"data":{"dev":{
 		"project_id":"reset-project-id",
 		"type":"reset",
 		"executor_id":"test-executor-id",
 		"execution_time":"2001-01-01T01:02:00Z",
 		"build_state":"passed"
-	}}`)
+	}}}`)
 }
 
 func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -342,7 +342,7 @@ func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	s.writeJSONString(w, `{"data":[
+	s.writeJSONString(w, `{"data":{"dev":{"ok":false,"offline":false,"deployed_instances":[
 	{
 		"region":"ap-southeast-1",
 		"instance":1,
@@ -391,7 +391,7 @@ func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
 			"result_str":"Bad Gateway"
 		}
     }
-	]}`)
+	]}}}`)
 }
 
 func (s *ForgeTestSuite) handleStatusUndeployed(w http.ResponseWriter, r *http.Request) {
