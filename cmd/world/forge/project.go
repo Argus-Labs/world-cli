@@ -40,8 +40,28 @@ type project struct {
 }
 
 type projectConfig struct {
-	TickRate int      `json:"tick_rate"`
-	Region   []string `json:"region"`
+	TickRate int                  `json:"tick_rate"`
+	Region   []string             `json:"region"`
+	Discord  projectConfigDiscord `json:"discord"`
+	Slack    projectConfigSlack   `json:"slack"`
+}
+
+type projectConfigDiscord struct {
+	Enabled bool   `json:"enabled"`
+	Token   string `json:"token"`
+	Channel string `json:"channel"`
+}
+
+type projectConfigSlack struct {
+	Enabled bool   `json:"enabled"`
+	Token   string `json:"token"`
+	Channel string `json:"channel"`
+}
+
+// notificationConfig holds common notification configuration fields
+type notificationConfig struct {
+	name      string // "Discord" or "Slack"
+	tokenName string // What to call the token ("bot token" or "token")
 }
 
 // Show list of projects in selected organization
@@ -251,6 +271,22 @@ func createProject(ctx context.Context) (*project, error) {
 	fmt.Printf("  • Regions:\n")
 	for _, region := range prj.Config.Region {
 		fmt.Printf("    - %s\n", region)
+	}
+	fmt.Printf("  • Discord Configuration:\n")
+	if prj.Config.Discord.Enabled {
+		fmt.Printf("    - Enabled: Yes\n")
+		fmt.Printf("    - Channel ID: %s\n", prj.Config.Discord.Channel)
+		fmt.Printf("    - Bot Token: %s\n", prj.Config.Discord.Token)
+	} else {
+		fmt.Printf("    - Enabled: No\n")
+	}
+	fmt.Printf("  • Slack Configuration:\n")
+	if prj.Config.Slack.Enabled {
+		fmt.Printf("    - Enabled: Yes\n")
+		fmt.Printf("    - Channel ID: %s\n", prj.Config.Slack.Channel)
+		fmt.Printf("    - Token: %s\n", prj.Config.Slack.Token)
+	} else {
+		fmt.Printf("    - Enabled: No\n")
 	}
 	fmt.Printf("  • Deploy Secret (for deploy via CI/CD pipeline tools):\n")
 	fmt.Printf("      %s\n", prj.DeploySecret)
@@ -747,6 +783,22 @@ func updateProject(ctx context.Context) error {
 	for _, region := range p.Config.Region {
 		fmt.Printf("    - %s\n", region)
 	}
+	fmt.Printf("  • Discord Configuration:\n")
+	if p.Config.Discord.Enabled {
+		fmt.Printf("    - Enabled: Yes\n")
+		fmt.Printf("    - Channel ID: %s\n", p.Config.Discord.Channel)
+		fmt.Printf("    - Bot Token: %s\n", p.Config.Discord.Token)
+	} else {
+		fmt.Printf("    - Enabled: No\n")
+	}
+	fmt.Printf("  • Slack Configuration:\n")
+	if p.Config.Slack.Enabled {
+		fmt.Printf("    - Enabled: Yes\n")
+		fmt.Printf("    - Channel ID: %s\n", p.Config.Slack.Channel)
+		fmt.Printf("    - Token: %s\n", p.Config.Slack.Token)
+	} else {
+		fmt.Printf("    - Enabled: No\n")
+	}
 
 	return nil
 }
@@ -796,6 +848,18 @@ func (p *project) projectInput(ctx context.Context, regions []string) error {
 		return eris.Wrap(err, "Failed to choose region")
 	}
 
+	// Discord
+	err = p.inputDiscord(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to input discord")
+	}
+
+	// Slack
+	err = p.inputSlack(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to input slack")
+	}
+
 	return nil
 }
 
@@ -842,6 +906,128 @@ func (p *project) inputTickRate(ctx context.Context) error {
 		}
 	}
 	return eris.New("Maximum attempts reached for entering tick rate")
+}
+
+// configureNotifications handles configuration for both Discord and Slack notifications
+func (p *project) configureNotifications(ctx context.Context, config notificationConfig) (bool, string, string, error) {
+	enabled, err := p.promptEnableNotifications(ctx, config.name)
+	if err != nil {
+		return false, "", "", err
+	}
+	if !enabled {
+		return false, "", "", nil
+	}
+
+	token, err := p.promptForToken(ctx, config)
+	if err != nil {
+		return false, "", "", err
+	}
+
+	channelID, err := p.promptForChannelID(ctx, config.name)
+	if err != nil {
+		return false, "", "", err
+	}
+
+	if err := p.showSuccessMessage(ctx, config.name); err != nil {
+		return false, "", "", err
+	}
+
+	return true, token, channelID, nil
+}
+
+func (p *project) promptEnableNotifications(ctx context.Context, serviceName string) (bool, error) {
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
+		fmt.Printf("\n🔔 %s Notification Configuration\n", serviceName)
+		fmt.Println("================================")
+		fmt.Printf("\n❓ Do you want to set up %s notifications? (Y/n): ", serviceName)
+
+		confirmation, err := getInput()
+		if err != nil {
+			return false, eris.Wrapf(err, "Failed to read confirmation")
+		}
+
+		if strings.ToUpper(confirmation) != "Y" && confirmation != "" {
+			fmt.Printf("\n✅ Skipping %s configuration\n", serviceName)
+			return false, nil
+		}
+
+		return true, nil
+	}
+}
+
+func (p *project) promptForToken(ctx context.Context, config notificationConfig) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+		fmt.Printf("\n🤖 Enter %s %s: ", config.name, config.tokenName)
+		token, err := getInput()
+		if err != nil {
+			return "", eris.Wrapf(err, "Failed to read %s", config.tokenName)
+		}
+		return token, nil
+	}
+}
+
+func (p *project) promptForChannelID(ctx context.Context, serviceName string) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+		fmt.Printf("📝 Enter %s channel ID: ", serviceName)
+		channelID, err := getInput()
+		if err != nil {
+			return "", eris.Wrapf(err, "Failed to read channel ID")
+		}
+		return channelID, nil
+	}
+}
+
+func (p *project) showSuccessMessage(ctx context.Context, serviceName string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		fmt.Printf("\n✅ %s notifications configured successfully\n", serviceName)
+		return nil
+	}
+}
+
+func (p *project) inputDiscord(ctx context.Context) error {
+	enabled, token, channelID, err := p.configureNotifications(ctx, notificationConfig{
+		name:      "Discord",
+		tokenName: "bot token",
+	})
+	if err != nil {
+		return err
+	}
+
+	p.Config.Discord = projectConfigDiscord{
+		Enabled: enabled,
+		Token:   token,
+		Channel: channelID,
+	}
+	return nil
+}
+
+func (p *project) inputSlack(ctx context.Context) error {
+	enabled, token, channelID, err := p.configureNotifications(ctx, notificationConfig{
+		name:      "Slack",
+		tokenName: "token",
+	})
+	if err != nil {
+		return err
+	}
+
+	p.Config.Slack = projectConfigSlack{
+		Enabled: enabled,
+		Token:   token,
+		Channel: channelID,
+	}
+	return nil
 }
 
 // chooseRegion displays an interactive menu for selecting one or more AWS regions
