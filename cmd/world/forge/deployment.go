@@ -304,7 +304,8 @@ func status(ctx context.Context) error {
 		}
 		instances, ok := data["deployed_instances"].([]any)
 		if !ok {
-			return eris.Errorf("Failed to unmarshal health data: expected array, got %T", response["deployed_instaces"])
+			return eris.Errorf("Failed to unmarshal health data: expected array, got %T",
+				response["deployed_instances"])
 		}
 		// ok will be true if everything is up. offline will be true if everything is down
 		// neither will be set if status is mixed
