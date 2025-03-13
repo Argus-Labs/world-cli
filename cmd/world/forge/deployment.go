@@ -22,7 +22,14 @@ const (
 	DeploymentStatusPassed = "passed"
 )
 
-var statusFailRegEx = regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
+var (
+	statusFailRegEx = regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
+	processTitle    = map[string]string{
+		DeploymentTypeDeploy:  "Deploying",
+		DeploymentTypeDestroy: "Destroying",
+		DeploymentTypeReset:   "Resetting",
+	}
+)
 
 type deploymentPreview struct {
 	OrgName        string   `json:"org_name"`
@@ -65,7 +72,7 @@ func deployment(ctx context.Context, deployType string) error {
 	fmt.Println("\n🔄  Confirm Deployment ✨")
 	fmt.Println("=========================")
 	fmt.Println("\n🔍  Review the deployment details above.")
-	fmt.Printf("\n❓ Do you want to proceed with the deployment? (Y/n): ")
+	fmt.Printf("\n❓ Do you want to proceed with the %s? (Y/n): ", processTitle[deployType])
 
 	confirmation, err := getInput()
 	if err != nil {
