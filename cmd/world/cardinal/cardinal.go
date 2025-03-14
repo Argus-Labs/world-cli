@@ -36,8 +36,8 @@ var BaseCmd = &cobra.Command{
 
 func init() {
 	// Register subcommands - `world cardinal [subcommand]`
-	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
-	registerConfigAndVerboseFlags(startCmd, devCmd, restartCmd, purgeCmd, stopCmd)
+	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd, buildCmd)
+	registerConfigAndVerboseFlags(startCmd, devCmd, restartCmd, purgeCmd, stopCmd, buildCmd)
 }
 
 func getServices(cfg *config.Config) []service.Builder {
@@ -48,5 +48,10 @@ func getServices(cfg *config.Config) []service.Builder {
 	if cfg.Telemetry && cfg.DockerEnv["NAKAMA_METRICS_ENABLED"] == "true" {
 		services = append(services, service.Prometheus)
 	}
+	return services
+}
+
+func getCardinalServices(_ *config.Config) []service.Builder {
+	services := []service.Builder{service.Cardinal}
 	return services
 }
