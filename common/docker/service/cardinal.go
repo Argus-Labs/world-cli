@@ -111,9 +111,9 @@ func Cardinal(cfg *config.Config) Service {
 		BuildTarget: runtime,
 		Dependencies: []Service{
 			{
-				Name: "golang:1.22-bookworm",
+				Name: "golang:1.24-bookworm",
 				Config: container.Config{
-					Image: "golang:1.22-bookworm",
+					Image: "golang:1.24-bookworm",
 				},
 			},
 			{
