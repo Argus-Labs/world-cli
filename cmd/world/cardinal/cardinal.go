@@ -51,7 +51,7 @@ func getServices(cfg *config.Config) []service.Builder {
 	return services
 }
 
-func getCardinalServices(cfg *config.Config) []service.Builder {
+func getCardinalServices(_ *config.Config) []service.Builder {
 	services := []service.Builder{service.Cardinal}
 	return services
 }

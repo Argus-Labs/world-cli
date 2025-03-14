@@ -71,12 +71,7 @@ func (c *Client) Close() error {
 
 func (c *Client) Build(ctx context.Context,
 	serviceBuilders ...service.Builder) error {
-
 	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
-	//err := c.createNetworkIfNotExists(ctx, namespace)
-	//if err != nil {
-	//	return eris.Wrap(err, "Failed to create network")
-	//}
 
 	err := c.processVolume(ctx, CREATE, namespace)
 	if err != nil {
@@ -97,11 +92,9 @@ func (c *Client) Build(ctx context.Context,
 	}
 
 	// Build all images before starting containers
-	if c.cfg.Build {
-		err = c.buildImages(ctx, dockerServices...)
-		if err != nil {
-			return eris.Wrap(err, "Failed to build images")
-		}
+	err = c.buildImages(ctx, dockerServices...)
+	if err != nil {
+		return eris.Wrap(err, "Failed to build images")
 	}
 	return nil
 }
