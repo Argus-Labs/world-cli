@@ -1587,7 +1587,7 @@ func (s *ForgeTestSuite) TestShowProjectList() {
 	}
 }
 
-func (s *ForgeTestSuite) TestCreateProject() {
+func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 	testCases := []struct {
 		name                string
 		config              globalconfig.GlobalConfig
@@ -1738,13 +1738,15 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			}
 
 			// Simulate region selection
-			regionSelector = tea.NewProgram(
+			regionSelector = NewTeaProgram(
 				multiselect.InitialMultiselectModel(
 					s.ctx,
 					[]string{"us-east-1", "us-west-1", "eu-west-1"},
 				),
-				tea.WithInput(nil),
 			)
+			if regionSelector == nil {
+				print("failed to create region selector")
+			}
 			defer func() { regionSelector = nil }()
 
 			// Send region select actions
@@ -1753,9 +1755,13 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				time.Sleep(1 * time.Second)
 				for _, action := range tc.regionSelectActions {
 					// send action to region selector
-					regionSelector.Send(action)
-					// wait for 100ms to make sure the action is processed
-					time.Sleep(100 * time.Millisecond)
+					if regionSelector != nil {
+						regionSelector.Send(action)
+						// wait for 100ms to make sure the action is processed
+						time.Sleep(100 * time.Millisecond)
+					} else {
+						print("region selector is nil")
+					}
 				}
 			}()
 

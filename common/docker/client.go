@@ -70,6 +70,8 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) Build(ctx context.Context,
+	pushTo string,
+	pushAuth string,
 	serviceBuilders ...service.Builder) error {
 	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
 
@@ -95,6 +97,13 @@ func (c *Client) Build(ctx context.Context,
 	err = c.buildImages(ctx, dockerServices...)
 	if err != nil {
 		return eris.Wrap(err, "Failed to build images")
+	}
+
+	if pushTo != "" {
+		err := c.pushImages(ctx, pushTo, pushAuth, dockerServices...)
+		if err != nil {
+			return eris.Wrap(err, "Failed to push images")
+		}
 	}
 	return nil
 }

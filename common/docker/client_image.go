@@ -22,6 +22,7 @@ import (
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 
+	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
@@ -49,7 +50,7 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 	// Channel to collect errors from the goroutines
 	errChan := make(chan error, len(imagesName))
 
-	p := tea.NewProgram(multispinner.CreateSpinner(imagesName, cancel))
+	p := forge.NewTeaProgram(multispinner.CreateSpinner(imagesName, cancel))
 
 	for _, ds := range serviceToBuild {
 		// Capture dockerService in the loop
@@ -420,11 +421,128 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			decoder := json.NewDecoder(responseBody)
 			var current int
 			var event map[string]interface{}
-			for decoder.More() {
+			for decoder.More() { //nolint:dupl // different commands
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
 					fmt.Printf("Pulling of image %s was canceled\n", imageName)
+					bar.Abort(false) // Stop the progress bar without clearing
+					return
+				default:
+					if err := decoder.Decode(&event); err != nil {
+						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
+						continue
+					}
+
+					// Check for errorDetail and error fields
+					if errorDetail, ok := event["errorDetail"]; ok {
+						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
+							errChan <- eris.New(errorMessage.(string))
+							continue
+						}
+					} else if errorMsg, ok := event["error"]; ok {
+						errChan <- eris.New(errorMsg.(string))
+						continue
+					}
+
+					// Handle progress updates
+					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
+						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
+							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
+							if calculatedCurrent > current {
+								bar.SetCurrent(int64(calculatedCurrent))
+								current = calculatedCurrent
+							}
+						}
+					}
+				}
+			}
+
+			// Finish the progress bar
+			// Handle if the current and total is not available in the response body
+			// Usually, because docker image is already pulled from the cache
+			bar.SetCurrent(100) //nolint:gomnd
+		}()
+	}
+
+	// Wait for all progress bars to complete
+	wg.Wait()
+	p.Wait()
+
+	// Close the error channel and check for errors
+	close(errChan)
+	errs := make([]error, 0)
+	for err := range errChan {
+		errs = append(errs, err)
+	}
+
+	// If there were any errors, return them as a combined error
+	if len(errs) > 0 {
+		return eris.New(fmt.Sprintf("Errors: %v", errs))
+	}
+
+	return nil
+}
+
+// Pulls the image if it does not exist
+func (c *Client) pushImages(ctx context.Context, pushTo string, authString string, //nolint:gocognit
+	services ...service.Service) error {
+	// Create a new progress container with a wait group
+	var wg sync.WaitGroup
+	p := mpb.New(mpb.WithWaitGroup(&wg))
+
+	// Channel to collect errors from the goroutines
+	errChan := make(chan error, len(services))
+
+	// Add a wait group counter for each image
+	wg.Add(len(services))
+
+	for _, service := range services {
+		imageName := service.Image
+
+		// check if the image exists
+		_, _, err := c.client.ImageInspectWithRaw(ctx, imageName)
+		if err != nil {
+			return eris.New(fmt.Sprintf("Error inspecting image %s for service %s: %v\n",
+				imageName, service.Name, err))
+		}
+
+		bar := p.AddBar(100, //nolint:gomnd
+			mpb.PrependDecorators(
+				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pushing", "2"), imageName)),
+				decor.Percentage(decor.WCSyncSpace),
+			),
+		)
+
+		go func() {
+			defer wg.Done()
+
+			// Start pushing the image
+			responseBody, err := c.client.ImagePush(ctx, pushTo, image.PushOptions{
+				All:          true,
+				RegistryAuth: authString,
+			})
+
+			if err != nil {
+				// Handle the error: log it and send it to the error channel
+				fmt.Printf("Error pushing image %s: %v\n", imageName, err)
+				errChan <- eris.Wrapf(err, "error pushing image %s", imageName)
+
+				// Stop the progress bar without clearing
+				bar.Abort(false)
+				return
+			}
+			defer responseBody.Close()
+
+			// Process each event and update the progress bar
+			decoder := json.NewDecoder(responseBody)
+			var current int
+			var event map[string]interface{}
+			for decoder.More() { //nolint:dupl // different commands
+				select {
+				case <-ctx.Done():
+					// Handle context cancellation
+					fmt.Printf("Pushing image %s was canceled\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:

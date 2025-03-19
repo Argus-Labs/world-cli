@@ -3,6 +3,7 @@ package cardinal
 import (
 	"fmt"
 
+	"github.com/docker/docker/api/types/registry"
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -11,6 +12,14 @@ import (
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/tea/style"
+)
+
+const (
+	flagPush     = "push"
+	flagAuth     = "auth"
+	flagUser     = "user"
+	flagPass     = "pass"
+	flagRegToken = "regtoken"
 )
 
 /////////////////
@@ -85,9 +94,25 @@ This builds following Cardinal (Game shard) Docker image ONLY.`,
 
 		services := getCardinalServices(cfg)
 
+		pushTo, _ := cmd.Flags().GetString(flagPush)
+		pushAuth, _ := cmd.Flags().GetString(flagAuth)
+		if pushAuth != "" {
+			pushUser, _ := cmd.Flags().GetString(flagUser)
+			pushPass, _ := cmd.Flags().GetString(flagPass)
+			pushRegToken, _ := cmd.Flags().GetString(flagRegToken)
+			if (pushUser != "" && pushPass != "") || pushRegToken != "" {
+				authConfig := registry.AuthConfig{
+					Username:      pushUser,
+					Password:      pushPass,
+					RegistryToken: pushRegToken,
+				}
+				pushAuth, _ = registry.EncodeAuthConfig(authConfig)
+			}
+		}
+
 		// Build the World Engine stack
 		group.Go(func() error {
-			if err := dockerClient.Build(ctx, services...); err != nil {
+			if err := dockerClient.Build(ctx, pushTo, pushAuth, services...); err != nil {
 				return eris.Wrap(err, "Encountered an error with Docker")
 			}
 			return eris.Wrap(ErrGracefulExit, "Stack terminated")
@@ -108,4 +133,5 @@ func init() {
 		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels))
 	buildCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
 	buildCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
+	buildCmd.Flags().String(flagPush, "", "Push your cardinal image to a given image repository")
 }
