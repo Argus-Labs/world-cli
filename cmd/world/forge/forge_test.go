@@ -1769,8 +1769,9 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			if tc.expectedError {
 				s.Error(err)
 			} else {
-				s.NoError(err)
-				if tc.expectedProject != nil {
+				s.Require().NoError(err)
+				s.Require().NotNil(prj)
+				if tc.expectedProject != nil && prj != nil {
 					s.Equal(tc.expectedProject.Name, prj.Name)
 					s.Equal(tc.expectedProject.Slug, prj.Slug)
 				}
