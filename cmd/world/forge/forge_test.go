@@ -1587,7 +1587,7 @@ func (s *ForgeTestSuite) TestShowProjectList() {
 	}
 }
 
-func (s *ForgeTestSuite) TestCreateProject() {
+func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 	testCases := []struct {
 		name                string
 		config              globalconfig.GlobalConfig
@@ -1745,6 +1745,9 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				),
 				tea.WithInput(nil),
 			)
+			if regionSelector == nil {
+				print("failed to create region selector")
+			}
 			defer func() { regionSelector = nil }()
 
 			// Send region select actions
@@ -1753,9 +1756,13 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				time.Sleep(1 * time.Second)
 				for _, action := range tc.regionSelectActions {
 					// send action to region selector
-					regionSelector.Send(action)
-					// wait for 100ms to make sure the action is processed
-					time.Sleep(100 * time.Millisecond)
+					if regionSelector != nil {
+						regionSelector.Send(action)
+						// wait for 100ms to make sure the action is processed
+						time.Sleep(100 * time.Millisecond)
+					} else {
+						print("region selector is nil")
+					}
 				}
 			}()
 
@@ -1763,8 +1770,9 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			if tc.expectedError {
 				s.Error(err)
 			} else {
-				s.NoError(err)
-				if tc.expectedProject != nil {
+				s.Require().NoError(err)
+				s.Require().NotNil(prj)
+				if tc.expectedProject != nil && prj != nil {
 					s.Equal(tc.expectedProject.Name, prj.Name)
 					s.Equal(tc.expectedProject.Slug, prj.Slug)
 				}

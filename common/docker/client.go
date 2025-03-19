@@ -69,6 +69,45 @@ func (c *Client) Close() error {
 	return c.client.Close()
 }
 
+func (c *Client) Build(ctx context.Context,
+	pushTo string,
+	pushAuth string,
+	serviceBuilders ...service.Builder) error {
+	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
+
+	err := c.processVolume(ctx, CREATE, namespace)
+	if err != nil {
+		return eris.Wrap(err, "Failed to create volume")
+	}
+
+	// get all services
+	dockerServices := make([]service.Service, 0)
+	for _, sb := range serviceBuilders {
+		ds := sb(c.cfg)
+		dockerServices = append(dockerServices, ds)
+	}
+
+	// Pull all images before starting containers
+	err = c.pullImages(ctx, dockerServices...)
+	if err != nil {
+		return eris.Wrap(err, "Failed to pull images")
+	}
+
+	// Build all images before starting containers
+	err = c.buildImages(ctx, dockerServices...)
+	if err != nil {
+		return eris.Wrap(err, "Failed to build images")
+	}
+
+	if pushTo != "" {
+		err := c.pushImages(ctx, pushTo, pushAuth, dockerServices...)
+		if err != nil {
+			return eris.Wrap(err, "Failed to push images")
+		}
+	}
+	return nil
+}
+
 func (c *Client) Start(ctx context.Context,
 	serviceBuilders ...service.Builder) error {
 	defer func() {

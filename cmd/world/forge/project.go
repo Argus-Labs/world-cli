@@ -1067,9 +1067,9 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) error
 					selectedRegions[i] = true
 				}
 			}
-			regionSelector = tea.NewProgram(multiselect.UpdateMultiselectModel(ctx, regions, selectedRegions))
+			regionSelector = NewTeaProgram(multiselect.UpdateMultiselectModel(ctx, regions, selectedRegions))
 		} else {
-			regionSelector = tea.NewProgram(multiselect.InitialMultiselectModel(ctx, regions))
+			regionSelector = NewTeaProgram(multiselect.InitialMultiselectModel(ctx, regions))
 		}
 	}
 	m, err := regionSelector.Run()

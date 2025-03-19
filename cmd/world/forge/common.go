@@ -15,9 +15,11 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 	"github.com/rotisserie/eris"
 	"github.com/tidwall/gjson"
+	"golang.org/x/term"
 
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
@@ -242,4 +244,14 @@ func slugCheck(slug string, minLength int, maxLength int) error {
 	}
 
 	return nil
+}
+
+// NewTeaProgram will create a BubbleTea program that automatically sets the no input option
+// if you are not on a TTY, so you can run the debugger. Call it just as you would call tea.NewProgram().
+func NewTeaProgram(model tea.Model, opts ...tea.ProgramOption) *tea.Program {
+	if !term.IsTerminal(int(os.Stderr.Fd())) {
+		opts = append(opts, tea.WithInput(os.Stdin))
+		// opts = append(opts, tea.WithoutRenderer())
+	}
+	return tea.NewProgram(model, opts...)
 }
