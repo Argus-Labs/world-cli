@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/rotisserie/eris"
 
-	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
@@ -38,7 +38,7 @@ func (c *Client) processMultipleContainers(ctx context.Context, processType proc
 	errChan := make(chan error, len(dockerServicesNames))
 
 	// Create tea program for multispinner
-	p := forge.NewTeaProgram(multispinner.CreateSpinner(dockerServicesNames, cancel))
+	p := tea.NewProgram(multispinner.CreateSpinner(dockerServicesNames, cancel))
 
 	// Process all containers
 	for _, ds := range services {
