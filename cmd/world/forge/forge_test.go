@@ -1738,11 +1738,12 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			}
 
 			// Simulate region selection
-			regionSelector = NewTeaProgram(
+			regionSelector = tea.NewProgram(
 				multiselect.InitialMultiselectModel(
 					s.ctx,
 					[]string{"us-east-1", "us-west-1", "eu-west-1"},
 				),
+				tea.WithInput(nil),
 			)
 			if regionSelector == nil {
 				print("failed to create region selector")
