@@ -131,7 +131,7 @@ func checkLatestVersion() error {
 			fmt.Println(cmdStyle.Render(updateMessage))
 
 			commandMessage := "To install the latest version run:\n\t" +
-				"'curl https://install.world.dev/cli! | bash'\n"
+				"'go install pkg.world.dev/world-cli/cmd/world@latest'\n"
 			fmt.Println(cmdStyle.Render(commandMessage))
 		}
 	}
