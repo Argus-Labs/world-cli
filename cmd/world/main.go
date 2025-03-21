@@ -28,7 +28,7 @@ var (
 func init() {
 	// Set default app version in case not provided by ldflags
 	if AppVersion == "" {
-		AppVersion = "v0.0.1-dev"
+		AppVersion = "0.0.1-dev"
 	}
 	root.AppVersion = AppVersion
 
