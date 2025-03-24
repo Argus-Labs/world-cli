@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -26,6 +27,8 @@ import (
 
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
+
+const jitterDivisor time.Duration = 2 // Divisor used to calculate maximum jitter range
 
 var (
 	requestTimeout = 5 * time.Second
@@ -112,7 +115,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 
 func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
 	maxRetries := 5
-	baseDelay := 100 * time.Millisecond
+	baseDelay := 100 * time.Millisecond //nolint:gomnd // this is a default
 	var lastErr error
 
 	for i := 0; i < maxRetries; i++ {
@@ -181,8 +184,8 @@ func isRetryableError(err error) bool {
 
 // exponentialBackoffWithJitter calculates delay with exponential backoff and jitter.
 func exponentialBackoffWithJitter(base time.Duration, attempt int) time.Duration {
-	backoff := base * (1 << attempt)                         // Exponential growth
-	jitter := time.Duration(rand.Int63n(int64(backoff / 2))) // Add randomness
+	backoff := base * (1 << attempt)                                     // Exponential growth
+	jitter := time.Duration(rand.Int63n(int64(backoff / jitterDivisor))) //nolint:gosec // it's safe to use rand here
 	return backoff + jitter
 }
 
@@ -303,8 +306,20 @@ func slugCheck(slug string, minLength int, maxLength int) error {
 // if you are not on a TTY, so you can run the debugger. Call it just as you would call tea.NewProgram().
 func NewTeaProgram(model tea.Model, opts ...tea.ProgramOption) *tea.Program {
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
-		opts = append(opts, tea.WithInput(os.Stdin))
-		// opts = append(opts, tea.WithoutRenderer())
+		opts = append(opts, tea.WithInput(nil))
 	}
 	return tea.NewProgram(model, opts...)
+}
+
+func isValidEmail(email string) bool {
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	return emailRegex.MatchString(email)
+}
+
+func isValidURL(urlStr string) error {
+	_, err := url.ParseRequestURI(urlStr)
+	if err != nil {
+		return eris.Wrap(err, "Invalid URL")
+	}
+	return nil
 }
