@@ -31,20 +31,21 @@ Key features:
 
 ## Installation
 
-World CLI has been rigorously tested on macOS and Linux.
-If you are using Windows, you will need
-[WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) to install and use the CLI.
+Before installing World CLI, you'll need to have Go installed on your system.
+If you haven't installed Go yet, follow the official [Go installation guide](https://go.dev/doc/install) to get started.
+
+### World CLI Installation
 
 **Install latest release:**
 
 ```shell
-curl https://install.world.dev/cli! | bash
+go install pkg.world.dev/world-cli/cmd/world@latest
 ```
 
 **Install a specific release:**
 
 ```shell
-curl https://install.world.dev/cli@<release_tag>! | bash
+go install pkg.world.dev/world-cli/cmd/world@<tag>
 ```
 
 <br/>
