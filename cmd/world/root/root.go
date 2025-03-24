@@ -124,15 +124,9 @@ func checkLatestVersion() error {
 		}
 
 		if currentVersion.LessThan(latestVersion) {
-			cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-
-			updateMessage := fmt.Sprintf("New update available! "+
-				"Version %s is now ready to download and install.", latestVersion.String())
-			fmt.Println(cmdStyle.Render(updateMessage))
-
-			commandMessage := "To install the latest version run:\n\t" +
-				"'go install pkg.world.dev/world-cli/cmd/world@latest'\n"
-			fmt.Println(cmdStyle.Render(commandMessage))
+			notificationStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("178")) // Bright yellow, good for notifications
+			fmt.Printf("\n%s\n", notificationStyle.Render(fmt.Sprintf("New version %s is available!", latestVersion.String())))
+			fmt.Printf("%s\n\n", notificationStyle.Render("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest"))
 		}
 	}
 	return nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"runtime/debug"
 
 	"github.com/rs/zerolog/log"
 
@@ -15,32 +16,23 @@ import (
 // This variable will be overridden by ldflags during build
 // Example:
 /*
-	go build -ldflags "-X main.AppVersion=1.0.0 -X main.PosthogAPIKey=<POSTHOG_API_KEY>
-							-X main.SentryDsn=<SENTRY_DSN> -X main.Env=<DEV|PROD>"
+	go build -ldflags "-X main.PosthogAPIKey=<POSTHOG_API_KEY>
+							-X main.SentryDsn=<SENTRY_DSN>>"
 */
 var (
-	AppVersion    string
 	PosthogAPIKey string
 	SentryDsn     string
-	Env           string
 )
 
 func init() {
-	// Set default app version in case not provided by ldflags
-	if AppVersion == "" {
-		AppVersion = "0.0.1-dev"
-	}
-	root.AppVersion = AppVersion
-
-	if Env == "" {
-		Env = "DEV"
-	}
-	globalconfig.Env = Env
+	env, version := getEnvAndVersion()
+	root.AppVersion = version
+	root.AppEnv = env
 }
 
 func main() {
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn, Env, AppVersion)
+	telemetry.SentryInit(SentryDsn, root.AppEnv, root.AppVersion)
 	defer telemetry.SentryFlush()
 
 	// Set up config directory "~/.worldcli/"
@@ -56,12 +48,36 @@ func main() {
 
 	// Capture event post installation
 	if len(os.Args) > 1 && os.Args[1] == "post-installation" {
-		telemetry.PosthogCaptureEvent(AppVersion, telemetry.PostInstallationEvent)
+		telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.PostInstallationEvent)
 		return
 	}
 
 	// Capture event running
-	telemetry.PosthogCaptureEvent(AppVersion, telemetry.RunningEvent)
+	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
 	root.Execute()
+}
+
+func getEnvAndVersion() (string, string) {
+	env := "unknown env"
+	version := "unknown version"
+
+	// Get the environment and version from the build info
+	info, ok := debug.ReadBuildInfo()
+
+	// If the build info is not available, return the default values
+	if !ok {
+		return env, version
+	}
+
+	// If the version is "(devel)", return the default values
+	if info.Main.Version == "(devel)" {
+		version = "v0.0.1-dev"
+		env = "DEV"
+	} else {
+		version = info.Main.Version
+		env = "PROD"
+	}
+
+	return env, version
 }
