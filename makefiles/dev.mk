@@ -1,3 +1,5 @@
+INSTALL_PATH=$(shell go env GOPATH)/bin
+
 clean:
 	@echo "--> Cleaning up"
 	@echo "--> Running go clean"
@@ -10,9 +12,9 @@ clean:
 
 install:
 	@echo "--> Installing World CLI"
-	@mkdir -p /usr/local/bin
-	@echo "--> Building binary, install to /usr/local/bin"
-	@goreleaser build --clean --single-target --snapshot -o /usr/local/bin/$(PKGNAME)
-	@echo "--> Installed $(PKGNAME) to /usr/local/bin"
+	@mkdir -p $(INSTALL_PATH)
+	@echo "--> Building binary, install to $(INSTALL_PATH)"
+	@goreleaser build --clean --single-target --snapshot -o $(INSTALL_PATH)/$(PKGNAME)
+	@echo "--> Installed $(PKGNAME) to $(INSTALL_PATH)"
 
 .PHONY: clean install
