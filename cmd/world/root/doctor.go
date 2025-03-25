@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/style"
@@ -84,7 +83,7 @@ World CLI requires the following dependencies to be installed:
 - Docker`,
 		GroupID: "starter",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			p := forge.NewTeaProgram(NewWorldDoctorModel(), tea.WithOutput(writer))
+			p := tea.NewProgram(NewWorldDoctorModel(), tea.WithOutput(writer))
 			_, err := p.Run()
 			if err != nil {
 				return err
