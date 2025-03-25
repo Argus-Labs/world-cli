@@ -2293,5 +2293,6 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 }
 
 func TestForgeSuite(t *testing.T) {
+	InitForge()
 	suite.Run(t, new(ForgeTestSuite))
 }
