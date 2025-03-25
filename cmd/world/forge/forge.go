@@ -280,7 +280,7 @@ var (
 	}
 )
 
-func init() {
+func InitForge() {
 	// Set base URL
 	if globalconfig.Env == "PROD" {
 		baseURL = worldForgeBaseURLProd
