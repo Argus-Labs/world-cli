@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/telemetry"
@@ -27,12 +28,14 @@ var (
 func init() {
 	env, version := getEnvAndVersion()
 	root.AppVersion = version
-	root.AppEnv = env
+	globalconfig.Env = env
+
+	forge.InitForge()
 }
 
 func main() {
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn, root.AppEnv, root.AppVersion)
+	telemetry.SentryInit(SentryDsn, globalconfig.Env, root.AppVersion)
 	defer telemetry.SentryFlush()
 
 	// Set up config directory "~/.worldcli/"
@@ -77,6 +80,11 @@ func getEnvAndVersion() (string, string) {
 	} else {
 		version = info.Main.Version
 		env = "PROD"
+	}
+
+	// override env using env variable
+	if os.Getenv("WORLD_CLI_ENV") != "" {
+		env = os.Getenv("WORLD_CLI_ENV")
 	}
 
 	return env, version

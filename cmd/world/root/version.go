@@ -7,7 +7,6 @@ import (
 )
 
 var AppVersion string
-var AppEnv string
 
 // versionCmd print the version number of World CLI
 // Usage: `world version`
