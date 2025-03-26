@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -72,7 +75,7 @@ func sendRequest(ctx context.Context, method, url string, body interface{}) ([]b
 	}
 
 	// Make request with retries
-	return makeRequestWithRetries(req)
+	return makeRequestWithRetries(ctx, req)
 }
 
 func prepareRequest(ctx context.Context, method, url string, body interface{}) (*http.Request, error) {
@@ -107,30 +110,80 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	return req, nil
 }
 
-func makeRequestWithRetries(req *http.Request) ([]byte, error) {
+func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
 	maxRetries := 5
+	baseDelay := 100 * time.Millisecond
 	var lastErr error
 
 	for i := 0; i < maxRetries; i++ {
-		respBody, err := doRequest(req)
-		if err == nil {
-			return respBody, nil
-		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			respBody, err := doRequest(req)
+			if err == nil {
+				return respBody, nil
+			}
 
-		// Don't retry if unauthorized
-		if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world forge login' command") {
-			return nil, err
-		}
+			// Don't retry if unauthorized
+			if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world forge login' command") {
+				return nil, err
+			}
 
-		if i < maxRetries-1 { // Don't print retry message on last attempt
-			fmt.Printf("Failed to make request [%s]: %s\n", req.URL, err.Error())
-			fmt.Println("Retrying...")
-			time.Sleep(1 * time.Second)
+			// Check if the error is retryable
+			if !isRetryableError(err) {
+				return nil, err
+			}
+
+			if i < maxRetries-1 { // Don't print retry message on last attempt
+				fmt.Printf("Failed to make request [%s]: %s\n", req.URL, err.Error())
+				fmt.Println("Retrying...")
+
+				// Apply exponential backoff with jitter
+				delay := exponentialBackoffWithJitter(baseDelay, i)
+
+				// Use timer instead of Sleep to handle cancellation
+				timer := time.NewTimer(delay)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return nil, ctx.Err()
+				case <-timer.C:
+				}
+			}
+			lastErr = err
 		}
-		lastErr = err
 	}
 
 	return nil, eris.Wrapf(lastErr, "Failed after %d retries", maxRetries)
+}
+
+// isRetryableError checks if the error is transient and should be retried.
+func isRetryableError(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	// Check network errors
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return netErr.Timeout()
+	}
+
+	// Check HTTP status codes in error message (fallback)
+	errorMsg := err.Error()
+	return strings.Contains(errorMsg, "500") ||
+		strings.Contains(errorMsg, "502") ||
+		strings.Contains(errorMsg, "503") ||
+		strings.Contains(errorMsg, "504") ||
+		strings.Contains(errorMsg, "429")
+}
+
+// exponentialBackoffWithJitter calculates delay with exponential backoff and jitter.
+func exponentialBackoffWithJitter(base time.Duration, attempt int) time.Duration {
+	backoff := base * (1 << attempt)                         // Exponential growth
+	jitter := time.Duration(rand.Int63n(int64(backoff / 2))) // Add randomness
+	return backoff + jitter
 }
 
 func doRequest(req *http.Request) ([]byte, error) {
