@@ -32,7 +32,7 @@ var (
 	projectURLPattern = "%s/api/organization/%s/project"
 )
 
-var BaseCmd = &cobra.Command{
+var ForgeCmd = &cobra.Command{
 	Use:   "forge",
 	Short: "Forge is a tool for managing World Forge projects",
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -118,6 +118,20 @@ var (
 			}
 			fmt.Println("Switched to organization: ", org.Name)
 			return nil
+		},
+	}
+)
+
+// User Commands
+var (
+	userCmd = &cobra.Command{
+		Use:   "user",
+		Short: "Manage users",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return showOrganizationList(cmd.Context())
 		},
 	}
 
@@ -207,18 +221,6 @@ var (
 
 // Deployment commands
 var (
-	deploymentCmd = &cobra.Command{
-		Use:   "deployment",
-		Short: "Manage deployments",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
-			// TODO: return deployment list and status
-			return cmd.Help()
-		},
-	}
-
 	deployCmd = &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploy a project",
@@ -295,30 +297,41 @@ func InitForge() {
 	// Set organization URL
 	organizationURL = fmt.Sprintf("%s/api/organization", baseURL)
 
-	// Add login command
-	BaseCmd.AddCommand(loginCmd)
-
 	// Add organization commands
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)
-	organizationCmd.AddCommand(inviteUserToOrganizationCmd)
-	organizationCmd.AddCommand(changeUserRoleInOrganizationCmd)
-	BaseCmd.AddCommand(organizationCmd)
+	ForgeCmd.AddCommand(organizationCmd)
+
+	// Add user commands
+	userCmd.AddCommand(inviteUserToOrganizationCmd)
+	userCmd.AddCommand(changeUserRoleInOrganizationCmd)
 
 	// Add project commands
 	projectCmd.AddCommand(createProjectCmd)
 	projectCmd.AddCommand(switchProjectCmd)
 	projectCmd.AddCommand(deleteProjectCmd)
 	projectCmd.AddCommand(updateProjectCmd)
-	BaseCmd.AddCommand(projectCmd)
+	ForgeCmd.AddCommand(projectCmd)
 
 	// Add deployment commands
 	deployCmd.Flags().Bool("force", false,
 		"Start the deploy even if one is currently running. Cancels current running deploy.")
-	deploymentCmd.AddCommand(deployCmd)
-	deploymentCmd.AddCommand(destroyCmd)
-	deploymentCmd.AddCommand(statusCmd)
-	deploymentCmd.AddCommand(resetCmd)
-	deploymentCmd.AddCommand(promoteCmd)
-	BaseCmd.AddCommand(deploymentCmd)
+}
+
+func AddCommands(rootCmd *cobra.Command) {
+	// Add login command  `world login`
+	rootCmd.AddCommand(loginCmd)
+
+	// deployment and status commands
+	rootCmd.AddCommand(deployCmd)
+	rootCmd.AddCommand(destroyCmd)
+	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(promoteCmd)
+	rootCmd.AddCommand(resetCmd)
+
+	// user commands
+	rootCmd.AddCommand(userCmd)
+
+	// add all the other 'forge' commands
+	rootCmd.AddCommand(ForgeCmd)
 }

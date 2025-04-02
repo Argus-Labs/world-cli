@@ -71,8 +71,8 @@ func init() {
 	rootCmd.AddCommand(cardinal.BaseCmd)
 	rootCmd.AddCommand(evm.BaseCmd)
 
-	// Register forge subcommand
-	rootCmd.AddCommand(forge.BaseCmd)
+	// Register forge command
+	forge.AddCommands(rootCmd)
 
 	// Remove completion subcommand
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
