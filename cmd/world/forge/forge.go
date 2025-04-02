@@ -35,7 +35,7 @@ var (
 	userURL string
 )
 
-var BaseCmd = &cobra.Command{
+var ForgeCmd = &cobra.Command{
 	Use:   "forge",
 	Short: "Forge is a tool for managing World Forge projects",
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -123,8 +123,43 @@ var (
 			return nil
 		},
 	}
+)
 
-	inviteUserToOrganizationCmd = &cobra.Command{
+// User Commands
+var (
+	userCmd = &cobra.Command{
+		Use:   "user",
+		Short: "Manage user",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			user, err := getUser(cmd.Context())
+			if err != nil {
+				return eris.Wrap(err, "Failed to get user")
+			}
+
+			fmt.Println("\n👤 ✨ User Information ✨")
+			fmt.Println("========================")
+			fmt.Printf("\n📛 Name: %s", user.Name)
+			fmt.Printf("\n📧 Email: %s", user.Email)
+			fmt.Printf("\n🖼️  Avatar URL: %s\n", user.AvatarURL)
+			return nil
+		},
+	}
+
+	updateUserCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update user",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return updateUser(cmd.Context())
+		},
+	}
+
+  inviteUserToOrganizationCmd = &cobra.Command{
 		Use:   "invite",
 		Short: "Invite a user to an organization",
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -210,18 +245,6 @@ var (
 
 // Deployment commands
 var (
-	deploymentCmd = &cobra.Command{
-		Use:   "deployment",
-		Short: "Manage deployments",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
-			// TODO: return deployment list and status
-			return cmd.Help()
-		},
-	}
-
 	deployCmd = &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploy a project",
@@ -283,41 +306,6 @@ var (
 	}
 )
 
-// User commands
-var (
-	userCmd = &cobra.Command{
-		Use:   "user",
-		Short: "Manage user",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
-			user, err := getUser(cmd.Context())
-			if err != nil {
-				return eris.Wrap(err, "Failed to get user")
-			}
-
-			fmt.Println("\n👤 ✨ User Information ✨")
-			fmt.Println("========================")
-			fmt.Printf("\n📛 Name: %s", user.Name)
-			fmt.Printf("\n📧 Email: %s", user.Email)
-			fmt.Printf("\n🖼️  Avatar URL: %s\n", user.AvatarURL)
-			return nil
-		},
-	}
-
-	updateUserCmd = &cobra.Command{
-		Use:   "update",
-		Short: "Update user",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
-			return updateUser(cmd.Context())
-		},
-	}
-)
-
 func InitForge() {
 	// Set base URL
 	if globalconfig.Env == "PROD" {
@@ -336,34 +324,42 @@ func InitForge() {
 	// Set user URL
 	userURL = fmt.Sprintf("%s/api/user", baseURL)
 
-	// Add login command
-	BaseCmd.AddCommand(loginCmd)
-
 	// Add organization commands
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)
-	organizationCmd.AddCommand(inviteUserToOrganizationCmd)
-	organizationCmd.AddCommand(changeUserRoleInOrganizationCmd)
-	BaseCmd.AddCommand(organizationCmd)
+	ForgeCmd.AddCommand(organizationCmd)
+
+	// Add user commands
+	userCmd.AddCommand(inviteUserToOrganizationCmd)
+	userCmd.AddCommand(changeUserRoleInOrganizationCmd)
+	userCmd.AddCommand(updateUserCmd)
 
 	// Add project commands
 	projectCmd.AddCommand(createProjectCmd)
 	projectCmd.AddCommand(switchProjectCmd)
 	projectCmd.AddCommand(deleteProjectCmd)
 	projectCmd.AddCommand(updateProjectCmd)
-	BaseCmd.AddCommand(projectCmd)
+	ForgeCmd.AddCommand(projectCmd)
 
 	// Add deployment commands
 	deployCmd.Flags().Bool("force", false,
 		"Start the deploy even if one is currently running. Cancels current running deploy.")
-	deploymentCmd.AddCommand(deployCmd)
-	deploymentCmd.AddCommand(destroyCmd)
-	deploymentCmd.AddCommand(statusCmd)
-	deploymentCmd.AddCommand(resetCmd)
-	deploymentCmd.AddCommand(promoteCmd)
-	BaseCmd.AddCommand(deploymentCmd)
+}
 
-	// Add user commands
-	userCmd.AddCommand(updateUserCmd)
-	BaseCmd.AddCommand(userCmd)
+func AddCommands(rootCmd *cobra.Command) {
+	// Add login command  `world login`
+	rootCmd.AddCommand(loginCmd)
+
+	// deployment and status commands
+	rootCmd.AddCommand(deployCmd)
+	rootCmd.AddCommand(destroyCmd)
+	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(promoteCmd)
+	rootCmd.AddCommand(resetCmd)
+
+	// user commands
+	rootCmd.AddCommand(userCmd)
+
+	// add all the other 'forge' commands
+	rootCmd.AddCommand(ForgeCmd)
 }

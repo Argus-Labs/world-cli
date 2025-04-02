@@ -29,6 +29,7 @@ import (
 )
 
 const jitterDivisor time.Duration = 2 // Divisor used to calculate maximum jitter range
+const RetryBaseDelay = 100 * time.Millisecond
 
 var (
 	requestTimeout = 5 * time.Second
@@ -115,7 +116,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 
 func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
 	maxRetries := 5
-	baseDelay := 100 * time.Millisecond //nolint:gomnd // this is a default
+	baseDelay := RetryBaseDelay
 	var lastErr error
 
 	for i := 0; i < maxRetries; i++ {
