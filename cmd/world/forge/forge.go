@@ -53,22 +53,19 @@ var ForgeCmd = &cobra.Command{
 		fmt.Printf("ID:   %s\n", globalConfig.Credential.ID)
 		fmt.Printf("Name: %s\n", globalConfig.Credential.Name)
 
+		// Try to show org list and project list
 		// Show organization list
 		err = showOrganizationList(cmd.Context())
-		if err != nil {
-			return eris.Wrap(err, "Failed to show organization list")
-		}
 
-		// Show project list
-		err = showProjectList(cmd.Context())
-		if err != nil {
-			return eris.Wrap(err, "Failed to show project list")
+		if err == nil {
+			// Show project list, if we have an org
+			_ = showProjectList(cmd.Context())
 		}
 
 		// add separator
 		fmt.Println("\n================================================")
 
-		return nil
+		return cmd.Help()
 	},
 }
 
@@ -86,7 +83,12 @@ var (
 		Use:   "organization",
 		Short: "Manage organizations",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return showOrganizationList(cmd.Context())
+			err := showOrganizationList(cmd.Context())
+			if err == nil {
+				// add separator
+				fmt.Println("\n================================================")
+			}
+			return cmd.Help()
 		},
 	}
 
@@ -131,13 +133,18 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			return showOrganizationList(cmd.Context())
+			err := showOrganizationList(cmd.Context())
+			if err == nil {
+				// add separator
+				fmt.Println("\n================================================")
+			}
+			return cmd.Help()
 		},
 	}
 
 	inviteUserToOrganizationCmd = &cobra.Command{
 		Use:   "invite",
-		Short: "Invite a user to an organization",
+		Short: "Invite a user to selected organization",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return inviteUserToOrganization(cmd.Context())
 		},
@@ -145,7 +152,7 @@ var (
 
 	changeUserRoleInOrganizationCmd = &cobra.Command{
 		Use:   "role",
-		Short: "Change a users role in an organization",
+		Short: "Change a user's role in selected organization",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateUserRoleInOrganization(cmd.Context())
 		},
@@ -161,7 +168,12 @@ var (
 			if !checkLogin() {
 				return nil
 			}
-			return showProjectList(cmd.Context())
+			err := showProjectList(cmd.Context())
+			if err == nil {
+				// add separator
+				fmt.Println("\n================================================")
+			}
+			return cmd.Help()
 		},
 	}
 
