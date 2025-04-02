@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -27,6 +28,7 @@ import (
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
+const jitterDivisor time.Duration = 2 // Divisor used to calculate maximum jitter range
 const RetryBaseDelay = 100 * time.Millisecond
 
 var (
@@ -183,8 +185,8 @@ func isRetryableError(err error) bool {
 
 // exponentialBackoffWithJitter calculates delay with exponential backoff and jitter.
 func exponentialBackoffWithJitter(base time.Duration, attempt int) time.Duration {
-	backoff := base * (1 << attempt)                         // Exponential growth
-	jitter := time.Duration(rand.Int63n(int64(backoff / 2))) //nolint: gosec, gomnd // Add randomness
+	backoff := base * (1 << attempt)                                     // Exponential growth
+	jitter := time.Duration(rand.Int63n(int64(backoff / jitterDivisor))) //nolint:gosec // it's safe to use rand here
 	return backoff + jitter
 }
 
@@ -306,7 +308,19 @@ func slugCheck(slug string, minLength int, maxLength int) error {
 func NewTeaProgram(model tea.Model, opts ...tea.ProgramOption) *tea.Program {
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
 		opts = append(opts, tea.WithInput(nil))
-		// opts = append(opts, tea.WithoutRenderer())
 	}
 	return tea.NewProgram(model, opts...)
+}
+
+func isValidEmail(email string) bool {
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	return emailRegex.MatchString(email)
+}
+
+func isValidURL(urlStr string) error {
+	_, err := url.ParseRequestURI(urlStr)
+	if err != nil {
+		return eris.Wrap(err, "Invalid URL")
+	}
+	return nil
 }

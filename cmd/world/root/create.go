@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
+	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/tea/component/steps"
@@ -205,7 +206,7 @@ Otherwise, it will prompt you to enter a directory name.`,
 		GroupID: "starter",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			p := tea.NewProgram(NewWorldCreateModel(args), tea.WithOutput(writer))
+			p := forge.NewTeaProgram(NewWorldCreateModel(args), tea.WithOutput(writer))
 			if _, err := p.Run(); err != nil {
 				return err
 			}

@@ -22,11 +22,13 @@ type organization struct {
 	Deleted          bool   `json:"deleted"`
 	DeletedTime      string `json:"deleted_time"`
 	BaseShardAddress string `json:"base_shard_address"`
+	AvatarURL        string `json:"avatar_url"`
 }
 
 type createOrgRequest struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 func showOrganizationList(ctx context.Context) error {
@@ -211,8 +213,8 @@ func handleProjectConfig(ctx context.Context) error {
 	return showProjectList(ctx)
 }
 
-func createOrganization(ctx context.Context) (*organization, error) {
-	var orgName, orgSlug string
+func createOrganization(ctx context.Context) (*organization, error) { //nolint:funlen
+	var orgName, orgSlug, orgAvatarURL string
 
 	// Get organization name
 	fmt.Println("\n🏢 ✨ Create New Organization ✨")
@@ -251,10 +253,41 @@ func createOrganization(ctx context.Context) (*organization, error) {
 		return nil, eris.New("Maximum attempts reached for entering organization slug")
 	}
 
+	// Get and validate organization avatar URL
+	attempts = 0
+	maxAttempts = 5
+	for attempts < maxAttempts {
+		fmt.Print("\n🖼️  Enter organization avatar URL: ")
+		orgAvatarURL, err = getInput()
+		if err != nil {
+			return nil, eris.Wrap(err, "Failed to read organization avatar URL")
+		}
+
+		if orgAvatarURL == "" {
+			fmt.Println("\n❌ Organization avatar URL cannot be empty")
+			attempts++
+			continue
+		}
+
+		err = isValidURL(orgAvatarURL)
+		if err != nil {
+			fmt.Printf("\n❌ Error: %s (attempt %d/%d)\n", err, attempts+1, maxAttempts)
+			attempts++
+			continue
+		}
+
+		break
+	}
+
+	if attempts >= maxAttempts {
+		return nil, eris.New("Maximum attempts reached for entering organization avatar URL")
+	}
+
 	// Send request
 	body, err := sendRequest(ctx, http.MethodPost, organizationURL, createOrgRequest{
-		Name: orgName,
-		Slug: orgSlug,
+		Name:      orgName,
+		Slug:      orgSlug,
+		AvatarURL: orgAvatarURL,
 	})
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to create organization")

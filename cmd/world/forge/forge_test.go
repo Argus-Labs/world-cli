@@ -112,7 +112,7 @@ func (s *ForgeTestSuite) SetupTest() {
 	s.server.Start()
 
 	// Set max attempts to 3 for login tests
-	maxAttempts = 3
+	maxLoginAttempts = 3
 
 	// Create temp config dir
 	tempDir = filepath.Join(os.TempDir(), "worldcli")
@@ -1405,13 +1405,17 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 func (s *ForgeTestSuite) TestCreateOrganization() {
 	testCases := []struct {
 		name          string
-		input         string
+		input         []string
 		expectedError bool
 		expectedOrg   *organization
 	}{
 		{
-			name:          "Success - Valid organization",
-			input:         "testo",
+			name: "Success - Valid organization",
+			input: []string{
+				"testo",           // name
+				"testo",           // slug
+				"http://test.com", // avatar URL
+			},
 			expectedError: false,
 			expectedOrg: &organization{
 				ID:   "test-org-id",
@@ -1420,20 +1424,41 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			},
 		},
 		{
-			name:          "Error - Invalid slug length",
-			input:         "testorgs12345678910",
+			name: "Error - Invalid slug length",
+			input: []string{
+				"testo", // name
+				"testorgs123456789101234567891012345678910123124124125125123125125125125213124", // slug fail 1
+				"testorgs123456789101234567891012345678910123124124125125123125125125125213124", // slug fail 2
+				"testorgs123456789101234567891012345678910123124124125125123125125125125213124", // slug fail 3
+				"testorgs123456789101234567891012345678910123124124125125123125125125125213124", // slug fail 4
+				"testorgs123456789101234567891012345678910123124124125125123125125125125213124", // slug fail 5
+			},
 			expectedError: true,
 			expectedOrg:   nil,
 		},
 		{
-			name:          "Error - Non-alphanumeric dots dash underscore slug",
-			input:         "te_st()",
+			name: "Error - Non-alphanumeric dots dash underscore slug",
+			input: []string{
+				"testo",   // name
+				"te_st()", // slug fail 1
+				"te_st()", // slug fail 2
+				"te_st()", // slug fail 3
+				"te_st()", // slug fail 4
+				"te_st()", // slug fail 5
+			},
 			expectedError: true,
 			expectedOrg:   nil,
 		},
 		{
-			name:          "Error - Empty name",
-			input:         "",
+			name: "Error - Empty name",
+			input: []string{
+				"", // name fail 1
+				"", // name fail 2
+				"", // name fail 3
+				"", // name fail 4
+				"", // name fail 5
+				"", // name fail 6
+			},
 			expectedError: true,
 			expectedOrg:   nil,
 		},
@@ -1441,8 +1466,11 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
+			inputIndex := 0
 			getInput = func() (string, error) {
-				return tc.input, nil
+				input := tc.input[inputIndex]
+				inputIndex++
+				return input, nil
 			}
 			defer func() { getInput = originalGetInput }()
 
@@ -1608,15 +1636,16 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				"Test Project", // name
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"",           // repoToken (empty for public repo)
-				"",           // repoPath (empty for default root path of repo)
-				"10",         // tick rate
-				"Y",          // enable discord notifications
-				"test-token", // discord token
-				"1234567890", // discord channel ID
-				"Y",          // enable slack notifications
-				"test-token", // slack token
-				"1234567890", // slack channel ID
+				"",                // repoToken (empty for public repo)
+				"",                // repoPath (empty for default root path of repo)
+				"10",              // tick rate
+				"Y",               // enable discord notifications
+				"test-token",      // discord token
+				"1234567890",      // discord channel ID
+				"Y",               // enable slack notifications
+				"test-token",      // slack token
+				"1234567890",      // slack channel ID
+				"http://test.com", // avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
 				tea.KeyMsg{Type: tea.KeySpace}, // select region
