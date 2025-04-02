@@ -27,6 +27,8 @@ import (
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
+const RetryBaseDelay = 100 * time.Millisecond
+
 var (
 	requestTimeout = 5 * time.Second
 	httpClient     = &http.Client{
@@ -112,7 +114,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 
 func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
 	maxRetries := 5
-	baseDelay := 100 * time.Millisecond
+	baseDelay := RetryBaseDelay
 	var lastErr error
 
 	for i := 0; i < maxRetries; i++ {
@@ -182,7 +184,7 @@ func isRetryableError(err error) bool {
 // exponentialBackoffWithJitter calculates delay with exponential backoff and jitter.
 func exponentialBackoffWithJitter(base time.Duration, attempt int) time.Duration {
 	backoff := base * (1 << attempt)                         // Exponential growth
-	jitter := time.Duration(rand.Int63n(int64(backoff / 2))) // Add randomness
+	jitter := time.Duration(rand.Int63n(int64(backoff / 2))) //nolint: gosec, gomnd // Add randomness
 	return backoff + jitter
 }
 
@@ -303,7 +305,7 @@ func slugCheck(slug string, minLength int, maxLength int) error {
 // if you are not on a TTY, so you can run the debugger. Call it just as you would call tea.NewProgram().
 func NewTeaProgram(model tea.Model, opts ...tea.ProgramOption) *tea.Program {
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
-		opts = append(opts, tea.WithInput(os.Stdin))
+		opts = append(opts, tea.WithInput(nil))
 		// opts = append(opts, tea.WithoutRenderer())
 	}
 	return tea.NewProgram(model, opts...)
