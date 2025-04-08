@@ -42,6 +42,18 @@ type deploymentPreview struct {
 	Regions        []string `json:"regions"`
 }
 
+func autoDetectProject(ctx context.Context) (project, error) {
+	path, url, err := FindGitPathAndURL()
+	if err == nil {
+		// get the organization and project from the project's URL and path
+		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
+			baseURL, url, path)
+		resultBytes, err := sendRequest(ctx, http.MethodPost, deployURL, nil)
+		
+	}
+
+}
+
 // Deployment a project
 func deployment(ctx context.Context, deployType string) error {
 	globalConfig, err := globalconfig.GetGlobalConfig()
