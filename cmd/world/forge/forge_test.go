@@ -2321,6 +2321,13 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 	}
 }
 
+func (s *ForgeTestSuite) TestFindGitPathAndURL() {
+	path, url, err := FindGitPathAndURL()
+	s.NoError(err)
+	s.Contains(path, "cmd")
+	s.Contains(url, ".git")
+}
+
 func TestForgeSuite(t *testing.T) {
 	InitForge()
 	suite.Run(t, new(ForgeTestSuite))

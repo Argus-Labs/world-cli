@@ -328,3 +328,22 @@ func isValidURL(urlStr string) bool {
 	_, err := url.ParseRequestURI(urlStr)
 	return err == nil
 }
+
+func FindGitPathAndURL() (string, string, error) {
+	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
+	if err != nil {
+		return "", "", err
+	}
+	url := strings.TrimSpace(string(urlData))
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return "", url, err
+	}
+	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", url, err
+	}
+	rootPath := strings.TrimSpace(string(root)) + "/"
+	path := strings.Replace(workingDir, rootPath, "", 1)
+	return path, url, nil
+}
