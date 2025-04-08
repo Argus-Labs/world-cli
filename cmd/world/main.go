@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/signal"
 	"runtime/debug"
+	"syscall"
 
 	"github.com/rs/zerolog/log"
 
@@ -34,6 +36,22 @@ func init() {
 }
 
 func main() {
+	// Create a channel to receive signals.
+	sigChan := make(chan os.Signal, 1)
+
+	// Notify the channel when specific signals are received.
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Start a goroutine to handle signals.
+	go func() {
+		// Block until a signal is received.
+		sig := <-sigChan
+		switch sig {
+		case os.Interrupt, syscall.SIGTERM:
+			os.Exit(0)
+		}
+	}()
+
 	// Sentry initialization
 	telemetry.SentryInit(SentryDsn, globalconfig.Env, root.AppVersion)
 	defer telemetry.SentryFlush()
