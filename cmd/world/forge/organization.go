@@ -46,7 +46,7 @@ func showOrganizationList(ctx context.Context) error {
 	fmt.Println("=================================")
 	if organization.Name == "" {
 		fmt.Println("\n❌ No organization selected")
-		fmt.Println("\nℹ️  Use 'world forge org select' to choose an organization")
+		fmt.Println("\nℹ️  Use 'world forge organization switch' to choose an organization")
 	} else {
 		fmt.Println("\n📋 Available Organizations:")
 		fmt.Println("---------------------------")

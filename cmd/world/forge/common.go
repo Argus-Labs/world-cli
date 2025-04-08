@@ -136,7 +136,7 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 			}
 
 			// Don't retry if unauthorized
-			if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world forge login' command") {
+			if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world login' command") {
 				return nil, err
 			}
 
@@ -205,7 +205,7 @@ func doRequest(req *http.Request) ([]byte, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, eris.New("Unauthorized. Please login again using 'world forge login' command")
+			return nil, eris.New("Unauthorized. Please login again using 'world login' command")
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -265,7 +265,7 @@ func printAuthenticationRequired() {
 	fmt.Println("\n🔒 Authentication Required")
 	fmt.Println("========================")
 	fmt.Println("\n❌ You are not currently logged in")
-	fmt.Println("\nℹ️  Use 'world forge login' to authenticate")
+	fmt.Println("\nℹ️  Use 'world login' to authenticate")
 }
 
 func isAlphanumeric(s string) bool {

@@ -112,7 +112,7 @@ func deployment(ctx context.Context, deployType string) error {
 
 	fmt.Printf("\n✨ Your %s is being processed! ✨\n", deployType)
 	fmt.Printf("\nTo check the status of your %s, run:\n", deployType)
-	fmt.Println("  $ 'world forge deployment status'")
+	fmt.Println("  $ 'world status'")
 
 	return nil
 }
