@@ -104,6 +104,12 @@ func showProjectList(ctx context.Context) error {
 
 // Get selected project
 func getSelectedProject(ctx context.Context) (project, error) {
+	prj := autoDetectProject(ctx)
+	if prj != nil {
+		// if we auto-detected a project, use that instead
+		return *prj, nil
+	}
+
 	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get organization")
@@ -133,7 +139,7 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	}
 
 	// Parse response
-	prj, err := parseResponse[project](body)
+	prj, err = parseResponse[project](body)
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to parse project")
 	}

@@ -72,6 +72,12 @@ func getSelectedOrganization(ctx context.Context) (organization, error) {
 		return organization{}, nil
 	}
 
+	proj := autoDetectProject(ctx)
+	if proj != nil {
+		// if we auto-detected a project, use that project's organization instead
+		config.OrganizationID = proj.OrgID
+	}
+
 	// send request
 	body, err := sendRequest(ctx, http.MethodGet,
 		fmt.Sprintf("%s/%s", organizationURL, config.OrganizationID), nil)

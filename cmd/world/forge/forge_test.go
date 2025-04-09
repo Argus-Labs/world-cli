@@ -2323,7 +2323,7 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 
 func (s *ForgeTestSuite) TestFindGitPathAndURL() {
 	path, url, err := FindGitPathAndURL()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Contains(path, "cmd")
 	s.Contains(url, ".git")
 }

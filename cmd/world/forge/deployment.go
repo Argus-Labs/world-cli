@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -42,16 +43,26 @@ type deploymentPreview struct {
 	Regions        []string `json:"regions"`
 }
 
-func autoDetectProject(ctx context.Context) (project, error) {
-	path, url, err := FindGitPathAndURL()
+func autoDetectProject(ctx context.Context) *project {
+	path, urlStr, err := FindGitPathAndURL()
 	if err == nil {
 		// get the organization and project from the project's URL and path
 		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
-			baseURL, url, path)
-		resultBytes, err := sendRequest(ctx, http.MethodPost, deployURL, nil)
-		
+			baseURL, url.QueryEscape(urlStr), url.QueryEscape(path))
+		resultBytes, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
+		if err != nil {
+			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo", urlStr,
+				"and path", path, ":", err)
+			return nil
+		}
+		var proj project
+		if err := json.Unmarshal(resultBytes, &proj); err != nil {
+			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
+			return nil
+		}
+		return &proj
 	}
-
+	return nil
 }
 
 // Deployment a project
@@ -63,6 +74,13 @@ func deployment(ctx context.Context, deployType string) error {
 
 	projectID := globalConfig.ProjectID
 	organizationID := globalConfig.OrganizationID
+
+	proj := autoDetectProject(ctx)
+	if proj != nil {
+		// if we auto-detected a project, use that instead
+		projectID = proj.ID
+		organizationID = proj.OrgID
+	}
 
 	if organizationID == "" {
 		printNoSelectedOrganization()
@@ -124,6 +142,13 @@ func status(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get global config")
 	}
 	projectID := globalConfig.ProjectID
+
+	proj := autoDetectProject(ctx)
+	if proj != nil {
+		// if we auto-detected a project, use that instead
+		projectID = proj.ID
+	}
+
 	if projectID == "" {
 		printNoSelectedProject()
 		return nil

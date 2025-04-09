@@ -329,12 +329,21 @@ func isValidURL(urlStr string) bool {
 	return err == nil
 }
 
+func replaceLast(x, y, z string) (x2 string) {
+	i := strings.LastIndex(x, y)
+	if i == -1 {
+		return x
+	}
+	return x[:i] + z + x[i+len(y):]
+}
+
 func FindGitPathAndURL() (string, string, error) {
 	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
 	if err != nil {
 		return "", "", err
 	}
 	url := strings.TrimSpace(string(urlData))
+	url = replaceLast(url, ".git", "")
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return "", url, err
@@ -343,7 +352,10 @@ func FindGitPathAndURL() (string, string, error) {
 	if err != nil {
 		return "", url, err
 	}
-	rootPath := strings.TrimSpace(string(root)) + "/"
+	rootPath := strings.TrimSpace(string(root))
 	path := strings.Replace(workingDir, rootPath, "", 1)
+	if len(path) > 0 && path[0] == '/' {
+		path = path[1:]
+	}
 	return path, url, nil
 }
