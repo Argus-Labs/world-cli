@@ -35,6 +35,7 @@ type project struct {
 	RepoPath     string        `json:"repo_path"`
 	DeploySecret string        `json:"deploy_secret,omitempty"`
 	Config       projectConfig `json:"config"`
+	AvatarURL    string        `json:"avatar_url"`
 
 	update bool `json:"-"`
 }
@@ -238,6 +239,7 @@ func createProject(ctx context.Context) (*project, error) {
 		"repo_path":  p.RepoPath,
 		"org_id":     p.OrgID,
 		"config":     p.Config,
+		"avatar_url": p.AvatarURL,
 	})
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to create project")
@@ -288,6 +290,7 @@ func createProject(ctx context.Context) (*project, error) {
 	} else {
 		fmt.Printf("    - Enabled: No\n")
 	}
+	fmt.Printf("  • Avatar URL: %s\n", prj.AvatarURL)
 	fmt.Printf("  • Deploy Secret (for deploy via CI/CD pipeline tools):\n")
 	fmt.Printf("      %s\n", prj.DeploySecret)
 	fmt.Printf("ℹ️ Deploy Secret will not be shown again. Save it now in a secure location.\n")
@@ -761,6 +764,7 @@ func updateProject(ctx context.Context) error {
 		"repo_token": p.RepoToken,
 		"repo_path":  p.RepoPath,
 		"config":     p.Config,
+		"avatar_url": p.AvatarURL,
 	})
 	if err != nil {
 		return eris.Wrap(err, "Failed to update project")
@@ -799,7 +803,7 @@ func updateProject(ctx context.Context) error {
 	} else {
 		fmt.Printf("    - Enabled: No\n")
 	}
-
+	fmt.Printf("  • Avatar URL: %s\n", p.AvatarURL)
 	return nil
 }
 
@@ -858,6 +862,11 @@ func (p *project) projectInput(ctx context.Context, regions []string) error {
 	err = p.inputSlack(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input slack")
+	}
+
+	err = p.inputAvatarURL(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to input avatar URL")
 	}
 
 	return nil
@@ -1150,4 +1159,49 @@ func handleNoProjects(ctx context.Context) (string, error) {
 		return "", eris.Wrap(err, "Failed to create project")
 	}
 	return project.ID, nil
+}
+
+func (p *project) inputAvatarURL(ctx context.Context) error {
+	attempts := 0
+	maxAttempts := 5
+
+	fmt.Println("\n🖼️  ✨ Avatar URL Configuration ✨")
+	fmt.Println("================================")
+	if p.update && p.AvatarURL != "" {
+		fmt.Printf("\n📋 Current avatar URL: %s\n", p.AvatarURL)
+		fmt.Print("\n✨ Enter new avatar URL: ")
+	} else {
+		fmt.Print("\n✨ Enter avatar URL: ")
+	}
+
+	for attempts < maxAttempts {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			avatarURL, err := getInput()
+			if err != nil {
+				attempts++
+				fmt.Printf("\n❌ Failed to read avatar URL (attempt %d/%d)\n", attempts, maxAttempts)
+				continue
+			}
+
+			if avatarURL == "" {
+				// No avatar URL provided
+				p.AvatarURL = ""
+				return nil
+			}
+
+			if !isValidURL(avatarURL) {
+				attempts++
+				fmt.Printf("\n❌ Error: Invalid URL (attempt %d/%d)\n", attempts, maxAttempts)
+				continue
+			}
+
+			p.AvatarURL = avatarURL
+			return nil
+		}
+	}
+
+	return eris.New("Maximum attempts reached for entering avatar URL")
 }

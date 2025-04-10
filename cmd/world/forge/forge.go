@@ -30,6 +30,9 @@ var (
 
 	// project url stuff
 	projectURLPattern = "%s/api/organization/%s/project"
+
+	// user url stuff
+	userURL string
 )
 
 var ForgeCmd = &cobra.Command{
@@ -155,6 +158,17 @@ var (
 		Short: "Change a user's role in selected organization",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateUserRoleInOrganization(cmd.Context())
+		},
+	}
+
+	updateUserCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update user",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			return updateUser(cmd.Context())
 		},
 	}
 )
@@ -309,6 +323,9 @@ func InitForge() {
 	// Set organization URL
 	organizationURL = fmt.Sprintf("%s/api/organization", baseURL)
 
+	// Set user URL
+	userURL = fmt.Sprintf("%s/api/user", baseURL)
+
 	// Add organization commands
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)
@@ -317,6 +334,7 @@ func InitForge() {
 	// Add user commands
 	userCmd.AddCommand(inviteUserToOrganizationCmd)
 	userCmd.AddCommand(changeUserRoleInOrganizationCmd)
+	userCmd.AddCommand(updateUserCmd)
 
 	// Add project commands
 	projectCmd.AddCommand(createProjectCmd)

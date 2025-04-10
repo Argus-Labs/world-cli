@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	maxAttempts = 12 // 12 * 5 = 1 minute
+	maxLoginAttempts = 12 // 12 * 5 = 1 minute
 )
 
 // login will open browser to login and save the token to the config file
@@ -114,7 +114,7 @@ func getToken(ctx context.Context, url string) (string, error) {
 	// Create request every 3 seconds to check if the token is available
 	attempts := 1
 
-	for attempts < maxAttempts {
+	for attempts < maxLoginAttempts {
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
