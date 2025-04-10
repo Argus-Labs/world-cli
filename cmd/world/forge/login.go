@@ -35,10 +35,10 @@ type tokenStruct struct {
 // login will open browser to login and save the token to the config file
 func login(ctx context.Context) error {
 	// Keep the selected org and project to be used after login
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
 		// no config found, so we need to select the org and project
-		config = globalconfig.GlobalConfig{}
+		config = &globalconfig.GlobalConfig{}
 	}
 
 	orgID := config.OrganizationID
@@ -54,7 +54,8 @@ func login(ctx context.Context) error {
 	}
 
 	// Save credential to config
-	err = globalconfig.SaveGlobalConfig(config)
+	config.Credential = cred
+	err = globalconfig.SaveGlobalConfig(*config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save credential")
 	}
@@ -84,7 +85,7 @@ func login(ctx context.Context) error {
 
 	// save orgID to config
 	config.OrganizationID = orgID
-	err = globalconfig.SaveGlobalConfig(config)
+	err = globalconfig.SaveGlobalConfig(*config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save organization ID")
 	}
@@ -99,7 +100,7 @@ func login(ctx context.Context) error {
 	config.ProjectID = projectID
 
 	// Save config
-	err = globalconfig.SaveGlobalConfig(config)
+	err = globalconfig.SaveGlobalConfig(*config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save credential")
 	}

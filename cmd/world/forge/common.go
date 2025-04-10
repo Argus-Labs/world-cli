@@ -278,7 +278,7 @@ func isAlphanumeric(s string) bool {
 }
 
 func checkLogin() bool {
-	cred, err := globalconfig.GetGlobalConfig()
+	cred, err := GetCurrentConfig()
 	if err != nil {
 		printAuthenticationRequired()
 		return false
@@ -335,6 +335,76 @@ func replaceLast(x, y, z string) (x2 string) {
 		return x
 	}
 	return x[:i] + z + x[i+len(y):]
+}
+
+func GetCurrentConfig() (globalconfig.GlobalConfig, error) {
+	currConfig, err := globalconfig.GetGlobalConfig()
+	currConfig.CurrRepoKnown = false
+	config.CurrRepoURL, config.CurrRepoPath, _ = FindGitPathAndURL()
+	if err != nil {
+		// this typically happens when the file doesn't exist
+		// so this returns a new config with just the repo info
+		return currConfig, err
+	}
+	if currConfig.CurrRepoURL != "" {
+		for i := range currConfig.KnownProjects {
+			knownProject := currConfig.KnownProjects[i]
+			if knownProject.RepoURL == currConfig.CurrRepoURL && knownProject.RepoPath == currConfig.CurrRepoPath {
+				currConfig.ProjectID = knownProject.ProjectID
+				currConfig.OrganizationID = knownProject.OrganizationID
+				currConfig.CurrRepoKnown = true
+				break
+			}
+		}
+	}
+	return currConfig, nil
+}
+
+func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfig, error) {
+	currConfig, err := GetCurrentConfig()
+	if err != nil {
+		// if there was an error, we will have a clean config with just repo info
+		// and no login credentials. So we can't do a lookup here
+		return &currConfig, err
+	}
+	if !currConfig.CurrRepoKnown == false && currConfig.CurrRepoURL != "" {
+		// do lookup
+		// get the organization and project from the project's URL and path
+		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
+			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
+		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
+		if err != nil {
+			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo",
+				currConfig.CurrRepoURL, "and path", currConfig.CurrRepoPath, ":", err)
+			return nil, err
+		}
+
+		// Parse response
+		proj, err := parseResponse[project](body)
+		if err != nil {
+			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
+			return nil, err
+		}
+		if proj != nil {
+			// add to list of known projects
+			currConfig.KnownProjects = append(currConfig.KnownProjects, globalconfig.KnownProject{
+				ProjectID:      proj.ID,
+				OrganizationID: proj.OrgID,
+				RepoURL:        proj.RepoURL,
+				RepoPath:       proj.RepoPath,
+			})
+			// save the config, but don't change the default ProjectID & OrgID
+			err := globalconfig.SaveGlobalConfig(currConfig)
+			if err != nil {
+				fmt.Println("⚠️ Warning: Failed to save config: ", err)
+				// continue on, this is not fatal
+			}
+			// now return a copy of it with the looked up ProjectID and OrganizationID set
+			currConfig.ProjectID = proj.ID
+			currConfig.OrganizationID = proj.OrgID
+		}
+	}
+	return &currConfig, err
 }
 
 func FindGitPathAndURL() (string, string, error) {

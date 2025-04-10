@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
-
-	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
@@ -49,38 +47,33 @@ func autoDetectProject(ctx context.Context) *project {
 		// get the organization and project from the project's URL and path
 		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
 			baseURL, url.QueryEscape(urlStr), url.QueryEscape(path))
-		resultBytes, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
+		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
 		if err != nil {
 			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo", urlStr,
 				"and path", path, ":", err)
 			return nil
 		}
-		var proj project
-		if err := json.Unmarshal(resultBytes, &proj); err != nil {
+
+		// Parse response
+		proj, err := parseResponse[project](body)
+		if err != nil {
 			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
 			return nil
 		}
-		return &proj
+		return proj
 	}
 	return nil
 }
 
 // Deployment a project
 func deployment(ctx context.Context, deployType string) error {
-	globalConfig, err := globalconfig.GetGlobalConfig()
+	globalConfig, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get global config")
 	}
 
 	projectID := globalConfig.ProjectID
 	organizationID := globalConfig.OrganizationID
-
-	proj := autoDetectProject(ctx)
-	if proj != nil {
-		// if we auto-detected a project, use that instead
-		projectID = proj.ID
-		organizationID = proj.OrgID
-	}
 
 	if organizationID == "" {
 		printNoSelectedOrganization()
@@ -137,18 +130,11 @@ func deployment(ctx context.Context, deployType string) error {
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
 func status(ctx context.Context) error {
-	globalConfig, err := globalconfig.GetGlobalConfig()
+	globalConfig, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get global config")
 	}
 	projectID := globalConfig.ProjectID
-
-	proj := autoDetectProject(ctx)
-	if proj != nil {
-		// if we auto-detected a project, use that instead
-		projectID = proj.ID
-	}
-
 	if projectID == "" {
 		printNoSelectedProject()
 		return nil

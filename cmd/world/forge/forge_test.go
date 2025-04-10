@@ -2325,7 +2325,8 @@ func (s *ForgeTestSuite) TestFindGitPathAndURL() {
 	path, url, err := FindGitPathAndURL()
 	s.Require().NoError(err)
 	s.Contains(path, "cmd")
-	s.Contains(url, ".git")
+	s.Contains(url, "https://github")
+	s.NotContains(url, ".git")
 }
 
 func TestForgeSuite(t *testing.T) {

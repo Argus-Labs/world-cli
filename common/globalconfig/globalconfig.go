@@ -35,10 +35,22 @@ type Credential struct {
 	Name  string `json:"name"`
 }
 
+type KnownProject struct {
+	RepoURL        string `json:"repo_url"`
+	RepoPath       string `json:"repo_path"`
+	OrganizationID string `json:"organization_id"`
+	ProjectID      string `json:"project_id"`
+}
+
 type GlobalConfig struct {
-	OrganizationID string     `json:"organization_id"`
-	ProjectID      string     `json:"project_id"`
-	Credential     Credential `json:"credential"`
+	OrganizationID string         `json:"organization_id"`
+	ProjectID      string         `json:"project_id"`
+	Credential     Credential     `json:"credential"`
+	KnownProjects  []KnownProject `json:"known_projects"`
+	// the following are not saved in json
+	CurrRepoKnown bool   `json:""` // when true, the current repo and path are already in known_projects
+	CurrRepoURL   string `json:""`
+	CurrRepoPath  string `json:""`
 }
 
 func GetGlobalConfig() (GlobalConfig, error) {
@@ -62,7 +74,10 @@ func GetGlobalConfig() (GlobalConfig, error) {
 		logger.Error(eris.Wrap(err, "failed to unmarshal config"))
 		return config, err
 	}
-
+	// these will get set in forge/common.go's GetCurrentConfig()
+	config.CurrRepoKnown = false
+	config.CurrRepoURL = ""
+	config.CurrRepoPath = ""
 	return config, nil
 }
 
