@@ -2,6 +2,7 @@ package forge
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
@@ -33,6 +34,10 @@ var (
 
 	// user url stuff
 	userURL string
+
+	// argusid flag
+	// Set this to true if you want to use ArgusID for default login
+	argusid = false
 )
 
 var ForgeCmd = &cobra.Command{
@@ -309,6 +314,13 @@ var (
 )
 
 func InitForge() {
+	// Set argusid flag
+	if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "argusid" {
+		argusid = true
+	} else if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "github" {
+		argusid = false
+	}
+
 	// Set base URL
 	if globalconfig.Env == "PROD" {
 		baseURL = worldForgeBaseURLProd

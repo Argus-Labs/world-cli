@@ -108,7 +108,11 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	}
 
 	// Add headers
-	req.Header.Add("Authorization", "Bearer "+cred.Credential.Token)
+	prefix := "Bearer "
+	if argusid {
+		prefix = "ArgusID "
+	}
+	req.Header.Add("Authorization", prefix+cred.Credential.Token)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

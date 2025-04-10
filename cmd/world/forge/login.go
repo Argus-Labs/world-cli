@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,21 +16,24 @@ import (
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
+const (
+	// ArgusID Service URL
+	argusIDServiceURL = "https://id.argus-dev.com/api/auth/service-auth-session"
+)
+
 var (
 	maxLoginAttempts = 12 // 12 * 5 = 1 minute
+
+	errPending = eris.New("token status pending")
 )
+
+type tokenStruct struct {
+	Status string `json:"status"`
+	JWT    string `json:"jwt"`
+}
 
 // login will open browser to login and save the token to the config file
 func login(ctx context.Context) error {
-	key := generateKey()
-	url := fmt.Sprintf("%s?key=%s", loginURL, key)
-
-	// Open browser
-	err := openBrowser(url)
-	if err != nil {
-		return eris.Wrap(err, "Failed to open browser")
-	}
-
 	// Keep the selected org and project to be used after login
 	config, err := globalconfig.GetGlobalConfig()
 	if err != nil {
@@ -40,24 +44,36 @@ func login(ctx context.Context) error {
 	orgID := config.OrganizationID
 	projectID := config.ProjectID
 
-	// Wait for user to login
-	url = fmt.Sprintf("%s?key=%s", getTokenURL, key)
-	token, err := getToken(ctx, url)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get token")
+	if argusid {
+		config.Credential, err = loginWithArgusID(ctx)
+	} else {
+		config.Credential, err = loginWithWorldForge(ctx)
 	}
-
-	// Parse jwt token to get name from metadata
-	cred, err := parseCredential(token)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get name from token")
+		return eris.Wrap(err, "Failed to login")
 	}
 
 	// Save credential to config
-	config.Credential = cred
 	err = globalconfig.SaveGlobalConfig(config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save credential")
+	}
+
+	// Need to get User ID from World Forge if using Argus ID
+	// This is because the Argus ID is not used as a World Forge user ID
+	if argusid {
+		// Get User ID from World Forge
+		user, err := getUser(ctx)
+		if err != nil {
+			return eris.Wrap(err, "Failed to get user")
+		}
+
+		config.Credential.ID = user.ID
+		// Save credential to config
+		err = globalconfig.SaveGlobalConfig(config)
+		if err != nil {
+			return eris.Wrap(err, "Failed to save credential")
+		}
 	}
 
 	// Handle organization selection
@@ -102,55 +118,116 @@ func login(ctx context.Context) error {
 
 	fmt.Println("\n✨ Login successful! ✨")
 	fmt.Println("=====================")
-	fmt.Printf("\n👋 Welcome, %s!\n", cred.Name)
-	fmt.Printf("🆔 Your ID is: %s\n", cred.ID)
+	fmt.Printf("\n👋 Welcome, %s!\n", config.Credential.Name)
+	fmt.Printf("🆔 Your ID is: %s\n", config.Credential.ID)
 	fmt.Println("\n🚀 You're all set to start using World Forge!")
 
 	return nil
 }
 
 // GetToken will get the token from the config file
-func getToken(ctx context.Context, url string) (string, error) {
-	// Create request every 3 seconds to check if the token is available
+func getToken(ctx context.Context, url string, argusid bool, result interface{}) error {
 	attempts := 1
 
 	for attempts < maxLoginAttempts {
 		select {
 		case <-ctx.Done():
-			return "", ctx.Err()
+			return ctx.Err()
 		case <-time.After(3 * time.Second): //nolint:gomnd
 			fmt.Printf("\r🔄 Logging in... attempt %d", attempts)
 
-			// Create request with context
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			token, err := makeTokenRequest(ctx, url)
 			if err != nil {
-				return "", eris.Wrap(err, "failed to create request")
+				attempts++
+				continue
 			}
 
-			resp, err := httpClient.Do(req)
-			if err != nil {
-				return "", eris.Wrap(err, "failed to get token")
+			if err := handleTokenResponse(token, argusid, result); err != nil {
+				if errors.Is(err, errPending) {
+					attempts++
+					continue
+				}
+				return err
 			}
-			defer resp.Body.Close()
 
-			if resp.StatusCode == http.StatusOK {
-				fmt.Println("\n✨ Login token received successfully!")
-				// Read the token from the response
-				response, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return "", eris.Wrap(err, "failed to read token")
-				}
-				token, err := parseResponse[string](response)
-				if err != nil {
-					return "", eris.Wrap(err, "failed to parse token")
-				}
-				return *token, nil
-			}
-			attempts++
+			return nil
 		}
 	}
+
 	fmt.Println() // Add newline before error
-	return "", eris.New("max attempts reached while waiting for token")
+	return eris.New("max attempts reached while waiting for token")
+}
+
+func makeTokenRequest(ctx context.Context, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to create request")
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to get token")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, eris.New("non-200 status code")
+	}
+
+	response, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to read token")
+	}
+
+	return response, nil
+}
+
+func handleTokenResponse(response []byte, argusid bool, result interface{}) error {
+	if argusid {
+		return handleArgusIDToken(response, result)
+	}
+	return handleWorldForgeToken(response, result)
+}
+
+func handleArgusIDToken(response []byte, result interface{}) error {
+	err := json.Unmarshal(response, &result)
+	if err != nil {
+		return eris.Wrap(err, "failed to parse response")
+	}
+
+	tokenStruct, ok := result.(*tokenStruct)
+	if !ok {
+		return eris.New("failed to parse response")
+	}
+
+	switch tokenStruct.Status {
+	case "pending":
+		return errPending
+	case "success":
+		fmt.Println("\n✨ Login token received successfully!")
+		return nil
+	default:
+		return eris.New(fmt.Sprintf("Status: %s", tokenStruct.Status))
+	}
+}
+
+func handleWorldForgeToken(response []byte, result interface{}) error {
+	token, err := parseResponse[string](response)
+	if err != nil {
+		return eris.Wrap(err, "failed to parse response")
+	}
+
+	if token == nil {
+		return eris.New("token is nil")
+	}
+
+	strPtr, ok := result.(*string)
+	if !ok {
+		return eris.New("invalid result type")
+	}
+
+	*strPtr = *token
+	return nil
 }
 
 // parseCredential will parse the id and name from the token
@@ -187,4 +264,118 @@ func parseCredential(token string) (globalconfig.Credential, error) {
 		Name:  claims.UserMetadata.Name,
 		ID:    claims.UserMetadata.ID,
 	}, nil
+}
+
+func parseArgusIDToken(jwtToken string) (globalconfig.Credential, error) {
+	var claims struct {
+		Name          string    `json:"name"`
+		ID            string    `json:"id"`
+		Sub           string    `json:"sub"`
+		Email         string    `json:"email"`
+		EmailVerified bool      `json:"emailVerified"`
+		Image         *string   `json:"image"`
+		CreatedAt     time.Time `json:"createdAt"`
+		UpdatedAt     time.Time `json:"updatedAt"`
+		Aud           string    `json:"aud"`
+		Iss           string    `json:"iss"`
+		Exp           int64     `json:"exp"`
+		Iat           int64     `json:"iat"`
+	}
+
+	parts := strings.Split(jwtToken, ".")
+	if len(parts) != 3 { //nolint:gomnd
+		return globalconfig.Credential{}, eris.New("invalid token format")
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "failed to decode token payload")
+	}
+
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "failed to parse token claims")
+	}
+
+	return globalconfig.Credential{
+		Token: jwtToken,
+		Name:  claims.Name,
+		ID:    claims.Sub,
+	}, nil
+}
+
+func loginWithWorldForge(ctx context.Context) (globalconfig.Credential, error) {
+	key := generateKey()
+	url := fmt.Sprintf("%s?key=%s", loginURL, key)
+
+	// Open browser
+	err := openBrowser(url)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to open browser")
+	}
+
+	// Wait for user to login
+	url = fmt.Sprintf("%s?key=%s", getTokenURL, key)
+	var token string
+	err = getToken(ctx, url, false, &token)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get token")
+	}
+
+	// Parse jwt token to get name from metadata
+	cred, err := parseCredential(token)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get name from token")
+	}
+
+	return cred, nil
+}
+
+func loginWithArgusID(ctx context.Context) (globalconfig.Credential, error) {
+	// Get the link to login
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, argusIDServiceURL, nil)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to create request")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get login link")
+	}
+	defer resp.Body.Close()
+
+	// Parse the response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to read login link")
+	}
+
+	// Parse the response
+	var loginLink struct {
+		CallBackURL string `json:"callbackUrl"`
+		ClientURL   string `json:"clientUrl"`
+	}
+	err = json.Unmarshal(body, &loginLink)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to parse login link")
+	}
+
+	// Open browser
+	err = openBrowser(loginLink.ClientURL)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to open browser")
+	}
+
+	// Wait for user to login
+	var tokenStruct tokenStruct
+	err = getToken(ctx, loginLink.CallBackURL, true, &tokenStruct)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get token")
+	}
+
+	// Parse jwt token to get name from metadata
+	cred, err := parseArgusIDToken(tokenStruct.JWT)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get name from token")
+	}
+
+	return cred, nil
 }
