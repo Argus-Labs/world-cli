@@ -48,9 +48,9 @@ type GlobalConfig struct {
 	Credential     Credential     `json:"credential"`
 	KnownProjects  []KnownProject `json:"known_projects"`
 	// the following are not saved in json
-	CurrRepoKnown bool   `json:""` // when true, the current repo and path are already in known_projects
-	CurrRepoURL   string `json:""`
-	CurrRepoPath  string `json:""`
+	CurrRepoKnown bool   `json:"-"` // when true, the current repo and path are already in known_projects
+	CurrRepoURL   string `json:"-"`
+	CurrRepoPath  string `json:"-"`
 }
 
 func GetGlobalConfig() (GlobalConfig, error) {

@@ -40,6 +40,9 @@ var (
 	}
 )
 
+// this is a variable so we can change it for testing login
+var getCurrentConfigWithContext = GetCurrentConfigWithContext
+
 var generateKey = func() string {
 	return strings.ReplaceAll(uuid.NewString(), "-", "")
 }
@@ -339,13 +342,10 @@ func replaceLast(x, y, z string) (x2 string) {
 
 func GetCurrentConfig() (globalconfig.GlobalConfig, error) {
 	currConfig, err := globalconfig.GetGlobalConfig()
+	// we deliberately ignore any error here and just return it at the end
+	// so that we can fill out and much info as we do have
 	currConfig.CurrRepoKnown = false
-	config.CurrRepoURL, config.CurrRepoPath, _ = FindGitPathAndURL()
-	if err != nil {
-		// this typically happens when the file doesn't exist
-		// so this returns a new config with just the repo info
-		return currConfig, err
-	}
+	currConfig.CurrRepoPath, currConfig.CurrRepoURL, _ = FindGitPathAndURL()
 	if currConfig.CurrRepoURL != "" {
 		for i := range currConfig.KnownProjects {
 			knownProject := currConfig.KnownProjects[i]
@@ -357,18 +357,16 @@ func GetCurrentConfig() (globalconfig.GlobalConfig, error) {
 			}
 		}
 	}
-	return currConfig, nil
+	return currConfig, err
 }
 
 func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfig, error) {
 	currConfig, err := GetCurrentConfig()
-	if err != nil {
-		// if there was an error, we will have a clean config with just repo info
-		// and no login credentials. So we can't do a lookup here
-		return &currConfig, err
-	}
-	if !currConfig.CurrRepoKnown == false && currConfig.CurrRepoURL != "" {
-		// do lookup
+	// we don't care if we got an error, we will just return it later
+	if !currConfig.CurrRepoKnown && //nolint: nestif // not too complex
+		currConfig.Credential.Token != "" &&
+		currConfig.CurrRepoURL != "" {
+		// needed a lookup, and have a token (so we should be logged in)
 		// get the organization and project from the project's URL and path
 		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
 			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
@@ -376,14 +374,15 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 		if err != nil {
 			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo",
 				currConfig.CurrRepoURL, "and path", currConfig.CurrRepoPath, ":", err)
-			return nil, err
+			return &currConfig, err
 		}
 
 		// Parse response
 		proj, err := parseResponse[project](body)
-		if err != nil {
+		if err != nil && err.Error() != "Missing data field in response" {
+			// missing data field in response just means nothing was found
 			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
-			return nil, err
+			return &currConfig, err
 		}
 		if proj != nil {
 			// add to list of known projects
@@ -402,6 +401,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 			// now return a copy of it with the looked up ProjectID and OrganizationID set
 			currConfig.ProjectID = proj.ID
 			currConfig.OrganizationID = proj.OrgID
+			currConfig.CurrRepoKnown = true
 		}
 	}
 	return &currConfig, err

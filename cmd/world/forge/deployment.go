@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -39,30 +38,6 @@ type deploymentPreview struct {
 	DeploymentType string   `json:"deployment_type"`
 	TickRate       int      `json:"tick_rate"`
 	Regions        []string `json:"regions"`
-}
-
-func autoDetectProject(ctx context.Context) *project {
-	path, urlStr, err := FindGitPathAndURL()
-	if err == nil {
-		// get the organization and project from the project's URL and path
-		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
-			baseURL, url.QueryEscape(urlStr), url.QueryEscape(path))
-		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
-		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo", urlStr,
-				"and path", path, ":", err)
-			return nil
-		}
-
-		// Parse response
-		proj, err := parseResponse[project](body)
-		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
-			return nil
-		}
-		return proj
-	}
-	return nil
 }
 
 // Deployment a project
