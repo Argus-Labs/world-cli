@@ -49,7 +49,7 @@ var ForgeCmd = &cobra.Command{
 		}
 
 		// Get user info
-		globalConfig, err := globalconfig.GetGlobalConfig()
+		globalConfig, err := GetCurrentConfig()
 		if err != nil {
 			return eris.Wrap(err, "Failed to get user")
 		}

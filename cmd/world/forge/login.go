@@ -35,15 +35,12 @@ type tokenStruct struct {
 // login will open browser to login and save the token to the config file
 func login(ctx context.Context) error {
 	// Keep the selected org and project to be used after login
-	config, err := globalconfig.GetGlobalConfig()
-	if err != nil {
-		// no config found, so we need to select the org and project
-		config = globalconfig.GlobalConfig{}
-	}
+	config, _ := getCurrentConfigWithContext(ctx)
 
 	orgID := config.OrganizationID
 	projectID := config.ProjectID
 
+	var err error
 	if argusid {
 		config.Credential, err = loginWithArgusID(ctx)
 	} else {
@@ -54,68 +51,66 @@ func login(ctx context.Context) error {
 	}
 
 	// Save credential to config
-	err = globalconfig.SaveGlobalConfig(config)
+	err = globalconfig.SaveGlobalConfig(*config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save credential")
 	}
 
-	// Need to get User ID from World Forge if using Argus ID
-	// This is because the Argus ID is not used as a World Forge user ID
-	if argusid {
-		// Get User ID from World Forge
-		user, err := getUser(ctx)
+	if config.CurrRepoKnown { //nolint: nestif // this is not unreasonably complex
+		proj, err := getSelectedProject(ctx)
 		if err != nil {
-			return eris.Wrap(err, "Failed to get user")
+			fmt.Println("⚠️ Warning: Failed to get project", projectID, ":", err)
+		}
+		org, err := getSelectedOrganization(ctx)
+		if err != nil {
+			fmt.Println("⚠️ Warning: Failed to get organization", orgID, ":", err)
+		}
+		if proj.Name != "" && org.Name != "" {
+			fmt.Printf("📁 Auto-selected project %s (%s) in organization %s (%s)\n",
+				proj.Name, proj.Slug,
+				org.Name, org.Slug)
+		}
+	} else {
+		// we weren't able to identify the current project automatically, so
+		// we have to handle organization selection
+		orgID, err = handleOrganizationSelection(ctx, orgID)
+		if err != nil {
+			orgID = ""
+		}
+		// save orgID to config
+		config.OrganizationID = orgID
+		err = globalconfig.SaveGlobalConfig(*config)
+		if err != nil {
+			return eris.Wrap(err, "Failed to save organization ID")
 		}
 
-		config.Credential.ID = user.ID
-		// Save credential to config
-		err = globalconfig.SaveGlobalConfig(config)
+		// Handle project selection
+		projectID, err = handleProjectSelection(ctx, projectID)
+		if err != nil {
+			projectID = ""
+		}
+
+		// save projectID to config
+		config.ProjectID = projectID
+
+		// Save config
+		err = globalconfig.SaveGlobalConfig(*config)
 		if err != nil {
 			return eris.Wrap(err, "Failed to save credential")
 		}
+
+		// show the org list
+		err = showOrganizationList(ctx)
+		if err != nil {
+			return eris.Wrap(err, "Failed to show organization list")
+		}
+
+		// show the project list
+		err = showProjectList(ctx)
+		if err != nil {
+			return eris.Wrap(err, "Failed to show project list")
+		}
 	}
-
-	// Handle organization selection
-	orgID, err = handleOrganizationSelection(ctx, orgID)
-	if err != nil {
-		orgID = ""
-	}
-
-	// save orgID to config
-	config.OrganizationID = orgID
-	err = globalconfig.SaveGlobalConfig(config)
-	if err != nil {
-		return eris.Wrap(err, "Failed to save organization ID")
-	}
-
-	// Handle project selection
-	projectID, err = handleProjectSelection(ctx, projectID)
-	if err != nil {
-		projectID = ""
-	}
-
-	// save projectID to config
-	config.ProjectID = projectID
-
-	// Save config
-	err = globalconfig.SaveGlobalConfig(config)
-	if err != nil {
-		return eris.Wrap(err, "Failed to save credential")
-	}
-
-	// show the org list
-	err = showOrganizationList(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to show organization list")
-	}
-
-	// show the project list
-	err = showProjectList(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to show project list")
-	}
-
 	fmt.Println("\n✨ Login successful! ✨")
 	fmt.Println("=====================")
 	fmt.Printf("\n👋 Welcome, %s!\n", config.Credential.Name)
@@ -376,6 +371,14 @@ func loginWithArgusID(ctx context.Context) (globalconfig.Credential, error) {
 	if err != nil {
 		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get name from token")
 	}
+
+	// Need to get User ID from World Forge if using Argus ID
+	// This is because the Argus ID is not used as a World Forge user ID
+	user, err := getUser(ctx)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get world forge user")
+	}
+	cred.ID = user.ID
 
 	return cred, nil
 }

@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
-
-	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
@@ -44,7 +42,7 @@ type deploymentPreview struct {
 
 // Deployment a project
 func deployment(ctx context.Context, deployType string) error {
-	globalConfig, err := globalconfig.GetGlobalConfig()
+	globalConfig, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get global config")
 	}
@@ -100,14 +98,14 @@ func deployment(ctx context.Context, deployType string) error {
 
 	fmt.Printf("\n✨ Your %s is being processed! ✨\n", deployType)
 	fmt.Printf("\nTo check the status of your %s, run:\n", deployType)
-	fmt.Println("  $ 'world forge deployment status'")
+	fmt.Println("  $ 'world status'")
 
 	return nil
 }
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
 func status(ctx context.Context) error {
-	globalConfig, err := globalconfig.GetGlobalConfig()
+	globalConfig, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get global config")
 	}

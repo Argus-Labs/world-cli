@@ -25,7 +25,16 @@ var (
 	originalOpenBrowser  = openBrowser
 	originalGetInput     = getInput
 	originalGetConfigDir = globalconfig.GetConfigDir
+	originalGetCtxConfig = getCurrentConfigWithContext
 	tempDir              string
+	knownProjects        = []globalconfig.KnownProject{
+		{
+			ProjectID:      "test-project-id",
+			RepoURL:        "https://github.com/Argus-Labs/world-cli",
+			RepoPath:       "cmd/world/forge",
+			OrganizationID: "test-org-id",
+		},
+	}
 )
 
 type ForgeTestSuite struct {
@@ -34,7 +43,7 @@ type ForgeTestSuite struct {
 	ctx    context.Context
 }
 
-func (s *ForgeTestSuite) SetupTest() {
+func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care about cylomatic complexity
 	s.ctx = context.Background()
 
 	// Create test server on port 8001
@@ -103,6 +112,8 @@ func (s *ForgeTestSuite) SetupTest() {
 					s.handleHealth(w, r)
 				case "/api/health/destroyed-project-id":
 					s.handleHealth(w, r)
+				case "/api/project/":
+					s.handleProjectLookup(w, r)
 				default:
 					http.Error(w, "Not found", http.StatusNotFound)
 				}
@@ -149,6 +160,10 @@ func (s *ForgeTestSuite) handleInvite(w http.ResponseWriter, _ *http.Request) {
 
 func (s *ForgeTestSuite) handleRole(w http.ResponseWriter, _ *http.Request) {
 	s.writeJSON(w, map[string]interface{}{"data": ""})
+}
+
+func (s *ForgeTestSuite) handleProjectLookup(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, map[string]interface{}{"success": "true"})
 }
 
 func (s *ForgeTestSuite) handleOrganizationList(w http.ResponseWriter, r *http.Request) {
@@ -708,6 +723,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
+				KnownProjects: knownProjects,
 			},
 			input:         "Y",
 			expectedError: false,
@@ -897,6 +913,7 @@ func (s *ForgeTestSuite) TestDestroy() {
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
+				KnownProjects: knownProjects,
 			},
 			input:         "y",
 			expectedError: false,
@@ -909,6 +926,7 @@ func (s *ForgeTestSuite) TestDestroy() {
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
+				KnownProjects: knownProjects,
 			},
 			input:         "n",
 			expectedError: false,
@@ -1190,16 +1208,29 @@ func (s *ForgeTestSuite) TestLogin() {
 		name          string
 		key           string
 		expectedError bool
+		mockConfig    func(ctx context.Context) (*globalconfig.GlobalConfig, error)
 	}{
 		{
 			name:          "Success - Valid login flow",
 			key:           "valid-key",
 			expectedError: false,
+			mockConfig:    GetCurrentConfigWithContext,
+		},
+		{
+			name:          "Success - Known project",
+			key:           "valid-key",
+			expectedError: false,
+			mockConfig: func(ctx context.Context) (*globalconfig.GlobalConfig, error) {
+				cfg, err := GetCurrentConfigWithContext(ctx)
+				cfg.CurrRepoKnown = true
+				return cfg, err
+			},
 		},
 		{
 			name:          "Error - Invalid key",
 			key:           "invalid-key",
 			expectedError: true,
+			mockConfig:    GetCurrentConfigWithContext,
 		},
 	}
 
@@ -1213,6 +1244,8 @@ func (s *ForgeTestSuite) TestLogin() {
 			openBrowser = func(_ string) error { return nil }
 			defer func() { openBrowser = originalOpenBrowser }()
 
+			getCurrentConfigWithContext = tc.mockConfig
+			defer func() { getCurrentConfigWithContext = originalGetCtxConfig }()
 			err := login(s.ctx)
 			if tc.expectedError {
 				s.Require().Error(err)
@@ -1631,6 +1664,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
+				KnownProjects: knownProjects,
 			},
 			inputs: []string{
 				"Test Project", // name
@@ -2319,6 +2353,14 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 			}
 		})
 	}
+}
+
+func (s *ForgeTestSuite) TestFindGitPathAndURL() {
+	path, url, err := FindGitPathAndURL()
+	s.Require().NoError(err)
+	s.Contains(path, "cmd")
+	s.Contains(url, "https://github")
+	s.NotContains(url, ".git")
 }
 
 func TestForgeSuite(t *testing.T) {

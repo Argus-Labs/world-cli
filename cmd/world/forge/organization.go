@@ -46,7 +46,7 @@ func showOrganizationList(ctx context.Context) error {
 	fmt.Println("=================================")
 	if organization.Name == "" {
 		fmt.Println("\n❌ No organization selected")
-		fmt.Println("\nℹ️  Use 'world forge org select' to choose an organization")
+		fmt.Println("\nℹ️  Use 'world forge organization switch' to choose an organization")
 	} else {
 		fmt.Println("\n📋 Available Organizations:")
 		fmt.Println("---------------------------")
@@ -63,7 +63,7 @@ func showOrganizationList(ctx context.Context) error {
 
 func getSelectedOrganization(ctx context.Context) (organization, error) {
 	// Get config
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
 		return organization{}, eris.Wrap(err, "Failed to get config")
 	}
@@ -170,7 +170,7 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 			selectedOrg := orgs[num-1]
 
 			// Save organization to config file
-			config, err := globalconfig.GetGlobalConfig()
+			config, err := GetCurrentConfig()
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to get config")
 			}
@@ -190,7 +190,7 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 
 func handleProjectConfig(ctx context.Context) error {
 	// Get projectID from config
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfig()
 	if err != nil {
 		return eris.Wrap(err, "Failed to get config")
 	}
@@ -299,7 +299,7 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 	}
 
 	// Select organization to config file
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get config")
 	}

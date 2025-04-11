@@ -86,7 +86,7 @@ func showProjectList(ctx context.Context) error {
 	fmt.Println("============================")
 	if project.Name == "" {
 		fmt.Println("\n❌ No project selected")
-		fmt.Println("\nℹ️  Use 'world forge project select' to choose a project")
+		fmt.Println("\nℹ️  Use 'world forge project switch' to choose a project")
 	} else {
 		fmt.Println("\n📋 Available Projects:")
 		fmt.Println("---------------------------")
@@ -115,7 +115,7 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	}
 
 	// Get config
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfig()
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get config")
 	}
@@ -251,7 +251,7 @@ func createProject(ctx context.Context) (*project, error) {
 	}
 
 	// Select project
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get config")
 	}
@@ -641,7 +641,7 @@ func selectProject(ctx context.Context) (project, error) {
 		selectedProject := projects[num-1]
 
 		// Save project to config file
-		config, err := globalconfig.GetGlobalConfig()
+		config, err := GetCurrentConfig()
 		if err != nil {
 			return project{}, eris.Wrap(err, "Failed to get config")
 		}
@@ -716,7 +716,7 @@ func deleteProject(ctx context.Context) error {
 	fmt.Printf("\n✅ Project deleted: %s (%s)\n", project.Name, project.Slug)
 
 	// Remove project from config
-	config, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentConfig()
 	if err != nil {
 		return eris.Wrap(err, "Failed to get config")
 	}
