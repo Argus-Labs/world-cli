@@ -332,7 +332,7 @@ func isValidURL(urlStr string) bool {
 	return err == nil
 }
 
-func replaceLast(x, y, z string) (x2 string) {
+func replaceLast(x, y, z string) string {
 	i := strings.LastIndex(x, y)
 	if i == -1 {
 		return x

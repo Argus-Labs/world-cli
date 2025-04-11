@@ -40,6 +40,7 @@ func login(ctx context.Context) error {
 	orgID := config.OrganizationID
 	projectID := config.ProjectID
 
+	var err error
 	if argusid {
 		config.Credential, err = loginWithArgusID(ctx)
 	} else {
@@ -50,27 +51,9 @@ func login(ctx context.Context) error {
 	}
 
 	// Save credential to config
-	config.Credential = cred
 	err = globalconfig.SaveGlobalConfig(*config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save credential")
-	}
-
-	// Need to get User ID from World Forge if using Argus ID
-	// This is because the Argus ID is not used as a World Forge user ID
-	if argusid {
-		// Get User ID from World Forge
-		user, err := getUser(ctx)
-		if err != nil {
-			return eris.Wrap(err, "Failed to get user")
-		}
-
-		config.Credential.ID = user.ID
-		// Save credential to config
-		err = globalconfig.SaveGlobalConfig(config)
-		if err != nil {
-			return eris.Wrap(err, "Failed to save credential")
-		}
 	}
 
 	if config.CurrRepoKnown { //nolint: nestif // this is not unreasonably complex
@@ -388,6 +371,14 @@ func loginWithArgusID(ctx context.Context) (globalconfig.Credential, error) {
 	if err != nil {
 		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get name from token")
 	}
+
+	// Need to get User ID from World Forge if using Argus ID
+	// This is because the Argus ID is not used as a World Forge user ID
+	user, err := getUser(ctx)
+	if err != nil {
+		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get world forge user")
+	}
+	cred.ID = user.ID
 
 	return cred, nil
 }
