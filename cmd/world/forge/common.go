@@ -67,13 +67,24 @@ var openBrowser = func(url string) error {
 	return nil
 }
 
-var getInput = func() (string, error) {
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		return "", eris.Wrap(err, "Failed to read input")
+var getInput = func(prompt, defaultStr string) string {
+	if prompt != "" {
+		fmt.Printf(prompt)
 	}
-	return strings.TrimSpace(input), nil
+	if defaultStr != "" {
+		fmt.Printf(" [%s]: ", defaultStr)
+	} else {
+		fmt.Printf(": ")
+	}
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n') // only returns error if input doesn't end in delimiter
+	input = strings.TrimSpace(input)
+	if input == "" && defaultStr != "" {
+		// display the default value as if they typed it in
+		fmt.Printf("%s\n", defaultStr)
+		return defaultStr
+	}
+	return input
 }
 
 // sendRequest sends an HTTP request with auth token and returns the response body.

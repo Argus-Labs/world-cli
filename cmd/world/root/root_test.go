@@ -113,7 +113,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	err = os.Chdir(gameDir)
 	assert.NilError(t, err)
 
-	// set tea ouput to variable
+	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 
@@ -174,7 +174,7 @@ func TestDev(t *testing.T) {
 	err = os.Chdir(gameDir)
 	assert.NilError(t, err)
 
-	// set tea ouput to variable
+	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})
@@ -284,7 +284,7 @@ func TestEVMStart(t *testing.T) {
 	err = os.Chdir(gameDir)
 	assert.NilError(t, err)
 
-	// set tea ouput to variable
+	// set tea output to variable
 	teaOut := &bytes.Buffer{}
 	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})

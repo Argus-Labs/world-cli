@@ -3,9 +3,9 @@ package forge
 import (
 	"context"
 	"fmt"
+	"github.com/rotisserie/eris"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/globalconfig"
@@ -136,20 +136,13 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 	}
 
 	// Get user input
-	attempts := 0
-	maxAttempts := 5
-	for attempts < maxAttempts {
+	for {
 		select {
 		case <-ctx.Done():
 			return organization{}, ctx.Err()
 		default:
-			fmt.Print("\nEnter organization number (or 'q' to quit): ")
-			input, err := getInput()
-			if err != nil {
-				return organization{}, eris.Wrap(err, "Failed to read input")
-			}
+			input := getInput("\nEnter organization number (or 'q' to quit)", "")
 
-			input = strings.TrimSpace(input)
 			if input == "q" {
 				fmt.Println("\n❌ Organization selection canceled")
 				return organization{}, eris.New("Organization selection canceled")
@@ -158,9 +151,7 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 			// Parse selection
 			num, err := strconv.Atoi(input)
 			if err != nil || num < 1 || num > len(orgs) {
-				fmt.Printf("\n❌ Invalid selection. Please enter a number between 1 and %d (attempt %d/%d)\n",
-					len(orgs), attempts+1, maxAttempts)
-				attempts++
+				fmt.Printf("\n❌ Invalid selection. Please enter a number between 1 and %d\n", len(orgs))
 				continue
 			}
 
@@ -214,68 +205,48 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 	var orgName, orgSlug, orgAvatarURL string
 
 	// Get organization name
-	fmt.Println("\n   Create New Organization")
-	fmt.Println("=============================")
-	fmt.Print("\nEnter organization name: ")
-	orgName, err := getInput()
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to read organization name")
+	fmt.Println("\n🏢 ✨ Create New Organization ✨")
+	fmt.Println("==============================")
+	for {
+		orgName = getInput("\nEnter organization name", "")
+		if orgName == "" {
+			fmt.Printf("\nOrganization name is required\n")
+			continue
+		}
+		break
 	}
 
 	// Get and validate organization slug
-	attempts := 0
-	maxAttempts := 5
-	for attempts < maxAttempts {
-		fmt.Print("\nEnter organization slug: ")
-		orgSlug, err = getInput()
-		if err != nil {
-			return nil, eris.Wrap(err, "Failed to read organization slug")
-		}
+	for {
+		// TODO: create default slug from name
+		orgSlug = getInput("\nEnter organization slug", "")
 
 		// Validate slug
 		minLength := 3
 		maxLength := 15
 		orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
 		if err != nil {
-			fmt.Printf("\n❌ Error: %s (attempt %d/%d)\n", err, attempts+1, maxAttempts)
-			attempts++
+			fmt.Printf("\n❌ Error: %s\n", err)
 			continue
 		}
-
 		break
-	}
-
-	if attempts >= maxAttempts {
-		return nil, eris.New("Maximum attempts reached for entering organization slug")
 	}
 
 	// Get and validate organization avatar URL
-	attempts = 0
-	maxAttempts = 5
-	for attempts < maxAttempts {
-		fmt.Print("\nEnter organization avatar URL: ")
-		orgAvatarURL, err = getInput()
-		if err != nil {
-			return nil, eris.Wrap(err, "❌ Failed to read organization avatar URL")
-		}
+	for {
+		orgAvatarURL = getInput("\nEnter organization avatar URL [none]", "")
 
 		if orgAvatarURL == "" {
-			fmt.Println("\n❌ Organization avatar URL cannot be empty")
-			attempts++
-			continue
+			fmt.Print("\nSkipped. No avatar URL will be used.\n")
+			break
 		}
 
 		if !isValidURL(orgAvatarURL) {
-			fmt.Printf("\n❌ Error: Invalid URL (attempt %d/%d)\n", attempts+1, maxAttempts)
-			attempts++
+			fmt.Printf("\n❌ Error: Invalid URL\n")
 			continue
 		}
 
 		break
-	}
-
-	if attempts >= maxAttempts {
-		return nil, eris.New("Maximum attempts reached for entering organization avatar URL")
 	}
 
 	// Send request
@@ -302,7 +273,7 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 	config.OrganizationID = org.ID
 	err = globalconfig.SaveGlobalConfig(config)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to select organization")
+		return nil, eris.Wrap(err, "Failed to save organization in config")
 	}
 
 	fmt.Printf("\nOrganization '%s' with slug '%s' created successfully!\n", orgName, orgSlug)
@@ -313,20 +284,12 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 func inviteUserToOrganization(ctx context.Context) error { //nolint:dupl // TODO: refactor
 	fmt.Println("\n   Invite User to Organization")
 	fmt.Println("=================================")
-	fmt.Print("\nEnter user ID to invite: ")
-	userID, err := getInput()
-	if err != nil {
-		return eris.Wrap(err, "Failed to read user ID")
-	}
-
+	userID := getInput("\nEnter user ID to invite", "")
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
 
-	role, err := getRoleInput(false)
-	if err != nil {
-		return eris.Wrap(err, "Failed to read role input")
-	}
+	role := getRoleInput(false)
 
 	payload := map[string]string{
 		"invited_user_id": userID,
@@ -355,22 +318,15 @@ func inviteUserToOrganization(ctx context.Context) error { //nolint:dupl // TODO
 }
 
 func updateUserRoleInOrganization(ctx context.Context) error { //nolint:dupl // TODO: refactor
-	fmt.Println("\n  Update User Role in Organization")
-	fmt.Println("====================================")
-	fmt.Print("\nEnter user ID to update: ")
-	userID, err := getInput()
-	if err != nil {
-		return eris.Wrap(err, "Failed to read user ID")
-	}
+	fmt.Println("\n  Update User Role in Organization ")
+	fmt.Println("=====================================")
+	userID := getInput("\nEnter user ID to update", "")
 
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
 
-	role, err := getRoleInput(true)
-	if err != nil {
-		return eris.Wrap(err, "Failed to read role input")
-	}
+	role := getRoleInput(true)
 
 	payload := map[string]string{
 		"target_user_id": userID,
@@ -398,51 +354,33 @@ func updateUserRoleInOrganization(ctx context.Context) error { //nolint:dupl // 
 	return nil
 }
 
-func getRoleInput(allowNone bool) (string, error) {
+func getRoleInput(allowNone bool) string {
 	// Get and validate role
-	attempts := 0
-	maxAttempts := 5
 	var opts string
 	if allowNone {
 		opts = "owner, admin, member, or none"
 	} else {
 		opts = "owner, admin, or member"
 	}
-	for attempts < maxAttempts {
+	for {
 		fmt.Println("\n Role Assignment")
-		fmt.Println("-----------------")
+		fmt.Println("----------------")
 		fmt.Printf("Available Roles: %s\n", opts)
-		fmt.Print("\nEnter organization role [Enter for member]: ")
-		role, err := getInput()
-		if err != nil {
-			return "", eris.Wrap(err, "Failed to read organization role")
-		}
-		attempts++
-		// default to member
-		if role == "" {
-			fmt.Println("\nUsing default role of member")
-			role = "member"
-		}
+		role := getInput("\nEnter organization role", "member")
 		if allowNone && role == "none" {
 			fmt.Print("\nWarning: Role \"none\" removes user from this organization")
-			fmt.Print("\nConfirm removal? (Yes/no): ")
-			answer, err := getInput()
-			if err != nil {
-				return "", eris.Wrap(err, "Failed to read remove confirmation")
-			}
+			answer := getInput("\nConfirm removal? (Yes/no)", "no")
 			if answer != "Yes" {
 				fmt.Println("\n❌ User not removed")
 				continue // let them try again
 			}
-			return role, nil
+			return role
 		}
 		if role == "admin" || role == "owner" || role == "member" {
-			return role, nil
+			return role
 		}
-		fmt.Printf("\n❌ Error: Role must be one of %s (attempt %d/%d)\n",
-			opts, attempts, maxAttempts)
+		fmt.Printf("\n❌ Error: Role must be one of %s\n", opts)
 	}
-	return "", eris.New("Maximum attempts reached for entering role")
 }
 
 // handleOrganizationSelection manages the organization selection logic.
@@ -480,15 +418,11 @@ func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) 
 // handleNoOrgs handles the case when there are no organizations.
 func handleNoOrgs(ctx context.Context) (string, error) {
 	// Confirmation prompt
-	fmt.Printf("You don't have any organizations. Do you want to create a new organization now? (Y/n): ")
-	confirmation, err := getInput()
-	if err != nil {
-		return "", eris.Wrap(err, "Failed to read confirmation")
-	}
+	confirmation := getInput(prompt, "n")
 
 	if confirmation != "Y" {
 		if confirmation == "y" {
-			fmt.Println("You need to put Y (uppercase) to confirm creation")
+			fmt.Println("You need to enter Y (uppercase) to confirm creation")
 			fmt.Println("\n❌ Organization creation canceled")
 			return "", nil
 		}

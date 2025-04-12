@@ -77,10 +77,7 @@ func updateUser(ctx context.Context) error {
 }
 
 func inputUserName(ctx context.Context, currentUserName string) (string, error) {
-	maxAttempts := 5
-	attempts := 0
-
-	for attempts < maxAttempts {
+	for {
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
@@ -88,28 +85,10 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 			fmt.Println("\n   Update User Name")
 			fmt.Println("======================")
 
-			if currentUserName != "" {
-				fmt.Printf("\nCurrent name: %s\n", currentUserName)
-				fmt.Printf("\nEnter new name (or press Enter to keep current): ")
-			} else {
-				fmt.Printf("\nEnter name: ")
-			}
-
-			name, err := getInput()
-			if err != nil {
-				attempts++
-				fmt.Printf("\n❌ Invalid input. Please enter a name (attempt %d/%d)\n", attempts, maxAttempts)
-				continue
-			}
-
-			if name == "" && currentUserName != "" {
-				// Keep current name if empty input
-				return currentUserName, nil
-			}
+			name := getInput("\nEnter name", currentUserName)
 
 			if name == "" {
-				fmt.Printf("\n❌ Error: Name cannot be empty (attempt %d/%d)\n", attempts+1, maxAttempts)
-				attempts++
+				fmt.Printf("\n❌ Error: Name cannot be empty\n")
 				continue
 			}
 
@@ -117,15 +96,10 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 			return name, nil
 		}
 	}
-
-	return "", eris.New("Maximum attempts reached for entering name")
 }
 
 func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error) { //nolint:dupl // TODO: refactor
-	maxAttempts := 5
-	attempts := 0
-
-	for attempts < maxAttempts {
+	for {
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
@@ -133,28 +107,9 @@ func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error
 			fmt.Println("\n   Update User Email")
 			fmt.Println("=======================")
 
-			if currentUserEmail != "" {
-				fmt.Printf("\nCurrent email: %s\n", currentUserEmail)
-				fmt.Printf("\nEnter new email (or press Enter to keep current): ")
-			} else {
-				fmt.Printf("\nEnter email: ")
-			}
-
-			email, err := getInput()
-			if err != nil {
-				attempts++
-				fmt.Printf("\n❌ Invalid input. Please enter an email (attempt %d/%d)\n", attempts, maxAttempts)
-				continue
-			}
-
-			if email == "" && currentUserEmail != "" {
-				// Keep current email if empty input
-				return currentUserEmail, nil
-			}
-
+			email := getInput("\nEnter email", currentUserEmail)
 			if !isValidEmail(email) {
-				fmt.Printf("\n❌ Error: Invalid email format (attempt %d/%d)\n", attempts+1, maxAttempts)
-				attempts++
+				fmt.Printf("\n❌ Error: Invalid email format\n")
 				continue
 			}
 
@@ -162,47 +117,20 @@ func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error
 			return email, nil
 		}
 	}
-
-	return "", eris.New("Maximum attempts reached for entering email")
 }
 
 func inputUserAvatarURL(ctx context.Context, //nolint:dupl // TODO: refactor
 	currentUserAvatarURL string) (string, error) {
-	attempts := 0
-	maxAttempts := 5
-
-	for attempts < maxAttempts {
+	for {
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n   Update User Avatar URL")
-			fmt.Println("============================")
-
-			if currentUserAvatarURL != "" {
-				fmt.Printf("\nCurrent avatar URL: %s\n", currentUserAvatarURL)
-				fmt.Print("\nEnter new avatar URL (press Enter to keep current): ")
-			} else {
-				fmt.Print("\nEnter avatar URL: ")
-			}
-
-			avatarURL, err := getInput()
-			if err != nil {
-				attempts++
-				fmt.Printf("\n❌ Invalid input. Please enter an avatar URL (attempt %d/%d)\n",
-					attempts, maxAttempts)
-				continue
-			}
-
-			if avatarURL == "" && currentUserAvatarURL != "" {
-				// Keep current avatar URL if empty input
-				return currentUserAvatarURL, nil
-			}
-
+			fmt.Println("\n  Update User Avatar URL")
+			fmt.Println("=============================")
+			avatarURL := getInput("\nEnter avatar URL", currentUserAvatarURL)
 			if !isValidURL(avatarURL) {
-				fmt.Printf("\n❌ Error: Invalid URL format (attempt %d/%d)\n",
-					attempts+1, maxAttempts)
-				attempts++
+				fmt.Printf("\n❌ Error: Invalid URL format\n")
 				continue
 			}
 
@@ -210,6 +138,4 @@ func inputUserAvatarURL(ctx context.Context, //nolint:dupl // TODO: refactor
 			return avatarURL, nil
 		}
 	}
-
-	return "", eris.New("Maximum attempts reached for entering avatar URL")
 }
