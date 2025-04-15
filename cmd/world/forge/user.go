@@ -98,7 +98,7 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 	}
 }
 
-func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error) { //nolint:dupl // TODO: refactor
+func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error) { // TODO: refactor
 	for {
 		select {
 		case <-ctx.Done():
@@ -119,7 +119,7 @@ func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error
 	}
 }
 
-func inputUserAvatarURL(ctx context.Context, //nolint:dupl // TODO: refactor
+func inputUserAvatarURL(ctx context.Context, // TODO: refactor
 	currentUserAvatarURL string) (string, error) {
 	for {
 		select {

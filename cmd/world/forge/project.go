@@ -310,12 +310,9 @@ func (p *project) inputProjectName(ctx context.Context) error {
 			return err
 		}
 
-		name, err := p.promptForName()
-		if err != nil {
-			return err
-		}
+		name := p.promptForName()
 
-		err = p.validateAndSetName(name)
+		err := p.validateAndSetName(name)
 		if err == nil {
 			fmt.Printf("\n✅ Project name \"%s\" accepted!\n", name)
 			return nil
@@ -323,12 +320,9 @@ func (p *project) inputProjectName(ctx context.Context) error {
 	}
 }
 
-func (p *project) promptForName() (string, error) {
-	fmt.Println("\n   Project Name Configuration")
-	fmt.Println("================================")
+func (p *project) promptForName() string {
 	name := getInput("\nEnter project name", p.Name)
-
-	return name, nil
+	return name
 }
 
 func (p *project) validateAndSetName(name string) error {
@@ -362,13 +356,16 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 			fmt.Println("\n   Project Slug Configuration")
 			fmt.Println("================================")
 
-			// TODO: if no project slug exists, generate a default from the name
+			// if no slug exists, create a default one from the name
+			minLength := 3
+			maxLength := 25
+			if p.Slug == "" {
+				p.Slug = CreateSlugFromName(p.Name, minLength, maxLength)
+			}
 
 			slug := getInput("\n\n👉 Slug", p.Slug)
 
 			// Validate slug
-			minLength := 3
-			maxLength := 25
 			slug, err = slugToSaneCheck(slug, minLength, maxLength)
 			if err != nil {
 				fmt.Printf("\n❌ Error: %s\n", err)
@@ -387,10 +384,7 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			repoURL, err := p.promptForRepoURL()
-			if err != nil {
-				return err
-			}
+			repoURL := p.promptForRepoURL()
 
 			// if repoURL prefix is not http or https, add https:// to the repoURL
 			if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
@@ -401,11 +395,7 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 				continue
 			}
 
-			repoToken, err := p.promptForRepoToken()
-			if err != nil {
-				return err
-			}
-
+			repoToken := p.promptForRepoToken()
 			repoToken = p.processRepoToken(repoToken)
 
 			if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
@@ -420,12 +410,12 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 	}
 }
 
-func (p *project) promptForRepoURL() (string, error) {
+func (p *project) promptForRepoURL() string {
 	fmt.Printf("\n  Repository URL Configuration")
 	fmt.Printf("\n============================")
 	repoURL := getInput("\nEnter Repository URL", p.RepoURL)
 
-	return repoURL, nil
+	return repoURL
 }
 
 func (p *project) validateRepoURL(repoURL string) error {
@@ -441,7 +431,7 @@ func (p *project) validateRepoURL(repoURL string) error {
 }
 
 // TODO: this needs some cleanup, no need to ask for token for public repos
-func (p *project) promptForRepoToken() (string, error) {
+func (p *project) promptForRepoToken() string {
 	if p.update {
 		fmt.Printf("\n  Update Repository Access Token\n")
 		fmt.Printf("==================================\n")
@@ -458,7 +448,7 @@ func (p *project) promptForRepoToken() (string, error) {
 	}
 	repoToken := getInput("\nEnter Token", p.RepoToken)
 
-	return repoToken, nil
+	return repoToken
 }
 
 func (p *project) processRepoToken(repoToken string) string {
@@ -471,7 +461,7 @@ func (p *project) processRepoToken(repoToken string) string {
 	return repoToken
 }
 
-func (p *project) inputRepoPath(ctx context.Context) error {
+func (p *project) inputRepoPath(ctx context.Context) {
 	// Get repository Path
 	var repoPath string
 	for {
@@ -496,7 +486,7 @@ func (p *project) inputRepoPath(ctx context.Context) error {
 		}
 
 		p.RepoPath = repoPath
-		return nil
+		return
 	}
 }
 
@@ -730,10 +720,7 @@ func (p *project) projectInput(ctx context.Context, regions []string) error {
 		return eris.Wrap(err, "Failed to get repository URL and token")
 	}
 
-	err = p.inputRepoPath(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get repository path")
-	}
+	p.inputRepoPath(ctx)
 
 	// Tick Rate
 	err = p.inputTickRate(ctx)
@@ -780,7 +767,7 @@ func (p *project) inputTickRate(ctx context.Context) error {
 			var defaultValStr string
 			if p.Config.TickRate != 0 {
 				fmt.Printf("\nCurrent tick rate: %d\n", p.Config.TickRate)
-				defaultValStr = fmt.Sprintf("%d", p.Config.TickRate)
+				defaultValStr = strconv.Itoa(p.Config.TickRate)
 			} else {
 				fmt.Print("\nEnter tick rate for your project:\n")
 				defaultValStr = "1"
@@ -934,9 +921,6 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 			fmt.Printf("\n🔄 Please try again\n")
 		}
 	}
-
-	fmt.Println("\n❌ Region Selection Failed")
-	return eris.New("region selection failed")
 }
 
 func (p *project) runRegionSelector(ctx context.Context, regions []string) error {

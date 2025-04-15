@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
@@ -69,12 +70,12 @@ var openBrowser = func(url string) error {
 
 var getInput = func(prompt, defaultStr string) string {
 	if prompt != "" {
-		fmt.Printf(prompt)
+		fmt.Print(prompt)
 	}
 	if defaultStr != "" {
 		fmt.Printf(" [%s]: ", defaultStr)
 	} else {
-		fmt.Printf(": ")
+		fmt.Print(": ")
 	}
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n') // only returns error if input doesn't end in delimiter
@@ -329,6 +330,49 @@ func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 	returnSlug = strings.Trim(returnSlug, "_")
 
 	return returnSlug, nil
+}
+
+func CreateSlugFromName(name string, minLength int, maxLength int) string {
+	shorten := false
+	if len(name) > maxLength {
+		shorten = true
+	}
+	var slug string
+	wroteUnderscore := false
+	hadCapital := false
+	for i, r := range name {
+		switch {
+		case unicode.IsLower(r) || unicode.IsNumber(r):
+			// copy lowercase letters and numbers
+			slug += string(r)
+			wroteUnderscore = false
+			hadCapital = unicode.IsNumber(r) // treat numbers as capital letters
+		case unicode.IsUpper(r):
+			// convert capital letter to lower, with _ if dealing with CamelCase ( -> camel_case )
+			if !shorten && i != 0 && !wroteUnderscore && !hadCapital {
+				slug += "_"
+			}
+			slug += string(unicode.ToLower(r))
+			wroteUnderscore = false
+			hadCapital = true
+		case (r == '_' || !shorten) && !wroteUnderscore:
+			// underscore is preserved (but many fused into one)
+			// unless the input was too long, other characters are converted to underscores (but many fused into one)
+			slug += "_"
+			wroteUnderscore = true
+			hadCapital = false
+		}
+	}
+	slug = strings.Trim(slug, "_")
+	if len(slug) < minLength {
+		slug += "_" + uuid.NewString()[:8] // add the first 8 characters of the UUID
+		slug = strings.TrimLeft(slug, "_")
+	}
+	if len(slug) > maxLength {
+		slug = slug[:maxLength]
+		slug = strings.TrimRight(slug, "_")
+	}
+	return slug
 }
 
 // NewTeaProgram will create a BubbleTea program that automatically sets the no input option

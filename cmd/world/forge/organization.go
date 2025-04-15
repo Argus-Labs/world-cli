@@ -3,7 +3,6 @@ package forge
 import (
 	"context"
 	"fmt"
-	"github.com/rotisserie/eris"
 	"net/http"
 	"strconv"
 
@@ -172,8 +171,6 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 			return selectedOrg, nil
 		}
 	}
-
-	return organization{}, eris.New("Maximum attempts reached for selecting organization")
 }
 
 func handleProjectConfig(ctx context.Context) error {
@@ -201,7 +198,7 @@ func handleProjectConfig(ctx context.Context) error {
 	return showProjectList(ctx)
 }
 
-func createOrganization(ctx context.Context) (*organization, error) { //nolint:funlen
+func createOrganization(ctx context.Context) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 
 	// Get organization name
@@ -218,12 +215,12 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 
 	// Get and validate organization slug
 	for {
-		// TODO: create default slug from name
-		orgSlug = getInput("\nEnter organization slug", "")
-
-		// Validate slug
 		minLength := 3
 		maxLength := 15
+		orgSlug = CreateSlugFromName(orgName, minLength, maxLength)
+		orgSlug = getInput("\nEnter organization slug", orgSlug)
+
+		// Validate slug
 		orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
 		if err != nil {
 			fmt.Printf("\n❌ Error: %s\n", err)

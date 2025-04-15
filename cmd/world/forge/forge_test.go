@@ -781,7 +781,8 @@ func (s *ForgeTestSuite) TestDeploy() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
-			getInput = func(string, string) string {
+			getInput = func(prompt string, defaultVal string) string {
+				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
 				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -974,7 +975,8 @@ func (s *ForgeTestSuite) TestDestroy() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
-			getInput = func(string, string) string {
+			getInput = func(prompt string, defaultVal string) string {
+				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
 				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -1062,7 +1064,8 @@ func (s *ForgeTestSuite) TestReset() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
-			getInput = func(string, string) string {
+			getInput = func(prompt string, defaultVal string) string {
+				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
 				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -1416,7 +1419,8 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 				}
 
 			case "select":
-				getInput = func(string, string) string {
+				getInput = func(prompt string, defaultVal string) string {
+					fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
 					return tc.input
 				}
 				defer func() { getInput = originalGetInput }()
@@ -1445,7 +1449,22 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 		expectedOrg     *organization
 	}{
 		{
-			name: "Success - Valid organization",
+			name: "Success - Valid organization default slug",
+			input: []string{
+				"My Great Org",    // name
+				"",                // slug
+				"http://test.com", // avatar URL
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+		},
+		{
+			name: "Success - Valid organization custom slug",
 			input: []string{
 				"testo",           // name
 				"testo",           // slug
@@ -1494,12 +1513,17 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 		s.Run(tc.name, func() {
 			inputIndex := 0
 			lastPrompt := ""
-			getInput = func(prompt string, _ string) string {
+			getInput = func(prompt string, defaultVal string) string {
+				fmt.Printf("%s [%s]: ", prompt, defaultVal)
 				if prompt == lastPrompt {
 					panic(eris.Errorf("Input %d Failed", inputIndex))
 				}
 				lastPrompt = prompt
 				input := tc.input[inputIndex]
+				if input == "" {
+					input = defaultVal
+				}
+				fmt.Printf("%s\n", input)
 				inputIndex++
 				return input
 			}
@@ -1508,7 +1532,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			var org *organization
 			var err error
 			if tc.expectInputFail > 0 {
-				assert.PanicsWithError(s.T(), fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
+				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
 					org, err = createOrganization(s.ctx)
 				})
 			} else {
@@ -1665,7 +1689,42 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 		expectedProject     *project
 	}{
 		{
-			name: "Success - Create project with public repo",
+			name: "Success - Public repo default slug",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+				KnownProjects: knownProjects,
+			},
+			inputs: []string{
+				"Test Project", // name
+				"",             // take default
+				"https://github.com/argus-labs/starter-game-template", // repoURL
+				"",                // repoToken (empty for public repo)
+				"",                // repoPath (empty for default root path of repo)
+				"10",              // tick rate
+				"Y",               // enable discord notifications  NOTE: these won't show up in the console
+				"test-token",      // discord token                       because results are mocked
+				"1234567890",      // discord channel ID
+				"Y",               // enable slack notifications
+				"test-token",      // slack token
+				"1234567890",      // slack channel ID
+				"http://test.com", // avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				tea.KeyMsg{Type: tea.KeySpace}, // select region
+				tea.KeyMsg{Type: tea.KeyEnter}, // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedProject: &project{
+				Name: "Test Project",
+				Slug: "test_project",
+			},
+		},
+		{
+			name: "Success - public repo custom slug",
 			config: globalconfig.GlobalConfig{
 				OrganizationID: "test-org-id",
 				Credential: globalconfig.Credential{
@@ -1680,8 +1739,8 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				"",                // repoToken (empty for public repo)
 				"",                // repoPath (empty for default root path of repo)
 				"10",              // tick rate
-				"Y",               // enable discord notifications
-				"test-token",      // discord token
+				"Y",               // enable discord notifications  NOTE: these won't show up in the console
+				"test-token",      // discord token                       because results are mocked
 				"1234567890",      // discord channel ID
 				"Y",               // enable slack notifications
 				"test-token",      // slack token
@@ -1699,22 +1758,23 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				Slug: "testp",
 			},
 		},
-		// {
-		// 	name: "Success - Create project with private repo",
-		// 	config: globalconfig.GlobalConfig{
-		// 		OrganizationID: "test-org-id",
-		// 		Credential: globalconfig.Credential{
-		// 			Token: "test-token",
-		// 		},
-		// 	},
-		// 	inputs: []string{
-		// 		"Test Private",
-		// 		"testp",
-		// 		"https://github.com/test/private-repo",
-		// 		"secret-token",
-		// 	},
-		// 	expectedError: false,
-		// },
+		{
+			name: "Error - private repo bad token",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+			},
+			inputs: []string{
+				"Test Private",
+				"",
+				"https://github.com/test/private-repo",
+				"bad-secret-token",
+			},
+			expectInputFail: 4,
+			expectedError:   false,
+		},
 		{
 			name: "Error - No organization selected",
 			config: globalconfig.GlobalConfig{
@@ -1772,9 +1832,8 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				"testp",
 				"invalid-url", // invalid URL 1st attempts
 				"",            // no token
-				"",            // no path
 			},
-			expectInputFail: 3,
+			expectInputFail: 4,
 			expectedError:   false,
 			expectedProject: nil,
 		},
@@ -1789,12 +1848,19 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
 				lastPrompt := ""
-				getInput = func(prompt string, _ string) string {
-					if prompt == lastPrompt {
+				nextToLastPrompt := ""
+				getInput = func(prompt string, defaultVal string) string {
+					fmt.Printf("%s [%s]: ", prompt, defaultVal)
+					if prompt == lastPrompt || prompt == nextToLastPrompt {
 						panic(eris.Errorf("Input %d Failed", inputIndex))
 					}
+					nextToLastPrompt = lastPrompt
 					lastPrompt = prompt
 					input := tc.inputs[inputIndex]
+					if input == "" {
+						input = defaultVal
+					}
+					fmt.Printf("%s\n", input)
 					inputIndex++
 					return input
 				}
@@ -1831,8 +1897,8 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			}()
 
 			var prj *project
-			if tc.expectInputFail > 0 {
-				assert.PanicsWithError(s.T(), fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
+			if tc.expectInputFail > 0 { //nolint: nestif // it's a test
+				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
 					prj, err = createProject(s.ctx)
 				})
 			} else {
@@ -1933,13 +1999,9 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
-			calledOnce := false
-			getInput = func() (string, error) {
-				if calledOnce {
-					return "", eris.New("Input rejected")
-				}
-				calledOnce = true
-				return tc.input, nil
+			getInput = func(prompt string, defaultVal string) string {
+				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
+				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
 
@@ -2121,12 +2183,13 @@ func (s *ForgeTestSuite) TestGetInput() {
 	}
 }
 
-func (s *ForgeTestSuite) TestInviteUserToOrganization() {
+func (s *ForgeTestSuite) TestInviteUserToOrganization() { //nolint: gocognit // it's a test
 	testCases := []struct {
-		name          string
-		config        globalconfig.GlobalConfig
-		inputs        []string // For user id, role
-		expectedError bool
+		name            string
+		config          globalconfig.GlobalConfig
+		inputs          []string // For user id, role
+		expectInputFail int
+		expectedError   bool
 	}{
 		{
 			name: "Success - Default role",
@@ -2140,7 +2203,8 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 				"test-user-id", // user-id
 				"",             // role
 			},
-			expectedError: false,
+			expectInputFail: 0,
+			expectedError:   false,
 		},
 		{
 			name: "Success - admin role",
@@ -2154,7 +2218,8 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 				"test-user-id", // user-id
 				"admin",        // role
 			},
-			expectedError: false,
+			expectInputFail: 0,
+			expectedError:   false,
 		},
 		{
 			name: "Error - No organization selected",
@@ -2163,8 +2228,9 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 					Token: "test-token",
 				},
 			},
-			inputs:        []string{},
-			expectedError: true,
+			inputs:          []string{},
+			expectInputFail: 0,
+			expectedError:   true,
 		},
 		{
 			name: "Error - Invalid organization ID",
@@ -2178,7 +2244,8 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 				"test-user-id", // user-id
 				"",             // role
 			},
-			expectedError: true,
+			expectInputFail: 0,
+			expectedError:   true,
 		},
 		{
 			name: "Error - Invalid Role: None",
@@ -2191,12 +2258,9 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 			inputs: []string{
 				"test-user-id", // user-id
 				"none",         // invalid role
-				"none",
-				"none",
-				"none",
-				"none",
 			},
-			expectedError: true,
+			expectInputFail: 2,
+			expectedError:   true,
 		},
 	}
 
@@ -2209,12 +2273,17 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
 				lastPrompt := ""
-				getInput = func(prompt string, _ string) string {
+				getInput = func(prompt string, defaultVal string) string {
+					fmt.Printf("%s [%s]: ", prompt, defaultVal)
 					if prompt == lastPrompt {
 						panic(eris.Errorf("Input %d Failed", inputIndex))
 					}
 					lastPrompt = prompt
 					input := tc.inputs[inputIndex]
+					if input == "" {
+						input = defaultVal
+					}
+					fmt.Printf("%s\n", input)
 					inputIndex++
 					return input
 				}
@@ -2222,22 +2291,29 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 			}
 			defer func() { regionSelector = nil }()
 
-			err = inviteUserToOrganization(s.ctx)
-			if tc.expectedError {
-				s.Error(err)
+			if tc.expectInputFail > 0 {
+				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
+					err = inviteUserToOrganization(s.ctx)
+				})
 			} else {
-				s.NoError(err)
+				err = inviteUserToOrganization(s.ctx)
+				if tc.expectedError {
+					s.Error(err)
+				} else {
+					s.NoError(err)
+				}
 			}
 		})
 	}
 }
 
-func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
+func (s *ForgeTestSuite) TestUpdateRoleInOrganization() { //nolint: gocognit // it's a test
 	testCases := []struct {
-		name          string
-		config        globalconfig.GlobalConfig
-		inputs        []string // For user id, role
-		expectedError bool
+		name            string
+		config          globalconfig.GlobalConfig
+		inputs          []string // For user id, role
+		expectInputFail int
+		expectedError   bool
 	}{
 		{
 			name: "Success - Default role",
@@ -2251,7 +2327,8 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 				"test-user-id", // user-id
 				"",             // role
 			},
-			expectedError: false,
+			expectInputFail: 0,
+			expectedError:   false,
 		},
 		{
 			name: "Success - admin role",
@@ -2265,7 +2342,8 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 				"test-user-id", // user-id
 				"admin",        // role
 			},
-			expectedError: false,
+			expectInputFail: 0,
+			expectedError:   false,
 		},
 		{
 			name: "Success - none with confirm remove",
@@ -2280,7 +2358,8 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 				"none",         // role
 				"Yes",          // confirm removal
 			},
-			expectedError: false,
+			expectInputFail: 0,
+			expectedError:   false,
 		},
 		{
 			name: "Error - No organization selected",
@@ -2289,8 +2368,9 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 					Token: "test-token",
 				},
 			},
-			inputs:        []string{},
-			expectedError: true,
+			inputs:          []string{},
+			expectInputFail: 0,
+			expectedError:   true,
 		},
 		{
 			name: "Error - Invalid organization ID",
@@ -2304,7 +2384,8 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 				"test-user-id", // user-id
 				"",             // role
 			},
-			expectedError: true,
+			expectInputFail: 0,
+			expectedError:   true,
 		},
 		{
 			name: "Error - Role none dont confirm remove",
@@ -2327,7 +2408,8 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 				"none",
 				"y",
 			},
-			expectedError: true,
+			expectInputFail: 10,
+			expectedError:   true,
 		},
 	}
 
@@ -2339,8 +2421,20 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
-				getInput = func(string, string) string {
+				lastPrompt := ""
+				nextToLastPrompt := ""
+				getInput = func(prompt string, defaultVal string) string {
+					fmt.Printf("%s [%s]: ", prompt, defaultVal)
+					if (prompt == lastPrompt || prompt == nextToLastPrompt) && tc.expectInputFail <= inputIndex {
+						panic(eris.Errorf("Input %d Failed", inputIndex))
+					}
+					nextToLastPrompt = lastPrompt
+					lastPrompt = prompt
 					input := tc.inputs[inputIndex]
+					if input == "" {
+						input = defaultVal
+					}
+					fmt.Printf("%s\n", input)
 					inputIndex++
 					return input
 				}
@@ -2348,11 +2442,173 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 			}
 			defer func() { regionSelector = nil }()
 
-			err = updateUserRoleInOrganization(s.ctx)
-			if tc.expectedError {
-				s.Error(err)
+			if tc.expectInputFail > 0 {
+				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
+					err = updateUserRoleInOrganization(s.ctx)
+				})
 			} else {
-				s.NoError(err)
+				err = updateUserRoleInOrganization(s.ctx)
+				if tc.expectedError {
+					s.Error(err)
+				} else {
+					s.NoError(err)
+				}
+			}
+		})
+	}
+}
+func (s *ForgeTestSuite) TestSlugCreateFromName() {
+	testCases := []struct {
+		name         string
+		input        string
+		minLen       int
+		maxLen       int
+		expectedSlug string
+	}{
+		{
+			name:         "Basic conversion",
+			input:        "My Project Name",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "my_project_name",
+		},
+		{
+			name:         "With special characters",
+			input:        "Project!@#$%^&*()",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "project",
+		},
+		{
+			name:         "With dashes",
+			input:        "my-project-name",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "my_project_name",
+		},
+		{
+			name:         "With multiple spaces",
+			input:        "   Multiple   Spaces   ",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "multiple_spaces",
+		},
+		{
+			name:         "With numbers",
+			input:        "Project 123",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "project_123",
+		},
+		{
+			name:         "Empty string",
+			input:        "",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "{hex8}",
+		},
+		{
+			name:         "Only special characters",
+			input:        "!@#$%^&*()",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "{hex8}",
+		},
+		{
+			name:         "Too short",
+			input:        "AA",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "aa_{hex8}",
+		},
+		{
+			name:         "Reducing underscores",
+			input:        "Big___Stretch",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "big_stretch",
+		},
+		{
+			name:         "CamelCase conversion",
+			input:        "MyProjectName",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "my_project_name",
+		},
+		{
+			name:         "Mixed CamelCase with spaces",
+			input:        "My CamelCase ProjectName",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "my_camel_case_project_nam",
+		},
+		{
+			name:         "Complex mixed case with special chars",
+			input:        "MyProject!Name@With#Stuff",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "my_project_name_with_stuf",
+		},
+		{
+			name:         "Leading number",
+			input:        "123Project",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "123project",
+		},
+		{
+			name:         "CamelCase with numbers",
+			input:        "My2Project3Name",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "my2project3name",
+		},
+		{
+			name:         "Complex CamelCase with nums",
+			input:        "Project3With4SmallNums",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "project3with4small_nums",
+		},
+		{
+			name:         "Numbers with special characters",
+			input:        "123!Project@456",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "123_project_456",
+		},
+		{
+			name:         "Very long (trucate)",
+			input:        "This_is_a_very_long_name_which_should_be_truncated",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "this_is_a_very_long_name",
+		},
+		{
+			name:         "Very long (shorten)",
+			input:        "This is a very long name which should be truncated",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "thisisaverylongnamewhichs",
+		},
+		{
+			name:         "Very long CamelCase (shorten)",
+			input:        "ThisIsAVeryLongNameWhichShouldBeTruncated",
+			minLen:       3,
+			maxLen:       25,
+			expectedSlug: "thisisaverylongnamewhichs",
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			result := CreateSlugFromName(tc.input, tc.minLen, tc.maxLen)
+			if strings.Contains(tc.expectedSlug, "{hex8}") {
+				expectedSlug := strings.Replace(tc.expectedSlug, "{hex8}", "", 1)
+				result := result[:len(expectedSlug)]
+				s.Equal(expectedSlug, result)
+			} else {
+				s.Equal(tc.expectedSlug, result)
 			}
 		})
 	}
