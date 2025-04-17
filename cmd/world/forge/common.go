@@ -382,7 +382,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
 		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
 		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo",
+			fmt.Println("⚠️ Warning1: Failed to lookup World Forge project for Git Repo",
 				currConfig.CurrRepoURL, "and path", currConfig.CurrRepoPath, ":", err)
 			return &currConfig, err
 		}

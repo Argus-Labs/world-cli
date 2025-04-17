@@ -14,6 +14,7 @@ import (
 	"github.com/rotisserie/eris"
 
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/teacmd/spinner"
 )
 
 const (
@@ -159,13 +160,29 @@ func displayLoginSuccess(config globalconfig.GlobalConfig) {
 // GetToken will get the token from the config file
 func getToken(ctx context.Context, url string, argusid bool, result interface{}) error {
 	attempts := 1
+	spinnerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Create a channel for updating the spinner message
+	msgChan := make(chan string, 1)
+
+	// Start spinner in a goroutine
+	go func() {
+		_ = spinner.RunWithContext(spinnerCtx, fmt.Sprintf("Logging in... attempt %d", attempts), msgChan)
+	}()
 
 	for attempts < maxLoginAttempts {
 		select {
 		case <-ctx.Done():
+			cancel()
 			return ctx.Err()
 		case <-time.After(3 * time.Second): //nolint:gomnd
-			fmt.Printf("\r🔄 Logging in... attempt %d", attempts)
+			// Update the spinner message with current attempt
+			select {
+			case msgChan <- fmt.Sprintf("Logging in... attempt %d", attempts):
+			default:
+				// Channel is full, skip update
+			}
 
 			token, err := makeTokenRequest(ctx, url)
 			if err != nil {
@@ -178,13 +195,16 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 					attempts++
 					continue
 				}
+				cancel()
 				return err
 			}
 
+			cancel()
 			return nil
 		}
 	}
 
+	cancel()
 	fmt.Println() // Add newline before error
 	return eris.New("max attempts reached while waiting for token")
 }
