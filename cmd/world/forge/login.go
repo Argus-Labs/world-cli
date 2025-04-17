@@ -34,12 +34,33 @@ type tokenStruct struct {
 
 // login will open browser to login and save the token to the config file
 func login(ctx context.Context) error {
-	// Keep the selected org and project to be used after login
-	config, _ := getCurrentConfigWithContext(ctx)
+	config := initializeConfig(ctx)
 
-	orgID := config.OrganizationID
-	projectID := config.ProjectID
+	// Perform login based on authentication method
+	if err := performLogin(ctx, &config); err != nil {
+		return err
+	}
 
+	// Handle post-login configuration
+	if err := handlePostLoginConfig(ctx, &config); err != nil {
+		return err
+	}
+
+	// Display login success message
+	displayLoginSuccess(config)
+
+	return nil
+}
+
+func initializeConfig(ctx context.Context) globalconfig.GlobalConfig {
+	existingConfig, err := getCurrentConfigWithContext(ctx)
+	if err != nil {
+		return globalconfig.GlobalConfig{}
+	}
+	return *existingConfig
+}
+
+func performLogin(ctx context.Context, config *globalconfig.GlobalConfig) error {
 	var err error
 	if argusid {
 		config.Credential, err = loginWithArgusID(ctx)
@@ -51,73 +72,88 @@ func login(ctx context.Context) error {
 	}
 
 	// Save credential to config
-	err = globalconfig.SaveGlobalConfig(*config)
-	if err != nil {
+	if err := globalconfig.SaveGlobalConfig(*config); err != nil {
 		return eris.Wrap(err, "Failed to save credential")
 	}
 
-	if config.CurrRepoKnown { //nolint: nestif // this is not unreasonably complex
-		proj, err := getSelectedProject(ctx)
-		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to get project", projectID, ":", err)
-		}
-		org, err := getSelectedOrganization(ctx)
-		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to get organization", orgID, ":", err)
-		}
-		if proj.Name != "" && org.Name != "" {
-			fmt.Printf("📁 Auto-selected project %s (%s) in organization %s (%s)\n",
-				proj.Name, proj.Slug,
-				org.Name, org.Slug)
-		}
-	} else {
-		// we weren't able to identify the current project automatically, so
-		// we have to handle organization selection
-		orgID, err = handleOrganizationSelection(ctx, orgID)
-		if err != nil {
-			orgID = ""
-		}
-		// save orgID to config
-		config.OrganizationID = orgID
-		err = globalconfig.SaveGlobalConfig(*config)
-		if err != nil {
-			return eris.Wrap(err, "Failed to save organization ID")
-		}
-
-		// Handle project selection
-		projectID, err = handleProjectSelection(ctx, projectID)
-		if err != nil {
-			projectID = ""
-		}
-
-		// save projectID to config
-		config.ProjectID = projectID
-
-		// Save config
-		err = globalconfig.SaveGlobalConfig(*config)
-		if err != nil {
-			return eris.Wrap(err, "Failed to save credential")
-		}
-
-		// show the org list
-		err = showOrganizationList(ctx)
-		if err != nil {
-			return eris.Wrap(err, "Failed to show organization list")
-		}
-
-		// show the project list
-		err = showProjectList(ctx)
-		if err != nil {
-			return eris.Wrap(err, "Failed to show project list")
-		}
+	if argusid {
+		return handleArgusIDPostLogin(ctx, config)
 	}
+	return nil
+}
+
+func handleArgusIDPostLogin(ctx context.Context, config *globalconfig.GlobalConfig) error {
+	user, err := getUser(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get user")
+	}
+
+	config.Credential.ID = user.ID
+	return globalconfig.SaveGlobalConfig(*config)
+}
+
+func handlePostLoginConfig(ctx context.Context, config *globalconfig.GlobalConfig) error {
+	if config.CurrRepoKnown {
+		return handleKnownRepoConfig(ctx, config)
+	}
+	return handleNewRepoConfig(ctx, config)
+}
+
+func handleKnownRepoConfig(ctx context.Context, config *globalconfig.GlobalConfig) error {
+	proj, err := getSelectedProject(ctx)
+	if err != nil {
+		fmt.Println("⚠️ Warning: Failed to get project", config.ProjectID, ":", err)
+	}
+	org, err := getSelectedOrganization(ctx)
+	if err != nil {
+		fmt.Println("⚠️ Warning: Failed to get organization", config.OrganizationID, ":", err)
+	}
+	if proj.Name != "" && org.Name != "" {
+		fmt.Printf("📁 Auto-selected project %s (%s) in organization %s (%s)\n",
+			proj.Name, proj.Slug,
+			org.Name, org.Slug)
+	}
+	return nil
+}
+
+func handleNewRepoConfig(ctx context.Context, config *globalconfig.GlobalConfig) error {
+	// Handle organization selection
+	orgID, err := handleOrganizationSelection(ctx, config.OrganizationID)
+	if err != nil {
+		orgID = ""
+	}
+
+	// Save orgID to config
+	config.OrganizationID = orgID
+	if err := globalconfig.SaveGlobalConfig(*config); err != nil {
+		return eris.Wrap(err, "Failed to save organization information")
+	}
+
+	// Handle project selection
+	projectID, err := handleProjectSelection(ctx, config.ProjectID)
+	if err != nil {
+		projectID = ""
+	}
+
+	// Save projectID to config
+	config.ProjectID = projectID
+	if err := globalconfig.SaveGlobalConfig(*config); err != nil {
+		return eris.Wrap(err, "Failed to save project information")
+	}
+
+	// Show the org and project lists
+	if err := showOrganizationList(ctx); err != nil {
+		return eris.Wrap(err, "Failed to show organization list")
+	}
+	return showProjectList(ctx)
+}
+
+func displayLoginSuccess(config globalconfig.GlobalConfig) {
 	fmt.Println("\n✨ Login successful! ✨")
 	fmt.Println("=====================")
 	fmt.Printf("\n👋 Welcome, %s!\n", config.Credential.Name)
 	fmt.Printf("🆔 Your ID is: %s\n", config.Credential.ID)
 	fmt.Println("\n🚀 You're all set to start using World Forge!")
-
-	return nil
 }
 
 // GetToken will get the token from the config file
@@ -371,14 +407,6 @@ func loginWithArgusID(ctx context.Context) (globalconfig.Credential, error) {
 	if err != nil {
 		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get name from token")
 	}
-
-	// Need to get User ID from World Forge if using Argus ID
-	// This is because the Argus ID is not used as a World Forge user ID
-	user, err := getUser(ctx)
-	if err != nil {
-		return globalconfig.Credential{}, eris.Wrap(err, "Failed to get world forge user")
-	}
-	cred.ID = user.ID
 
 	return cred, nil
 }
