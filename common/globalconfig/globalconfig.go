@@ -40,6 +40,7 @@ type KnownProject struct {
 	RepoPath       string `json:"repo_path"`
 	OrganizationID string `json:"organization_id"`
 	ProjectID      string `json:"project_id"`
+	ProjectName    string `json:"project_name"`
 }
 
 type GlobalConfig struct {
@@ -48,9 +49,10 @@ type GlobalConfig struct {
 	Credential     Credential     `json:"credential"`
 	KnownProjects  []KnownProject `json:"known_projects"`
 	// the following are not saved in json
-	CurrRepoKnown bool   `json:"-"` // when true, the current repo and path are already in known_projects
-	CurrRepoURL   string `json:"-"`
-	CurrRepoPath  string `json:"-"`
+	CurrRepoKnown   bool   `json:"-"` // when true, the current repo and path are already in known_projects
+	CurrRepoURL     string `json:"-"`
+	CurrRepoPath    string `json:"-"`
+	CurrProjectName string `json:"-"`
 }
 
 func GetGlobalConfig() (GlobalConfig, error) {
@@ -78,6 +80,7 @@ func GetGlobalConfig() (GlobalConfig, error) {
 	config.CurrRepoKnown = false
 	config.CurrRepoURL = ""
 	config.CurrRepoPath = ""
+	config.CurrProjectName = ""
 	return config, nil
 }
 

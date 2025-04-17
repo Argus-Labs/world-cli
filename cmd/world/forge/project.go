@@ -592,16 +592,26 @@ func (p *project) inputRepoPath(ctx context.Context) error {
 	return eris.New("Maximum attempts reached for entering repo path")
 }
 
-func selectProject(ctx context.Context) (project, error) {
+func selectProject(ctx context.Context) (*project, error) {
+	config, err := getCurrentConfigWithContext(ctx)
+	if err != nil {
+		return nil, eris.Wrap(err, "Could not get config")
+	}
+	if config.CurrRepoKnown {
+		fmt.Printf("❌ Current git working directory belongs to project %s. Cannot switch.",
+			config.CurrProjectName)
+		return nil, nil
+	}
+
 	// Get projects from selected organization
 	projects, err := getListOfProjects(ctx)
 	if err != nil {
-		return project{}, eris.Wrap(err, "Failed to get projects")
+		return nil, eris.Wrap(err, "Failed to get projects")
 	}
 
 	if len(projects) == 0 {
 		printNoProjectsInOrganization()
-		return project{}, nil
+		return nil, nil
 	}
 
 	// Display projects as a numbered list
@@ -614,48 +624,36 @@ func selectProject(ctx context.Context) (project, error) {
 	}
 
 	// Get user input
-	attempts := 0
-	maxAttempts := 5
-	for attempts < maxAttempts {
+	for {
 		fmt.Print("\n✨ Enter project number (or 'q' to quit): ")
 		input, err := getInput()
 		if err != nil {
-			return project{}, eris.Wrap(err, "Failed to read input")
+			return nil, eris.Wrap(err, "Failed to read input")
 		}
 
 		input = strings.TrimSpace(input)
 		if input == "q" {
-			fmt.Println("\n❌ Project selection canceled")
-			return project{}, eris.New("Project selection canceled")
+			return nil, nil
 		}
 
 		// Parse selection
 		num, err := strconv.Atoi(input)
 		if err != nil || num < 1 || num > len(projects) {
-			fmt.Printf("\n❌ Invalid selection. Please enter a number between 1 and %d (attempt %d/%d)\n",
-				len(projects), attempts+1, maxAttempts)
-			attempts++
+			fmt.Printf("\n❌ Please enter a number between 1 and %d\n",
+				len(projects))
 			continue
 		}
 
 		selectedProject := projects[num-1]
 
-		// Save project to config file
-		config, err := GetCurrentConfig()
-		if err != nil {
-			return project{}, eris.Wrap(err, "Failed to get config")
-		}
 		config.ProjectID = selectedProject.ID
-		err = globalconfig.SaveGlobalConfig(config)
+		err = globalconfig.SaveGlobalConfig(*config)
 		if err != nil {
-			return project{}, eris.Wrap(err, "Failed to save project")
+			return nil, eris.Wrap(err, "Failed to save project")
 		}
 
-		fmt.Printf("\n✅ Selected project: %s\n", selectedProject.Name)
-		return selectedProject, nil
+		return &selectedProject, nil
 	}
-
-	return project{}, eris.New("Maximum attempts reached for selecting project")
 }
 
 func deleteProject(ctx context.Context) error {

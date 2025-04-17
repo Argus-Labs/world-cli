@@ -352,6 +352,7 @@ func GetCurrentConfig() (globalconfig.GlobalConfig, error) {
 			if knownProject.RepoURL == currConfig.CurrRepoURL && knownProject.RepoPath == currConfig.CurrRepoPath {
 				currConfig.ProjectID = knownProject.ProjectID
 				currConfig.OrganizationID = knownProject.OrganizationID
+				currConfig.CurrProjectName = knownProject.ProjectName
 				currConfig.CurrRepoKnown = true
 				break
 			}
@@ -391,6 +392,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 				OrganizationID: proj.OrgID,
 				RepoURL:        proj.RepoURL,
 				RepoPath:       proj.RepoPath,
+				ProjectName:    proj.Name,
 			})
 			// save the config, but don't change the default ProjectID & OrgID
 			err := globalconfig.SaveGlobalConfig(currConfig)
@@ -401,6 +403,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 			// now return a copy of it with the looked up ProjectID and OrganizationID set
 			currConfig.ProjectID = proj.ID
 			currConfig.OrganizationID = proj.OrgID
+			currConfig.CurrProjectName = proj.Name
 			currConfig.CurrRepoKnown = true
 		}
 	}

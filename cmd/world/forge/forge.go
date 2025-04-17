@@ -207,6 +207,10 @@ var (
 			if err != nil {
 				return eris.Wrap(err, "Failed to select project")
 			}
+			if prj == nil {
+				fmt.Println("No project selected.")
+				return nil
+			}
 			fmt.Println("Switched to project: ", prj.Name)
 			return nil
 		},
