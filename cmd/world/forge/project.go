@@ -778,7 +778,7 @@ func (p *project) inputTickRate(ctx context.Context) error {
 
 			p.Config.TickRate, _ = strconv.Atoi(tickRateStr)
 			if p.Config.TickRate <= 0 {
-				fmt.Printf("\n❌ Invalid input. Please enter a non-zero positive positive\n")
+				fmt.Printf("\n❌ Invalid input. Please enter a non-zero positive number\n")
 				continue
 			}
 			fmt.Printf("\n✅ Tick rate set to: %d\n", p.Config.TickRate)
