@@ -2578,7 +2578,7 @@ func (s *ForgeTestSuite) TestSlugCreateFromName() {
 			expectedSlug: "123_project_456",
 		},
 		{
-			name:         "Very long (trucate)",
+			```suggestion			name:         "Very long (truncate)",
 			input:        "This_is_a_very_long_name_which_should_be_truncated",
 			minLen:       3,
 			maxLen:       25,
