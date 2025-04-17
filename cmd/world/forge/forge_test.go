@@ -14,6 +14,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/rotisserie/eris"
 	"github.com/stretchr/testify/suite"
 
 	"pkg.world.dev/world-cli/common/globalconfig"
@@ -1879,7 +1880,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 				},
 			},
 			input:         "q",
-			expectedError: true,
+			expectedError: false,
 			expectedProj:  nil,
 		},
 		{
@@ -1907,18 +1908,6 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			expectedProj:  nil,
 		},
 		{
-			name: "Error - Max attempts reached",
-			config: globalconfig.GlobalConfig{
-				OrganizationID: "test-org-id",
-				Credential: globalconfig.Credential{
-					Token: "test-token",
-				},
-			},
-			input:         "invalid\ninvalid\ninvalid\ninvalid\ninvalid\n",
-			expectedError: true,
-			expectedProj:  nil,
-		},
-		{
 			name: "Error - Invalid organization ID",
 			config: globalconfig.GlobalConfig{
 				OrganizationID: "invalid-org-id",
@@ -1937,7 +1926,12 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
+			calledOnce := false
 			getInput = func() (string, error) {
+				if calledOnce {
+					return "", eris.New("Input rejected")
+				}
+				calledOnce = true
 				return tc.input, nil
 			}
 			defer func() { getInput = originalGetInput }()

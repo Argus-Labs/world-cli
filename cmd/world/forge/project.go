@@ -600,7 +600,7 @@ func selectProject(ctx context.Context) (*project, error) {
 	if config.CurrRepoKnown {
 		fmt.Printf("❌ Current git working directory belongs to project %s. Cannot switch.",
 			config.CurrProjectName)
-		return nil, nil
+		return nil, nil //nolint: nilnil // See: https://www.dolthub.com/blog/2024-05-31-benchmarking-go-error-handling/
 	}
 
 	// Get projects from selected organization
@@ -611,7 +611,7 @@ func selectProject(ctx context.Context) (*project, error) {
 
 	if len(projects) == 0 {
 		printNoProjectsInOrganization()
-		return nil, nil
+		return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
 	}
 
 	// Display projects as a numbered list
@@ -633,7 +633,7 @@ func selectProject(ctx context.Context) (*project, error) {
 
 		input = strings.TrimSpace(input)
 		if input == "q" {
-			return nil, nil
+			return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
 		}
 
 		// Parse selection
