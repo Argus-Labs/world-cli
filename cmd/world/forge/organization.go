@@ -227,8 +227,7 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 	attempts := 0
 	maxAttempts := 5
 	for attempts < maxAttempts {
-		fmt.Print("\nEnter organization slug (3-15 characters, " +
-			"lowercase letters, numbers, and underscores allowed): ")
+		fmt.Print("\nEnter organization slug: ")
 		orgSlug, err = getInput()
 		if err != nil {
 			return nil, eris.Wrap(err, "Failed to read organization slug")
@@ -307,8 +306,7 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 		return nil, eris.Wrap(err, "Failed to select organization")
 	}
 
-	fmt.Printf("\nOrganization '%s' created successfully!\n", orgName)
-	fmt.Printf("Slug: %s\n", orgSlug)
+	fmt.Printf("\nOrganization '%s' with slug '%s' created successfully!\n", orgName, orgSlug)
 	// fmt.Printf("ID: %s\n", org.ID)
 	return org, nil
 }

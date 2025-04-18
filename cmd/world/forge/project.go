@@ -302,13 +302,6 @@ func (p *project) inputProjectName(ctx context.Context) error {
 	maxAttempts := 5
 	attempts := 0
 
-	fmt.Println("\n   Project Name Configuration")
-	fmt.Println("================================")
-	fmt.Println("\nProject name requirements:")
-	fmt.Println("• Must not be empty")
-	fmt.Printf("• Maximum length: %d characters\n", MaxProjectNameLen)
-	fmt.Println("• Cannot contain: < > : \" / \\ | ? *")
-
 	for {
 		if attempts >= maxAttempts {
 			return eris.New("Maximum attempts reached for entering project name")
@@ -395,9 +388,6 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 			} else {
 				fmt.Print("\nEnter new project slug")
 			}
-			fmt.Print("\n\nRequirements:")
-			fmt.Print("\n• 3-25 characters")
-			fmt.Print("\n• Lowercase letters, numbers, and underscores allowed")
 			fmt.Print("\n\nSlug: ")
 
 			slug, err := getInput()
