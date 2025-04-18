@@ -82,19 +82,19 @@ func showProjectList(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
 
-	fmt.Println("\n📁 ✨ Project Information ✨")
-	fmt.Println("============================")
+	fmt.Println("\n   Project Information")
+	fmt.Println("========================")
 	if project.Name == "" {
 		fmt.Println("\n❌ No project selected")
-		fmt.Println("\nℹ️  Use 'world forge project switch' to choose a project")
+		fmt.Println("\nUse 'world forge project switch' to choose a project")
 	} else {
-		fmt.Println("\n📋 Available Projects:")
-		fmt.Println("---------------------------")
+		fmt.Println("\n  Available Projects:")
+		fmt.Println("-----------------------")
 		for _, prj := range projects {
 			if prj.ID == project.ID {
-				fmt.Printf("🌟 %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
+				fmt.Printf("• %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
 			} else {
-				fmt.Printf("📎 %s (%s)\n", prj.Name, prj.Slug)
+				fmt.Printf("  %s (%s)\n", prj.Name, prj.Slug)
 			}
 		}
 	}
@@ -262,38 +262,38 @@ func createProject(ctx context.Context) (*project, error) {
 		return nil, eris.Wrap(err, "Failed to select project")
 	}
 
-	fmt.Printf("\n✨ Project '%s' created successfully! ✨\n", prj.Name)
-	fmt.Printf("📋 Project Details:\n")
-	fmt.Printf("  • Name: %s\n", prj.Name)
-	fmt.Printf("  • Slug: %s\n", prj.Slug)
-	fmt.Printf("  • ID: %s\n", prj.ID)
-	fmt.Printf("  • Repository URL: %s\n", prj.RepoURL)
-	fmt.Printf("  • Repository Path: %s\n", prj.RepoPath)
-	fmt.Printf("  • Tick Rate: %d\n", prj.Config.TickRate)
-	fmt.Printf("  • Regions:\n")
+	fmt.Printf("\nProject '%s' created successfully!\n", prj.Name)
+	fmt.Printf("Project Details:\n")
+	fmt.Printf("• Name: %s\n", prj.Name)
+	fmt.Printf("• Slug: %s\n", prj.Slug)
+	fmt.Printf("• ID: %s\n", prj.ID)
+	fmt.Printf("• Repository URL: %s\n", prj.RepoURL)
+	fmt.Printf("• Repository Path: %s\n", prj.RepoPath)
+	fmt.Printf("• Tick Rate: %d\n", prj.Config.TickRate)
+	fmt.Printf("• Regions:\n")
 	for _, region := range prj.Config.Region {
 		fmt.Printf("    - %s\n", region)
 	}
-	fmt.Printf("  • Discord Configuration:\n")
+	fmt.Printf("• Discord Configuration:\n")
 	if prj.Config.Discord.Enabled {
-		fmt.Printf("    - Enabled: Yes\n")
-		fmt.Printf("    - Channel ID: %s\n", prj.Config.Discord.Channel)
-		fmt.Printf("    - Bot Token: %s\n", prj.Config.Discord.Token)
+		fmt.Printf("  - Enabled: Yes\n")
+		fmt.Printf("  - Channel ID: %s\n", prj.Config.Discord.Channel)
+		fmt.Printf("  - Bot Token: %s\n", prj.Config.Discord.Token)
 	} else {
-		fmt.Printf("    - Enabled: No\n")
+		fmt.Printf("  - Enabled: No\n")
 	}
-	fmt.Printf("  • Slack Configuration:\n")
+	fmt.Printf("• Slack Configuration:\n")
 	if prj.Config.Slack.Enabled {
-		fmt.Printf("    - Enabled: Yes\n")
-		fmt.Printf("    - Channel ID: %s\n", prj.Config.Slack.Channel)
-		fmt.Printf("    - Token: %s\n", prj.Config.Slack.Token)
+		fmt.Printf("  - Enabled: Yes\n")
+		fmt.Printf("  - Channel ID: %s\n", prj.Config.Slack.Channel)
+		fmt.Printf("  - Token: %s\n", prj.Config.Slack.Token)
 	} else {
-		fmt.Printf("    - Enabled: No\n")
+		fmt.Printf("  - Enabled: No\n")
 	}
-	fmt.Printf("  • Avatar URL: %s\n", prj.AvatarURL)
-	fmt.Printf("  • Deploy Secret (for deploy via CI/CD pipeline tools):\n")
-	fmt.Printf("      %s\n", prj.DeploySecret)
-	fmt.Printf("ℹ️ Deploy Secret will not be shown again. Save it now in a secure location.\n")
+	fmt.Printf("• Avatar URL: %s\n", prj.AvatarURL)
+	fmt.Printf("• Deploy Secret (for deploy via CI/CD pipeline tools):\n")
+	fmt.Printf("    %s\n", prj.DeploySecret)
+	fmt.Printf("Note: Deploy Secret will not be shown again. Save it now in a secure location.\n")
 
 	return prj, nil
 }
@@ -302,12 +302,12 @@ func (p *project) inputProjectName(ctx context.Context) error {
 	maxAttempts := 5
 	attempts := 0
 
-	fmt.Println("\n🎨 ✨ Project Name Configuration ✨")
-	fmt.Println("=================================")
-	fmt.Println("\nℹ️  Project name requirements:")
-	fmt.Println("  • Must not be empty")
-	fmt.Printf("  • Maximum length: %d characters\n", MaxProjectNameLen)
-	fmt.Println("  • Cannot contain: < > : \" / \\ | ? *")
+	fmt.Println("\n   Project Name Configuration")
+	fmt.Println("================================")
+	fmt.Println("\nProject name requirements:")
+	fmt.Println("• Must not be empty")
+	fmt.Printf("• Maximum length: %d characters\n", MaxProjectNameLen)
+	fmt.Println("• Cannot contain: < > : \" / \\ | ? *")
 
 	for {
 		if attempts >= maxAttempts {
@@ -332,13 +332,13 @@ func (p *project) inputProjectName(ctx context.Context) error {
 }
 
 func (p *project) promptForName() (string, error) {
-	fmt.Println("\n📝 ✨ Project Name Configuration ✨")
+	fmt.Println("\n   Project Name Configuration")
 	fmt.Println("================================")
 	if p.Name != "" {
-		fmt.Printf("\n📋 Current name: \"%s\"\n", p.Name)
-		fmt.Print("\n✨ Enter new name (or press Enter to keep current): ")
+		fmt.Printf("\nCurrent name: \"%s\"\n", p.Name)
+		fmt.Print("\nEnter new name (or press Enter to keep current): ")
 	} else {
-		fmt.Print("\n✨ Enter project name: ")
+		fmt.Print("\nEnter project name: ")
 	}
 
 	name, err := getInput()
@@ -387,18 +387,18 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			fmt.Println("\n🔖 ✨ Project Slug Configuration ✨")
+			fmt.Println("\n   Project Slug Configuration")
 			fmt.Println("================================")
 			if p.Slug != "" {
-				fmt.Printf("\n📝 Current slug: \"%s\"\n", p.Slug)
-				fmt.Print("\n✨ Enter new slug (or press Enter to keep current)")
+				fmt.Printf("\nCurrent slug: \"%s\"\n", p.Slug)
+				fmt.Print("\nEnter new slug (or press Enter to keep current)")
 			} else {
-				fmt.Print("\n✨ Enter new project slug")
+				fmt.Print("\nEnter new project slug")
 			}
-			fmt.Print("\n\n📋 Requirements:")
-			fmt.Print("\n   • 3-25 characters")
-			fmt.Print("\n   • Lowercase letters, numbers, and underscores allowed")
-			fmt.Print("\n\n👉 Slug: ")
+			fmt.Print("\n\nRequirements:")
+			fmt.Print("\n• 3-25 characters")
+			fmt.Print("\n• Lowercase letters, numbers, and underscores allowed")
+			fmt.Print("\n\nSlug: ")
 
 			slug, err := getInput()
 			if err != nil {
@@ -473,15 +473,15 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 }
 
 func (p *project) promptForRepoURL() (string, error) {
-	fmt.Printf("\n🔗 Repository URL Configuration")
-	fmt.Printf("\n============================")
-	fmt.Printf("\n\n✨ Enter repository URL:")
+	fmt.Printf("\n   Repository URL Configuration")
+	fmt.Printf("\n==================================")
+	fmt.Printf("\n\nEnter repository URL:")
 	if p.RepoURL != "" {
-		fmt.Printf("\n   • Press Enter to keep: %s", p.RepoURL)
-		fmt.Printf("\n   • Or enter new URL (https format)")
+		fmt.Printf("\n• Press Enter to keep: %s", p.RepoURL)
+		fmt.Printf("\n• Or enter new URL (https format)")
 		fmt.Printf("\n\nURL: ")
 	} else {
-		fmt.Printf("\n   • Must use https format")
+		fmt.Printf("\n• Must use https format")
 		fmt.Printf("\n\nURL: ")
 	}
 
@@ -500,10 +500,10 @@ func (p *project) promptForRepoURL() (string, error) {
 func (p *project) validateRepoURL(repoURL string, attempts *int) error {
 	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
 		fmt.Printf("\n❌ Error: Invalid Repository URL Format\n")
-		fmt.Printf("============================\n")
-		fmt.Printf("🔍 The URL must start with:\n")
-		fmt.Printf("   • http://\n")
-		fmt.Printf("   • https://\n\n")
+		fmt.Printf("========================================\n")
+		fmt.Printf("The URL must start with:\n")
+		fmt.Printf("• http://\n")
+		fmt.Printf("• https://\n\n")
 		*attempts++
 		return eris.New("invalid URL format")
 	}
@@ -512,19 +512,19 @@ func (p *project) validateRepoURL(repoURL string, attempts *int) error {
 
 func (p *project) promptForRepoToken() (string, error) {
 	if p.update {
-		fmt.Printf("\n🔑 Update Repository Access Token\n")
-		fmt.Printf("==============================\n")
-		fmt.Printf("\n✨ Enter new token (options):\n")
-		fmt.Printf("   • Press Enter to keep existing token\n")
-		fmt.Printf("   • Type 'public' for public repositories\n")
-		fmt.Printf("   • Enter new token for private repositories\n")
+		fmt.Printf("\n  Update Repository Access Token\n")
+		fmt.Printf("==================================\n")
+		fmt.Printf("\nEnter new token (options):\n")
+		fmt.Printf("• Press Enter to keep existing token\n")
+		fmt.Printf("• Type 'public' for public repositories\n")
+		fmt.Printf("• Enter new token for private repositories\n")
 		fmt.Printf("\nToken: ")
 	} else {
-		fmt.Printf("\n🔑 Repository Access Token\n")
-		fmt.Printf("=======================\n")
-		fmt.Printf("\n✨ Enter token (options):\n")
-		fmt.Printf("   • Type 'public' for public repositories\n")
-		fmt.Printf("   • Enter token for private repositories\n")
+		fmt.Printf("\n   Repository Access Token\n")
+		fmt.Printf("=============================\n")
+		fmt.Printf("\nEnter token (options):\n")
+		fmt.Printf("• Type 'public' for public repositories\n")
+		fmt.Printf("• Enter token for private repositories\n")
 		fmt.Printf("\nToken: ")
 	}
 
@@ -555,14 +555,14 @@ func (p *project) inputRepoPath(ctx context.Context) error {
 	for attempts < maxAttempts {
 		// Get repository URL
 		if p.update {
-			fmt.Printf("\n📂 Change Repository Cardinal Path\n")
-			fmt.Printf("================================\n")
+			fmt.Printf("\n  Change Repository Cardinal Path\n")
+			fmt.Printf("===================================\n")
 			fmt.Printf("Current path: \"%s\"\n", p.RepoPath)
-			fmt.Printf("\n✨ Enter new path (or press Enter to keep current, empty for default): ")
+			fmt.Printf("\nEnter new path (or press Enter to keep current, empty for default): ")
 		} else {
-			fmt.Printf("\n📂 Set Repository Cardinal Path\n")
-			fmt.Printf("============================\n")
-			fmt.Printf("\n✨ Enter path (empty for default): ")
+			fmt.Printf("\n  Set Repository Cardinal Path\n")
+			fmt.Printf("================================\n")
+			fmt.Printf("\nEnter path (empty for default): ")
 		}
 		repoPath, err = getInput()
 		if err != nil {
@@ -615,17 +615,17 @@ func selectProject(ctx context.Context) (*project, error) {
 	}
 
 	// Display projects as a numbered list
-	fmt.Println("\n📁 ✨ Available Projects ✨")
-	fmt.Println("==========================")
-	fmt.Println("\n📋 Project List:")
-	fmt.Println("--------------")
+	fmt.Println("\n   Available Projects")
+	fmt.Println("========================")
+	fmt.Println("\n Project List:")
+	fmt.Println("---------------")
 	for i, proj := range projects {
-		fmt.Printf("  %d. 📂 %s\n     └─ 🔖 Slug: %s\n", i+1, proj.Name, proj.Slug)
+		fmt.Printf("  %d. %s\n     └─ Slug: %s\n", i+1, proj.Name, proj.Slug)
 	}
 
 	// Get user input
 	for {
-		fmt.Print("\n✨ Enter project number (or 'q' to quit): ")
+		fmt.Print("\nEnter project number (or 'q' to quit): ")
 		input, err := getInput()
 		if err != nil {
 			return nil, eris.Wrap(err, "Failed to read input")
@@ -663,23 +663,23 @@ func deleteProject(ctx context.Context) error {
 	}
 
 	// Print project details with fancy formatting
-	fmt.Println("\n🗑️  ✨ Project Deletion ✨")
-	fmt.Println("===========================")
-	fmt.Printf("\n📋 Project Details:")
-	fmt.Printf("\n  • 📝 Name: %s", project.Name)
-	fmt.Printf("\n  • 🔖 Slug: %s\n", project.Slug)
+	fmt.Println("\n   Project Deletion")
+	fmt.Println("======================")
+	fmt.Printf("\nProject Details:")
+	fmt.Printf("\n• Name: %s", project.Name)
+	fmt.Printf("\n• Slug: %s\n", project.Slug)
 
 	// Warning message with fancy formatting
-	fmt.Println("\n⚠️  WARNING!")
-	fmt.Println("===========")
-	fmt.Println("\n❗ This action will permanently delete:")
-	fmt.Println("  • 🚀 All deployments")
-	fmt.Println("  • 📜 All logs")
-	fmt.Println("  • 🔧 All associated resources")
+	fmt.Println("\n  ⚠️WARNING!⚠️")
+	fmt.Println("================")
+	fmt.Println("\nThis action will permanently delete:")
+	fmt.Println("• All deployments")
+	fmt.Println("• All logs")
+	fmt.Println("• All associated resources")
 	fmt.Println("")
 
 	// Confirmation prompt with fancy formatting
-	fmt.Printf("❓ Type 'Y' (uppercase) to confirm deletion of '%s': ", project.Name)
+	fmt.Printf("Type 'Y' (uppercase) to confirm deletion of '%s': ", project.Name)
 	confirmation, err := getInput()
 	if err != nil {
 		return eris.Wrap(err, "Failed to read confirmation")
@@ -687,12 +687,12 @@ func deleteProject(ctx context.Context) error {
 
 	if confirmation != "Y" {
 		if confirmation == "y" {
-			fmt.Println("\n❌ Error: You must type 'Y' (uppercase) to confirm deletion")
-			fmt.Println("\n🚫 Project deletion canceled")
+			fmt.Println("\nError: You must type 'Y' (uppercase) to confirm deletion")
+			fmt.Println("\nProject deletion canceled")
 			return nil
 		}
 
-		fmt.Println("\n🚫 Project deletion canceled")
+		fmt.Println("\nProject deletion canceled")
 		return nil
 	}
 
@@ -709,8 +709,8 @@ func deleteProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
-	fmt.Println("\n✨ Success! ✨")
-	fmt.Println("==============")
+	fmt.Println("\n  Success!")
+	fmt.Println("============")
 	fmt.Printf("\n✅ Project deleted: %s (%s)\n", project.Name, project.Slug)
 
 	// Remove project from config
@@ -742,8 +742,8 @@ func updateProject(ctx context.Context) error {
 	// set update to true
 	p.update = true
 
-	fmt.Println("\n📝 ✨ Project Update ✨")
-	fmt.Println("=======================")
+	fmt.Println("\n  Project Update")
+	fmt.Println("==================")
 
 	// get project input
 	err = p.projectInput(ctx, regions)
@@ -751,7 +751,7 @@ func updateProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get project input")
 	}
 
-	fmt.Println("\n🔄 Updating project...")
+	fmt.Println("\nUpdating project...")
 
 	// Send request
 	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID) + "/" + p.ID
@@ -773,35 +773,35 @@ func updateProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
-	fmt.Printf("\n✨ Project '%s' updated successfully! ✨\n", p.Name)
-	fmt.Printf("📋 Project Details:\n")
-	fmt.Printf("  • Name: %s\n", p.Name)
-	fmt.Printf("  • Slug: %s\n", p.Slug)
-	fmt.Printf("  • ID: %s\n", p.ID)
-	fmt.Printf("  • Repository URL: %s\n", p.RepoURL)
-	fmt.Printf("  • Repository Path: %s\n", p.RepoPath)
-	fmt.Printf("  • Tick Rate: %d\n", p.Config.TickRate)
-	fmt.Printf("  • Regions:\n")
+	fmt.Printf("\nProject '%s' updated successfully!\n", p.Name)
+	fmt.Printf("Project Details:\n")
+	fmt.Printf("• Name: %s\n", p.Name)
+	fmt.Printf("• Slug: %s\n", p.Slug)
+	fmt.Printf("• ID: %s\n", p.ID)
+	fmt.Printf("• Repository URL: %s\n", p.RepoURL)
+	fmt.Printf("• Repository Path: %s\n", p.RepoPath)
+	fmt.Printf("• Tick Rate: %d\n", p.Config.TickRate)
+	fmt.Printf("• Regions:\n")
 	for _, region := range p.Config.Region {
 		fmt.Printf("    - %s\n", region)
 	}
-	fmt.Printf("  • Discord Configuration:\n")
+	fmt.Printf("• Discord Configuration:\n")
 	if p.Config.Discord.Enabled {
-		fmt.Printf("    - Enabled: Yes\n")
-		fmt.Printf("    - Channel ID: %s\n", p.Config.Discord.Channel)
-		fmt.Printf("    - Bot Token: %s\n", p.Config.Discord.Token)
+		fmt.Printf("  - Enabled: Yes\n")
+		fmt.Printf("  - Channel ID: %s\n", p.Config.Discord.Channel)
+		fmt.Printf("  - Bot Token: %s\n", p.Config.Discord.Token)
 	} else {
-		fmt.Printf("    - Enabled: No\n")
+		fmt.Printf("  - Enabled: No\n")
 	}
-	fmt.Printf("  • Slack Configuration:\n")
+	fmt.Printf("• Slack Configuration:\n")
 	if p.Config.Slack.Enabled {
-		fmt.Printf("    - Enabled: Yes\n")
-		fmt.Printf("    - Channel ID: %s\n", p.Config.Slack.Channel)
-		fmt.Printf("    - Token: %s\n", p.Config.Slack.Token)
+		fmt.Printf("  - Enabled: Yes\n")
+		fmt.Printf("  - Channel ID: %s\n", p.Config.Slack.Channel)
+		fmt.Printf("  - Token: %s\n", p.Config.Slack.Token)
 	} else {
-		fmt.Printf("    - Enabled: No\n")
+		fmt.Printf("  - Enabled: No\n")
 	}
-	fmt.Printf("  • Avatar URL: %s\n", p.AvatarURL)
+	fmt.Printf("• Avatar URL: %s\n", p.AvatarURL)
 	return nil
 }
 
@@ -880,15 +880,15 @@ func (p *project) inputTickRate(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			fmt.Println("\n⚡ Tick Rate Configuration")
-			fmt.Println("========================")
+			fmt.Println("\n  Tick Rate Configuration")
+			fmt.Println("===========================")
 			if p.Config.TickRate != 0 {
-				fmt.Printf("\n🔄 Current tick rate: %d\n", p.Config.TickRate)
-				fmt.Print("✨ Enter new tick rate [press Enter to keep current]\n")
+				fmt.Printf("\nCurrent tick rate: %d\n", p.Config.TickRate)
+				fmt.Print("Enter new tick rate [press Enter to keep current]\n")
 			} else {
-				fmt.Print("\n✨ Enter tick rate for your project:\n")
+				fmt.Print("\nEnter tick rate for your project:\n")
 			}
-			fmt.Print("   └─ Examples: 10, 20, 30 (default is 1): ")
+			fmt.Print(" └─ Examples: 10, 20, 30 (default is 1): ")
 
 			tickRate, err := getInput()
 			if err != nil {
@@ -947,9 +947,10 @@ func (p *project) promptEnableNotifications(ctx context.Context, serviceName str
 	case <-ctx.Done():
 		return false, ctx.Err()
 	default:
-		fmt.Printf("\n🔔 %s Notification Configuration\n", serviceName)
-		fmt.Println("================================")
-		fmt.Printf("\n❓ Do you want to set up %s notifications? (Y/n): ", serviceName)
+		fmt.Printf("\n  %s Notification Configuration\n", serviceName)
+		fmt.Printf("================================")
+		fmt.Println(strings.Repeat("=", len(serviceName)))
+		fmt.Printf("\nDo you want to set up %s notifications? (Y/n): ", serviceName)
 
 		confirmation, err := getInput()
 		if err != nil {
@@ -970,7 +971,7 @@ func (p *project) promptForToken(ctx context.Context, config notificationConfig)
 	case <-ctx.Done():
 		return "", ctx.Err()
 	default:
-		fmt.Printf("\n🤖 Enter %s %s: ", config.name, config.tokenName)
+		fmt.Printf("\nEnter %s %s: ", config.name, config.tokenName)
 		token, err := getInput()
 		if err != nil {
 			return "", eris.Wrapf(err, "Failed to read %s", config.tokenName)
@@ -984,7 +985,7 @@ func (p *project) promptForChannelID(ctx context.Context, serviceName string) (s
 	case <-ctx.Done():
 		return "", ctx.Err()
 	default:
-		fmt.Printf("📝 Enter %s channel ID: ", serviceName)
+		fmt.Printf("Enter %s channel ID: ", serviceName)
 		channelID, err := getInput()
 		if err != nil {
 			return "", eris.Wrapf(err, "Failed to read channel ID")
@@ -1054,14 +1055,14 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 			if len(p.Config.Region) > 0 {
 				return nil
 			}
-			fmt.Println("\n⚠️  Error: At least one region must be selected")
+			fmt.Println("\n⚠️ Error: At least one region must be selected")
 			fmt.Printf("\n🔄 Attempt %d/5 - Please try again\n", attempts+1)
 		}
 	}
 
-	fmt.Println("\n❌ Region Selection Failed")
-	fmt.Println("========================")
-	fmt.Println("\nℹ️  Maximum attempts reached. Please try the command again.")
+	fmt.Println("\n  Region Selection Failed")
+	fmt.Println("===========================")
+	fmt.Println("\nMaximum attempts reached. Please try the command again.")
 	return eris.New("Maximum attempts reached for selecting regions")
 }
 
@@ -1136,7 +1137,7 @@ func handleMultipleProjects(ctx context.Context, projectID string, projects []pr
 // handleNoProjects handles the case when there are no projects
 func handleNoProjects(ctx context.Context) (string, error) {
 	// Confirmation prompt
-	fmt.Printf("❓ You don't have any projects in this organization. Do you want to create a new project now? (Y/n): ")
+	fmt.Printf("You don't have any projects in this organization. Do you want to create a new project now? (Y/n): ")
 	confirmation, err := getInput()
 	if err != nil {
 		return "", eris.Wrap(err, "Failed to read confirmation")
@@ -1163,13 +1164,13 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 	attempts := 0
 	maxAttempts := 5
 
-	fmt.Println("\n🖼️  ✨ Avatar URL Configuration ✨")
-	fmt.Println("================================")
+	fmt.Println("\n  Avatar URL Configuration")
+	fmt.Println(" ============================")
 	if p.update && p.AvatarURL != "" {
-		fmt.Printf("\n📋 Current avatar URL: %s\n", p.AvatarURL)
-		fmt.Print("\n✨ Enter new avatar URL: ")
+		fmt.Printf("\nCurrent avatar URL: %s\n", p.AvatarURL)
+		fmt.Print("\nEnter new avatar URL: ")
 	} else {
-		fmt.Print("\n✨ Enter avatar URL: ")
+		fmt.Print("\nEnter avatar URL: ")
 	}
 
 	for attempts < maxAttempts {

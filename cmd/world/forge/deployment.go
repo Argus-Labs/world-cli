@@ -67,10 +67,10 @@ func deployment(ctx context.Context, deployType string) error {
 	}
 
 	// prompt user to confirm deployment
-	fmt.Println("\n🔄  Confirm Deployment ✨")
-	fmt.Println("=========================")
-	fmt.Println("\n🔍  Review the deployment details above.")
-	fmt.Printf("\n❓ Do you want to proceed with the %s? (Y/n): ", processTitle[deployType])
+	fmt.Println("\n   Confirm Deployment")
+	fmt.Println("========================")
+	fmt.Println("\nReview the deployment details above.")
+	fmt.Printf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
 
 	confirmation, err := getInput()
 	if err != nil {
@@ -96,7 +96,7 @@ func deployment(ctx context.Context, deployType string) error {
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
 
-	fmt.Printf("\n✨ Your %s is being processed! ✨\n", deployType)
+	fmt.Printf("\nYour %s is being processed!\n", deployType)
 	fmt.Printf("\nTo check the status of your %s, run:\n", deployType)
 	fmt.Println("  $ 'world status'")
 
@@ -141,8 +141,8 @@ func status(ctx context.Context) error {
 			return eris.New("Failed to unmarshal deployment data")
 		}
 	}
-	fmt.Println("Deployment Status")
-	fmt.Println("-----------------")
+	fmt.Println(" Deployment Status")
+	fmt.Println("-------------------")
 	fmt.Printf("Project:      %s\n", prj.Name)
 	fmt.Printf("Project Slug: %s\n", prj.Slug)
 	fmt.Printf("Repository:   %s\n", prj.RepoURL)
@@ -432,24 +432,24 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 	if err != nil {
 		return eris.Wrap(err, "Failed to unmarshal deployment preview")
 	}
-	fmt.Println("\n✨ Deployment Preview ✨")
-	fmt.Println("=======================")
-	fmt.Println("\n📋 Basic Information")
-	fmt.Println("------------------")
-	fmt.Printf("🏢 Organization:     %s\n", response.Data.OrgName)
-	fmt.Printf("🔖 Org Slug:        %s\n", response.Data.OrgSlug)
-	fmt.Printf("📁 Project:         %s\n", response.Data.ProjectName)
-	fmt.Printf("🏷️  Project Slug:    %s\n", response.Data.ProjectSlug)
+	fmt.Println("\n   Deployment Preview")
+	fmt.Println("========================")
+	fmt.Println("\n   Basic Information")
+	fmt.Println("------------------------")
+	fmt.Printf("Organization:    %s\n", response.Data.OrgName)
+	fmt.Printf("Org Slug:        %s\n", response.Data.OrgSlug)
+	fmt.Printf("Project:         %s\n", response.Data.ProjectName)
+	fmt.Printf("Project Slug:    %s\n", response.Data.ProjectSlug)
 
-	fmt.Println("\n⚙️  Configuration")
-	fmt.Println("--------------")
-	fmt.Printf("👤 Executor:        %s\n", response.Data.ExecutorName)
-	fmt.Printf("🚀 Deployment Type: %s\n", response.Data.DeploymentType)
-	fmt.Printf("⚡ Tick Rate:       %d\n", response.Data.TickRate)
+	fmt.Println("\n     Configuration")
+	fmt.Println("------------------------")
+	fmt.Printf("Executor:        %s\n", response.Data.ExecutorName)
+	fmt.Printf("Deployment Type: %s\n", response.Data.DeploymentType)
+	fmt.Printf("Tick Rate:       %d\n", response.Data.TickRate)
 
-	fmt.Println("\n🌎 Deployment Regions")
-	fmt.Println("------------------")
-	fmt.Printf("📍 %s\n", strings.Join(response.Data.Regions, ", "))
+	fmt.Println("\n  Deployment Regions")
+	fmt.Println("------------------------")
+	fmt.Printf("%s\n", strings.Join(response.Data.Regions, ", "))
 
 	return nil
 }

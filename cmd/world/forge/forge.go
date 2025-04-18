@@ -54,10 +54,10 @@ var ForgeCmd = &cobra.Command{
 			return eris.Wrap(err, "Failed to get user")
 		}
 
-		fmt.Println("✨ World Forge Status ✨")
-		fmt.Println("=====================")
-		fmt.Println("\n👤 User Information")
-		fmt.Println("------------------")
+		fmt.Println("   World Forge Status")
+		fmt.Println("========================")
+		fmt.Println("\n    User Information")
+		fmt.Println("------------------------")
 		fmt.Printf("ID:   %s\n", globalConfig.Credential.ID)
 		fmt.Printf("Name: %s\n", globalConfig.Credential.Name)
 

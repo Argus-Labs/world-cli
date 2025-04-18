@@ -85,14 +85,14 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n👤 ✨ Update User Name ✨")
-			fmt.Println("========================")
+			fmt.Println("\n   Update User Name")
+			fmt.Println("======================")
 
 			if currentUserName != "" {
-				fmt.Printf("\n📋 Current name: %s\n", currentUserName)
-				fmt.Printf("\n✨ Enter new name (or press Enter to keep current): ")
+				fmt.Printf("\nCurrent name: %s\n", currentUserName)
+				fmt.Printf("\nEnter new name (or press Enter to keep current): ")
 			} else {
-				fmt.Printf("\n✨ Enter name: ")
+				fmt.Printf("\nEnter name: ")
 			}
 
 			name, err := getInput()
@@ -130,14 +130,14 @@ func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n👤 ✨ Update User Email ✨")
-			fmt.Println("=========================")
+			fmt.Println("\n   Update User Email")
+			fmt.Println("=======================")
 
 			if currentUserEmail != "" {
-				fmt.Printf("\n📋 Current email: %s\n", currentUserEmail)
-				fmt.Printf("\n✨ Enter new email (or press Enter to keep current): ")
+				fmt.Printf("\nCurrent email: %s\n", currentUserEmail)
+				fmt.Printf("\nEnter new email (or press Enter to keep current): ")
 			} else {
-				fmt.Printf("\n✨ Enter email: ")
+				fmt.Printf("\nEnter email: ")
 			}
 
 			email, err := getInput()
@@ -176,14 +176,14 @@ func inputUserAvatarURL(ctx context.Context, //nolint:dupl // TODO: refactor
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n👤 ✨ Update User Avatar URL ✨")
-			fmt.Println("=============================")
+			fmt.Println("\n   Update User Avatar URL")
+			fmt.Println("============================")
 
 			if currentUserAvatarURL != "" {
-				fmt.Printf("\n📋 Current avatar URL: %s\n", currentUserAvatarURL)
-				fmt.Print("\n✨ Enter new avatar URL (press Enter to keep current): ")
+				fmt.Printf("\nCurrent avatar URL: %s\n", currentUserAvatarURL)
+				fmt.Print("\nEnter new avatar URL (press Enter to keep current): ")
 			} else {
-				fmt.Print("\n✨ Enter avatar URL: ")
+				fmt.Print("\nEnter avatar URL: ")
 			}
 
 			avatarURL, err := getInput()

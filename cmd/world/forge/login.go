@@ -109,7 +109,7 @@ func handleKnownRepoConfig(ctx context.Context, config *globalconfig.GlobalConfi
 		fmt.Println("⚠️ Warning: Failed to get organization", config.OrganizationID, ":", err)
 	}
 	if proj.Name != "" && org.Name != "" {
-		fmt.Printf("📁 Auto-selected project %s (%s) in organization %s (%s)\n",
+		fmt.Printf("Auto-selected project %s (%s) in organization %s (%s)\n",
 			proj.Name, proj.Slug,
 			org.Name, org.Slug)
 	}
@@ -149,11 +149,11 @@ func handleNewRepoConfig(ctx context.Context, config *globalconfig.GlobalConfig)
 }
 
 func displayLoginSuccess(config globalconfig.GlobalConfig) {
-	fmt.Println("\n✨ Login successful! ✨")
-	fmt.Println("=====================")
-	fmt.Printf("\n👋 Welcome, %s!\n", config.Credential.Name)
-	fmt.Printf("🆔 Your ID is: %s\n", config.Credential.ID)
-	fmt.Println("\n🚀 You're all set to start using World Forge!")
+	fmt.Println("\n   Login successful!")
+	fmt.Println("=======================")
+	fmt.Printf("\nWelcome, %s!\n", config.Credential.Name)
+	fmt.Printf("Your ID is: %s\n", config.Credential.ID)
+	fmt.Println("\nYou're all set to start using World Forge!")
 }
 
 // GetToken will get the token from the config file
@@ -235,7 +235,7 @@ func handleArgusIDToken(response []byte, result interface{}) error {
 	case "pending":
 		return errPending
 	case "success":
-		fmt.Println("\n✨ Login token received successfully!")
+		fmt.Println("\nLogin token received successfully!")
 		return nil
 	default:
 		return eris.New(fmt.Sprintf("Status: %s", tokenStruct.Status))
