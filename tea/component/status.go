@@ -81,8 +81,8 @@ func NewStatusCollection(statuses []*StatusObject, options ...Option) *StatusCol
 		Statuses:          statuses,
 		ShutdownChan:      make(chan bool),
 		ShutdownOnChecked: false,
-		width:             500, //nolint:gomnd
-		height:            500, //nolint:gomnd
+		width:             500, //nolint:mnd
+		height:            500, //nolint:mnd
 	}
 	for _, option := range options {
 		option(&res)
@@ -114,7 +114,7 @@ func (s *StatusCollection) Init() tea.Cmd {
 	go func() {
 	loop:
 		for {
-			time.Sleep(500 * time.Millisecond) //nolint:gomnd
+			time.Sleep(500 * time.Millisecond) //nolint:mnd
 			for _, status := range s.Statuses {
 				status.AutoSetStatus()
 			}

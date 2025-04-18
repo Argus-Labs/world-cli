@@ -16,6 +16,7 @@ func getNakamaContainerName(cfg *config.Config) string {
 	return fmt.Sprintf("%s-nakama", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
+//nolint:funlen // This is a long function, but it is not a problem
 func Nakama(cfg *config.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
@@ -65,7 +66,7 @@ func Nakama(cfg *config.Config) Service {
 	}
 	if cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"] != "" {
 		nakamaImagePlatform := strings.Split(cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"], "/")
-		if len(nakamaImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+		if len(nakamaImagePlatform) == 2 { //nolint:mnd //2 is the expected length
 			platform = ocispec.Platform{
 				Architecture: nakamaImagePlatform[1],
 				OS:           nakamaImagePlatform[0],
@@ -113,7 +114,7 @@ func Nakama(cfg *config.Config) Service {
 				Test:     []string{"CMD", "/nakama/nakama", "healthcheck"},
 				Interval: 1 * time.Second,
 				Timeout:  1 * time.Second,
-				Retries:  20, //nolint:gomnd
+				Retries:  20, //nolint:mnd
 			},
 		},
 		HostConfig: container.HostConfig{

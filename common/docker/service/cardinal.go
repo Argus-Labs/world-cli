@@ -24,6 +24,7 @@ func getCardinalContainerName(cfg *config.Config) string {
 	return fmt.Sprintf("%s-cardinal", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
+//nolint:funlen // This is a long function, but it is not a problem
 func Cardinal(cfg *config.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)

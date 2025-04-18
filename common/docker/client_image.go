@@ -369,6 +369,8 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 }
 
 // Pulls the image if it does not exist
+//
+//nolint:funlen // This is a long function, but it is not a problem
 func (c *Client) pullImages(ctx context.Context, services ...service.Service) error { //nolint:gocognit
 	// Filter the images that need to be pulled
 	images := make(map[string]string)
@@ -387,11 +389,11 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 	// Pull each image concurrently
 	for imageName, platform := range images {
 		// Capture imageName and platform in the loop
-		imageName := imageName
-		platform := platform
+		imageName := imageName //nolint:copyloopvar // Project workflow on 1.21.1
+		platform := platform   //nolint:copyloopvar // Project workflow on 1.21.1
 
 		// Create a new progress bar for this image
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100, //nolint:mnd
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -421,7 +423,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			decoder := json.NewDecoder(responseBody)
 			var current int
 			var event map[string]interface{}
-			for decoder.More() { //nolint:dupl // different commands
+			for decoder.More() {
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
@@ -437,7 +439,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
 						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
-							errChan <- eris.New(errorMessage.(string))
+							errChan <- eris.New(fmt.Sprintf("%v", errorMessage))
 							continue
 						}
 					} else if errorMsg, ok := event["error"]; ok {
@@ -461,7 +463,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(100) //nolint:mnd
 		}()
 	}
 
@@ -485,6 +487,8 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 }
 
 // Pulls the image if it does not exist
+//
+//nolint:funlen // This is a long function, but it is not a problem
 func (c *Client) pushImages(ctx context.Context, pushTo string, authString string, //nolint:gocognit
 	services ...service.Service) error {
 	// Create a new progress container with a wait group
@@ -507,7 +511,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 				imageName, service.Name, err))
 		}
 
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100, //nolint:mnd
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pushing", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -538,7 +542,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 			decoder := json.NewDecoder(responseBody)
 			var current int
 			var event map[string]interface{}
-			for decoder.More() { //nolint:dupl // different commands
+			for decoder.More() {
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
@@ -558,7 +562,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 							continue
 						}
 					} else if errorMsg, ok := event["error"]; ok {
-						errChan <- eris.New(errorMsg.(string))
+						errChan <- eris.New(fmt.Sprintf("%v", errorMsg))
 						continue
 					}
 
@@ -578,7 +582,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(100) //nolint:mnd
 		}()
 	}
 

@@ -75,14 +75,16 @@ func cleanUpDir(targetDir string) {
 }
 
 func TestAppendToToml(t *testing.T) {
-	// Create a temporary TOML file for testing
-	tempFile, err := os.CreateTemp("", "test.toml")
+	// Create a temporary directory for testing
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "test.toml")
+
+	// Create the file
+	file, err := os.Create(tempFile)
 	if err != nil {
 		t.Fatalf("failed to create temporary file: %v", err)
 	}
-	t.Cleanup(func() {
-		os.Remove(tempFile.Name())
-	})
+	file.Close()
 
 	// Define test cases
 	tests := []struct {
@@ -94,7 +96,7 @@ func TestAppendToToml(t *testing.T) {
 	}{
 		{
 			name:     "append first section and fields",
-			filePath: tempFile.Name(),
+			filePath: tempFile,
 			section:  "example_section",
 			fields: map[string]any{
 				"field1": "example_value",
@@ -104,7 +106,7 @@ func TestAppendToToml(t *testing.T) {
 		},
 		{
 			name:     "append fields to existing section",
-			filePath: tempFile.Name(),
+			filePath: tempFile,
 			section:  "example_section",
 			fields: map[string]any{
 				"field1": "replaced_value",
@@ -114,7 +116,7 @@ func TestAppendToToml(t *testing.T) {
 		},
 		{
 			name:     "create new section and append fields",
-			filePath: tempFile.Name(),
+			filePath: tempFile,
 			section:  "new_section",
 			fields: map[string]any{
 				"field3": true,

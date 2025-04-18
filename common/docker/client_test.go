@@ -167,7 +167,7 @@ func TestStartUndetach(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	// Create a temporary directory
-	dir, err := os.MkdirTemp("", "sgt")
+	dir, err := os.MkdirTemp("", "sgt") //nolint:usetesting // Surpress linter error
 	assert.NilError(t, err)
 
 	// Remove dir

@@ -235,33 +235,29 @@ require (
 }
 
 func TestFileExists(t *testing.T) {
-	// Create a temporary file and defer its removal
-	tempFile, err := os.CreateTemp("", "example")
+	// Create a temporary directory for testing
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "example")
+
+	// Create a temporary file
+	file, err := os.Create(tempFile)
 	if err != nil {
 		t.Fatalf("Unable to create temporary file: %s", err)
 	}
-	defer os.Remove(tempFile.Name())
+	file.Close()
 
 	// Test case where the file does exist
-	if exists := fileExists(tempFile.Name()); !exists {
-		t.Errorf("fileExists(%s) = %v, want %v", tempFile.Name(), exists, true)
+	if exists := fileExists(tempFile); !exists {
+		t.Errorf("fileExists(%s) = %v, want %v", tempFile, exists, true)
 	}
 
 	// Remove the file to simulate it not existing
-	tempFile.Close()
-	os.Remove(tempFile.Name())
+	os.Remove(tempFile)
 
 	// Test case where the file does not exist
-	if exists := fileExists(tempFile.Name()); exists {
-		t.Errorf("fileExists(%s) = %v, want %v", tempFile.Name(), exists, false)
+	if exists := fileExists(tempFile); exists {
+		t.Errorf("fileExists(%s) = %v, want %v", tempFile, exists, false)
 	}
-
-	// Create a temporary directory and defer its removal
-	tempDir, err := os.MkdirTemp("", "example")
-	if err != nil {
-		t.Fatalf("Unable to create temporary directory: %s", err)
-	}
-	defer os.RemoveAll(tempDir)
 
 	// Test case where the path is a directory
 	if exists := fileExists(tempDir); exists {

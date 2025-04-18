@@ -100,7 +100,7 @@ func TestExecuteDoctorCommand(t *testing.T) {
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-start")
+	gameDir, err := os.MkdirTemp("", "game-template-start") //nolint:usetesting // Suppress linter error
 	assert.NilError(t, err)
 
 	// Remove dir
@@ -161,7 +161,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 func TestDev(t *testing.T) {
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
+	gameDir, err := os.MkdirTemp("", "game-template-dev") //nolint:usetesting // Surppress linter error
 	assert.NilError(t, err)
 
 	// Remove dir
@@ -271,7 +271,7 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 
 func TestEVMStart(t *testing.T) {
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
+	gameDir, err := os.MkdirTemp("", "game-template-dev") //nolint:usetesting // Surppress linter error
 	assert.NilError(t, err)
 
 	// Remove dir

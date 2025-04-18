@@ -70,7 +70,7 @@ func GitCloneCmd(url, targetDir, initMsg string) error {
 		}
 		// Extract tag name from the line
 		fields := strings.Fields(line)
-		if len(fields) >= 2 { //nolint:gomnd // git output is always 2 fields commit hash and tag name
+		if len(fields) >= 2 { //nolint:mnd // git output is always 2 fields commit hash and tag name
 			latestTag = strings.TrimPrefix(fields[1], "refs/tags/")
 			break // Take the first tag (since they're already sorted)
 		}
@@ -213,7 +213,7 @@ func appendToToml(filePath, section string, fields map[string]any) error {
 
 	// Add the fields to the section
 	for key, value := range fields {
-		config[section].(map[string]any)[key] = value
+		config[section].(map[string]any)[key] = value //nolint:errcheck // From
 	}
 
 	// Marshal the updated config back to TOML

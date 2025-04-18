@@ -164,7 +164,7 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(3 * time.Second): //nolint:gomnd
+		case <-time.After(3 * time.Second): //nolint:mnd
 			fmt.Printf("\r🔄 Logging in... attempt %d", attempts)
 
 			token, err := makeTokenRequest(ctx, url)
@@ -264,7 +264,7 @@ func handleWorldForgeToken(response []byte, result interface{}) error {
 // parseCredential will parse the id and name from the token
 func parseCredential(token string) (globalconfig.Credential, error) {
 	parts := strings.Split(token, ".")
-	if len(parts) != 3 { //nolint:gomnd
+	if len(parts) != 3 { //nolint:mnd
 		return globalconfig.Credential{}, eris.New("invalid token format")
 	}
 
@@ -314,7 +314,7 @@ func parseArgusIDToken(jwtToken string) (globalconfig.Credential, error) {
 	}
 
 	parts := strings.Split(jwtToken, ".")
-	if len(parts) != 3 { //nolint:gomnd
+	if len(parts) != 3 { //nolint:mnd
 		return globalconfig.Credential{}, eris.New("invalid token format")
 	}
 

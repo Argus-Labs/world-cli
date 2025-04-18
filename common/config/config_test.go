@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/pelletier/go-toml"
@@ -34,14 +35,15 @@ func getNamespace(t *testing.T, cfg *Config) string {
 }
 
 func makeConfigAtTemp(t *testing.T, namespace string) string {
-	file, err := os.CreateTemp("", "config*.toml")
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "config.toml")
+
+	file, err := os.Create(tempFile)
 	assert.NilError(t, err)
 	defer file.Close()
-	t.Cleanup(func() {
-		assert.NilError(t, os.Remove(file.Name()))
-	})
+
 	makeConfigAtFile(t, file, namespace)
-	return file.Name()
+	return tempFile
 }
 
 func makeConfigAtPath(t *testing.T, path, namespace string) {
@@ -70,10 +72,6 @@ func TestCanSetNamespaceWithFilename(t *testing.T) {
 }
 
 func replaceEnvVarForTest(t *testing.T, env, value string) {
-	original := os.Getenv(env)
-	t.Cleanup(func() {
-		assert.NilError(t, os.Setenv(env, original))
-	})
 	t.Setenv(env, value)
 }
 
@@ -97,11 +95,7 @@ func TestConfigPreference(t *testing.T) {
 }
 
 func makeTempDir(t *testing.T) string {
-	tempdir, err := os.MkdirTemp("", "")
-	assert.NilError(t, err)
-	t.Cleanup(func() {
-		os.RemoveAll(tempdir)
-	})
+	tempdir := t.TempDir()
 
 	// cd over to the temporary directory. Make sure to jump back to the current directory
 	// at the end of the test
@@ -145,15 +139,16 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 }
 
 func makeTempConfigWithContent(t *testing.T, content string) string {
-	file, err := os.CreateTemp("", "config*.toml")
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "config.toml")
+
+	file, err := os.Create(tempFile)
 	assert.NilError(t, err)
 	defer file.Close()
-	t.Cleanup(func() {
-		assert.NilError(t, os.Remove(file.Name()))
-	})
+
 	_, err = fmt.Fprint(file, content)
 	assert.NilError(t, err)
-	return file.Name()
+	return tempFile
 }
 
 func TestTextDecoding(t *testing.T) {

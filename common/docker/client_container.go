@@ -202,7 +202,7 @@ func (c *Client) logMultipleContainers(ctx context.Context, services ...service.
 					err := c.logContainerOutput(ctx, id, i)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						fmt.Printf("Error logging container %s: %v. Reattaching...\n", id, err)
-						time.Sleep(2 * time.Second) //nolint:gomnd // Sleep for 2 seconds before reattaching
+						time.Sleep(2 * time.Second) //nolint:mnd // Sleep for 2 seconds before reattaching
 					}
 				}
 			}
@@ -243,7 +243,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 	reader := bufio.NewReader(out)
 	for {
 		// Read the 8-byte header
-		header := make([]byte, 8) //nolint:gomnd // 8 bytes
+		header := make([]byte, 8) //nolint:mnd // 8 bytes
 		if _, err := io.ReadFull(reader, header); err != nil {
 			if err == io.EOF {
 				break
@@ -272,7 +272,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 		if streamType == 1 { // Stdout
 			// TODO: what content should be printed for stdout?
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
-		} else if streamType == 2 { //nolint:gomnd // Stderr
+		} else if streamType == 2 { //nolint:mnd // Stderr
 			// TODO: what content should be printed for stderr?
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		}

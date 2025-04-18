@@ -3,6 +3,7 @@ package forge
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -215,19 +216,25 @@ func (s *ForgeTestSuite) handleOrganizationGet(w http.ResponseWriter, r *http.Re
 func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		parsedBody, err := io.ReadAll(r.Body)
-		s.Require().NoError(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		defer r.Body.Close()
 
 		body := map[string]interface{}{}
 		err = json.Unmarshal(parsedBody, &body)
-		s.Require().NoError(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
 		proj := project{
 			ID:      "test-project-id",
 			OrgID:   "test-org-id",
-			Name:    body["name"].(string),
-			Slug:    body["slug"].(string),
-			RepoURL: body["repo_url"].(string),
+			Name:    fmt.Sprintf("%v", body["name"]),
+			Slug:    fmt.Sprintf("%v", body["slug"]),
+			RepoURL: fmt.Sprintf("%v", body["repo_url"]),
 		}
 		s.writeJSON(w, map[string]interface{}{"data": proj})
 		return

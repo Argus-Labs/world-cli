@@ -72,7 +72,7 @@ func EVM(cfg *config.Config) Service {
 	var platform ocispec.Platform
 	if cfg.DockerEnv["EVM_IMAGE_PLATFORM"] != "" {
 		evmImagePlatform := strings.Split(cfg.DockerEnv["EVM_IMAGE_PLATFORM"], "/")
-		if len(evmImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+		if len(evmImagePlatform) == 2 { //nolint:mnd //2 is the expected length
 			platform = ocispec.Platform{
 				Architecture: evmImagePlatform[1],
 				OS:           evmImagePlatform[0],
