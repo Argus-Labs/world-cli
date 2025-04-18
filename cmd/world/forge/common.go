@@ -38,6 +38,8 @@ var (
 	httpClient     = &http.Client{
 		Timeout: requestTimeout,
 	}
+	// Pre-compiled regex for merging multiple underscores
+	underscoreRegex = regexp.MustCompile(`_+`)
 )
 
 // this is a variable so we can change it for testing login
@@ -295,21 +297,28 @@ func checkLogin() bool {
 	return true
 }
 
-func slugCheck(slug string, minLength int, maxLength int) error {
+// slugToSaneCheck checks that slug is valid, and returns a sanitized version.
+func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) {
 	if len(slug) < minLength || len(slug) > maxLength {
-		return eris.Errorf("Slug must be between %d and %d characters", minLength, maxLength)
+		return slug, eris.Errorf("Slug must be between %d and %d characters", minLength, maxLength)
 	}
 
-	// Check if slug contains only allowed characters
+	// Check if slug contains only allowed characters.
 	matched, err := regexp.MatchString("^[a-z0-9_]+$", slug)
 	if err != nil {
-		return eris.Wrap(err, "Error validating slug format")
+		return slug, eris.Wrap(err, "Error validating slug format")
 	}
 	if !matched {
-		return eris.New("Slug can only contain lowercase letters, numbers, and underscores")
+		return slug, eris.New("Slug can only contain lowercase letters, numbers, and underscores")
 	}
 
-	return nil
+	// Process the slug, and ensure it's in sane format.
+	returnSlug := strings.ToLower(strings.TrimSpace(slug))
+	returnSlug = strings.ReplaceAll(returnSlug, " ", "_")
+	returnSlug = underscoreRegex.ReplaceAllString(returnSlug, "_")
+	returnSlug = strings.Trim(returnSlug, "_")
+
+	return returnSlug, nil
 }
 
 // NewTeaProgram will create a BubbleTea program that automatically sets the no input option

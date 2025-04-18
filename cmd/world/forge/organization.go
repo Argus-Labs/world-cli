@@ -236,7 +236,7 @@ func createOrganization(ctx context.Context) (*organization, error) { //nolint:f
 		// Validate slug
 		minLength := 3
 		maxLength := 15
-		err = slugCheck(orgSlug, minLength, maxLength)
+		orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
 		if err != nil {
 			fmt.Printf("\n❌ Error: %s (attempt %d/%d)\n", err, attempts+1, maxAttempts)
 			attempts++

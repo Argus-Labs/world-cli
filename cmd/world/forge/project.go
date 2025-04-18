@@ -403,7 +403,7 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 			// Validate slug
 			minLength := 3
 			maxLength := 25
-			err = slugCheck(slug, minLength, maxLength)
+			slug, err = slugToSaneCheck(slug, minLength, maxLength)
 			if err != nil {
 				fmt.Printf("\n❌ Error: %s (attempt %d/%d)\n", err, attempts+1, maxAttempts)
 				attempts++
