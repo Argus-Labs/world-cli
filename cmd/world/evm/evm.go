@@ -21,8 +21,8 @@ const (
 
 var BaseCmd = &cobra.Command{
 	Use:     "evm",
-	Short:   "Utilities for managing the EVM shard",
-	Long:    style.CLIHeader("World CLI — EVM", "Utilities for managing the EVM shard"),
+	Short:   "Streamlined tools for EVM blockchain integration",
+	Long:    style.CLIHeader("World CLI — EVM", "Manage your EVM blockchain integration with ease"),
 	GroupID: "core",
 }
 

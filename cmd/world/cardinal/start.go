@@ -53,13 +53,13 @@ var (
 // Usage: `world cardinal start`
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start your Cardinal game shard stack",
-	Long: `Start your Cardinal game shard stack.
+	Short: "Launch your Cardinal game shard environment",
+	Long: `Launch your complete Cardinal game shard environment with a single command.
 
-This will start the following Docker services and its dependencies:
-- Cardinal (Game shard)
-- Nakama (Relay)
-- Redis (Cardinal dependency)`,
+This will start the following Docker services and their dependencies:
+- Cardinal (Game shard) - Your core game logic engine
+- Nakama (Relay) - Handles multiplayer and backend services
+- Redis (Cardinal dependency) - In-memory data store`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {

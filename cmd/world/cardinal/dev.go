@@ -40,8 +40,13 @@ const (
 // Usage: `world cardinal dev`
 var devCmd = &cobra.Command{
 	Use:   "dev",
-	Short: "Run Cardinal in development mode",
-	Long:  `Run Cardinal in development mode`,
+	Short: "Run Cardinal in fast development mode with hot reloading",
+	Long:  `Launch Cardinal in development mode for rapid iteration and testing.
+	
+This mode runs Cardinal directly from your source code, providing:
+- Faster startup times than the standard Docker deployment
+- Immediate feedback on code changes
+- Optional Cardinal Editor integration for visual development`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		editor, err := cmd.Flags().GetBool(flagEditor)
 		if err != nil {

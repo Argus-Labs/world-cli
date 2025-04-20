@@ -34,8 +34,8 @@ const (
 // Usage: `world`
 var rootCmd = &cobra.Command{
 	Use:   "world",
-	Short: "A swiss army knife for World Engine development",
-	Long:  style.CLIHeader("World CLI", "A swiss army knife for World Engine projects"),
+	Short: "Your complete toolkit for World Engine development",
+	Long:  style.CLIHeader("World CLI", "Create, manage, and deploy World Engine projects with ease"),
 	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		return checkLatestVersion()
 	},
