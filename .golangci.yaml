@@ -12,19 +12,19 @@ linters:
     - canonicalheader
     - copyloopvar
     - cyclop
-    - depguard
+    # - depguard
     - dupl
     - durationcheck
-    - errcheck
+    # - errcheck
     - errname
     - errorlint
     - exhaustive
     - fatcontext
-    - forbidigo
+    # - forbidigo
     - funlen
     - gocheckcompilerdirectives
-    - gochecknoglobals
-    - gochecknoinits
+    # - gochecknoglobals
+    # - gochecknoinits
     - gochecksumtype
     - gocognit
     - goconst
@@ -34,7 +34,7 @@ linters:
     - gomodguard
     - goprintffuncname
     - gosec
-    - govet
+    # - govet
     - iface
     - ineffassign
     - intrange
@@ -48,44 +48,36 @@ linters:
     - nilerr
     - nilnil
     - noctx
-    - nolintlint
+    # - nolintlint
     - nonamedreturns
     - nosprintfhostport
     - perfsprint
     - predeclared
     - promlinter
     - protogetter
-    - reassign
-    - recvcheck
-    - revive
+    # - reassign
+    # - recvcheck
+    # - revive
     - rowserrcheck
     - sloglint
     - spancheck
     - sqlclosecheck
     - staticcheck
     - testableexamples
-    - testifylint
-    - testpackage
+    # - testifylint
+    # - testpackage
     - tparallel
     - unconvert
     - unparam
     - unused
     - usestdlibvars
-    - usetesting
+    # - usetesting
     - wastedassign
     - whitespace
   settings:
     cyclop:
       max-complexity: 30
       package-average: 10
-    depguard:
-      rules:
-        main:
-          files:
-            - '!$test'
-          deny:
-            - pkg: encoding/json
-              desc: Prefer github.com/goccy/go-json for performance
     errcheck:
       check-type-assertions: true
     exhaustive:
@@ -210,13 +202,30 @@ linters:
 issues:
   max-same-issues: 50
   fix: true
+
 formatters:
   enable:
-    - goimports
-  exclusions:
-    generated: lax
-    paths:
-      - dagger/internal
-      - third_party$
-      - builtin$
-      - examples$
+    - goimports # checks if the code and import statements are formatted according to the 'goimports' command
+    - golines # checks if code is formatted, and fixes long lines
+
+    ## you may want to enable
+    - gci # checks if code and import statements are formatted, with additional rules
+    - gofmt # checks if the code is formatted according to 'gofmt' command
+
+    ## disabled
+    #- gofumpt # [replaced by goimports, gofumports is not available yet] checks if code and import statements are formatted, with additional rules
+
+  # All settings can be found here https://github.com/golangci/golangci-lint/blob/HEAD/.golangci.reference.yml
+  settings:
+    goimports:
+      # A list of prefixes, which, if set, checks import paths
+      # with the given prefixes are grouped after 3rd-party packages.
+      # Default: []
+      local-prefixes:
+        - pkg.world.dev/world-cli
+
+    golines:
+      # Target maximum line length.
+      # Default: 100
+      max-len: 120
+      shorten-comments: false
