@@ -6,7 +6,7 @@ on:
 
 env:
   GORELEASER_VERSION: '~> v2'
-  GO_VERSION: 1.21.1
+  GO_VERSION: 1.24.0
 
 permissions:
   contents: write
@@ -14,11 +14,12 @@ permissions:
 jobs:
   go-test:
     name: Test
+    runs-on: namespace-profile-linux-4vcpu-8gb-cached
     uses: ./.github/workflows/test.yml
 
   goreleaser:
     name: Release World CLI binary
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-4vcpu-8gb-cached
     needs: go-test
     steps:
       - name: Checkout

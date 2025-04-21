@@ -11,8 +11,8 @@ env:
   GO_VERSION: 1.24.0
 
 jobs:
-  test-unit-coverage:
-    name: Unit & Coverage
+  test:
+    name: Test
     runs-on: namespace-profile-linux-4vcpu-8gb-cached
     steps:
       - name: Checkout
@@ -35,7 +35,6 @@ jobs:
         run: |
           go install github.com/go-task/task/v3/cmd/task@latest
       - name: Run unit tests with coverage
-        shell: 'script -q -e -c "bash {0}"'
         run: task test:coverage
       - name: Upload coverage to Codecov
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
@@ -43,11 +42,10 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          fail_ci_if_error: true
           directory: "./"
 
   lint-go:
-    name: Go
+    name: Lint (go)
     runs-on: namespace-profile-linux-4vcpu-8gb-cached
     env:
       GO_VERSION: 1.24.0
@@ -76,12 +74,12 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: latest
-          args: --timeout=10m --concurrency 8 -v ${{ steps.go-dir.outputs.path }}
+          args: --timeout=10m -v ${{ steps.go-dir.outputs.path }}
           ## skip cache, use Namespace volume cache
           skip-cache: true
 
   lint-md:
-    name: Markdown
+    name: Lint (markdown)
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'push' || contains(github.event.head_commit.modified, '**.md') || contains(github.event.head_commit.added, '**.md') }}
     steps:
@@ -95,7 +93,7 @@ jobs:
           ignore: vendor
           version: 0.39.0
 
-  build-go:
+  build:
     name: Go
     runs-on: ubuntu-latest
     steps:
