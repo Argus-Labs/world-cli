@@ -331,7 +331,7 @@ func TestGetVersionMap(t *testing.T) {
 	}
 }
 
-// compareMaps helps in comparing two maps for equality
+// compareMaps helps in comparing two maps for equality.
 func compareMaps(a, b map[string]string) bool {
 	if len(a) != len(b) {
 		return false

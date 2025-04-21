@@ -11,7 +11,6 @@ import (
 
 	"github.com/magefile/mage/sh"
 	"github.com/rotisserie/eris"
-
 	"pkg.world.dev/world-cli/common/config"
 )
 
@@ -67,9 +66,9 @@ func dockerComposeWithCfg(cfg *config.Config, args ...string) error {
 }
 
 // DockerStart starts a given docker container by name.
-// Rebuilds the image if `build` is true
-// Runs in detach mode if `detach` is true
-// Runs with the debug docker compose, if `debug` is true
+// Rebuilds the image if `build` is true.
+// Runs in detach mode if `detach` is true.
+// Runs with the debug docker compose, if `debug` is true.
 func DockerStart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
 		return eris.New("no service names provided")
@@ -96,7 +95,7 @@ func DockerStart(cfg *config.Config, services []DockerService) error {
 	return nil
 }
 
-// DockerStartAll starts both cardinal and nakama
+// DockerStartAll starts both cardinal and nakama.
 func DockerStartAll(cfg *config.Config) error {
 	services := []DockerService{
 		DockerServiceNakama,
@@ -113,7 +112,7 @@ func DockerStartAll(cfg *config.Config) error {
 	return DockerStart(cfg, services)
 }
 
-// DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true
+// DockerRestart restarts a given docker container by name, rebuilds the image if `build` is true.
 func DockerRestart(cfg *config.Config, services []DockerService) error {
 	if services == nil {
 		return eris.New("no service names provided")
@@ -133,8 +132,7 @@ func DockerRestart(cfg *config.Config, services []DockerService) error {
 	return nil
 }
 
-// DockerStop stops running specified docker containers (does not remove volumes).
-// If you want to reset all the services state, use DockerPurge
+// If you want to reset all the services state, use DockerPurge.
 func DockerStop(services []DockerService) error {
 	if services == nil {
 		return eris.New("no service names provided")
@@ -156,8 +154,8 @@ func DockerStopAll() error {
 	})
 }
 
-// DockerPurge stops and deletes all docker containers and data volumes
-// This will completely wipe the state, if you only want to stop the containers, use DockerStop
+// DockerPurge stops and deletes all docker containers and data volumes.
+// This will completely wipe the state, if you only want to stop the containers, use DockerStop.
 func DockerPurge() error {
 	return dockerCompose("down", "--volumes")
 }

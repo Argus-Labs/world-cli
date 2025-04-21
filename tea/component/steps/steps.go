@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -42,12 +41,12 @@ func New() Model {
 // Bubble Tea Lifecycle //
 //////////////////////////
 
-// Init returns an initial command for the application to run
+// Init returns an initial command for the application to run.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles incoming events and updates the model accordingly
+// Update handles incoming events and updates the model accordingly.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case StartMsg:
@@ -78,7 +77,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 }
 
-// View renders the UI based on the data in the model
+// View renders the UI based on the data in the model.
 func (m Model) View() string {
 	output := ""
 	for i, step := range m.Steps {

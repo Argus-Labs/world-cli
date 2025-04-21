@@ -12,7 +12,7 @@ var (
 	sentryInitialized bool
 )
 
-// SentryInit initialize sentry
+// SentryInit initialize sentry.
 func SentryInit(sentryDsn string, env string, appVersion string) {
 	if sentryDsn != "" {
 		err := sentry.Init(sentry.ClientOptions{

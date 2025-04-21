@@ -7,13 +7,11 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog/log"
-
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/globalconfig"
-	"pkg.world.dev/world-cli/telemetry"
-
 	_ "pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/telemetry"
 )
 
 // This variable will be overridden by ldflags during build

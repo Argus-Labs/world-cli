@@ -16,7 +16,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"github.com/stretchr/testify/suite"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
@@ -1683,8 +1682,8 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				"http://test.com", // avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
-				tea.KeyMsg{Type: tea.KeySpace}, // select region
-				tea.KeyMsg{Type: tea.KeyEnter}, // confirm
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
 			},
 			expectedError: false,
 			expectedProject: &project{

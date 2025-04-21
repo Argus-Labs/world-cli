@@ -7,7 +7,7 @@ import (
 	"github.com/rotisserie/eris"
 )
 
-// FindUnusedPort finds an unused port in the range [start, end] for Cardinal Editor
+// FindUnusedPort finds an unused port in the range [start, end] for Cardinal Editor.
 func FindUnusedPort(start int, end int) (int, error) {
 	for port := start; port <= end; port++ {
 		address := fmt.Sprintf(":%d", port)

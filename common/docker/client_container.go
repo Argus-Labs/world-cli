@@ -14,7 +14,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/rotisserie/eris"
-
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
@@ -269,10 +268,11 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 		cleanLog := removeFirstAnsiEscapeCode(string(payload))
 
 		// Print the cleaned log message
-		if streamType == 1 { // Stdout
+		switch streamType {
+		case 1: // Stdout
 			// TODO: what content should be printed for stdout?
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
-		} else if streamType == 2 { //nolint:gomnd // Stderr
+		case 2: //nolint:gomnd // Stderr
 			// TODO: what content should be printed for stderr?
 			fmt.Printf("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		}
@@ -281,7 +281,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 	return nil
 }
 
-// Function to remove only the first ANSI escape code from a string
+// Function to remove only the first ANSI escape code from a string.
 func removeFirstAnsiEscapeCode(input string) string {
 	ansiEscapePattern := regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 

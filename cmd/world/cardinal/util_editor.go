@@ -9,13 +9,12 @@ import (
 
 	"github.com/rotisserie/eris"
 	"golang.org/x/sync/errgroup"
-
 	"pkg.world.dev/world-cli/common/editor"
 )
 
 const ceReadTimeout = 5 * time.Second
 
-// startCardinalEditor runs the Cardinal Editor
+// startCardinalEditor runs the Cardinal Editor.
 func startCardinalEditor(ctx context.Context, rootDir string, gameDir string, port int) error {
 	if err := editor.SetupCardinalEditor(rootDir, gameDir); err != nil {
 		return err

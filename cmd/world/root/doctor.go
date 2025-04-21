@@ -5,7 +5,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/teacmd"
@@ -36,12 +35,12 @@ func NewWorldDoctorModel() WorldDoctorModel {
 // Bubble Tea Lifecycle //
 //////////////////////////
 
-// Init returns an initial command for the application to run
+// Init returns an initial command for the application to run.
 func (m WorldDoctorModel) Init() tea.Cmd {
 	return teacmd.CheckDependenciesCmd(DoctorDeps)
 }
 
-// Update handles incoming events and updates the model accordingly
+// Update handles incoming events and updates the model accordingly.
 func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -57,7 +56,7 @@ func (m WorldDoctorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the model to the screen
+// View renders the model to the screen.
 func (m WorldDoctorModel) View() string {
 	depList, help := teacmd.PrintDependencyStatus(m.DepStatus)
 	out := style.Container.Render("--- World CLI Doctor ---") + "\n\n"
@@ -70,8 +69,7 @@ func (m WorldDoctorModel) View() string {
 // Cobra Setup //
 /////////////////
 
-// doctorCmd checks that required dependencies are installed
-// Usage: `world doctor`
+// Usage: `world doctor`.
 func getDoctorCmd(writer io.Writer) *cobra.Command {
 	doctorCmd := &cobra.Command{
 		Use:   "doctor",

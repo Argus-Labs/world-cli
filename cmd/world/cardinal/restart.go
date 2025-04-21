@@ -2,13 +2,12 @@ package cardinal
 
 import (
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 )
 
-// restartCmd restarts your Cardinal game shard stack
-// Usage: `world cardinal restart`
+// restartCmd restarts your Cardinal game shard stack.
+// Usage: `world cardinal restart`.
 var restartCmd = &cobra.Command{
 	Use:   "restart",
 	Short: "Restart your Cardinal game shard stack",

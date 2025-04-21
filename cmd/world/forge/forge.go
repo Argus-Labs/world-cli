@@ -6,37 +6,35 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
-	// For local development
+	// For local development.
 	worldForgeBaseURLLocal = "http://localhost:8001"
 
-	// For production
+	// For production.
 	worldForgeBaseURLProd = "https://forge.world.dev"
 )
 
 var (
-	// baseUrl is the base URL for the Forge API
+	// baseUrl is the base URL for the Forge API.
 	baseURL string
 
-	// login url stuff
+	// login url stuff.
 	loginURL    string
 	getTokenURL string
 
-	// organization url stuff
+	// organization url stuff.
 	organizationURL string
 
-	// project url stuff
+	// project url stuff.
 	projectURLPattern = "%s/api/organization/%s/project"
 
-	// user url stuff
+	// user url stuff.
 	userURL string
 
-	// argusid flag
-	// Set this to true if you want to use ArgusID for default login
+	// Set this to true if you want to use ArgusID for default login.
 	argusid = false
 )
 
@@ -85,7 +83,7 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-// Organization commands
+// Organization commands.
 var (
 	organizationCmd = &cobra.Command{
 		Use:   "organization",
@@ -132,7 +130,7 @@ var (
 	}
 )
 
-// User Commands
+// User Commands.
 var (
 	userCmd = &cobra.Command{
 		Use:   "user",
@@ -178,7 +176,7 @@ var (
 	}
 )
 
-// Project commands
+// Project commands.
 var (
 	projectCmd = &cobra.Command{
 		Use:   "project",
@@ -254,7 +252,7 @@ var (
 	}
 )
 
-// Deployment commands
+// Deployment commands.
 var (
 	deployCmd = &cobra.Command{
 		Use:   "deploy",

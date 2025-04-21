@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Model represents the UI state for the region selection menu
+// Model represents the UI state for the region selection menu.
 type Model struct {
 	Items    []string
 	Cursor   int
@@ -15,7 +15,7 @@ type Model struct {
 	Ctx      context.Context
 }
 
-// InitialMultiselectModel creates a new Model with the given items and context
+// InitialMultiselectModel creates a new Model with the given items and context.
 func InitialMultiselectModel(ctx context.Context, items []string) Model {
 	return Model{
 		Items:    items,
@@ -32,12 +32,12 @@ func UpdateMultiselectModel(ctx context.Context, items []string, selected map[in
 	}
 }
 
-// Init initializes the bubbletea model
+// Init initializes the bubbletea model.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles user input and updates the model state accordingly
+// Update handles user input and updates the model state accordingly.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	select {
 	case <-m.Ctx.Done():
@@ -65,7 +65,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-// View renders the current state of the region selection menu
+// View renders the current state of the region selection menu.
 func (m Model) View() string {
 	s := "Choose regions (space to select/unselect, enter when done):\n\n"
 

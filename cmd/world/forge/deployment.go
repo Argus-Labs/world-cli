@@ -40,7 +40,7 @@ type deploymentPreview struct {
 	Regions        []string `json:"regions"`
 }
 
-// Deployment a project
+// Deployment a project.
 func deployment(ctx context.Context, deployType string) error {
 	globalConfig, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
