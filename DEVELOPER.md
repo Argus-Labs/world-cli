@@ -140,8 +140,7 @@ task lint:fix
 4. Ensure linting passes with `task lint`
 5. Push your changes and create a pull request
 6. PR titles must follow the [conventional commit](https://www.conventionalcommits.org/) format
-7. All linting checks must pass
-8. Tests must pass with adequate coverage
+7. All tests and linting checks must pass with adequate coverage
 
 ## Additional Tools
 
