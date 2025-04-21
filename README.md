@@ -34,6 +34,8 @@ Key features:
 Before installing World CLI, you'll need to have Go installed on your system.
 If you haven't installed Go yet, follow the official [Go installation guide](https://go.dev/doc/install) to get started.
 
+**Windows Users:** Windows Subsystem for Linux 2 (WSL2) is required for running World CLI on Windows.
+
 ### World CLI Installation
 
 **Install latest release:**

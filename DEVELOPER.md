@@ -8,6 +8,7 @@ This guide provides information for developers who want to contribute to the Wor
 - [Task](https://taskfile.dev/installation/) - Task runner used for build, test, and lint commands
 - [Docker](https://docs.docker.com/get-docker/) - Required for running services managed by World CLI
 - [Docker Compose](https://docs.docker.com/compose/install/) - Required for multi-container Docker applications
+- **Windows Users:** Windows Subsystem for Linux 2 (WSL2) is required for running World CLI on Windows
 
 ## Getting Started
 
