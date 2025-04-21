@@ -2,18 +2,45 @@ version: '3'
 
 silent: true
 
+vars:
+  GOTESTSUM_VERSION: v1.11.0
+
 tasks:
   default:
     desc: Run all tests
+    deps: [_deps]
     cmds:
-      - go test ./...
+      - |
+        echo "--> Running tests"
+        gotestsum -- ./...
 
   coverage:
     desc: Run tests with coverage reporting
+    deps: [_deps]
     cmds:
       - |
+        echo "--> Running tests with coverage"
         {{if eq OS "windows"}}
-          go test ./... -coverprofile=coverage-%CD:~-8%.out -covermode=count -v
+          gotestsum --format=standard-verbose --junitfile=junit.xml -- -coverprofile=coverage-%CD:~-8%.out -covermode=count ./...
         {{else}}
-          go test ./... -coverprofile=coverage-$(basename $(pwd)).out -covermode=count -v
+          gotestsum --format=standard-verbose --junitfile=junit.xml -- -coverprofile=coverage-$(basename $(pwd)).out -covermode=count ./...
+        {{end}}
+
+  _deps:
+    internal: true
+    run: once
+    desc: Install gotestsum
+    cmds:
+      - |
+        echo "--> Checking if gotestsum {{.GOTESTSUM_VERSION}} is installed"
+        {{if eq OS "windows"}}
+          where gotestsum >NUL 2>&1 || (echo "--> Installing gotestsum {{.GOTESTSUM_VERSION}}" && go install gotest.tools/gotestsum@{{.GOTESTSUM_VERSION}})
+        {{else}}
+          INSTALLED_VERSION=$(gotestsum --version 2>/dev/null | awk '{print $2}' || echo "none")
+          if [ "$INSTALLED_VERSION" != "{{.GOTESTSUM_VERSION}}" ]; then
+            echo "--> Installing gotestsum {{.GOTESTSUM_VERSION}}"
+            go install gotest.tools/gotestsum@{{.GOTESTSUM_VERSION}}
+          else
+            echo "--> gotestsum {{.GOTESTSUM_VERSION}} is already installed"
+          fi
         {{end}}

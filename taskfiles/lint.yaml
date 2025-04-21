@@ -3,7 +3,7 @@ version: '3'
 silent: true
 
 vars:
-  LINT_VERSION: v1.59.1
+  LINT_VERSION: v2.1.2
 
 tasks:
   default:
