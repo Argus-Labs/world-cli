@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  GO_VERSION: 1.24.0
+
+jobs:
+  test-unit-coverage:
+    name: Unit & Coverage
+    runs-on: namespace-profile-linux-4vcpu-8gb-cached
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          ## skip cache, use Namespace volume cache
+          cache: false
+      - name: Init Dummy Git config for testing
+        run: |
+          git config --global user.email "github-action@mail.com"
+          git config --global user.name "github-action"
+      - name: Setup Namespace cache
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+      - name: Install Task
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@latest
+      - name: Run unit tests with coverage
+        shell: 'script -q -e -c "bash {0}"'
+        run: task test:coverage
+      - name: Upload coverage to Codecov
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          fail_ci_if_error: true
+          directory: "./"
+
+  lint-go:
+    name: Go
+    runs-on: namespace-profile-linux-4vcpu-8gb-cached
+    env:
+      GO_VERSION: 1.24.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          ## skip cache, use Namespace volume cache
+          cache: false
+      - name: Setup Namespace cache
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: go
+          path: |
+            /home/runner/go/pkg
+            /home/runner/.cache/go-build
+            /home/runner/.cache/golangci-lint
+      - name: Find go path
+        id: go-dir
+        run: echo "path=$(go list -f '{{.Dir}}/...' -m | xargs)" >> $GITHUB_OUTPUT
+        ## Equivalent to 'make lint' arguments
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+          args: --timeout=10m --concurrency 8 -v ${{ steps.go-dir.outputs.path }}
+          ## skip cache, use Namespace volume cache
+          skip-cache: true
+
+  lint-md:
+    name: Markdown
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || contains(github.event.head_commit.modified, '**.md') || contains(github.event.head_commit.added, '**.md') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      ## detect errors from markdownlint-cli and create annotations for them
+      - uses: xt0rted/markdownlint-problem-matcher@v3
+      - uses: articulate/actions-markdownlint@v1
+        with:
+          config: .markdownlint.yaml
+          ignore: vendor
+          version: 0.39.0
+
+  build-go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Install Task
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@latest
+      - name: Build
+        run: task build
