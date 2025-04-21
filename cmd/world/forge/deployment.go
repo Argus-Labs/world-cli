@@ -70,12 +70,9 @@ func deployment(ctx context.Context, deployType string) error {
 	fmt.Println("\n   Confirm Deployment")
 	fmt.Println("========================")
 	fmt.Println("\nReview the deployment details above.")
-	fmt.Printf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
+	prompt := fmt.Sprintf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
 
-	confirmation, err := getInput()
-	if err != nil {
-		return eris.Wrap(err, "Failed to read confirmation")
-	}
+	confirmation := getInput(prompt, "n")
 
 	if confirmation != "Y" {
 		if confirmation == "y" {
