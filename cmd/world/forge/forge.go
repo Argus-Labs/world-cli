@@ -255,7 +255,7 @@ management operations will target this selected project.`,
 This command guides you through creating a new project with your desired configuration,
 including repository settings, deployment regions, notification integrations, and more.
 All settings can be updated later using the 'update' command.`,
-		RunE: func(cmd *cobra.Command, _ []string) error{
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !checkLogin() {
 				return nil
 			}

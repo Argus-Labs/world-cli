@@ -13,7 +13,7 @@ var AppVersion string
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Display the current World CLI version",
-	Long:  `Show the exact version of World CLI you're currently using.
+	Long: `Show the exact version of World CLI you're currently using.
 	
 This information is useful when reporting issues, checking for updates,
 or verifying compatibility with World Engine features.`,

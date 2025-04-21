@@ -41,7 +41,7 @@ const (
 var devCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Run Cardinal in fast development mode with hot reloading",
-	Long:  `Launch Cardinal in development mode for rapid iteration and testing.
+	Long: `Launch Cardinal in development mode for rapid iteration and testing.
 	
 This mode runs Cardinal directly from your source code, providing:
 - Faster startup times than the standard Docker deployment
