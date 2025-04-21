@@ -1,0 +1,76 @@
+version: '3'
+
+silent: true
+
+vars:
+  FORCE_COLOR: true
+  PKGNAME: world
+
+includes:
+  lint:
+    taskfile: ./taskfiles/lint.yaml
+    dir: .
+  test:
+    taskfile: ./taskfiles/test.yaml
+    dir: .
+  build:
+    taskfile: ./taskfiles/build.yaml
+    dir: .
+
+tasks:
+  dev:
+    desc: Run development server
+    deps: [install]
+
+  clean:
+    desc: Clean temporary files
+    cmds:
+      - |
+        echo "--> Cleaning up"
+        echo "--> Running go clean"
+        go clean
+        echo "--> Removing build './dist' directory"
+        {{if eq OS "windows"}}
+          if exist dist rmdir /s /q dist
+          echo "--> Removing coverage files"
+          for /r %%i in (*.out) do del %%i
+        {{else}}
+          rm -rf ./dist
+          echo "--> Removing coverage files"
+          find . -type f -name "*.out" -exec rm -f {} \;
+        {{end}}
+
+  install:
+    desc: Install World CLI
+    deps: [_goreleaser_deps]
+    cmds:
+      - |
+        echo "--> Installing World CLI"
+        {{if eq OS "windows"}}
+          if not exist "{{.INSTALL_PATH}}" mkdir "{{.INSTALL_PATH}}"
+          echo "--> Building binary, install to {{.INSTALL_PATH}}"
+          goreleaser build --clean --single-target --snapshot -o "{{.INSTALL_PATH}}\{{.PKGNAME}}.exe"
+        {{else}}
+          mkdir -p {{.INSTALL_PATH}}
+          echo "--> Building binary, install to {{.INSTALL_PATH}}"
+          goreleaser build --clean --single-target --snapshot -o "{{.INSTALL_PATH}}/{{.PKGNAME}}"
+        {{end}}
+        echo "--> Installed {{.PKGNAME}} to {{.INSTALL_PATH}}"
+    vars:
+      INSTALL_PATH:
+        sh: go env GOPATH | tr -d '\n' | awk '{print $1"/bin"}'
+
+  _goreleaser_deps:
+    internal: true
+    cmds:
+      - |
+        echo "--> Checking if goreleaser {{.GORELEASER_VERSION}} is installed"
+        INSTALLED_VERSION=$(goreleaser --version 2> /dev/null | grep GitVersion | awk '{ print $2 }' || echo "none")
+        if [ "$INSTALLED_VERSION" != "{{.GORELEASER_VERSION}}" ]; then
+          echo "--> Installing goreleaser {{.GORELEASER_VERSION}}"
+          go install github.com/goreleaser/goreleaser/v2@{{.GORELEASER_VERSION}}
+        else
+          echo "--> goreleaser {{.GORELEASER_VERSION}} is already installed"
+        fi
+    vars:
+      GORELEASER_VERSION: v2.5.1
