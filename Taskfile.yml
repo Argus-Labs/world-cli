@@ -18,13 +18,6 @@ includes:
     dir: .
 
 tasks:
-  dev:
-    desc: Run development server
-    deps: [install]
-    cmds:
-      - echo "--> Development environment ready"
-      - echo "--> World CLI is installed at {{.INSTALL_PATH}}"
-
   clean:
     desc: Clean temporary files
     cmds:
