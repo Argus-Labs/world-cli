@@ -12,8 +12,11 @@ var AppVersion string
 // Usage: `world version`
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version number of World CLI",
-	Long:  `Print the version number of World CLI`,
+	Short: "Display the current World CLI version",
+	Long:  `Show the exact version of World CLI you're currently using.
+	
+This information is useful when reporting issues, checking for updates,
+or verifying compatibility with World Engine features.`,
 	Run: func(_ *cobra.Command, _ []string) {
 		fmt.Printf("World CLI %s\n", AppVersion)
 	},

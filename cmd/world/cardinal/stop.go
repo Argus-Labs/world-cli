@@ -18,13 +18,16 @@ import (
 // Usage: `world cardinal stop`
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop your Cardinal game shard stack",
-	Long: `Stop your Cardinal game shard stack.
+	Short: "Gracefully shut down your Cardinal game environment",
+	Long: `Safely stop all running Cardinal game shard services without losing data.
 
-This will stop the following Docker services:
-- Cardinal (Game shard)
-- Nakama (Relay) + DB
-- Redis (Cardinal dependency)`,
+This command will gracefully shut down the following Docker services:
+- Cardinal (Game shard) - Your core game logic engine
+- Nakama (Relay) + DB - Handles multiplayer and backend services
+- Redis (Cardinal dependency) - In-memory data store
+
+Use this command when you're done working with your Cardinal environment or 
+need to free up system resources.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {

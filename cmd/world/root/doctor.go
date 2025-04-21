@@ -75,13 +75,18 @@ func (m WorldDoctorModel) View() string {
 func getDoctorCmd(writer io.Writer) *cobra.Command {
 	doctorCmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Check that required dependencies are installed",
-		Long: `Check that required dependencies are installed.
+		Short: "Verify your development environment is ready",
+		Long: `Diagnose and verify that your system has all required dependencies installed.
 
-World CLI requires the following dependencies to be installed:
-- Git
-- Go
-- Docker`,
+This command performs a comprehensive check of your development environment to ensure
+you have everything needed to use World CLI effectively. It verifies the presence and
+proper configuration of:
+
+- Git: For version control and project management
+- Go: Required for building and running World Engine projects
+- Docker: Used for containerizing and running your game services
+
+If any dependencies are missing, you'll receive guidance on how to install them.`,
 		GroupID: "starter",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			p := forge.NewTeaProgram(NewWorldDoctorModel(), tea.WithOutput(writer))
