@@ -8,7 +8,6 @@ import (
 	"github.com/denisbrodbeck/machineid"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
@@ -24,7 +23,7 @@ var (
 	lastLoggedTime     time.Time
 )
 
-// Init Posthog initialization
+// Init Posthog initialization.
 func PosthogInit(posthogAPIKey string) {
 	if posthogAPIKey != "" {
 		posthogClient = posthog.New(posthogAPIKey)

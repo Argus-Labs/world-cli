@@ -2,7 +2,6 @@ package evm
 
 import (
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"

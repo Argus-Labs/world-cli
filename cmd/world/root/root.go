@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
@@ -24,14 +23,14 @@ import (
 )
 
 const (
-	// latestReleaseURL is the URL to fetch the latest release of the CLI
+	// latestReleaseURL is the URL to fetch the latest release of the CLI.
 	latestReleaseURL = "https://github.com/Argus-Labs/world-cli/releases/latest"
-	// httpTimeout is the timeout for the HTTP client
+	// httpTimeout is the timeout for the HTTP client.
 	httpTimeout = 2 * time.Second
 )
 
-// rootCmd represents the base command
-// Usage: `world`
+// rootCmd represents the base command.
+// Usage: `world`.
 var rootCmd = &cobra.Command{
 	Use:   "world",
 	Short: "A swiss army knife for World Engine development",
@@ -41,7 +40,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Release structure to hold the data of the latest release
+// Release structure to hold the data of the latest release.
 type Release struct {
 	TagName string `json:"tag_name"`
 	Name    string `json:"name"`
@@ -124,9 +123,17 @@ func checkLatestVersion() error {
 		}
 
 		if currentVersion.LessThan(latestVersion) {
-			notificationStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("178")) // Bright yellow, good for notifications
-			fmt.Printf("\n%s\n", notificationStyle.Render(fmt.Sprintf("New version %s is available!", latestVersion.String())))
-			fmt.Printf("%s\n\n", notificationStyle.Render("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest"))
+			notificationStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("178"))
+				// Bright yellow, good for notifications
+			fmt.Printf(
+				"\n%s\n",
+				notificationStyle.Render(fmt.Sprintf("New version %s is available!", latestVersion.String())),
+			)
+			fmt.Printf(
+				"%s\n\n",
+				notificationStyle.Render("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest"),
+			)
 		}
 	}
 	return nil
@@ -144,7 +151,7 @@ func Execute() {
 }
 
 // contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or
-// when a termination signal is received
+// when a termination signal is received.
 func contextWithSigterm(ctx context.Context) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
 	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))

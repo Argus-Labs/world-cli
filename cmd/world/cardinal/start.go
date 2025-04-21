@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
@@ -29,12 +28,12 @@ const (
 	flagEditor    = "editor"
 	flagTelemetry = "telemetry"
 
-	// DockerCardinalEnvLogLevel Environment variable name for Docker
+	// DockerCardinalEnvLogLevel Environment variable name for Docker.
 	DockerCardinalEnvLogLevel = "CARDINAL_LOG_LEVEL"
 )
 
 var (
-	// ValidLogLevels Valid log levels for zerolog
+	// ValidLogLevels Valid log levels for zerolog.
 	validLogLevels = strings.Join([]string{
 		zerolog.TraceLevel.String(),
 		zerolog.DebugLevel.String(),
@@ -49,8 +48,7 @@ var (
 	ErrGracefulExit = eris.New("Process gracefully exited")
 )
 
-// startCmd starts your Cardinal game shard stack
-// Usage: `world cardinal start`
+// Usage: `world cardinal start`.
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start your Cardinal game shard stack",

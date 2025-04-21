@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/rotisserie/eris"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
@@ -446,7 +445,7 @@ func getRoleInput(allowNone bool) (string, error) {
 	return "", eris.New("Maximum attempts reached for entering role")
 }
 
-// handleOrganizationSelection manages the organization selection logic
+// handleOrganizationSelection manages the organization selection logic.
 func handleOrganizationSelection(ctx context.Context, orgID string) (string, error) {
 	orgs, err := getListOfOrganizations(ctx)
 	if err != nil {
@@ -463,7 +462,7 @@ func handleOrganizationSelection(ctx context.Context, orgID string) (string, err
 	}
 }
 
-// handleMultipleOrgs handles the case when there are multiple organizations
+// handleMultipleOrgs handles the case when there are multiple organizations.
 func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) (string, error) {
 	for _, org := range orgs {
 		if org.ID == orgID {
@@ -478,7 +477,7 @@ func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) 
 	return org.ID, nil
 }
 
-// handleNoOrgs handles the case when there are no organizations
+// handleNoOrgs handles the case when there are no organizations.
 func handleNoOrgs(ctx context.Context) (string, error) {
 	// Confirmation prompt
 	fmt.Printf("You don't have any organizations. Do you want to create a new organization now? (Y/n): ")

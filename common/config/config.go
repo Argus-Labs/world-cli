@@ -9,7 +9,6 @@ import (
 	"github.com/pelletier/go-toml"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/common/logger"
 )
 

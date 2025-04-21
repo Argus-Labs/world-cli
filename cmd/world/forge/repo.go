@@ -119,7 +119,7 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 
 	// Only set token header if token is provided
 	if token != "" {
-		req.Header.Set("PRIVATE-TOKEN", token)
+		req.Header.Set("Private-Token", token)
 	}
 
 	client := &http.Client{}

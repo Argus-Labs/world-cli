@@ -20,7 +20,7 @@ const (
 var (
 	logBuffer bytes.Buffer
 
-	// VerboseMode flag for determining verbose logging
+	// VerboseMode flag for determining verbose logging.
 	verboseMode = false
 )
 
@@ -49,7 +49,7 @@ func init() {
 	log.Logger = lgr
 }
 
-// PrintLogs print all stacked log
+// PrintLogs print all stacked log.
 func PrintLogs() {
 	if verboseMode {
 		// Extract the logs from the buffer and print them
@@ -61,7 +61,7 @@ func PrintLogs() {
 	}
 }
 
-// AddVerboseFlag set flag --log-debug
+// AddVerboseFlag set flag --log-debug.
 func AddVerboseFlag(cmd ...*cobra.Command) {
 	for _, c := range cmd {
 		c.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable World CLI debug logs")

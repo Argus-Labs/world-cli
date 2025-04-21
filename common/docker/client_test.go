@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"

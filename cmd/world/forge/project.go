@@ -11,7 +11,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
@@ -59,13 +58,13 @@ type projectConfigSlack struct {
 	Channel string `json:"channel"`
 }
 
-// notificationConfig holds common notification configuration fields
+// notificationConfig holds common notification configuration fields.
 type notificationConfig struct {
 	name      string // "Discord" or "Slack"
 	tokenName string // What to call the token ("bot token" or "token")
 }
 
-// Show list of projects in selected organization
+// Show list of projects in selected organization.
 func showProjectList(ctx context.Context) error {
 	projects, err := getListOfProjects(ctx)
 	if err != nil {
@@ -102,7 +101,7 @@ func showProjectList(ctx context.Context) error {
 	return nil
 }
 
-// Get selected project
+// Get selected project.
 func getSelectedProject(ctx context.Context) (project, error) {
 	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
@@ -141,7 +140,7 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	return *prj, nil
 }
 
-// Get list of projects in selected organization
+// Get list of projects in selected organization.
 func getListOfProjects(ctx context.Context) ([]project, error) {
 	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
@@ -188,7 +187,7 @@ func getListRegions(ctx context.Context, orgID, projID string) ([]string, error)
 	return regions, nil
 }
 
-// Get list of projects in selected organization
+// Get list of projects in selected organization.
 func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, error) {
 	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
@@ -201,7 +200,7 @@ func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, erro
 	return getListRegions(ctx, selectedOrg.ID, "00000000-0000-0000-0000-000000000000")
 }
 
-// Get list of projects in selected organization
+// Get list of projects in selected organization.
 func getListOfAvailableRegionsForProject(ctx context.Context) ([]string, error) {
 	selectedProj, err := getSelectedProject(ctx)
 	if err != nil {
@@ -905,7 +904,7 @@ func (p *project) inputTickRate(ctx context.Context) error {
 	return eris.New("Maximum attempts reached for entering tick rate")
 }
 
-// configureNotifications handles configuration for both Discord and Slack notifications
+// configureNotifications handles configuration for both Discord and Slack notifications.
 func (p *project) configureNotifications(ctx context.Context, config notificationConfig) (bool, string, string, error) {
 	enabled, err := p.promptEnableNotifications(ctx, config.name)
 	if err != nil {
@@ -1032,7 +1031,7 @@ func (p *project) inputSlack(ctx context.Context) error {
 // using the bubbletea TUI library. Returns error if no regions selected after max attempts
 // or context cancellation.
 func (p *project) chooseRegion(ctx context.Context, regions []string) error {
-	for attempts := 0; attempts < 5; attempts++ {
+	for attempts := range 5 {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -1092,7 +1091,7 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) error
 	return nil
 }
 
-// handleProjectSelection manages the project selection logic
+// handleProjectSelection manages the project selection logic.
 func handleProjectSelection(ctx context.Context, projectID string) (string, error) {
 	projects, err := getListOfProjects(ctx)
 	if err != nil {
@@ -1109,7 +1108,7 @@ func handleProjectSelection(ctx context.Context, projectID string) (string, erro
 	}
 }
 
-// handleMultipleProjects handles the case when there are multiple projects
+// handleMultipleProjects handles the case when there are multiple projects.
 func handleMultipleProjects(ctx context.Context, projectID string, projects []project) (string, error) {
 	for _, project := range projects {
 		if project.ID == projectID {
@@ -1124,7 +1123,7 @@ func handleMultipleProjects(ctx context.Context, projectID string, projects []pr
 	return project.ID, nil
 }
 
-// handleNoProjects handles the case when there are no projects
+// handleNoProjects handles the case when there are no projects.
 func handleNoProjects(ctx context.Context) (string, error) {
 	// Confirmation prompt
 	fmt.Printf("You don't have any projects in this organization. Do you want to create a new project now? (Y/n): ")

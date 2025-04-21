@@ -1,8 +1,6 @@
 module pkg.world.dev/world-cli
 
-go 1.22.0
-
-toolchain go1.22.1
+go 1.24.0
 
 require (
 	github.com/charmbracelet/bubbles v0.20.0

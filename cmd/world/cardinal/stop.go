@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
@@ -14,8 +13,8 @@ import (
 // Cobra Setup //
 /////////////////
 
-// stopCmd stops your Cardinal game shard stack
-// Usage: `world cardinal stop`
+// stopCmd stops your Cardinal game shard stack.
+// Usage: `world cardinal stop`.
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop your Cardinal game shard stack",

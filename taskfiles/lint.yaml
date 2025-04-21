@@ -1,0 +1,44 @@
+version: '3'
+
+silent: true
+
+vars:
+  LINT_VERSION: latest
+
+tasks:
+  default:
+    desc: Run linter for all code
+    cmds:
+      - task: _lint
+        vars:
+          FIX: false
+
+  fix:
+    desc: Run linter and automatically fix issues where possible
+    cmds:
+      - task: _lint
+        vars:
+          FIX: true
+
+  _lint:
+    internal: true
+    deps: [_deps]
+    cmds:
+      - |
+        echo "--> Running linter"
+        golangci-lint run --timeout=10m {{if .FIX}}--fix{{end}} ./...
+
+  _deps:
+    internal: true
+    run: once
+    desc: Install golangci-lint
+    cmds:
+      - |
+        echo "--> Checking if golangci-lint {{.LINT_VERSION}} is installed"
+        INSTALLED_VERSION=$(golangci-lint --version 2>/dev/null | awk '{print $4}' || echo "none")
+        if [ "$INSTALLED_VERSION" != "{{.LINT_VERSION}}" ]; then
+          echo "--> Installing golangci-lint {{.LINT_VERSION}}"
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@{{.LINT_VERSION}}
+        else
+          echo "--> golangci-lint {{.LINT_VERSION}} is already installed"
+        fi

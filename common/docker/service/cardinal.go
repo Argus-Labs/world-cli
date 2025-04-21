@@ -1,19 +1,17 @@
 package service
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-
 	"pkg.world.dev/world-cli/common/config"
-
-	_ "embed"
 )
 
 const (
-	// mountCache is the Docker mount command to cache the go build cache
+	// mountCache is the Docker mount command to cache the go build cache.
 	mountCacheScript = `--mount=type=cache,target="/root/.cache/go-build"`
 )
 
@@ -128,10 +126,10 @@ func Cardinal(cfg *config.Config) Service {
 	// Add debug options
 	debug := cfg.Debug
 	if debug {
-		service.Config.ExposedPorts["40000/tcp"] = struct{}{}
-		service.HostConfig.PortBindings["40000/tcp"] = []nat.PortBinding{{HostPort: "40000"}}
-		service.HostConfig.CapAdd = []string{"SYS_PTRACE"}
-		service.HostConfig.SecurityOpt = []string{"seccomp:unconfined"}
+		service.ExposedPorts["40000/tcp"] = struct{}{}
+		service.PortBindings["40000/tcp"] = []nat.PortBinding{{HostPort: "40000"}}
+		service.CapAdd = []string{"SYS_PTRACE"}
+		service.SecurityOpt = []string{"seccomp:unconfined"}
 	}
 
 	return service

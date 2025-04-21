@@ -8,20 +8,18 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 )
 
 var (
-	// BuildkitSupport is a flag to check if buildkit is supported
+	// BuildkitSupport is a flag to check if buildkit is supported.
 	BuildkitSupport bool
 )
 
 type Builder func(cfg *config.Config) Service
 
-// Service is a configuration for a docker container
-// It contains the name of the container and a function to get the container and host config
+// It contains the name of the container and a function to get the container and host config.
 type Service struct {
 	Name string
 	container.Config

@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rotisserie/eris"
 	"golang.org/x/mod/modfile"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/logger"
 )
@@ -35,8 +34,7 @@ const (
 )
 
 var (
-	// Cardinal : Cardinal Editor version map
-	// This is the default value for fallback if cannot get version from repository
+	// This is the default value for fallback if cannot get version from repository.
 	defaultCardinalVersionMap = map[string]string{
 		"v1.2.2-beta": "v0.1.0",
 		"v1.2.3-beta": "v0.1.0",
@@ -126,8 +124,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	return nil
 }
 
-// downloadReleaseIfNotCached : downloads the latest release of the Cardinal Editor if it is not already cached.
-// returns editor directory path, and error
+// returns editor directory path, and error.
 func downloadReleaseIfNotCached(version, downloadURL, configDir string) (string, error) {
 	editorDir := filepath.Join(configDir, "editor")
 	targetDir := filepath.Join(editorDir, version)
@@ -313,7 +310,7 @@ func strippedGUID() string {
 	return strings.ReplaceAll(u.String(), "-", "")
 }
 
-// addFileVersion add file with name version of cardinal editor
+// addFileVersion add file with name version of cardinal editor.
 func addFileVersion(version string) error {
 	// Create the file
 	file, err := os.Create(version)
@@ -429,7 +426,10 @@ func getLatestReleaseVersion() (string, error) {
 	}
 
 	redirectURL := resp.Header.Get("Location")
-	latestReleaseVersion := strings.TrimPrefix(redirectURL, "https://github.com/Argus-Labs/cardinal-editor/releases/tag/")
+	latestReleaseVersion := strings.TrimPrefix(
+		redirectURL,
+		"https://github.com/Argus-Labs/cardinal-editor/releases/tag/",
+	)
 
 	return latestReleaseVersion, nil
 }

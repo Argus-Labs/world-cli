@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	tea "github.com/charmbracelet/bubbletea"
-
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/tea/style"
 )

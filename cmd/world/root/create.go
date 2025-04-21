@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
@@ -74,7 +73,7 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 // Bubble Tea Lifecycle //
 //////////////////////////
 
-// Init returns an initial command for the application to run
+// Init returns an initial command for the application to run.
 func (m WorldCreateModel) Init() tea.Cmd {
 	// If the project name was passed in as an argument, skip the 1st step
 	if m.projectNameInput.Value() != "" {
@@ -83,7 +82,7 @@ func (m WorldCreateModel) Init() tea.Cmd {
 	return tea.Sequence(textinput.Blink, m.steps.StartCmd())
 }
 
-// Update handles incoming events and updates the model accordingly
+// Update handles incoming events and updates the model accordingly.
 func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teacmd.CheckDependenciesMsg:
@@ -173,7 +172,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View renders the UI based on the data in the WorldCreateModel
+// View renders the UI based on the data in the WorldCreateModel.
 func (m WorldCreateModel) View() string {
 	if m.depStatusErr != nil {
 		return teacmd.PrettyPrintMissingDependency(m.depStatus)
@@ -194,8 +193,7 @@ func (m WorldCreateModel) View() string {
 // Cobra Setup //
 /////////////////
 
-// createCmd creates a new World Engine project based on starter-game-template
-// Usage: `world cardinal create [directory_name]`
+// Usage: `world cardinal create [directory_name]`.
 func getCreateCmd(writer io.Writer) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create [directory_name]",

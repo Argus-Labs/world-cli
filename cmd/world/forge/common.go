@@ -24,7 +24,6 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/tidwall/gjson"
 	"golang.org/x/term"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
@@ -38,18 +37,18 @@ var (
 	httpClient     = &http.Client{
 		Timeout: requestTimeout,
 	}
-	// Pre-compiled regex for merging multiple underscores
+	// Pre-compiled regex for merging multiple underscores.
 	underscoreRegex = regexp.MustCompile(`_+`)
 )
 
-// this is a variable so we can change it for testing login
+// this is a variable so we can change it for testing login.
 var getCurrentConfigWithContext = GetCurrentConfigWithContext
 
 var generateKey = func() string {
 	return strings.ReplaceAll(uuid.NewString(), "-", "")
 }
 
-// Change from function to variable
+// Change from function to variable.
 var openBrowser = func(url string) error {
 	var err error
 	switch runtime.GOOS {
@@ -77,7 +76,7 @@ var getInput = func() (string, error) {
 	return strings.TrimSpace(input), nil
 }
 
-// sendRequest sends an HTTP request with auth token and returns the response body
+// sendRequest sends an HTTP request with auth token and returns the response body.
 func sendRequest(ctx context.Context, method, url string, body interface{}) ([]byte, error) {
 	// Prepare request body and headers
 	req, err := prepareRequest(ctx, method, url, body)
@@ -130,7 +129,7 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 	baseDelay := RetryBaseDelay
 	var lastErr error
 
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

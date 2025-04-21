@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/rotisserie/eris"
-
 	"pkg.world.dev/world-cli/common/logger"
 )
 
@@ -16,7 +15,7 @@ const (
 )
 
 var (
-	// Env is the environment the CLI is running in
+	// Env is the environment the CLI is running in.
 	Env = "DEV"
 )
 

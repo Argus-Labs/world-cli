@@ -6,131 +6,131 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Debug function
+// Debug function.
 func Debug(args ...interface{}) {
 	log.Debug().Timestamp().Msg(fmt.Sprint(args...))
 }
 
-// Debugln function
+// Debugln function.
 func Debugln(args ...interface{}) {
 	log.Debug().Timestamp().Msg(fmt.Sprintln(args...))
 }
 
-// Debugf function
+// Debugf function.
 func Debugf(format string, v ...interface{}) {
 	log.Debug().Timestamp().Msgf(format, v...)
 }
 
-// DebugWithFields function
+// DebugWithFields function.
 func DebugWithFields(msg string, kv map[string]interface{}) {
 	log.Debug().Timestamp().Fields(kv).Msg(msg)
 }
 
-// Info function
+// Info function.
 func Info(args ...interface{}) {
 	log.Info().Timestamp().Msg(fmt.Sprint(args...))
 }
 
-// Infoln function
+// Infoln function.
 func Infoln(args ...interface{}) {
 	log.Info().Timestamp().Msg(fmt.Sprintln(args...))
 }
 
-// Infof function
+// Infof function.
 func Infof(format string, v ...interface{}) {
 	log.Info().Timestamp().Msgf(format, v...)
 }
 
-// InfoWithFields function
+// InfoWithFields function.
 func InfoWithFields(msg string, kv map[string]interface{}) {
 	log.Info().Timestamp().Fields(kv).Msg(msg)
 }
 
-// Warn function
+// Warn function.
 func Warn(args ...interface{}) {
 	log.Warn().Timestamp().Msg(fmt.Sprint(args...))
 }
 
-// Warnln function
+// Warnln function.
 func Warnln(args ...interface{}) {
 	log.Warn().Timestamp().Msg(fmt.Sprintln(args...))
 }
 
-// Warnf function
+// Warnf function.
 func Warnf(format string, v ...interface{}) {
 	log.Warn().Timestamp().Msgf(format, v...)
 }
 
-// WarnWithFields function
+// WarnWithFields function.
 func WarnWithFields(msg string, kv map[string]interface{}) {
 	log.Warn().Timestamp().Fields(kv).Msg(msg)
 }
 
-// Error function
+// Error function.
 func Error(args ...interface{}) {
 	log.Error().Timestamp().Msg(fmt.Sprint(args...))
 }
 
-// Error function
+// Error function.
 func ErrorE(err error) {
 	log.Error().Timestamp().Err(err).Msg(err.Error())
 }
 
-// Errorln function
+// Errorln function.
 func Errorln(args ...interface{}) {
 	log.Error().Timestamp().Msg(fmt.Sprintln(args...))
 }
 
-// Errorf function
+// Errorf function.
 func Errorf(format string, v ...interface{}) {
 	log.Error().Timestamp().Msgf(format, v...)
 }
 
-// ErrorWithFields function
+// ErrorWithFields function.
 func ErrorWithFields(msg string, kv map[string]interface{}) {
 	log.Error().Timestamp().Fields(kv).Msg(msg)
 }
 
-// Errors function to log errors package
+// Errors function to log errors package.
 func Errors(err error) {
 	log.Error().Timestamp().Msg(err.Error())
 }
 
-// Fatal function
+// Fatal function.
 func Fatal(args ...interface{}) {
 	log.Fatal().Timestamp().Msg(fmt.Sprint(args...))
 }
 
-// Fatalln function
+// Fatalln function.
 func Fatalln(args ...interface{}) {
 	log.Fatal().Timestamp().Msg(fmt.Sprintln(args...))
 }
 
-// Fatalf function
+// Fatalf function.
 func Fatalf(format string, v ...interface{}) {
 	log.Fatal().Timestamp().Msgf(format, v...)
 }
 
-// FatalWithFields function
+// FatalWithFields function.
 func FatalWithFields(msg string, kv map[string]interface{}) {
 	log.Fatal().Timestamp().Fields(kv).Msg(msg)
 }
 
-// Printf standard printf with debug mode validation
+// Printf standard printf with debug mode validation.
 func Printf(format string, v ...interface{}) {
 	if verboseMode {
 		fmt.Printf(format, v...)
 	}
 }
 
-// Println standard println with debug mode validation
+// Println standard println with debug mode validation.
 func Println(v ...interface{}) {
 	if verboseMode {
 		fmt.Println(v...)
 	}
 }
 
-// Print standard print with debug mode validation
+// Print standard print with debug mode validation.
 func Print(v ...interface{}) {
 	if verboseMode {
 		fmt.Print(v...)

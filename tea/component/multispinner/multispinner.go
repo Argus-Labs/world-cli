@@ -7,11 +7,10 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-// Spinner is a component that displays a spinner while updating the logs
+// Spinner is a component that displays a spinner while updating the logs.
 type MultiSpinner struct {
 	processMap  *ProcessStateMap // need to be pointer because of the mutex
 	processList []string         // list of process names
@@ -61,13 +60,13 @@ func CreateSpinner(processList []string, cancel func()) MultiSpinner {
 	}
 }
 
-// Init is called when the program starts and returns the initial command
+// Init is called when the program starts and returns the initial command.
 func (s MultiSpinner) Init() tea.Cmd {
 	// Start the spinner
 	return s.spinner.Tick
 }
 
-// Update handles incoming messages
+// Update handles incoming messages.
 func (s MultiSpinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -110,7 +109,7 @@ func (s MultiSpinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// View renders the UI
+// View renders the UI.
 func (s MultiSpinner) View() string {
 	text := ""
 

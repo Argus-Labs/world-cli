@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Spinner is a component that displays a spinner while updating the logs
+// Spinner is a component that displays a spinner while updating the logs.
 type Spinner struct {
 	Spinner spinner.Model
 	Cancel  func()
@@ -18,13 +18,13 @@ type Spinner struct {
 
 type LogMsg string
 
-// Init is called when the program starts and returns the initial command
+// Init is called when the program starts and returns the initial command.
 func (s Spinner) Init() tea.Cmd {
 	// Start the spinner
 	return s.Spinner.Tick
 }
 
-// Update handles incoming messages
+// Update handles incoming messages.
 func (s Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -51,7 +51,7 @@ func (s Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// View renders the UI
+// View renders the UI.
 func (s Spinner) View() string {
 	if s.done {
 		return "Build completed!"

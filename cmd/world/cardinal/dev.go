@@ -15,7 +15,6 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
@@ -28,16 +27,15 @@ const (
 	CardinalPort = "4040"
 	RedisPort    = "6379"
 
-	// Cardinal Editor Port Range
+	// Cardinal Editor Port Range.
 	cePortStart = 3000
 	cePortEnd   = 4000
 
-	// flagPrettyLog Flag that determines whether to run Cardinal with pretty logging (default: true)
+	// flagPrettyLog Flag that determines whether to run Cardinal with pretty logging (default: true).
 	flagPrettyLog = "pretty-log"
 )
 
-// devCmd runs Cardinal in development mode
-// Usage: `world cardinal dev`
+// Usage: `world cardinal dev`.
 var devCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Run Cardinal in development mode",
@@ -122,9 +120,7 @@ func init() {
 // Cardinal Helpers //
 //////////////////////
 
-// startCardinalDevMode runs cardinal in dev mode.
-// If watch is true, it uses fresh for hot reload support
-// Otherwise, it runs cardinal using `go run .`
+// Otherwise, it runs cardinal using `go run .`.
 func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error { //nolint:gocognit
 	fmt.Println("Starting Cardinal...")
 	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop\n"))
@@ -230,7 +226,7 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 // Redis Helpers //
 ///////////////////
 
-// startRedis runs Redis in a Docker container
+// startRedis runs Redis in a Docker container.
 func startRedis(ctx context.Context, cfg *config.Config) error {
 	// Create an error group for managing redis lifecycle
 	group := new(errgroup.Group)

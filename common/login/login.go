@@ -26,7 +26,7 @@ type AccessTokenResponse struct {
 	Nonce       string `json:"nonce"`
 }
 
-// NewEncryption creates a new Encryption struct
+// NewEncryption creates a new Encryption struct.
 func NewEncryption() (Encryption, error) {
 	enc := Encryption{}
 	err := enc.generateKeys()
@@ -36,7 +36,7 @@ func NewEncryption() (Encryption, error) {
 	return enc, nil
 }
 
-// generateKeys generates a private and public key pair
+// generateKeys generates a private and public key pair.
 func (enc *Encryption) generateKeys() error {
 	enc.curve = ecdh.P256()
 	privateKey, err := enc.curve.GenerateKey(rand.Reader)
@@ -48,12 +48,12 @@ func (enc *Encryption) generateKeys() error {
 	return nil
 }
 
-// encodedPublicKey returns the public key as a hex string
+// encodedPublicKey returns the public key as a hex string.
 func (enc Encryption) EncodedPublicKey() string {
 	return hex.EncodeToString(enc.publicKey.Bytes())
 }
 
-// decryptAccessToken decrypts the access token using the private key and nonce
+// decryptAccessToken decrypts the access token using the private key and nonce.
 func (enc Encryption) DecryptAccessToken(accessToken string, publicKey string, nonce string) (string, error) {
 	decodedAccessToken, err := hex.DecodeString(accessToken)
 	if err != nil {

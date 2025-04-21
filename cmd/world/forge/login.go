@@ -12,12 +12,11 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
-
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
-	// ArgusID Service URL
+	// ArgusID Service URL.
 	argusIDServiceURL = "https://id.argus-dev.com/api/auth/service-auth-session"
 )
 
@@ -32,7 +31,7 @@ type tokenStruct struct {
 	JWT    string `json:"jwt"`
 }
 
-// login will open browser to login and save the token to the config file
+// login will open browser to login and save the token to the config file.
 func login(ctx context.Context) error {
 	config := initializeConfig(ctx)
 
@@ -156,7 +155,7 @@ func displayLoginSuccess(config globalconfig.GlobalConfig) {
 	fmt.Println("\nYou're all set to start using World Forge!")
 }
 
-// GetToken will get the token from the config file
+// GetToken will get the token from the config file.
 func getToken(ctx context.Context, url string, argusid bool, result interface{}) error {
 	attempts := 1
 
@@ -261,7 +260,7 @@ func handleWorldForgeToken(response []byte, result interface{}) error {
 	return nil
 }
 
-// parseCredential will parse the id and name from the token
+// parseCredential will parse the id and name from the token.
 func parseCredential(token string) (globalconfig.Credential, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 { //nolint:gomnd

@@ -21,7 +21,6 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
-
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
@@ -166,9 +165,7 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	return &buildResponse, nil
 }
 
-// AddFileToTarWriter adds a file or directory to the tar writer
-// This function is used to add the Dockerfile and source code to the tar archive
-// The tar file is used to build the Docker image
+// The tar file is used to build the Docker image.
 func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 	return filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -181,7 +178,7 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 			return eris.Wrapf(err, "Failed to get relative path %s", path)
 		}
 		// Skip files that are not world.toml or inside the cardinal directory
-		if !(info.Name() == "world.toml" || strings.HasPrefix(filepath.ToSlash(relPath), "cardinal/")) {
+		if info.Name() != "world.toml" && !strings.HasPrefix(filepath.ToSlash(relPath), "cardinal/") {
 			return nil
 		}
 
@@ -336,10 +333,10 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 	return step, nil
 }
 
-// filterImages filters the images that need to be pulled
-// Remove duplicates
-// Remove images that are already pulled
-// Remove images that need to be built
+// filterImages filters the images that need to be pulled.
+// Remove duplicates.
+// Remove images that are already pulled.
+// Remove images that need to be built.
 func (c *Client) filterImages(ctx context.Context, images map[string]string, services ...service.Service) {
 	for _, service := range services {
 		// check if the image exists
@@ -354,8 +351,8 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 		if service.Dockerfile == "" {
 			// Image does not exist and does not need to be built
 			// Add the image to the list of images to pull
-			if service.Platform.OS != "" {
-				images[service.Image] = fmt.Sprintf("%s/%s", service.Platform.OS, service.Platform.Architecture)
+			if service.OS != "" {
+				images[service.Image] = fmt.Sprintf("%s/%s", service.OS, service.Architecture)
 			} else {
 				images[service.Image] = ""
 			}
@@ -368,7 +365,7 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 	}
 }
 
-// Pulls the image if it does not exist
+// Pulls the image if it does not exist.
 func (c *Client) pullImages(ctx context.Context, services ...service.Service) error { //nolint:gocognit
 	// Filter the images that need to be pulled
 	images := make(map[string]string)
@@ -387,8 +384,6 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 	// Pull each image concurrently
 	for imageName, platform := range images {
 		// Capture imageName and platform in the loop
-		imageName := imageName
-		platform := platform
 
 		// Create a new progress bar for this image
 		bar := p.AddBar(100, //nolint:gomnd
@@ -484,7 +479,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 	return nil
 }
 
-// Pulls the image if it does not exist
+// Pulls the image if it does not exist.
 func (c *Client) pushImages(ctx context.Context, pushTo string, authString string, //nolint:gocognit
 	services ...service.Service) error {
 	// Create a new progress container with a wait group

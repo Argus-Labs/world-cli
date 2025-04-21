@@ -1,0 +1,57 @@
+version: '3'
+
+silent: true
+
+vars:
+  GORELEASER_VERSION: v2.5.1
+
+tasks:
+  default:
+    desc: Build the binary
+    deps: [_deps]
+    cmds:
+      - |
+        echo "--> Building binary"
+        goreleaser build --clean --snapshot
+        echo "--> Build binary is available in the ./dist directory"
+
+  release:
+    desc: Create a new release
+    deps: [_deps]
+    cmds:
+      - |
+        if [ -z "${RELEASE_TAG}" ]; then
+          echo " [Error] RELEASE_TAG env variable not found!"
+          echo " --> usage: task build:release RELEASE_TAG=v1.0.0"
+          exit 1
+        fi
+        
+        if [ -z "${GITHUB_TOKEN}" ]; then
+          echo " [Error] GITHUB_TOKEN env variable not found!"
+          echo " --> GoReleaser requires an API token with the repo scope to deploy the artifacts to GitHub."
+          echo "     (https://github.com/settings/tokens/new)"
+          exit 1
+        fi
+        
+        echo "--> Release Tag: ${RELEASE_TAG}"
+        echo "--> git: tags current commit"
+        git tag -a ${RELEASE_TAG} -m "goreleaser: ${RELEASE_TAG}"
+        echo "--> git: push tag ${RELEASE_TAG}"
+        git push origin ${RELEASE_TAG}
+        echo "--> goreleaser release"
+        goreleaser release --clean
+
+  _deps:
+    internal: true
+    run: once
+    desc: Install goreleaser
+    cmds:
+      - |
+        echo "--> Checking if goreleaser {{.GORELEASER_VERSION}} is installed"
+        INSTALLED_VERSION=$(goreleaser --version 2> /dev/null | grep GitVersion | awk '{ print $2 }' || echo "none")
+        if [ "$INSTALLED_VERSION" != "{{.GORELEASER_VERSION}}" ]; then
+          echo "--> Installing goreleaser {{.GORELEASER_VERSION}}"
+          go install github.com/goreleaser/goreleaser/v2@{{.GORELEASER_VERSION}}
+        else
+          echo "--> goreleaser {{.GORELEASER_VERSION}} is already installed"
+        fi

@@ -9,7 +9,7 @@ on:
   workflow_call:
 
 env:
-  GO_VERSION: 1.21.1
+  GO_VERSION: 1.24.0
 
 jobs:
   test-unit-coverage:
@@ -32,9 +32,12 @@ jobs:
         uses: namespacelabs/nscloud-cache-action@v1
         with:
           cache: go
+      - name: Install Task
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@latest
       - name: Run unit tests with coverage
         shell: 'script -q -e -c "bash {0}"'
-        run: make test-coverage
+        run: task test:coverage
       - name: Upload coverage to Codecov
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         uses: codecov/codecov-action@v4

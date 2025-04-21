@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/tea/style"
@@ -26,8 +25,8 @@ const (
 // Cobra Setup //
 /////////////////
 
-// buildCmd build your Cardinal game image
-// Usage: `world cardinal build`
+// buildCmd build your Cardinal game image.
+// Usage: `world cardinal build`.
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build your Cardinal game image",

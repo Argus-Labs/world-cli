@@ -2,7 +2,6 @@ package cardinal
 
 import (
 	"github.com/spf13/cobra"
-
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/docker/service"
@@ -10,8 +9,8 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-// BaseCmd is the base command for the cardinal subcommand
-// Usage: `world cardinal`
+// BaseCmd is the base command for the cardinal subcommand.
+// Usage: `world cardinal`.
 var BaseCmd = &cobra.Command{
 	Use:     "cardinal",
 	Short:   "Utilities for managing the Cardinal game shard",

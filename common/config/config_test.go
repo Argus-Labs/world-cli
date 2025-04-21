@@ -17,7 +17,7 @@ func cmdZero() *cobra.Command {
 	return &cobra.Command{}
 }
 
-// cmdWithConfig creates a command that has the --config flag set to the given filename
+// cmdWithConfig creates a command that has the --config flag set to the given filename.
 func cmdWithConfig(t *testing.T, filename string) {
 	cmd := cmdZero()
 	AddConfigFlag(cmd)
