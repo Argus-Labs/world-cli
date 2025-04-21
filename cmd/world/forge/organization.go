@@ -202,7 +202,7 @@ func createOrganization(ctx context.Context) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 
 	// Get organization name
-	fmt.Println("\n🏢 ✨ Create New Organization ✨")
+	fmt.Println("\n  Create New Organization ")
 	fmt.Println("==============================")
 	for {
 		orgName = getInput("\nEnter organization name", "")

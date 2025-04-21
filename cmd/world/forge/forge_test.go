@@ -1713,8 +1713,8 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				"http://test.com", // avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
-				tea.KeyMsg{Type: tea.KeySpace}, // select region
-				tea.KeyMsg{Type: tea.KeyEnter}, // confirm
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
 			},
 			expectInputFail: 0,
 			expectedError:   false,
@@ -2605,7 +2605,9 @@ func (s *ForgeTestSuite) TestSlugCreateFromName() {
 			result := CreateSlugFromName(tc.input, tc.minLen, tc.maxLen)
 			if strings.Contains(tc.expectedSlug, "{hex8}") {
 				expectedSlug := strings.Replace(tc.expectedSlug, "{hex8}", "", 1)
-				result := result[:len(expectedSlug)]
+				if len(result) >= len(expectedSlug) {
+					result = result[:len(expectedSlug)]
+				}
 				s.Equal(expectedSlug, result)
 			} else {
 				s.Equal(tc.expectedSlug, result)

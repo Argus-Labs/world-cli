@@ -82,6 +82,8 @@ var getInput = func(prompt, defaultStr string) string {
 	input = strings.TrimSpace(input)
 	if input == "" && defaultStr != "" {
 		// display the default value as if they typed it in
+		promptEnd := len(defaultStr) + 4 + len(prompt)
+		fmt.Printf("\033[1A\033[%dC", promptEnd) // move cursor up one line, and right the length of the prompt
 		fmt.Printf("%s\n", defaultStr)
 		return defaultStr
 	}
