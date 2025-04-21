@@ -11,4 +11,9 @@ tasks:
   coverage:
     desc: Run tests with coverage reporting
     cmds:
-      - go test ./... -coverprofile=coverage-$(basename $(pwd)).out -covermode=count -v
+      - |
+        {{if eq OS "windows"}}
+          go test ./... -coverprofile=coverage-%CD:~-8%.out -covermode=count -v
+        {{else}}
+          go test ./... -coverprofile=coverage-$(basename $(pwd)).out -covermode=count -v
+        {{end}}

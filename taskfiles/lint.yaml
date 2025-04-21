@@ -27,7 +27,7 @@ tasks:
       - |
         echo "--> Running linter"
         {{if eq OS "windows"}}
-          for /f "delims=" %%d in ('go list -f "{{.Dir}}/..." -m') do (golangci-lint run --timeout=10m {{if .FIX}}--fix{{end}} --concurrency 8 -v %%d)
+          for /f "delims=" %%d in ('go list -f "{{$.Dir}}/..." -m') do (golangci-lint run --timeout=10m {{if .FIX}}--fix{{end}} --concurrency 8 -v %%d)
         {{else}}
           go list -f '{{.Dir}}/...' -m | xargs golangci-lint run --timeout=10m {{if .FIX}}--fix{{end}} --concurrency 8 -v
         {{end}}
