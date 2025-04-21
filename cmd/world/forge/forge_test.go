@@ -1979,7 +1979,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			input:         "99",
 			expectedError: true,
 			expectedProj:  nil,
-		},
+		}, */
 		{
 			name: "Error - Invalid organization ID",
 			config: globalconfig.GlobalConfig{
@@ -2578,7 +2578,7 @@ func (s *ForgeTestSuite) TestSlugCreateFromName() {
 			expectedSlug: "123_project_456",
 		},
 		{
-			```suggestion			name:         "Very long (truncate)",
+			name:         "Very long (truncate)",
 			input:        "This_is_a_very_long_name_which_should_be_truncated",
 			minLen:       3,
 			maxLen:       25,

@@ -363,9 +363,10 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 				p.Slug = CreateSlugFromName(p.Name, minLength, maxLength)
 			}
 
-			slug := getInput("\n\n👉 Slug", p.Slug)
+			slug := getInput("\n\nSlug", p.Slug)
 
 			// Validate slug
+			var err error
 			slug, err = slugToSaneCheck(slug, minLength, maxLength)
 			if err != nil {
 				fmt.Printf("\n❌ Error: %s\n", err)
@@ -579,7 +580,7 @@ func deleteProject(ctx context.Context) error {
 		if confirmation == "yes" {
 			fmt.Println("\nError: You must type 'Yes' with uppercase Y to confirm deletion")
 		}
-        fmt.Println("\nProject deletion canceled")
+		fmt.Println("\nProject deletion canceled")
 		return nil
 	}
 
@@ -1020,7 +1021,7 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			avatarURL := getInput("\n👉 Enter avatar URL", p.AvatarURL)
+			avatarURL := getInput("\nEnter avatar URL", p.AvatarURL)
 
 			if avatarURL == "" {
 				// No avatar URL provided

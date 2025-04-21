@@ -221,6 +221,7 @@ func createOrganization(ctx context.Context) (*organization, error) {
 		orgSlug = getInput("\nEnter organization slug", orgSlug)
 
 		// Validate slug
+		var err error
 		orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
 		if err != nil {
 			fmt.Printf("\n❌ Error: %s\n", err)
@@ -415,7 +416,7 @@ func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) 
 // handleNoOrgs handles the case when there are no organizations.
 func handleNoOrgs(ctx context.Context) (string, error) {
 	// Confirmation prompt
-	confirmation := getInput(prompt, "n")
+	confirmation := getInput("You don't have any organizations. Create a new one now? (Y/n)", "n")
 
 	if confirmation != "Y" {
 		if confirmation == "y" {

@@ -70,7 +70,7 @@ func deployment(ctx context.Context, deployType string) error {
 	fmt.Println("\n   Confirm Deployment")
 	fmt.Println("========================")
 	fmt.Println("\nReview the deployment details above.")
-	fmt.Printf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
+	prompt := fmt.Sprintf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
 
 	confirmation := getInput(prompt, "n")
 
