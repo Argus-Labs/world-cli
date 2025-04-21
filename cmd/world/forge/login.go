@@ -9,10 +9,16 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
+	"github.com/rs/zerolog/log"
 	"pkg.world.dev/world-cli/common/globalconfig"
+	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
 const (
@@ -21,7 +27,7 @@ const (
 )
 
 var (
-	maxLoginAttempts = 12 // 12 * 5 = 1 minute
+	maxLoginAttempts = 220 // 11 min x 60 sec ÷ 3 sec per attempt = 220 attempts
 
 	errPending = eris.New("token status pending")
 )
@@ -156,15 +162,61 @@ func displayLoginSuccess(config globalconfig.GlobalConfig) {
 }
 
 // GetToken will get the token from the config file.
+//
+//nolint:funlen,gocognit // This is a long function, but it's not too complex, better to keep it in one place.
 func getToken(ctx context.Context, url string, argusid bool, result interface{}) error {
-	attempts := 1
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
+	// Spinner Setup
+	spinnerExited := atomic.Bool{}
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	spin := teaspinner.Spinner{
+		Spinner: spinner.New(spinner.WithSpinner(spinner.Dot)),
+		Cancel:  cancel,
+	}
+	spin.SetText("Logging in...")
+	p := tea.NewProgram(spin)
+
+	// Run the spinner in a goroutine
+	go func() {
+		defer wg.Done()
+		if _, err := p.Run(); err != nil {
+			log.Error().Err(err).Msg("failed to run spinner")
+			fmt.Printf("Logging in...\n") // If the spinner doesn't start correctly, fallback to a simple print.
+		}
+		spinnerExited.Store(true)
+	}()
+
+	// spinnnerCompleted will send a message to the spinner to stop and quit.
+	spinnnerCompleted := func(didLogin bool) {
+		if !spinnerExited.Load() {
+			p.Send(teaspinner.LogMsg("spin: completed"))
+			p.Send(tea.Quit())
+			wg.Wait()
+		}
+		if didLogin {
+			fmt.Printf("✅ Logged in!\n")
+		} else {
+			fmt.Printf("❌ Login failed!\n")
+		}
+	}
+
+	// Login Loop
+	attempts := 1
 	for attempts < maxLoginAttempts {
 		select {
 		case <-ctx.Done():
+			spinnnerCompleted(false)
 			return ctx.Err()
-		case <-time.After(3 * time.Second): //nolint:gomnd
-			fmt.Printf("\r🔄 Logging in... attempt %d", attempts)
+		case <-time.After(3 * time.Second):
+			log.Debug().Int("attempt", attempts).Msg("login attempt")
+
+			if !spinnerExited.Load() {
+				p.Send(teaspinner.LogMsg("Logging in..."))
+			}
 
 			token, err := makeTokenRequest(ctx, url)
 			if err != nil {
@@ -177,14 +229,16 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 					attempts++
 					continue
 				}
+				spinnnerCompleted(false)
 				return err
 			}
 
+			spinnnerCompleted(true)
 			return nil
 		}
 	}
 
-	fmt.Println() // Add newline before error
+	spinnnerCompleted(false)
 	return eris.New("max attempts reached while waiting for token")
 }
 

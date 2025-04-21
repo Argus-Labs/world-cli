@@ -7,6 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+const completedMsg = "spin: completed"
+
 // Spinner is a component that displays a spinner while updating the logs.
 type Spinner struct {
 	Spinner spinner.Model
@@ -41,7 +43,7 @@ func (s Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LogMsg:
 		// Add the log message to the list of logs and return a spinner tick
 		s.text = string(msg)
-		if string(msg) == "spin: completed" {
+		if string(msg) == completedMsg {
 			s.done = true
 			return s, tea.Quit
 		}
@@ -58,4 +60,8 @@ func (s Spinner) View() string {
 	}
 
 	return fmt.Sprintf("%s %s", s.Spinner.View(), s.text)
+}
+
+func (s *Spinner) SetText(text string) {
+	s.text = text
 }
