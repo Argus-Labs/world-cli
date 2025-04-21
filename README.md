@@ -52,21 +52,23 @@ go install pkg.world.dev/world-cli/cmd/world@<tag>
 
 ## Development
 
-This section is for devel developers who want to contribute to the World CLI.
+This section is for developers who want to contribute to the World CLI.
 If you want to develop a World Engine project using World CLI, see the
 [World Engine quickstart guide](https://world.dev/quickstart)
+
+For detailed instructions on setting up your development environment, building, testing, and contributing to the World CLI, please refer to the [Developer Guide](DEVELOPER.md).
 
 **Building from source:**
 
 ```shell
-make build
+task build
 ```
 
 **Testing your local build:**
 
 You can test your local build of World CLI by running the following command.
-This will install the World CLI binary in your `/usr/local/bin` directory.
+This will install the World CLI binary in your Go bin directory.
 
 ```shell
-make install
+task install
 ```
