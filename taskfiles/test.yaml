@@ -20,11 +20,7 @@ tasks:
     cmds:
       - |
         echo "--> Running tests with coverage"
-        {{if eq OS "windows"}}
-          gotestsum --format=standard-verbose --junitfile=junit.xml -- -coverprofile=coverage-%CD:~-8%.out -covermode=count ./...
-        {{else}}
-          gotestsum --format=standard-verbose --junitfile=junit.xml -- -coverprofile=coverage-$(basename $(pwd)).out -covermode=count ./...
-        {{end}}
+        gotestsum --format=standard-verbose --junitfile=junit.xml -- -coverprofile=coverage-$(basename $(pwd)).out -covermode=count ./...
 
   _deps:
     internal: true
@@ -33,14 +29,10 @@ tasks:
     cmds:
       - |
         echo "--> Checking if gotestsum {{.GOTESTSUM_VERSION}} is installed"
-        {{if eq OS "windows"}}
-          where gotestsum >NUL 2>&1 || (echo "--> Installing gotestsum {{.GOTESTSUM_VERSION}}" && go install gotest.tools/gotestsum@{{.GOTESTSUM_VERSION}})
-        {{else}}
-          INSTALLED_VERSION=$(gotestsum --version 2>/dev/null | awk '{print $2}' || echo "none")
-          if [ "$INSTALLED_VERSION" != "{{.GOTESTSUM_VERSION}}" ]; then
-            echo "--> Installing gotestsum {{.GOTESTSUM_VERSION}}"
-            go install gotest.tools/gotestsum@{{.GOTESTSUM_VERSION}}
-          else
-            echo "--> gotestsum {{.GOTESTSUM_VERSION}} is already installed"
-          fi
-        {{end}}
+        INSTALLED_VERSION=$(gotestsum --version 2>/dev/null | awk '{print $2}' || echo "none")
+        if [ "$INSTALLED_VERSION" != "{{.GOTESTSUM_VERSION}}" ]; then
+          echo "--> Installing gotestsum {{.GOTESTSUM_VERSION}}"
+          go install gotest.tools/gotestsum@{{.GOTESTSUM_VERSION}}
+        else
+          echo "--> gotestsum {{.GOTESTSUM_VERSION}} is already installed"
+        fi
