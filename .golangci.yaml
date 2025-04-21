@@ -1,7 +1,13 @@
+version: "2"
 run:
   # Timeout for analysis, e.g. 30s, 5m.
   # Default: 1m
   timeout: 3m
+
+formatters:
+  enable:
+    - goimports
+    - gci
 
 
 # This file contains only configs which differ from defaults.
@@ -207,11 +213,9 @@ linters:
   enable:
     ## enabled by default
     - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
-    - gosimple # specializes in simplifying a code
     - govet # reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
     - ineffassign # detects when assignments to existing variables are not used
     - staticcheck # is a go vet on steroids, applying a ton of static analysis checks
-    - typecheck # like the front-end of a Go compiler, parses and type-checks Go code
     - unused # checks for unused constants, variables, functions and types
     ## disabled by default
     - asasalint # checks for pass []any as any in variadic func(...any)
@@ -220,12 +224,14 @@ linters:
     - bodyclose # checks whether HTTP response body is closed successfully
     - cyclop # checks function and package cyclomatic complexity
     - dupl # tool for code clone detection
+    - decorder # checks declaration order and count of types, constants, variables and functions
+    - depguard # Go linter that checks if package imports are in a list of acceptable packages
+    - dogsled # Checks assignments with too many blank identifiers
     - durationcheck # checks for two durations multiplied together
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
-    - execinquery # checks query string in Query function which reads your Go src files and warning it finds
     - exhaustive # checks exhaustiveness of enum switch statements
-    - exportloopref # checks for pointers to enclosing loop variables
+    - exhaustruct # checks if all structure fields are initialized
     #- forbidigo # forbids identifiers
     - funlen # tool for detection of long functions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
@@ -237,18 +243,16 @@ linters:
     - gocritic # provides diagnostics that check for bugs, performance and style issues
     - gocyclo # computes and checks the cyclomatic complexity of functions
     #- godot # checks if comments end in a period
-    - goimports # in addition to fixing imports, goimports also formats your code in the same style as gofmt
-    - gomnd # detects magic numbers
     - gomoddirectives # manages the use of 'replace', 'retract', and 'excludes' directives in go.mod
-    #- gomodguard # allow and block lists linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations
+    #- gomodguard # allow and block lists linter for direct Go module dependencies
     - goprintffuncname # checks that printf-like functions are named with f at the end
     - gosec # inspects source code for security problems
     #- importas # enforces consistent import aliases
     - lll # reports long lines
-    - loggercheck # checks key value pairs for common logger libraries (kitlog,klog,logr,zap)
+    - loggercheck # checks key value pairs for common logger libraries
     - makezero # finds slice declarations with non-zero initial length
     - mirror # reports wrong mirror patterns of bytes/strings usage
-    #- musttag # enforces field tags in (un)marshaled structs
+    - mnd # An analyzer to detect magic numbers
     - nakedret # finds naked returns in functions greater than a specified function length
     - nestif # reports deeply nested if statements
     - nilerr # finds the code that returns nil even if it checks that the error is not nil
@@ -258,17 +262,14 @@ linters:
     - nonamedreturns # reports all named returns
     - nosprintfhostport # checks for misuse of Sprintf to construct a host with port in a URL
     - perfsprint # checks that fmt.Sprintf can be replaced with a faster alternative
+    - prealloc # finds slice declarations that could potentially be preallocated
     - predeclared # finds code that shadows one of Go's predeclared identifiers
     - promlinter # checks Prometheus metrics naming via promlint
-    - protogetter # reports direct reads from proto message fields when getters should be used
-    - reassign # checks that package variables are not reassigned
-    - revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
+    - revive # fast, configurable, extensible, flexible, and beautiful linter for Go
     - rowserrcheck # checks whether Err of rows is checked successfully
     - sloglint # ensure consistent code style when using log/slog
     - spancheck # checks for mistakes with OpenTelemetry/Census spans
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed
-    - stylecheck # is a replacement for golint
-    - tenv # detects using os.Setenv instead of t.Setenv since Go1.17
     - testableexamples # checks if examples are testable (have an expected output)
     - testifylint # checks usage of github.com/stretchr/testify
     #- testpackage # makes you use a separate _test package
@@ -278,21 +279,6 @@ linters:
     - usestdlibvars # detects the possibility to use variables/constants from the Go standard library
     - wastedassign # finds wasted assignment statements
     - whitespace # detects leading and trailing whitespace
-    
-    ## you may want to enable
-    - decorder # checks declaration order and count of types, constants, variables and functions
-    - exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
-    - gci # controls golang package import order and makes it always deterministic
-    #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
-    #- godox # detects FIXME, TODO and other comment keywords
-    #- goheader # checks is file header matches to pattern
-    #- inamedparam # [great idea, but too strict, need to ignore a lot of cases by default] reports interfaces with unnamed method parameters
-    #- interfacebloat # checks the number of methods inside an interface
-    #- ireturn # accept interfaces, return concrete types
-    - prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated
-    #- tagalign # checks that struct tags are well aligned
-    #- varnamelen # [great idea, but too many false positives] checks that the length of a variable's name matches its scope
-    #- wrapcheck # checks that errors returned from external packages are wrapped
     - zerologlint # detects the wrong usage of zerolog that a user forgets to dispatch zerolog.Event
 
 issues:
