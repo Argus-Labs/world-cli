@@ -40,12 +40,12 @@ tasks:
       - |
         echo "--> Checking if golangci-lint {{.LINT_VERSION}} is installed"
         {{if eq OS "windows"}}
-          where golangci-lint >NUL 2>&1 || (echo "--> Installing golangci-lint {{.LINT_VERSION}}" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@{{.LINT_VERSION}})
+          where golangci-lint >NUL 2>&1 || (echo "--> Installing golangci-lint {{.LINT_VERSION}}" && go install github.com/golangci/golangci-lint@{{.LINT_VERSION}})
         {{else}}
           INSTALLED_VERSION=$(golangci-lint --version 2>/dev/null | awk '{print $4}' || echo "none")
           if [ "$INSTALLED_VERSION" != "{{.LINT_VERSION}}" ]; then
             echo "--> Installing golangci-lint {{.LINT_VERSION}}"
-            go install github.com/golangci/golangci-lint/cmd/golangci-lint@{{.LINT_VERSION}}
+            go install github.com/golangci/golangci-lint@{{.LINT_VERSION}}
           else
             echo "--> golangci-lint {{.LINT_VERSION}} is already installed"
           fi
