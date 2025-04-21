@@ -197,10 +197,15 @@ func (m WorldCreateModel) View() string {
 func getCreateCmd(writer io.Writer) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create [directory_name]",
-		Short: "Create a World Engine game shard from scratch",
-		Long: `Create a World Engine game shard based on https://github.com/Argus-Labs/starter-game-template.
-If [directory_name] is set, it will automatically clone the starter project into that directory. 
-Otherwise, it will prompt you to enter a directory name.`,
+		Short: "Start a new World Engine game project quickly",
+		Long: `Create a complete World Engine game shard with all necessary components.
+
+This command sets up a new game project based on the official starter template
+(https://github.com/Argus-Labs/starter-game-template), giving you a solid foundation
+to build upon. The template includes essential game structures and examples.
+
+If [directory_name] is provided, it will automatically clone the starter project into 
+that directory. Otherwise, you'll be prompted to enter a name for your new project.`,
 		GroupID: "starter",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {

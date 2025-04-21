@@ -17,9 +17,12 @@ import (
 // Usage: `world cardinal purge`.
 var purgeCmd = &cobra.Command{
 	Use:   "purge",
-	Short: "Stop and reset the state of your Cardinal game shard",
-	Long: `Stop and reset the state of your Cardinal game shard.
-This command stop all Docker services and remove all Docker volumes.`,
+	Short: "Clean and reset your Cardinal environment completely",
+	Long: `Reset your Cardinal game shard to a clean state by removing all data and containers.
+
+This command stops all running Docker services and removes all associated Docker volumes,
+giving you a fresh environment for development or testing. Use this when you want to start
+from scratch or resolve persistent state issues.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {

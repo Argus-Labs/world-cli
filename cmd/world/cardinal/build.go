@@ -29,10 +29,11 @@ const (
 // Usage: `world cardinal build`.
 var buildCmd = &cobra.Command{
 	Use:   "build",
-	Short: "Build your Cardinal game image",
-	Long: `Build your Cardinal game image.
+	Short: "Create optimized Docker images for your Cardinal game",
+	Long: `Build and package your Cardinal game into production-ready Docker images.
 
-This builds following Cardinal (Game shard) Docker image ONLY.`,
+This command creates the Cardinal (Game shard) Docker image with your game logic, 
+optimized for deployment. You can optionally push the image to a registry with the --push flag.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {

@@ -13,8 +13,8 @@ import (
 // Usage: `world cardinal`.
 var BaseCmd = &cobra.Command{
 	Use:     "cardinal",
-	Short:   "Utilities for managing the Cardinal game shard",
-	Long:    style.CLIHeader("World CLI — CARDINAL", "Manage your Cardinal game shard project"),
+	Short:   "Powerful tools for managing your Cardinal game shard",
+	Long:    style.CLIHeader("World CLI — CARDINAL", "Build, run, and manage your Cardinal game shard with ease"),
 	GroupID: "core",
 	PreRunE: func(_ *cobra.Command, _ []string) error {
 		return dependency.Check(

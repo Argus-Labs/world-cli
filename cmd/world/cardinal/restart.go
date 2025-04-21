@@ -10,12 +10,12 @@ import (
 // Usage: `world cardinal restart`.
 var restartCmd = &cobra.Command{
 	Use:   "restart",
-	Short: "Restart your Cardinal game shard stack",
-	Long: `Restart your Cardinal game shard stack.
+	Short: "Refresh your Cardinal game shard environment",
+	Long: `Quickly restart your Cardinal game shard environment with the latest changes.
 
-This will restart the following Docker services:
-- Cardinal (Core game logic)
-- Nakama (Relay)`,
+This command will rebuild and restart the following Docker services:
+- Cardinal (Core game logic) - Your game's central processing engine
+- Nakama (Relay) - Handles multiplayer communication and backend services`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {

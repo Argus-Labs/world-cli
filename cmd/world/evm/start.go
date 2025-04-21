@@ -17,8 +17,15 @@ import (
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the EVM base shard. Use --da-auth-token to pass in an auth token directly.",
-	Long:  "Start the EVM base shard. Requires connection to celestia DA.",
+	Short: "Launch your EVM blockchain environment",
+	Long: `Start the EVM base shard with all required services for blockchain development.
+
+This command initializes your Ethereum Virtual Machine environment, connecting it to 
+the necessary data availability layer (Celestia). Perfect for developing and testing
+smart contracts and blockchain applications.
+
+Use --da-auth-token to pass in an authentication token directly, or --use-dev-da
+to run with a local development data availability layer.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {

@@ -11,8 +11,12 @@ import (
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop the EVM base shard and DA layer client.",
-	Long:  "Stop the EVM base shard and data availability layer client if they are running.",
+	Short: "Shut down your EVM blockchain environment",
+	Long: `Gracefully stop your EVM blockchain environment and associated services.
+
+This command safely shuts down the EVM base shard and data availability layer client,
+preserving your blockchain state while freeing up system resources. Use this when you're
+done working with your EVM environment.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.GetConfig()
 		if err != nil {
