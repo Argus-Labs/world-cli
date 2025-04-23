@@ -198,60 +198,89 @@ func handleProjectConfig(ctx context.Context) error {
 	return showProjectList(ctx)
 }
 
+//nolint:gocognit // Makes sense to keep in one function.
 func createOrganization(ctx context.Context) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 
-	// Get organization name
-	fmt.Println("\n  Create New Organization ")
-	fmt.Println("==============================")
 	for {
-		orgName = getInput("\nEnter organization name", "")
-		if orgName == "" {
-			fmt.Printf("\nOrganization name is required\n")
-			continue
-		}
-		break
-	}
-
-	// Get and validate organization slug
-	for {
-		minLength := 3
-		maxLength := 15
-		orgSlug = CreateSlugFromName(orgName, minLength, maxLength)
-		orgSlug = getInput("\nEnter organization slug", orgSlug)
-
-		// Validate slug
-		var err error
-		orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
-		if err != nil {
-			fmt.Printf("\n❌ Error: %s\n", err)
-			continue
-		}
-		break
-	}
-
-	// Get and validate organization avatar URL
-	for {
-		orgAvatarURL = getInput("\nEnter organization avatar URL [none]", "")
-
-		if orgAvatarURL == "" {
-			fmt.Print("\nSkipped. No avatar URL will be used.\n")
+		// Get organization name
+		fmt.Println("\n  Create New Organization ")
+		fmt.Println("==============================")
+		for {
+			orgName = getInput("\nEnter organization name", "")
+			if orgName == "" {
+				fmt.Printf("\nOrganization name is required\n")
+				continue
+			}
 			break
 		}
 
-		if !isValidURL(orgAvatarURL) {
-			fmt.Printf("\n❌ Error: Invalid URL\n")
-			continue
+		// Get and validate organization slug
+		for {
+			minLength := 3
+			maxLength := 15
+			orgSlug = CreateSlugFromName(orgName, minLength, maxLength)
+			orgSlug = getInput("\nEnter organization slug", orgSlug)
+
+			// Validate slug
+			var err error
+			orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
+			if err != nil {
+				fmt.Printf("\n❌ Error: %s\n", err)
+				continue
+			}
+			break
 		}
 
-		break
-	}
+		// Get and validate organization avatar URL
+		for {
+			orgAvatarURL = getInput("\nEnter organization avatar URL [none]", "")
 
+			if orgAvatarURL == "" {
+				fmt.Print("\nSkipped. No avatar URL will be used.\n")
+				break
+			}
+
+			if !isValidURL(orgAvatarURL) {
+				fmt.Printf("\n❌ Error: Invalid URL, leave empty to skip\n")
+				continue
+			}
+
+			break
+		}
+
+		// Show confirmation
+		fmt.Println("\n  Organization Details")
+		fmt.Println("==============================")
+		fmt.Printf("Name: %s\n", orgName)
+		fmt.Printf("Slug: %s\n", orgSlug)
+		if orgAvatarURL != "" {
+			fmt.Printf("Avatar URL: %s\n", orgAvatarURL)
+		} else {
+			fmt.Println("Avatar URL: None")
+		}
+
+		// Get confirmation
+		for redo := false; !redo; {
+			confirm := getInput("\nCreate organization with these details? (Y/n)", "n")
+			switch confirm {
+			case "Y":
+				return createOrgRequestAndSave(ctx, orgName, orgSlug, orgAvatarURL)
+			case "n":
+				redo = true
+			default:
+				fmt.Println("\nPlease enter capital 'Y' to confirm, 'n' to cancel, or 'redo' to start over")
+			}
+		}
+	}
+}
+
+func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) (*organization, error) {
 	// Send request
 	body, err := sendRequest(ctx, http.MethodPost, organizationURL, createOrgRequest{
-		Name:      orgName,
-		Slug:      orgSlug,
-		AvatarURL: orgAvatarURL,
+		Name:      name,
+		Slug:      slug,
+		AvatarURL: avatarURL,
 	})
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to create organization")
@@ -274,8 +303,7 @@ func createOrganization(ctx context.Context) (*organization, error) {
 		return nil, eris.Wrap(err, "Failed to save organization in config")
 	}
 
-	fmt.Printf("\nOrganization '%s' with slug '%s' created successfully!\n", orgName, orgSlug)
-	// fmt.Printf("ID: %s\n", org.ID)
+	fmt.Printf("\nOrganization '%s' with slug '%s' created successfully!\n", name, slug)
 	return org, nil
 }
 

@@ -312,8 +312,8 @@ func checkLogin() bool {
 
 // slugToSaneCheck checks that slug is valid, and returns a sanitized version.
 func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) {
-	if len(slug) < minLength || len(slug) > maxLength {
-		return slug, eris.Errorf("Slug must be between %d and %d characters", minLength, maxLength)
+	if len(slug) < minLength {
+		return slug, eris.Errorf("Slug must be at least %d characters", minLength)
 	}
 
 	// Check if slug contains only allowed characters.
@@ -330,6 +330,10 @@ func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 	returnSlug = strings.ReplaceAll(returnSlug, " ", "_")
 	returnSlug = underscoreRegex.ReplaceAllString(returnSlug, "_")
 	returnSlug = strings.Trim(returnSlug, "_")
+
+	if len(returnSlug) > maxLength {
+		return returnSlug[:maxLength], nil
+	}
 
 	return returnSlug, nil
 }

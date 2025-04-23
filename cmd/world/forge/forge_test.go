@@ -1444,6 +1444,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 	testCases := []struct {
 		name            string
 		input           []string
+		expectedPrompt  []string
 		expectInputFail int
 		expectedError   bool
 		expectedOrg     *organization
@@ -1454,6 +1455,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"My Great Org",    // name
 				"",                // slug
 				"http://test.com", // avatar URL
+				"Y",               // confirm
 			},
 			expectInputFail: 0,
 			expectedError:   false,
@@ -1461,6 +1463,12 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				ID:   "test-org-id",
 				Name: "Test Organization",
 				Slug: "testo",
+			},
+			expectedPrompt: []string{
+				"\nEnter organization name",
+				"\nEnter organization slug",
+				"\nEnter organization avatar URL [none]",
+				"\nCreate organization with these details? (Y/n)",
 			},
 		},
 		{
@@ -1469,6 +1477,37 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"testo",           // name
 				"testo",           // slug
 				"http://test.com", // avatar URL
+				"Y",               // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+			expectedPrompt: []string{
+				"\nEnter organization name",
+				"\nEnter organization slug",
+				"\nEnter organization avatar URL [none]",
+				"\nCreate organization with these details? (Y/n)",
+			},
+		},
+		{
+			name: "Bad Input - Non-alphanumeric dots dash underscore slug",
+			input: []string{
+				"testo",           // name
+				"te_st()",         // slug fail
+				"testo",           // retry with valid slug
+				"http://test.com", // avatar URL
+				"Y",               // confirm
+			},
+			expectedPrompt: []string{
+				"\nEnter organization name",
+				"\nEnter organization slug",
+				"\nEnter organization slug",
+				"\nEnter organization avatar URL [none]",
+				"\nCreate organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
 			expectedError:   false,
@@ -1479,46 +1518,78 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			},
 		},
 		{
-			name: "Error - Invalid slug length",
-			input: []string{
-				"testo", // name
-				"testorgs123456789101234567891012345678910123124124125125123125125125125213124", // slug fail
-			},
-			expectInputFail: 2,
-			expectedError:   false,
-			expectedOrg:     nil,
-		},
-		{
-			name: "Error - Non-alphanumeric dots dash underscore slug",
-			input: []string{
-				"testo",   // name
-				"te_st()", // slug fail 1
-			},
-			expectInputFail: 2,
-			expectedError:   false,
-			expectedOrg:     nil,
-		},
-		{
 			name: "Error - Empty name",
 			input: []string{
-				"", // name fail 1
+				"",                // name fail
+				"testo",           // retry with valid name
+				"testo",           // slug
+				"http://test.com", // avatar URL
+				"Y",               // confirm
 			},
-			expectInputFail: 1,
-			expectedError:   true,
-			expectedOrg:     nil,
+			expectedPrompt: []string{
+				"\nEnter organization name",
+				"\nEnter organization name",
+				"\nEnter organization slug",
+				"\nEnter organization avatar URL [none]",
+				"\nCreate organization with these details? (Y/n)",
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+		},
+		{
+			name: "Success - Redo creation",
+			input: []string{
+				"testo",            // First attempt - name
+				"testo",            // First attempt - slug
+				"http://test.com",  // First attempt - avatar URL
+				"n",                // First attempt - redo
+				"testo2",           // Second attempt - name
+				"testo2",           // Second attempt - slug
+				"http://test2.com", // Second attempt - avatar URL
+				"Y",                // Second attempt - confirm
+			},
+			expectedPrompt: []string{
+				"\nEnter organization name",
+				"\nEnter organization slug",
+				"\nEnter organization avatar URL [none]",
+				"\nCreate organization with these details? (Y/n)",
+				"\nEnter organization name",
+				"\nEnter organization slug",
+				"\nEnter organization avatar URL [none]",
+				"\nCreate organization with these details? (Y/n)",
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			inputIndex := 0
-			lastPrompt := ""
 			getInput = func(prompt string, defaultVal string) string {
 				fmt.Printf("%s [%s]: ", prompt, defaultVal)
-				if prompt == lastPrompt {
-					panic(eris.Errorf("Input %d Failed", inputIndex))
+
+				// Validate against expected prompts if defined
+				if len(tc.expectedPrompt) > 0 {
+					if inputIndex >= len(tc.expectedPrompt) {
+						panic(eris.Errorf("More prompts than expected. Got: %s", prompt))
+					}
+					if prompt != tc.expectedPrompt[inputIndex] {
+						panic(eris.Errorf("Unexpected prompt at index %d. Expected: %s, Got: %s",
+							inputIndex, tc.expectedPrompt[inputIndex], prompt))
+					}
 				}
-				lastPrompt = prompt
+
 				input := tc.input[inputIndex]
 				if input == "" {
 					input = defaultVal
@@ -1529,22 +1600,15 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			var org *organization
-			var err error
-			if tc.expectInputFail > 0 {
-				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					org, err = createOrganization(s.ctx)
-				})
+			org, err := createOrganization(s.ctx)
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Nil(org)
 			} else {
-				org, err = createOrganization(s.ctx)
-				if tc.expectedError {
-					s.Require().Error(err)
-					s.Empty(org)
-				} else {
-					s.Require().NoError(err)
-					s.Equal(tc.expectedOrg.Name, org.Name)
-					s.Equal(tc.expectedOrg.Slug, org.Slug)
-				}
+				s.Require().NoError(err)
+				s.Require().NotNil(org)
+				s.Equal(tc.expectedOrg.Name, org.Name)
+				s.Equal(tc.expectedOrg.Slug, org.Slug)
 			}
 		})
 	}
@@ -2172,7 +2236,6 @@ func (s *ForgeTestSuite) TestGetInput() {
 			// Save original stdin
 			oldStdin := os.Stdin
 			defer func() { os.Stdin = oldStdin }()
-
 			// Set stdin to our test file
 			os.Stdin = tmpfile
 
