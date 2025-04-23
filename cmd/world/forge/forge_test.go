@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,13 +23,14 @@ import (
 )
 
 var (
-	originalGenerateKey  = generateKey
-	originalOpenBrowser  = openBrowser
-	originalGetInput     = getInput
-	originalGetConfigDir = globalconfig.GetConfigDir
-	originalGetCtxConfig = getCurrentConfigWithContext
-	tempDir              string
-	knownProjects        = []globalconfig.KnownProject{
+	originalGenerateKey      = generateKey
+	originalOpenBrowser      = openBrowser
+	originalGetInput         = getInput
+	originalGetConfigDir     = globalconfig.GetConfigDir
+	originalGetCtxConfig     = getCurrentConfigWithContext
+	originalIdentifyProvider = identifyProvider
+	tempDir                  string
+	knownProjects            = []globalconfig.KnownProject{
 		{
 			ProjectID:      "test-project-id",
 			RepoURL:        "https://github.com/Argus-Labs/world-cli",
@@ -40,11 +42,12 @@ var (
 
 type ForgeTestSuite struct {
 	suite.Suite
-	server *httptest.Server
-	ctx    context.Context
+	server     *httptest.Server
+	ctx        context.Context
+	mockAPIURL string
 }
 
-func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care about cylomatic complexity
+func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop,gocyclo // test, don't care about cylomatic complexity
 	s.ctx = context.Background()
 
 	// Create test server on port 8001
@@ -56,7 +59,23 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care abou
 		Listener: listener,
 		Config: &http.Server{
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch r.URL.Path {
+				path := r.URL.Path
+
+				// Handle Git provider API endpoints first
+				switch {
+				case strings.Contains(path, "/repos/"):
+					s.handleGitHubAPI(w, r)
+					return
+				case strings.Contains(path, "/projects/"):
+					s.handleGitLabAPI(w, r)
+					return
+				case strings.Contains(path, "/repositories/"):
+					s.handleBitbucketAPI(w, r)
+					return
+				}
+
+				// Handle other API endpoints
+				switch path {
 				case "/api/organization":
 					s.handleOrganizationList(w, r)
 				case "/api/organization/empty-org-id":
@@ -122,6 +141,27 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care abou
 		},
 	}
 	s.server.Start()
+	s.mockAPIURL = fmt.Sprintf("http://localhost:%d", s.server.Listener.Addr().(*net.TCPAddr).Port)
+
+	// Override API base URLs for testing
+	identifyProvider = func(repoURL string) (string, string, error) {
+		parsedURL, err := url.Parse(repoURL)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid URL: %w", err)
+		}
+
+		host := parsedURL.Host
+		switch {
+		case strings.Contains(host, "github.com"):
+			return "GitHub", s.mockAPIURL, nil
+		case strings.Contains(host, "gitlab.com"):
+			return "GitLab", s.mockAPIURL, nil
+		case strings.Contains(host, "bitbucket.org"):
+			return "Bitbucket", s.mockAPIURL, nil
+		default:
+			return "Unknown", "", fmt.Errorf("unknown provider: %s", host)
+		}
+	}
 
 	// Set max attempts to 3 for login tests
 	maxLoginAttempts = 3
@@ -153,6 +193,7 @@ func (s *ForgeTestSuite) TearDownTest() {
 
 	// Restore original functions
 	globalconfig.GetConfigDir = originalGetConfigDir
+	identifyProvider = originalIdentifyProvider
 }
 
 func (s *ForgeTestSuite) handleInvite(w http.ResponseWriter, _ *http.Request) {
@@ -508,6 +549,33 @@ func (s *ForgeTestSuite) writeJSONString(w http.ResponseWriter, data string) {
 	w.Header().Set("Content-Type", "application/json")
 	_, err := w.Write([]byte(data))
 	s.Require().NoError(err)
+}
+
+// handleGitHubAPI handles GitHub API mock responses.
+func (s *ForgeTestSuite) handleGitHubAPI(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(r.URL.Path, "private") && r.Header.Get("Authorization") != "token valid-token" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	s.writeJSON(w, map[string]interface{}{"data": "success"})
+}
+
+// handleGitLabAPI handles GitLab API mock responses.
+func (s *ForgeTestSuite) handleGitLabAPI(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(r.URL.Path, "private") && r.Header.Get("Private-Token") != "valid-token" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	s.writeJSON(w, map[string]interface{}{"data": "success"})
+}
+
+// handleBitbucketAPI handles Bitbucket API mock responses.
+func (s *ForgeTestSuite) handleBitbucketAPI(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(r.URL.Path, "private") && r.Header.Get("Authorization") != "Bearer valid-token" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	s.writeJSON(w, map[string]interface{}{"data": "success"})
 }
 
 func (s *ForgeTestSuite) TestGetSelectedOrganization() {
@@ -1164,22 +1232,58 @@ func (s *ForgeTestSuite) TestValidateRepoToken() {
 		expectedError bool
 	}{
 		{
-			name:          "Success - Valid GitHub repo and token",
+			name:          "Success - Public GitHub repo without token",
 			repoURL:       "https://github.com/Argus-Labs/starter-game-template",
 			token:         "",
 			expectedError: false,
 		},
 		{
-			name:          "Success - Valid GitLab repo and token",
+			name:          "Success - Private GitHub repo with token",
+			repoURL:       "https://github.com/test/private-repo",
+			token:         "valid-token",
+			expectedError: false,
+		},
+		{
+			name:          "Success - Public GitLab repo without token",
 			repoURL:       "https://gitlab.com/gitlab-org/gitlab.git",
 			token:         "",
 			expectedError: false,
 		},
 		{
-			name:          "Success - Valid Bitbucket repo and token",
+			name:          "Success - Private GitLab repo with token",
+			repoURL:       "https://gitlab.com/private/repo.git",
+			token:         "valid-token",
+			expectedError: false,
+		},
+		{
+			name:          "Success - Public Bitbucket repo without token",
 			repoURL:       "https://bitbucket.org/fargo3d/public.git",
 			token:         "",
 			expectedError: false,
+		},
+		{
+			name:          "Success - Private Bitbucket repo with token",
+			repoURL:       "https://bitbucket.org/private/repo.git",
+			token:         "valid-token",
+			expectedError: false,
+		},
+		{
+			name:          "Error - Private GitHub repo without token",
+			repoURL:       "https://github.com/test/private-repo",
+			token:         "",
+			expectedError: true,
+		},
+		{
+			name:          "Error - Private GitLab repo without token",
+			repoURL:       "https://gitlab.com/private/repo.git",
+			token:         "",
+			expectedError: true,
+		},
+		{
+			name:          "Error - Private Bitbucket repo without token",
+			repoURL:       "https://bitbucket.org/private/repo.git",
+			token:         "",
+			expectedError: true,
 		},
 		{
 			name:          "Error - Invalid repo URL",

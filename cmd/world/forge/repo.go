@@ -2,6 +2,7 @@ package forge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,7 +12,7 @@ import (
 )
 
 // identifyProvider determines the Git provider based on the URL's host.
-func identifyProvider(repoURL string) (string, string, error) {
+var identifyProvider = func(repoURL string) (string, string, error) {
 	parsedURL, err := url.Parse(repoURL)
 	if err != nil {
 		return "", "", fmt.Errorf("invalid URL: %w", err)
@@ -20,11 +21,11 @@ func identifyProvider(repoURL string) (string, string, error) {
 	host := parsedURL.Host
 	switch {
 	case strings.Contains(host, "github.com"):
-		return "GitHub", "https://api.github.com", nil
+		return "GitHub", "https://api.github.com", nil //nolint:goconst // test, don't care about constant
 	case strings.Contains(host, "gitlab.com"):
-		return "GitLab", "https://gitlab.com/api/v4", nil
+		return "GitLab", "https://gitlab.com/api/v4", nil //nolint:goconst // test, don't care about constant
 	case strings.Contains(host, "bitbucket.org"):
-		return "Bitbucket", "https://api.bitbucket.org/2.0", nil
+		return "Bitbucket", "https://api.bitbucket.org/2.0", nil //nolint:goconst // test, don't care about constant
 	default:
 		return "Unknown", "", fmt.Errorf("unknown provider: %s", host)
 	}
@@ -61,7 +62,7 @@ func validateRepoPath(_ context.Context, _, _, path string) error {
 	return nil
 }
 
-// validateGitHub validates the token and repository for GitHub.
+// validateGitHub validates the repository for GitHub, first trying public access.
 func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the owner and repo name from the URL
 	parts := strings.Split(repoURL, "/")
@@ -74,15 +75,10 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	// Construct the API request URL
 	apiURL := fmt.Sprintf("%s/repos/%s/%s", apiBaseURL, owner, repo)
 
-	// Make the API request
+	// First try accessing the repo without a token (public access)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return err
-	}
-
-	// Only set authorization header if token is provided
-	if token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 	}
 
 	client := &http.Client{}
@@ -92,14 +88,38 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	}
 	defer resp.Body.Close()
 
+	// If public access works, return success
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("✅ GitHub repository and token validation successful!")
+		fmt.Println("✅ GitHub repository is public and accessible!")
+		return nil
+	}
+
+	// If public access fails and no token provided, return error
+	if token == "" {
+		return errors.New("repository is not publicly accessible, please provide an access token")
+	}
+
+	// Try again with the token
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Println("✅ GitHub repository access validated with token!")
 		return nil
 	}
 	return fmt.Errorf("GitHub validation failed: %s", resp.Status)
 }
 
-// validateGitLab validates the token and repository for GitLab.
+// validateGitLab validates the repository for GitLab, first trying public access.
 func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the project path from the URL
 	parts := strings.Split(repoURL, "/")
@@ -111,15 +131,10 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	// Construct the API request URL
 	apiURL := fmt.Sprintf("%s/projects/%s", apiBaseURL, url.QueryEscape(projectPath))
 
-	// Make the API request
+	// First try accessing the repo without a token (public access)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return err
-	}
-
-	// Only set token header if token is provided
-	if token != "" {
-		req.Header.Set("Private-Token", token)
 	}
 
 	client := &http.Client{}
@@ -129,14 +144,38 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	}
 	defer resp.Body.Close()
 
+	// If public access works, return success
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("GitLab repository and token are valid!")
+		fmt.Println("✅ GitLab repository is public and accessible!")
+		return nil
+	}
+
+	// If public access fails and no token provided, return error
+	if token == "" {
+		return errors.New("repository is not publicly accessible, please provide an access token")
+	}
+
+	// Try again with the token
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Private-Token", token)
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Println("✅ GitLab repository access validated with token!")
 		return nil
 	}
 	return fmt.Errorf("GitLab validation failed: %s", resp.Status)
 }
 
-// validateBitbucket validates the token and repository for Bitbucket.
+// validateBitbucket validates the repository for Bitbucket, first trying public access.
 func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the workspace and repo slug from the URL
 	parts := strings.Split(repoURL, "/")
@@ -149,15 +188,10 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 	// Construct the API request URL
 	apiURL := fmt.Sprintf("%s/repositories/%s/%s", apiBaseURL, workspace, repoSlug)
 
-	// Make the API request
+	// First try accessing the repo without a token (public access)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return err
-	}
-
-	// Only set authorization header if token is provided
-	if token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 
 	client := &http.Client{}
@@ -167,8 +201,32 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 	}
 	defer resp.Body.Close()
 
+	// If public access works, return success
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("Bitbucket repository and token are valid!")
+		fmt.Println("✅ Bitbucket repository is public and accessible!")
+		return nil
+	}
+
+	// If public access fails and no token provided, return error
+	if token == "" {
+		return errors.New("repository is not publicly accessible, please provide an access token")
+	}
+
+	// Try again with the token
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Println("✅ Bitbucket repository access validated with token!")
 		return nil
 	}
 	return fmt.Errorf("bitbucket validation failed: %s", resp.Status)
