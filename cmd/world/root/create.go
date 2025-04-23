@@ -34,7 +34,7 @@ func NewLogCmd(log string) tea.Cmd {
 // Bubble Tea Model //
 //////////////////////
 
-type WorldCreateModel struct { //nolint:decoder
+type WorldCreateModel struct { //nolint:structcheck
 	logs             []string
 	steps            steps.Model
 	projectNameInput textinput.Model
