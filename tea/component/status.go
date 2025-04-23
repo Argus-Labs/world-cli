@@ -64,7 +64,7 @@ func (s *StatusObject) GetStatusMessage(spinnerModel *spinner.Model) string {
 	return finalString
 }
 
-type StatusCollection struct { //nolint:decorder
+type StatusCollection struct { //nolint:decoder
 	Style             lipgloss.Style
 	Spinner           spinner.Model
 	Statuses          []*StatusObject
