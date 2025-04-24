@@ -298,12 +298,8 @@ func createProject(ctx context.Context) (*project, error) {
 }
 
 func (p *project) inputProjectName(ctx context.Context) error {
-	fmt.Println("\n  Project Name Configuration")
-	fmt.Println("=================================")
-	fmt.Println("\nProject name requirements:")
-	fmt.Println("  • Must not be empty")
-	fmt.Printf("  • Maximum length: %d characters\n", MaxProjectNameLen)
-	fmt.Println("  • Cannot contain: < > : \" / \\ | ? *")
+	fmt.Println("\n   Project Name Configuration")
+	fmt.Println("================================")
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -363,7 +359,7 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 				p.Slug = CreateSlugFromName(p.Name, minLength, maxLength)
 			}
 
-			slug := getInput("\n\nSlug", p.Slug)
+			slug := getInput("\nSlug", p.Slug)
 
 			// Validate slug
 			var err error
@@ -396,12 +392,17 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 				continue
 			}
 
-			repoToken := p.promptForRepoToken()
-			repoToken = p.processRepoToken(repoToken)
-
+			// Try to access the repo with public token
+			repoToken := ""
 			if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
-				fmt.Printf("Error: %v\n", err)
-				continue
+				// If the repo is private, we need to get a token
+				repoToken = p.promptForRepoToken()
+				repoToken = p.processRepoToken(repoToken)
+
+				if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
+					fmt.Printf("❌ Error: %v\n", err)
+					continue
+				}
 			}
 
 			p.RepoURL = repoURL
@@ -413,7 +414,7 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 
 func (p *project) promptForRepoURL() string {
 	fmt.Printf("\n  Repository URL Configuration")
-	fmt.Printf("\n============================")
+	fmt.Printf("\n================================")
 	repoURL := getInput("\nEnter Repository URL", p.RepoURL)
 
 	return repoURL
@@ -431,7 +432,6 @@ func (p *project) validateRepoURL(repoURL string) error {
 	return nil
 }
 
-// TODO: this needs some cleanup, no need to ask for token for public repos
 func (p *project) promptForRepoToken() string {
 	if p.update {
 		fmt.Printf("\n  Update Repository Access Token\n")
@@ -440,12 +440,6 @@ func (p *project) promptForRepoToken() string {
 		fmt.Printf("• Press Enter to keep existing token\n")
 		fmt.Printf("• Type 'public' for public repositories\n")
 		fmt.Printf("• Enter new token for private repositories\n")
-	} else {
-		fmt.Printf("\n   Repository Access Token\n")
-		fmt.Printf("=============================\n")
-		fmt.Printf("\nEnter token (options):\n")
-		fmt.Printf("• Type 'public' for public repositories\n")
-		fmt.Printf("• Enter token for private repositories\n")
 	}
 	repoToken := getInput("\nEnter Token", p.RepoToken)
 
@@ -453,10 +447,11 @@ func (p *project) promptForRepoToken() string {
 }
 
 func (p *project) processRepoToken(repoToken string) string {
+	// During update, empty input means keep existing token
 	if repoToken == "" && p.update {
 		return p.RepoToken
 	}
-	if repoToken == "public" {
+	if strings.ToLower(repoToken) == "public" {
 		return ""
 	}
 	return repoToken
@@ -472,7 +467,7 @@ func (p *project) inputRepoPath(ctx context.Context) {
 		} else {
 			fmt.Printf("\n  Set Repository Cardinal Path\n")
 		}
-		fmt.Printf("============================\n")
+		fmt.Printf("================================\n")
 		repoPath = getInput("\nEnter Repository Cardinal Path", p.RepoPath)
 
 		// strip off any leading slash

@@ -1911,21 +1911,21 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
-				lastPrompt := ""
-				nextToLastPrompt := ""
 				getInput = func(prompt string, defaultVal string) string {
 					fmt.Printf("%s [%s]: ", prompt, defaultVal)
-					if prompt == lastPrompt || prompt == nextToLastPrompt {
-						panic(eris.Errorf("Input %d Failed", inputIndex))
+
+					if inputIndex >= len(tc.inputs) {
+						panic(fmt.Errorf("Input %d Failed", inputIndex))
 					}
-					nextToLastPrompt = lastPrompt
-					lastPrompt = prompt
+
 					input := tc.inputs[inputIndex]
+					inputIndex++
+
 					if input == "" {
 						input = defaultVal
 					}
+
 					fmt.Printf("%s\n", input)
-					inputIndex++
 					return input
 				}
 				defer func() { getInput = originalGetInput }()
