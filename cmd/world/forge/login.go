@@ -122,16 +122,25 @@ func handleKnownRepoConfig(ctx context.Context, config *globalconfig.GlobalConfi
 }
 
 func handleNewRepoConfig(ctx context.Context, config *globalconfig.GlobalConfig) error {
+	flow := organizationFlow{
+		ShouldPromptForProject: false,
+	}
+
 	// Handle organization selection
-	orgID, err := handleOrganizationSelection(ctx, config.OrganizationID)
+	err := flow.handleOrganizationSelection(ctx, config.OrganizationID)
 	if err != nil {
-		orgID = ""
+		flow.Organization.ID = ""
 	}
 
 	// Save orgID to config
-	config.OrganizationID = orgID
+	config.OrganizationID = flow.Organization.ID
 	if err := globalconfig.SaveGlobalConfig(*config); err != nil {
 		return eris.Wrap(err, "Failed to save organization information")
+	}
+
+	// If no orgID then we can't continue
+	if flow.Organization.ID == "" {
+		return nil
 	}
 
 	// Handle project selection

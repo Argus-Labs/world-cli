@@ -142,11 +142,14 @@ are organized within organizations.`,
 			if !checkLogin() {
 				return nil
 			}
-			org, err := selectOrganization(cmd.Context())
+			flow := organizationFlow{
+				ShouldPromptForProject: true,
+			}
+			err := flow.selectOrganization(cmd.Context())
 			if err != nil {
 				return eris.Wrap(err, "Failed to select organization")
 			}
-			fmt.Println("Switched to organization: ", org.Name)
+			fmt.Println("Switched to organization: ", flow.Organization.Name)
 			return nil
 		},
 	}

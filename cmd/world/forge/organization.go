@@ -29,6 +29,11 @@ type createOrgRequest struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
+type organizationFlow struct {
+	Organization           organization
+	ShouldPromptForProject bool
+}
+
 func showOrganizationList(ctx context.Context) error {
 	organization, err := getSelectedOrganization(ctx)
 	if err != nil {
@@ -102,28 +107,30 @@ func getListOfOrganizations(ctx context.Context) ([]organization, error) {
 	return *orgs, nil
 }
 
-func selectOrganization(ctx context.Context) (organization, error) {
+func (flow *organizationFlow) selectOrganization(ctx context.Context) error {
 	orgs, err := getListOfOrganizations(ctx)
 	if err != nil {
-		return organization{}, eris.Wrap(err, "Failed to get organizations")
+		return eris.Wrap(err, "Failed to get organizations")
 	}
 
 	if len(orgs) == 0 {
 		printNoOrganizations()
-		return organization{}, nil
+		return nil
 	}
 
-	selectedOrg, err := promptForOrganization(ctx, orgs)
+	flow.Organization, err = promptForOrganization(ctx, orgs)
 	if err != nil {
-		return organization{}, err
+		return err
 	}
 
-	err = handleProjectConfig(ctx)
-	if err != nil {
-		return organization{}, err
+	if flow.ShouldPromptForProject {
+		err = handleProjectConfig(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
-	return selectedOrg, nil
+	return nil
 }
 
 func promptForOrganization(ctx context.Context, orgs []organization) (organization, error) {
@@ -131,7 +138,7 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 	fmt.Println("\n   Available Organizations")
 	fmt.Println("=============================")
 	for i, org := range orgs {
-		fmt.Printf("  %d. %s\n    └─ Slug: %s\n", i+1, org.Name, org.Slug)
+		fmt.Printf("  %d. %s\n     └─ Slug: %s\n", i+1, org.Name, org.Slug)
 	}
 
 	// Get user input
@@ -410,39 +417,41 @@ func getRoleInput(allowNone bool) string {
 }
 
 // handleOrganizationSelection manages the organization selection logic.
-func handleOrganizationSelection(ctx context.Context, orgID string) (string, error) {
+func (flow *organizationFlow) handleOrganizationSelection(ctx context.Context, orgID string) error {
 	orgs, err := getListOfOrganizations(ctx)
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to get orgs")
+		return eris.Wrap(err, "Failed to get orgs")
 	}
 
 	switch numOrgs := len(orgs); {
 	case numOrgs == 1:
-		return orgs[0].ID, nil
+		flow.Organization = orgs[0]
+		return nil
 	case numOrgs > 1:
-		return handleMultipleOrgs(ctx, orgID, orgs)
+		return flow.handleMultipleOrgs(ctx, orgID, orgs)
 	default:
-		return handleNoOrgs(ctx)
+		return flow.handleNoOrgs(ctx)
 	}
 }
 
 // handleMultipleOrgs handles the case when there are multiple organizations.
-func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) (string, error) {
+func (flow *organizationFlow) handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) error {
 	for _, org := range orgs {
 		if org.ID == orgID {
-			return orgID, nil
+			flow.Organization = org
+			return nil
 		}
 	}
 
-	org, err := selectOrganization(ctx)
+	err := flow.selectOrganization(ctx)
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to select organization")
+		return eris.Wrap(err, "Failed to select organization")
 	}
-	return org.ID, nil
+	return nil
 }
 
 // handleNoOrgs handles the case when there are no organizations.
-func handleNoOrgs(ctx context.Context) (string, error) {
+func (flow *organizationFlow) handleNoOrgs(ctx context.Context) error {
 	for redo := true; redo; {
 		// Confirmation prompt
 		confirmation := getInput("\nYou don't have any organizations. Create a new one now? (Y/n)", "n")
@@ -454,7 +463,7 @@ func handleNoOrgs(ctx context.Context) (string, error) {
 			fmt.Println("You need to enter Y (uppercase) to confirm creation")
 		case "n":
 			fmt.Println("❌ Organization creation canceled")
-			return "", nil
+			return nil
 		default:
 			fmt.Println("❌ Invalid input")
 		}
@@ -462,7 +471,8 @@ func handleNoOrgs(ctx context.Context) (string, error) {
 
 	org, err := createOrganization(ctx)
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to create organization")
+		return eris.Wrap(err, "Failed to create organization")
 	}
-	return org.ID, nil
+	flow.Organization = *org
+	return nil
 }

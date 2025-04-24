@@ -1486,15 +1486,18 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 				}
 				defer func() { getInput = originalGetInput }()
 
-				org, err := selectOrganization(s.ctx)
+				flow := organizationFlow{
+					ShouldPromptForProject: true,
+				}
+				err = flow.selectOrganization(s.ctx)
 				if tc.expectedError {
 					s.Require().Error(err)
-					s.Empty(org)
+					s.Empty(flow.Organization)
 				} else {
 					s.Require().NoError(err)
-					s.Equal("test-org-id", org.ID)
-					s.Equal("Test Org", org.Name)
-					s.Equal("testo", org.Slug)
+					s.Equal("test-org-id", flow.Organization.ID)
+					s.Equal("Test Org", flow.Organization.Name)
+					s.Equal("testo", flow.Organization.Slug)
 				}
 			}
 		})
