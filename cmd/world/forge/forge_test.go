@@ -40,8 +40,9 @@ var (
 
 type ForgeTestSuite struct {
 	suite.Suite
-	server *httptest.Server
-	ctx    context.Context
+	server    *httptest.Server
+	ctx       context.Context
+	testToken string
 }
 
 func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care about cylomatic complexity
@@ -170,14 +171,36 @@ func (s *ForgeTestSuite) handleProjectLookup(w http.ResponseWriter, _ *http.Requ
 func (s *ForgeTestSuite) handleOrganizationList(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		orgs := []organization{
-			{
-				ID:   "test-org-id",
-				Name: "Test Org",
-				Slug: "testo",
-			},
+		switch s.testToken {
+		case "empty-list":
+			// Return empty list for no orgs test case
+			s.writeJSON(w, map[string]interface{}{"data": []organization{}})
+		case "multiple-orgs":
+			// Return multiple orgs for multiple orgs test case
+			orgs := []organization{
+				{
+					ID:   "test-org-id-1",
+					Name: "Test Org 1",
+					Slug: "testo1",
+				},
+				{
+					ID:   "test-org-id-2",
+					Name: "Test Org 2",
+					Slug: "testo2",
+				},
+			}
+			s.writeJSON(w, map[string]interface{}{"data": orgs})
+		default:
+			// Default case - single org
+			orgs := []organization{
+				{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "testo",
+				},
+			}
+			s.writeJSON(w, map[string]interface{}{"data": orgs})
 		}
-		s.writeJSON(w, map[string]interface{}{"data": orgs})
 	case http.MethodPost:
 		org := organization{
 			ID:   "test-org-id",
@@ -1213,6 +1236,8 @@ func (s *ForgeTestSuite) TestLogin() {
 		key           string
 		expectedError bool
 		mockConfig    func(ctx context.Context) (*globalconfig.GlobalConfig, error)
+		orgInputs     []string // New field for organization creation inputs
+		testToken     string
 	}{
 		{
 			name:          "Success - Valid login flow",
@@ -1236,10 +1261,30 @@ func (s *ForgeTestSuite) TestLogin() {
 			expectedError: true,
 			mockConfig:    GetCurrentConfigWithContext,
 		},
+		{
+			name:          "Success - Create org with uppercase Y",
+			key:           "valid-key",
+			expectedError: false,
+			mockConfig:    GetCurrentConfigWithContext,
+			orgInputs:     []string{"Y", "test", "testo", "https://test.com", "Y"},
+			testToken:     "empty-list", // Add this to test no orgs scenario
+		},
+		{
+			name:          "Success - Create org with lowercase y, bad input, cancel with n",
+			key:           "valid-key",
+			expectedError: false,
+			mockConfig:    GetCurrentConfigWithContext,
+			orgInputs:     []string{"y", "asdas", "n"},
+			testToken:     "empty-list", // Add this to test no orgs scenario
+		},
 	}
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
+			// Set the test token for this case
+			s.testToken = tc.testToken
+			defer func() { s.testToken = "" }()
+
 			// Mock key generation
 			generateKey = func() string { return tc.key }
 			defer func() { generateKey = originalGenerateKey }()
@@ -1250,6 +1295,22 @@ func (s *ForgeTestSuite) TestLogin() {
 
 			getCurrentConfigWithContext = tc.mockConfig
 			defer func() { getCurrentConfigWithContext = originalGetCtxConfig }()
+
+			// Mock organization creation inputs if provided
+			if len(tc.orgInputs) > 0 {
+				inputIndex := 0
+				originalGetInput := getInput
+				getInput = func(prompt string, defaultVal string) string {
+					if inputIndex >= len(tc.orgInputs) {
+						return defaultVal
+					}
+					input := tc.orgInputs[inputIndex]
+					inputIndex++
+					return input
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+
 			err := login(s.ctx)
 			if tc.expectedError {
 				s.Require().Error(err)

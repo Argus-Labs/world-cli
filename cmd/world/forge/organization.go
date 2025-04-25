@@ -261,13 +261,13 @@ func createOrganization(ctx context.Context) (*organization, error) {
 		}
 
 		// Get confirmation
-		for redo := false; !redo; {
+		for redo := true; redo; {
 			confirm := getInput("\nCreate organization with these details? (Y/n)", "n")
 			switch confirm {
 			case "Y":
 				return createOrgRequestAndSave(ctx, orgName, orgSlug, orgAvatarURL)
 			case "n":
-				redo = true
+				redo = false
 			default:
 				fmt.Println("\nPlease enter capital 'Y' to confirm, 'n' to cancel, or 'redo' to start over")
 			}
@@ -443,14 +443,20 @@ func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) 
 
 // handleNoOrgs handles the case when there are no organizations.
 func handleNoOrgs(ctx context.Context) (string, error) {
-	// Confirmation prompt
-	confirmation := getInput("You don't have any organizations. Create a new one now? (Y/n)", "n")
+	for redo := true; redo; {
+		// Confirmation prompt
+		confirmation := getInput("\nYou don't have any organizations. Create a new one now? (Y/n)", "n")
 
-	if confirmation != "Y" {
-		if confirmation == "y" {
+		switch confirmation {
+		case "Y":
+			redo = false
+		case "y":
 			fmt.Println("You need to enter Y (uppercase) to confirm creation")
-			fmt.Println("\n❌ Organization creation canceled")
+		case "n":
+			fmt.Println("❌ Organization creation canceled")
 			return "", nil
+		default:
+			fmt.Println("❌ Invalid input")
 		}
 	}
 
