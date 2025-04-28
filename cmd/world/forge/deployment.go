@@ -55,9 +55,20 @@ func deployment(ctx context.Context, deployType string) error {
 		return nil
 	}
 
+	// Ensure organization is not nil before this call.
 	if projectID == "" {
-		printNoSelectedProject()
-		return nil
+		org, err := getSelectedOrganization(ctx)
+		if err != nil {
+			return eris.Wrap(err, "Failed on deployment to get selected organization")
+		}
+
+		fmt.Printf("Deploy requires a project created in World Forge: %s\n", org.Name)
+
+		pID, err := createProject(ctx)
+		if err != nil {
+			return eris.Wrap(err, "Failed on deployment to create project")
+		}
+		projectID = pID.ID
 	}
 
 	// preview deployment

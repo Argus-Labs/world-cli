@@ -734,10 +734,11 @@ func (s *ForgeTestSuite) TestIsAlphanumeric() {
 
 func (s *ForgeTestSuite) TestDeploy() {
 	testCases := []struct {
-		name          string
-		config        globalconfig.GlobalConfig
-		input         string
-		expectedError bool
+		name                string
+		config              globalconfig.GlobalConfig
+		inputs              []string     // For name, slug, repoURL, repoToken
+		regionSelectActions []tea.KeyMsg // Simulate region selection
+		expectedError       bool
 	}{
 		{
 			name: "Success - Valid deployment",
@@ -749,7 +750,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 				},
 				KnownProjects: knownProjects,
 			},
-			input:         "Y",
+			inputs:        []string{"Y"},
 			expectedError: false,
 		},
 		{
@@ -761,7 +762,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 					Token: "test-token",
 				},
 			},
-			input:         "Y",
+			inputs:        []string{"Y"},
 			expectedError: true,
 		},
 		{
@@ -773,7 +774,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 					Token: "test-token",
 				},
 			},
-			input:         "Y",
+			inputs:        []string{"Y"},
 			expectedError: true,
 		},
 		{
@@ -787,14 +788,28 @@ func (s *ForgeTestSuite) TestDeploy() {
 			expectedError: false,
 		},
 		{
-			name: "Error - No project selected",
+			name: "Success - No project selected (creates new project)",
 			config: globalconfig.GlobalConfig{
 				OrganizationID: "test-org-id",
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
 			},
-			input:         "Y",
+			inputs: []string{
+				"Test Project", // Project name
+				"test_project", // Project slug
+				"https://github.com/argus-labs/starter-game-template", // Repository URL
+				"",   // No token needed for public repo
+				"",   // Default repo path
+				"10", // Tick rate
+				"n",  // No Discord
+				"n",  // No Slack
+				"",   // No avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
+			},
 			expectedError: false,
 		},
 	}
@@ -804,11 +819,46 @@ func (s *ForgeTestSuite) TestDeploy() {
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
 
+			inputIndex := 0
 			getInput = func(prompt string, defaultVal string) string {
-				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
-				return tc.input
+				if inputIndex >= len(tc.inputs) {
+					return defaultVal
+				}
+				input := tc.inputs[inputIndex]
+				inputIndex++
+				fmt.Printf("%s [%s]: %s", prompt, defaultVal, input)
+				return input
 			}
 			defer func() { getInput = originalGetInput }()
+
+			// Simulate region selection
+			regionSelector = tea.NewProgram(
+				multiselect.InitialMultiselectModel(
+					s.ctx,
+					[]string{"us-east-1", "us-west-1", "eu-west-1"},
+				),
+				tea.WithInput(nil),
+			)
+			if regionSelector == nil {
+				print("failed to create region selector")
+			}
+			defer func() { regionSelector = nil }()
+
+			// Send region select actions
+			go func() {
+				// wait for 1s to make sure the program is initialized
+				time.Sleep(1 * time.Second)
+				for _, action := range tc.regionSelectActions {
+					// send action to region selector
+					if regionSelector != nil {
+						regionSelector.Send(action)
+						// wait for 100ms to make sure the action is processed
+						time.Sleep(100 * time.Millisecond)
+					} else {
+						print("region selector is nil")
+					}
+				}
+			}()
 
 			err = deployment(s.ctx, "deploy")
 			if tc.expectedError {
@@ -940,7 +990,7 @@ func (s *ForgeTestSuite) TestDestroy() {
 				},
 				KnownProjects: knownProjects,
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: false,
 		},
 		{
@@ -965,7 +1015,7 @@ func (s *ForgeTestSuite) TestDestroy() {
 					Token: "test-token",
 				},
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: true,
 		},
 		{
@@ -976,7 +1026,7 @@ func (s *ForgeTestSuite) TestDestroy() {
 					Token: "test-token",
 				},
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: false,
 		},
 		{
@@ -986,8 +1036,9 @@ func (s *ForgeTestSuite) TestDestroy() {
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
+				KnownProjects: knownProjects,
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: false,
 		},
 	}
@@ -1030,7 +1081,7 @@ func (s *ForgeTestSuite) TestReset() {
 					Token: "test-token",
 				},
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: false,
 		},
 		{
@@ -1042,7 +1093,7 @@ func (s *ForgeTestSuite) TestReset() {
 					Token: "test-token",
 				},
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: true,
 		},
 		{
@@ -1054,7 +1105,7 @@ func (s *ForgeTestSuite) TestReset() {
 					Token: "test-token",
 				},
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: true,
 		},
 		{
@@ -1065,7 +1116,7 @@ func (s *ForgeTestSuite) TestReset() {
 					Token: "test-token",
 				},
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: false,
 		},
 		{
@@ -1075,8 +1126,9 @@ func (s *ForgeTestSuite) TestReset() {
 				Credential: globalconfig.Credential{
 					Token: "test-token",
 				},
+				KnownProjects: knownProjects,
 			},
-			input:         "y",
+			input:         "Y",
 			expectedError: false,
 		},
 	}

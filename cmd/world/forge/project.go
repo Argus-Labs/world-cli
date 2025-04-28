@@ -400,7 +400,7 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 				repoToken = p.processRepoToken(repoToken)
 
 				if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
-					fmt.Printf("❌ Error: %v\n", err)
+					fmt.Printf("\n❌ Error: %v\n", err)
 					continue
 				}
 			}
@@ -991,7 +991,7 @@ func handleMultipleProjects(ctx context.Context, projectID string, projects []pr
 func handleNoProjects(ctx context.Context) (string, error) {
 	// Confirmation prompt
 	confirmation := getInput(
-		"You don't have any projects in this organization. Do you want to create a new project now? (y/n)",
+		"\nYou don't have any projects in this organization. Do you want to create a new project now? (y/n)",
 		"y",
 	)
 
