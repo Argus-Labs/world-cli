@@ -448,7 +448,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 		}
 
 		// Parse response
-		proj, err := parseResponse[project](body)
+		proj, err := parseResponse[Project](body)
 		if err != nil && err.Error() != "Missing data field in response" {
 			// missing data field in response just means nothing was found
 			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)

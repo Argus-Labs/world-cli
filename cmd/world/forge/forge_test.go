@@ -97,7 +97,7 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care abou
 				case "/api/user/login/get-token":
 					s.handleGetToken(w, r)
 				case "/api/organization/empty-org-id/project":
-					s.writeJSON(w, map[string]interface{}{"data": []project{}})
+					s.writeJSON(w, map[string]interface{}{"data": []Project{}})
 				case "/api/deployment/test-project-id":
 					s.handleStatusDeployed(w, r)
 				case "/api/deployment/failedbuild-project-id":
@@ -245,7 +245,7 @@ func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Reques
 		err = json.Unmarshal(parsedBody, &body)
 		s.Require().NoError(err)
 
-		proj := project{
+		proj := Project{
 			ID:      "test-project-id",
 			OrgID:   "test-org-id",
 			Name:    body["name"].(string),
@@ -256,7 +256,7 @@ func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	projects := []project{
+	projects := []Project{
 		{
 			ID:      "test-project-id",
 			OrgID:   "test-org-id",
@@ -269,7 +269,7 @@ func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *ForgeTestSuite) handleProjectGet(w http.ResponseWriter, _ *http.Request) {
-	proj := project{
+	proj := Project{
 		ID:      "test-project-id",
 		OrgID:   "test-org-id",
 		Name:    "Test Project",
@@ -602,7 +602,7 @@ func (s *ForgeTestSuite) TestGetSelectedProject() {
 		name          string
 		config        globalconfig.GlobalConfig
 		expectedError bool
-		expectedProj  *project
+		expectedProj  *Project
 	}{
 		{
 			name: "Success - Valid project",
@@ -614,7 +614,7 @@ func (s *ForgeTestSuite) TestGetSelectedProject() {
 				},
 			},
 			expectedError: false,
-			expectedProj: &project{
+			expectedProj: &Project{
 				ID:      "test-project-id",
 				OrgID:   "test-org-id",
 				Name:    "Test Project",
@@ -1863,7 +1863,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 		regionSelectActions []tea.KeyMsg // Simulate region selection
 		expectInputFail     int
 		expectedError       bool
-		expectedProject     *project
+		expectedProject     *Project
 	}{
 		{
 			name: "Success - Public repo default slug",
@@ -1895,7 +1895,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			},
 			expectInputFail: 0,
 			expectedError:   false,
-			expectedProject: &project{
+			expectedProject: &Project{
 				Name: "Test Project",
 				Slug: "test_project",
 			},
@@ -1930,7 +1930,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			},
 			expectInputFail: 0,
 			expectedError:   false,
-			expectedProject: &project{
+			expectedProject: &Project{
 				Name: "Test Project",
 				Slug: "testp",
 			},
@@ -2073,13 +2073,13 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				}
 			}()
 
-			var prj *project
+			var prj *Project = &Project{}
 			if tc.expectInputFail > 0 { //nolint: nestif // it's a test
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					prj, err = createProject(s.ctx)
+					err = prj.CreateProject(s.ctx)
 				})
 			} else {
-				prj, err = createProject(s.ctx)
+				err = prj.CreateProject(s.ctx)
 				if tc.expectedError {
 					s.Error(err)
 				} else {
@@ -2101,7 +2101,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 		config        globalconfig.GlobalConfig
 		input         string
 		expectedError bool
-		expectedProj  *project
+		expectedProj  *Project
 	}{
 		{
 			name: "Success - Valid project selection",
@@ -2113,7 +2113,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			},
 			input:         "1",
 			expectedError: false,
-			expectedProj: &project{
+			expectedProj: &Project{
 				ID:      "test-project-id",
 				OrgID:   "test-org-id",
 				Name:    "Test Project",

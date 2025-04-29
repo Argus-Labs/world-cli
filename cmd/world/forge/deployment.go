@@ -64,11 +64,12 @@ func deployment(ctx context.Context, deployType string) error {
 
 		fmt.Printf("Deploy requires a project created in World Forge: %s\n", org.Name)
 
-		pID, err := createProject(ctx)
+		project := &Project{}
+		err = project.CreateProject(ctx)
 		if err != nil {
 			return eris.Wrap(err, "Failed on deployment to create project")
 		}
-		projectID = pID.ID
+		projectID = project.ID
 	}
 
 	// preview deployment

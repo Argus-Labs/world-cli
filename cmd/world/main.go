@@ -11,6 +11,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/globalconfig"
 	_ "pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/ports"
 	"pkg.world.dev/world-cli/telemetry"
 )
 
@@ -31,6 +32,9 @@ func init() {
 	globalconfig.Env = env
 
 	forge.InitForge()
+
+	// Initialize the project service
+	ports.ProjectService = &forge.Project{}
 }
 
 func main() {

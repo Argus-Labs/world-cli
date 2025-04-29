@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/ports"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
@@ -19,7 +20,9 @@ const MaxProjectNameLen = 50
 
 var regionSelector *tea.Program
 
-type project struct {
+var _ ports.ForgeProject = &Project{}
+
+type Project struct {
 	ID           string        `json:"id"`
 	OrgID        string        `json:"org_id"`
 	OwnerID      string        `json:"owner_id"`
@@ -102,46 +105,46 @@ func showProjectList(ctx context.Context) error {
 }
 
 // Get selected project.
-func getSelectedProject(ctx context.Context) (project, error) {
+func getSelectedProject(ctx context.Context) (Project, error) {
 	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
-		return project{}, eris.Wrap(err, "Failed to get organization")
+		return Project{}, eris.Wrap(err, "Failed to get organization")
 	}
 
 	if selectedOrg.ID == "" {
 		printNoSelectedOrganization()
-		return project{}, nil
+		return Project{}, nil
 	}
 
 	// Get config
 	config, err := GetCurrentConfigWithContext(ctx)
 	if err != nil {
-		return project{}, eris.Wrap(err, "Failed to get config")
+		return Project{}, eris.Wrap(err, "Failed to get config")
 	}
 
 	if config.ProjectID == "" {
 		printNoSelectedProject()
-		return project{}, nil
+		return Project{}, nil
 	}
 
 	// Send request
 	projectURL := fmt.Sprintf(projectURLPattern, baseURL, selectedOrg.ID) + "/" + config.ProjectID
 	body, err := sendRequest(ctx, http.MethodGet, projectURL, nil)
 	if err != nil {
-		return project{}, eris.Wrap(err, "Failed to get project")
+		return Project{}, eris.Wrap(err, "Failed to get project")
 	}
 
 	// Parse response
-	prj, err := parseResponse[project](body)
+	prj, err := parseResponse[Project](body)
 	if err != nil {
-		return project{}, eris.Wrap(err, "Failed to parse project")
+		return Project{}, eris.Wrap(err, "Failed to parse project")
 	}
 
 	return *prj, nil
 }
 
 // Get list of projects in selected organization.
-func getListOfProjects(ctx context.Context) ([]project, error) {
+func getListOfProjects(ctx context.Context) ([]Project, error) {
 	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get organization")
@@ -158,7 +161,7 @@ func getListOfProjects(ctx context.Context) ([]project, error) {
 		return nil, eris.Wrap(err, "Failed to get projects")
 	}
 
-	projects, err := parseResponse[[]project](body)
+	projects, err := parseResponse[[]Project](body)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to parse projects")
 	}
@@ -213,52 +216,52 @@ func getListOfAvailableRegionsForProject(ctx context.Context) ([]string, error) 
 	return getListRegions(ctx, selectedProj.OrgID, selectedProj.ID)
 }
 
-func createProject(ctx context.Context) (*project, error) {
+func (p *Project) CreateProject(ctx context.Context) error {
 	regions, err := getListOfAvailableRegionsForNewProject(ctx)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get available regions")
+		return eris.Wrap(err, "Failed to get available regions")
 	}
 	// fmt.Println(regions)
 
-	p := project{
-		update: false,
-	}
-	err = p.projectInput(ctx, regions)
+	project := &Project{}
+	project.update = false
+
+	err = project.projectInput(ctx, regions)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get project input")
+		return eris.Wrap(err, "Failed to get project input")
 	}
 
 	// Send request
-	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID)
+	url := fmt.Sprintf(projectURLPattern, baseURL, project.OrgID)
 	body, err := sendRequest(ctx, http.MethodPost, url, map[string]interface{}{
-		"name":       p.Name,
-		"slug":       p.Slug,
-		"repo_url":   p.RepoURL,
-		"repo_token": p.RepoToken,
-		"repo_path":  p.RepoPath,
-		"org_id":     p.OrgID,
-		"config":     p.Config,
-		"avatar_url": p.AvatarURL,
+		"name":       project.Name,
+		"slug":       project.Slug,
+		"repo_url":   project.RepoURL,
+		"repo_token": project.RepoToken,
+		"repo_path":  project.RepoPath,
+		"org_id":     project.OrgID,
+		"config":     project.Config,
+		"avatar_url": project.AvatarURL,
 	})
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to create project")
+		return eris.Wrap(err, "Failed to create project")
 	}
 
-	prj, err := parseResponse[project](body)
+	prj, err := parseResponse[Project](body)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to parse response")
+		return eris.Wrap(err, "Failed to parse response")
 	}
 
 	// Select project
 	config, err := GetCurrentConfig()
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get config")
+		return eris.Wrap(err, "Failed to get config")
 	}
 	config.ProjectID = prj.ID
 
 	err = globalconfig.SaveGlobalConfig(config)
 	if err != nil {
-		return nil, eris.Wrap(err, "Failed to select project")
+		return eris.Wrap(err, "Failed to select project")
 	}
 
 	fmt.Printf("\nProject '%s' created successfully!\n", prj.Name)
@@ -294,10 +297,11 @@ func createProject(ctx context.Context) (*project, error) {
 	fmt.Printf("    %s\n", prj.DeploySecret)
 	fmt.Printf("Note: Deploy Secret will not be shown again. Save it now in a secure location.\n")
 
-	return prj, nil
+	*p = *prj
+	return nil
 }
 
-func (p *project) inputProjectName(ctx context.Context) error {
+func (p *Project) inputProjectName(ctx context.Context) error {
 	fmt.Println("\n   Project Name Configuration")
 	fmt.Println("================================")
 
@@ -316,12 +320,12 @@ func (p *project) inputProjectName(ctx context.Context) error {
 	}
 }
 
-func (p *project) promptForName() string {
+func (p *Project) promptForName() string {
 	name := getInput("\nEnter project name", p.Name)
 	return name
 }
 
-func (p *project) validateAndSetName(name string) error {
+func (p *Project) validateAndSetName(name string) error {
 	if name == "" {
 		fmt.Printf("\n❌ Error: Project name cannot be empty\n")
 		return eris.New("empty name")
@@ -343,7 +347,7 @@ func (p *project) validateAndSetName(name string) error {
 	return nil
 }
 
-func (p *project) inputProjectSlug(ctx context.Context) error {
+func (p *Project) inputProjectSlug(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -375,7 +379,7 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 	}
 }
 
-func (p *project) inputRepoURLAndToken(ctx context.Context) error {
+func (p *Project) inputRepoURLAndToken(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -412,7 +416,7 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 	}
 }
 
-func (p *project) promptForRepoURL() string {
+func (p *Project) promptForRepoURL() string {
 	fmt.Printf("\n  Repository URL Configuration")
 	fmt.Printf("\n================================")
 	repoURL := getInput("\nEnter Repository URL", p.RepoURL)
@@ -420,7 +424,7 @@ func (p *project) promptForRepoURL() string {
 	return repoURL
 }
 
-func (p *project) validateRepoURL(repoURL string) error {
+func (p *Project) validateRepoURL(repoURL string) error {
 	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
 		fmt.Printf("\n❌ Error: Invalid Repository URL Format\n")
 		fmt.Printf("========================================\n")
@@ -432,7 +436,7 @@ func (p *project) validateRepoURL(repoURL string) error {
 	return nil
 }
 
-func (p *project) promptForRepoToken() string {
+func (p *Project) promptForRepoToken() string {
 	if p.update {
 		fmt.Printf("\n  Update Repository Access Token\n")
 		fmt.Printf("==================================\n")
@@ -446,7 +450,7 @@ func (p *project) promptForRepoToken() string {
 	return repoToken
 }
 
-func (p *project) processRepoToken(repoToken string) string {
+func (p *Project) processRepoToken(repoToken string) string {
 	// During update, empty input means keep existing token
 	if repoToken == "" && p.update {
 		return p.RepoToken
@@ -457,7 +461,7 @@ func (p *project) processRepoToken(repoToken string) string {
 	return repoToken
 }
 
-func (p *project) inputRepoPath(ctx context.Context) {
+func (p *Project) inputRepoPath(ctx context.Context) {
 	// Get repository Path
 	var repoPath string
 	for {
@@ -486,7 +490,7 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	}
 }
 
-func selectProject(ctx context.Context) (*project, error) {
+func selectProject(ctx context.Context) (*Project, error) {
 	config, err := getCurrentConfigWithContext(ctx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Could not get config")
@@ -688,7 +692,7 @@ func updateProject(ctx context.Context) error {
 	return nil
 }
 
-func (p *project) projectInput(ctx context.Context, regions []string) error {
+func (p *Project) projectInput(ctx context.Context, regions []string) error {
 	// Get organization
 	org, err := getSelectedOrganization(ctx)
 	if err != nil {
@@ -752,7 +756,7 @@ func (p *project) projectInput(ctx context.Context, regions []string) error {
 
 // inputTickRate prompts the user to enter a tick rate value (default is 1)
 // and validates that it is a valid number. Returns error after max attempts or context cancellation.
-func (p *project) inputTickRate(ctx context.Context) error {
+func (p *Project) inputTickRate(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -784,7 +788,7 @@ func (p *project) inputTickRate(ctx context.Context) error {
 }
 
 // configureNotifications handles configuration for both Discord and Slack notifications.
-func (p *project) configureNotifications(ctx context.Context, config notificationConfig) (bool, string, string, error) {
+func (p *Project) configureNotifications(ctx context.Context, config notificationConfig) (bool, string, string, error) {
 	enabled, err := p.promptEnableNotifications(ctx, config.name)
 	if err != nil {
 		return false, "", "", err
@@ -810,7 +814,7 @@ func (p *project) configureNotifications(ctx context.Context, config notificatio
 	return true, token, channelID, nil
 }
 
-func (p *project) promptEnableNotifications(ctx context.Context, serviceName string) (bool, error) {
+func (p *Project) promptEnableNotifications(ctx context.Context, serviceName string) (bool, error) {
 	select {
 	case <-ctx.Done():
 		return false, ctx.Err()
@@ -830,7 +834,7 @@ func (p *project) promptEnableNotifications(ctx context.Context, serviceName str
 	}
 }
 
-func (p *project) promptForToken(ctx context.Context, config notificationConfig) (string, error) {
+func (p *Project) promptForToken(ctx context.Context, config notificationConfig) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
@@ -841,7 +845,7 @@ func (p *project) promptForToken(ctx context.Context, config notificationConfig)
 	}
 }
 
-func (p *project) promptForChannelID(ctx context.Context, serviceName string) (string, error) {
+func (p *Project) promptForChannelID(ctx context.Context, serviceName string) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
@@ -852,7 +856,7 @@ func (p *project) promptForChannelID(ctx context.Context, serviceName string) (s
 	}
 }
 
-func (p *project) showSuccessMessage(ctx context.Context, serviceName string) error {
+func (p *Project) showSuccessMessage(ctx context.Context, serviceName string) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -862,7 +866,7 @@ func (p *project) showSuccessMessage(ctx context.Context, serviceName string) er
 	}
 }
 
-func (p *project) inputDiscord(ctx context.Context) error {
+func (p *Project) inputDiscord(ctx context.Context) error {
 	enabled, token, channelID, err := p.configureNotifications(ctx, notificationConfig{
 		name:      "Discord",
 		tokenName: "bot token",
@@ -879,7 +883,7 @@ func (p *project) inputDiscord(ctx context.Context) error {
 	return nil
 }
 
-func (p *project) inputSlack(ctx context.Context) error {
+func (p *Project) inputSlack(ctx context.Context) error {
 	enabled, token, channelID, err := p.configureNotifications(ctx, notificationConfig{
 		name:      "Slack",
 		tokenName: "token",
@@ -899,7 +903,7 @@ func (p *project) inputSlack(ctx context.Context) error {
 // chooseRegion displays an interactive menu for selecting one or more AWS regions
 // using the bubbletea TUI library. Returns error if no regions selected after max attempts
 // or context cancellation.
-func (p *project) chooseRegion(ctx context.Context, regions []string) error {
+func (p *Project) chooseRegion(ctx context.Context, regions []string) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -919,7 +923,7 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 	}
 }
 
-func (p *project) runRegionSelector(ctx context.Context, regions []string) error {
+func (p *Project) runRegionSelector(ctx context.Context, regions []string) error {
 	if regionSelector == nil {
 		if p.update {
 			selectedRegions := make(map[int]bool)
@@ -973,7 +977,7 @@ func handleProjectSelection(ctx context.Context, projectID string) (string, erro
 }
 
 // handleMultipleProjects handles the case when there are multiple projects.
-func handleMultipleProjects(ctx context.Context, projectID string, projects []project) (string, error) {
+func handleMultipleProjects(ctx context.Context, projectID string, projects []Project) (string, error) {
 	for _, project := range projects {
 		if project.ID == projectID {
 			return projectID, nil
@@ -1000,14 +1004,15 @@ func handleNoProjects(ctx context.Context) (string, error) {
 		return "", nil
 	}
 
-	project, err := createProject(ctx)
+	project := &Project{}
+	err := project.CreateProject(ctx)
 	if err != nil {
 		return "", eris.Wrap(err, "Failed to create project")
 	}
 	return project.ID, nil
 }
 
-func (p *project) inputAvatarURL(ctx context.Context) error {
+func (p *Project) inputAvatarURL(ctx context.Context) error {
 	fmt.Println("\n  Avatar URL Configuration")
 	fmt.Println("================================")
 

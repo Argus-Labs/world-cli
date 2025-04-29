@@ -257,7 +257,9 @@ All settings can be updated later using the 'update' command.`,
 			if !checkLogin() {
 				return nil
 			}
-			_, err := createProject(cmd.Context())
+
+			project := &Project{}
+			err := project.CreateProject(cmd.Context())
 			if err != nil {
 				return eris.Wrap(err, "Failed to create project")
 			}
