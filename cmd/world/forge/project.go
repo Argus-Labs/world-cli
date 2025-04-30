@@ -905,7 +905,11 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			err := p.runRegionSelector(ctx, regions)
+			aborted, err := p.runRegionSelector(ctx, regions)
+			if aborted {
+				fmt.Printf("\n❌ %v\n", err)
+				return err
+			}
 			if err != nil {
 				fmt.Printf("\n❌ Error: %v\n", err)
 				continue
@@ -913,13 +917,13 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 			if len(p.Config.Region) > 0 {
 				return nil
 			}
-			fmt.Println("\n⚠️  Error: At least one region must be selected")
+			fmt.Printf("\n⚠️  Error: At least one region must be selected")
 			fmt.Printf("\n🔄 Please try again\n")
 		}
 	}
 }
 
-func (p *project) runRegionSelector(ctx context.Context, regions []string) error {
+func (p *project) runRegionSelector(ctx context.Context, regions []string) (bool, error) {
 	if regionSelector == nil {
 		if p.update {
 			selectedRegions := make(map[int]bool)
@@ -934,13 +938,17 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) error
 		}
 	}
 	m, err := regionSelector.Run()
+	regionSelector = nil
 	if err != nil {
-		return eris.Wrap(err, "failed to run region selector")
+		return false, eris.Wrap(err, "failed to run region selector")
 	}
 
 	model, ok := m.(multiselect.Model)
 	if !ok {
-		return eris.New("failed to get selected regions")
+		return false, eris.New("failed to get selected regions")
+	}
+	if model.Aborted {
+		return true, eris.New("Region selection aborted")
 	}
 
 	var selectedRegions []string
@@ -952,7 +960,7 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) error
 
 	p.Config.Region = selectedRegions
 
-	return nil
+	return false, nil
 }
 
 // handleProjectSelection manages the project selection logic.

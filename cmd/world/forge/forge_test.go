@@ -1936,6 +1936,29 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			},
 		},
 		{
+			name: "Abort - user presses q in region selector",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+				KnownProjects: knownProjects,
+			},
+			inputs: []string{
+				"Test Project", // name
+				"",             // take default slug
+				"https://github.com/argus-labs/starter-game-template", // repoURL
+				"",   // repoToken (empty for public repo)
+				"",   // repoPath
+				"10", // tick rate
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeyRunes, Runes: []rune{'q'}, Alt: false}, // simulate pressing 'q'
+			},
+			expectedError:   true,
+			expectedProject: nil,
+		},
+		{
 			name: "Error - private repo bad token",
 			config: globalconfig.GlobalConfig{
 				OrganizationID: "test-org-id",

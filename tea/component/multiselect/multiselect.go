@@ -13,6 +13,7 @@ type Model struct {
 	Cursor   int
 	Selected map[int]bool
 	Ctx      context.Context
+	Aborted  bool
 }
 
 // InitialMultiselectModel creates a new Model with the given items and context.
@@ -58,6 +59,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				return m, tea.Quit
 			case "q", "ctrl+c":
+				m.Aborted = true
 				return m, tea.Quit
 			}
 		}
@@ -67,7 +69,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the current state of the region selection menu.
 func (m Model) View() string {
-	s := "Choose regions (space to select/unselect, enter when done):\n\n"
+	s := "\nChoose regions (space to select/unselect, enter when done):\n\n"
 
 	for i, item := range m.Items {
 		cursor := " "
