@@ -1,7 +1,10 @@
 package root
 
 import (
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -10,6 +13,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
+	"pkg.world.dev/world-cli/common/tomlutil"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -54,6 +58,7 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 	createSteps.Steps = []steps.Entry{
 		steps.NewStep("Set game shard name"),
 		steps.NewStep("Initialize game shard with starter-game-template"),
+		steps.NewStep("Update world.toml configuration"),
 		steps.NewStep("Set up Cardinal Editor"),
 	}
 
@@ -83,6 +88,8 @@ func (m WorldCreateModel) Init() tea.Cmd {
 }
 
 // Update handles incoming events and updates the model accordingly.
+//
+//nolint:funlen // Long function, but it's ok because it's structured
 func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teacmd.CheckDependenciesMsg:
@@ -124,6 +131,17 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 		if msg.Index == 2 { //nolint:gomnd
+			err := updateWorldToml(m.projectNameInput.Value())
+			teaCmd := func() tea.Msg {
+				return teacmd.GitCloneFinishMsg{Err: err}
+			}
+
+			return m, tea.Sequence(
+				NewLogCmd(style.ChevronIcon.Render()+"Updating world.toml configuration..."),
+				teaCmd,
+			)
+		}
+		if msg.Index == 3 { //nolint:gomnd
 			err := editor.SetupCardinalEditor(".", "cardinal")
 			teaCmd := func() tea.Msg {
 				return teacmd.GitCloneFinishMsg{Err: err}
@@ -157,8 +175,6 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logs = append(m.logs, style.CrossIcon.Render()+msg.Err.Error())
 			return m, m.steps.CompleteStepCmd(msg.Err)
 		}
-
-		// Otherwise, mark step as completed
 		return m, m.steps.CompleteStepCmd(nil)
 
 	default:
@@ -187,6 +203,27 @@ func (m WorldCreateModel) View() string {
 	output += "\n\n"
 
 	return output
+}
+
+func updateWorldToml(projectName string) error {
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	// Get absolute path to world.toml - it should be at the root of the cloned project
+	absProjectDir := filepath.Join(cwd, "world.toml")
+
+	// Update the forge section with the project name
+	updates := map[string]interface{}{
+		"PROJECT_NAME": projectName,
+	}
+	if err := tomlutil.UpdateTOMLSection(absProjectDir, "forge", updates); err != nil {
+		return fmt.Errorf("failed to update world.toml: %w", err)
+	}
+
+	return nil
 }
 
 /////////////////
