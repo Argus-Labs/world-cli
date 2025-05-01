@@ -6,14 +6,16 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
 const (
 	// For local development.
 	worldForgeBaseURLLocal = "http://localhost:8001"
 
-	// For production.
+	// For Argus Dev.
+	worldForgeBaseURLDev = "https://forge.world.dev"
+
+	// For Argus Production.
 	worldForgeBaseURLProd = "https://forge.world.dev"
 )
 
@@ -36,6 +38,9 @@ var (
 
 	// Set this to true if you want to use ArgusID for default login.
 	argusid = false
+
+	// Env is the environment to use for the Forge API.
+	Env = "PROD"
 )
 
 var ForgeCmd = &cobra.Command{
@@ -51,7 +56,7 @@ allowing you to organize teams, manage deployments, and monitor your game servic
 		}
 
 		// Get user info
-		globalConfig, err := GetCurrentConfig()
+		globalConfig, err := GetCurrentForgeConfig()
 		if err != nil {
 			return eris.Wrap(err, "Failed to get user")
 		}
@@ -384,7 +389,7 @@ with production-grade infrastructure and settings.`,
 	}
 )
 
-func InitForge() {
+func InitForge(env string) {
 	// Set argusid flag
 	if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "argusid" {
 		argusid = true
@@ -393,10 +398,13 @@ func InitForge() {
 	}
 
 	// Set base URL
-	if globalconfig.Env == "PROD" {
-		baseURL = worldForgeBaseURLProd
-	} else {
+	switch env {
+	case "PROD":
 		baseURL = worldForgeBaseURLLocal
+	case "DEV":
+		baseURL = worldForgeBaseURLDev
+	default:
+		baseURL = worldForgeBaseURLProd
 	}
 
 	// Set login URL

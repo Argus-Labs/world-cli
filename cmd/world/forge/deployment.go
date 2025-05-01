@@ -42,7 +42,7 @@ type deploymentPreview struct {
 
 // Deployment a project.
 func deployment(ctx context.Context, deployType string) error {
-	globalConfig, err := GetCurrentConfigWithContext(ctx)
+	globalConfig, err := GetCurrentForgeConfigWithContext(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get global config")
 	}
@@ -113,7 +113,7 @@ func deployment(ctx context.Context, deployType string) error {
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
 func status(ctx context.Context) error {
-	globalConfig, err := GetCurrentConfigWithContext(ctx)
+	globalConfig, err := GetCurrentForgeConfigWithContext(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get global config")
 	}

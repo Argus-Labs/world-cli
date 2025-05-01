@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rotisserie/eris"
 	"golang.org/x/mod/modfile"
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 )
 
@@ -91,7 +91,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 		os.RemoveAll(targetEditorDir)
 	}
 
-	configDir, err := globalconfig.GetConfigDir()
+	configDir, err := config.GetCLIConfigDir()
 	if err != nil {
 		return err
 	}
