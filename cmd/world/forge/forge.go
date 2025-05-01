@@ -6,6 +6,7 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
+	forgeinterface "pkg.world.dev/world-cli/common/forge"
 	"pkg.world.dev/world-cli/common/globalconfig"
 )
 
@@ -429,6 +430,9 @@ func InitForge() {
 	// Add deployment commands
 	deployCmd.Flags().Bool("force", false,
 		"Start the deploy even if one is currently running. Cancels current running deploy.")
+
+	// Initialize the global service
+	forgeinterface.Service = &Service{}
 }
 
 func AddCommands(rootCmd *cobra.Command) {
