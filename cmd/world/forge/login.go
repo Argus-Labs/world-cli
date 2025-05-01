@@ -191,7 +191,7 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 	}()
 
 	// spinnnerCompleted will send a message to the spinner to stop and quit.
-	spinnnerCompleted := func(didLogin bool) {
+	spinnerCompleted := func(didLogin bool) {
 		if !spinnerExited.Load() {
 			p.Send(teaspinner.LogMsg("spin: completed"))
 			p.Send(tea.Quit())
@@ -209,7 +209,7 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 	for attempts < maxLoginAttempts {
 		select {
 		case <-ctx.Done():
-			spinnnerCompleted(false)
+			spinnerCompleted(false)
 			return ctx.Err()
 		case <-time.After(3 * time.Second):
 			log.Debug().Int("attempt", attempts).Msg("login attempt")
@@ -229,16 +229,16 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 					attempts++
 					continue
 				}
-				spinnnerCompleted(false)
+				spinnerCompleted(false)
 				return err
 			}
 
-			spinnnerCompleted(true)
+			spinnerCompleted(true)
 			return nil
 		}
 	}
 
-	spinnnerCompleted(false)
+	spinnerCompleted(false)
 	return eris.New("max attempts reached while waiting for token")
 }
 
