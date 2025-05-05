@@ -113,7 +113,7 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	}
 
 	// Get config
-	config, err := GetCurrentForgeConfigWithContext(ctx)
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get config")
 	}
@@ -486,7 +486,7 @@ func (p *project) inputRepoPath(ctx context.Context) {
 }
 
 func selectProject(ctx context.Context) (*project, error) {
-	config, err := getCurrentForgeConfigWithContext(ctx)
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Could not get config")
 	}
@@ -535,7 +535,7 @@ func selectProject(ctx context.Context) (*project, error) {
 		selectedProject := projects[num-1]
 
 		config.ProjectID = selectedProject.ID
-		err = SaveForgeConfig(*config)
+		err = SaveForgeConfig(config)
 		if err != nil {
 			return nil, eris.Wrap(err, "Failed to save project")
 		}

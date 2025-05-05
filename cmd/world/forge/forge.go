@@ -322,7 +322,11 @@ is already in progress.`,
 			if force {
 				deployType = "forceDeploy"
 			}
-			return deployment(cmd.Context(), deployType)
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, deployType)
 		},
 	}
 
@@ -338,7 +342,11 @@ if needed.`,
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "destroy")
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, "destroy")
 		},
 	}
 
@@ -353,7 +361,11 @@ allowing you to start fresh without redeploying the entire infrastructure.`,
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "reset")
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, "reset")
 		},
 	}
 
@@ -368,7 +380,11 @@ including running instances, regions, and any ongoing deployment operations.`,
 			if !checkLogin() {
 				return nil
 			}
-			return status(cmd.Context())
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return status(cmd.Context(), cmdState)
 		},
 	}
 
@@ -384,7 +400,11 @@ with production-grade infrastructure and settings.`,
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "promote")
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, "promote")
 		},
 	}
 )
@@ -399,7 +419,7 @@ func InitForge(env string) {
 
 	// Set base URL
 	switch env {
-	case "PROD":
+	case "LOCAL":
 		baseURL = worldForgeBaseURLLocal
 	case "DEV":
 		baseURL = worldForgeBaseURLDev

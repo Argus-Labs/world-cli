@@ -38,7 +38,10 @@ type tokenStruct struct {
 
 // login will open browser to login and save the token to the config file.
 func login(ctx context.Context) error {
-	config := initializeConfig(ctx)
+	config, err := GetCurrentForgeConfig()
+	if err != nil {
+		return eris.Wrap(err, "Failed to get current forge config")
+	}
 
 	// Perform login based on authentication method
 	if err := performLogin(ctx, &config); err != nil {
@@ -54,14 +57,6 @@ func login(ctx context.Context) error {
 	displayLoginSuccess(config)
 
 	return nil
-}
-
-func initializeConfig(ctx context.Context) ForgeConfig {
-	existingConfig, err := getCurrentForgeConfigWithContext(ctx)
-	if err != nil {
-		return ForgeConfig{}
-	}
-	return *existingConfig
 }
 
 func performLogin(ctx context.Context, config *ForgeConfig) error {

@@ -1,11 +1,7 @@
 package forge
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,55 +81,6 @@ func GetCurrentForgeConfig() (ForgeConfig, error) {
 	return currConfig, err
 }
 
-func GetCurrentForgeConfigWithContext(ctx context.Context) (*ForgeConfig, error) {
-	currConfig, err := GetCurrentForgeConfig()
-	// we don't care if we got an error, we will just return it later
-	if !currConfig.CurrRepoKnown && //nolint: nestif // not too complex
-		currConfig.Credential.Token != "" &&
-		currConfig.CurrRepoURL != "" {
-		// needed a lookup, and have a token (so we should be logged in)
-		// get the organization and project from the project's URL and path
-		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
-			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
-		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
-		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo",
-				currConfig.CurrRepoURL, "and path", currConfig.CurrRepoPath, ":", err)
-			return &currConfig, err
-		}
-
-		// Parse response
-		proj, err := parseResponse[project](body)
-		if err != nil && err.Error() != "Missing data field in response" {
-			// missing data field in response just means nothing was found
-			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
-			return &currConfig, err
-		}
-		if proj != nil {
-			// add to list of known projects
-			currConfig.KnownProjects = append(currConfig.KnownProjects, KnownProject{
-				ProjectID:      proj.ID,
-				OrganizationID: proj.OrgID,
-				RepoURL:        proj.RepoURL,
-				RepoPath:       proj.RepoPath,
-				ProjectName:    proj.Name,
-			})
-			// save the config, but don't change the default ProjectID & OrgID
-			err := SaveForgeConfig(currConfig)
-			if err != nil {
-				fmt.Println("⚠️ Warning: Failed to save config: ", err)
-				// continue on, this is not fatal
-			}
-			// now return a copy of it with the looked up ProjectID and OrganizationID set
-			currConfig.ProjectID = proj.ID
-			currConfig.OrganizationID = proj.OrgID
-			currConfig.CurrProjectName = proj.Name
-			currConfig.CurrRepoKnown = true
-		}
-	}
-	return &currConfig, err
-}
-
 func FindGitPathAndURL() (string, string, error) {
 	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
 	if err != nil {
@@ -172,6 +119,3 @@ func SaveForgeConfig(globalConfig ForgeConfig) error {
 
 	return os.WriteFile(configFile, configJSON, 0600)
 }
-
-// this is a variable so we can change it for testing login.
-var getCurrentForgeConfigWithContext = GetCurrentForgeConfigWithContext

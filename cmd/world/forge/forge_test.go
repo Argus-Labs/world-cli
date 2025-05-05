@@ -26,7 +26,6 @@ var (
 	originalOpenBrowser  = openBrowser
 	originalGetInput     = getInput
 	originalGetConfigDir = config.GetCLIConfigDir
-	originalGetCtxConfig = getCurrentForgeConfigWithContext
 	tempDir              string
 	knownProjects        = []KnownProject{
 		{
@@ -41,13 +40,12 @@ var (
 type ForgeTestSuite struct {
 	suite.Suite
 	server    *httptest.Server
-	ctx       context.Context
 	testToken string
+	ctx       context.Context
 }
 
 func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care about cylomatic complexity
 	s.ctx = context.Background()
-
 	// Create test server on port 8001
 	listener, err := net.Listen("tcp", ":8001")
 	s.Require().NoError(err)
@@ -735,31 +733,38 @@ func (s *ForgeTestSuite) TestIsAlphanumeric() {
 func (s *ForgeTestSuite) TestDeploy() {
 	testCases := []struct {
 		name                string
-		config              ForgeConfig
+		state               *ForgeCommandState
 		inputs              []string     // For name, slug, repoURL, repoToken
 		regionSelectActions []tea.KeyMsg // Simulate region selection
 		expectedError       bool
 	}{
 		{
 			name: "Success - Valid deployment",
-			config: ForgeConfig{
-				OrganizationID: "test-org-id",
-				ProjectID:      "test-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Organization: &organization{
+					ID: "test-org-id",
 				},
-				KnownProjects: knownProjects,
+				Project: &project{
+					ID: "test-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
+				},
 			},
 			inputs:        []string{"Y"},
 			expectedError: false,
 		},
 		{
 			name: "Error - Invalid organization ID",
-			config: ForgeConfig{
-				OrganizationID: "invalid-org-id",
-				ProjectID:      "test-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Organization: &organization{
+					ID: "invalid-org-id",
+				},
+				Project: &project{
+					ID: "test-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			inputs:        []string{"Y"},
@@ -767,11 +772,15 @@ func (s *ForgeTestSuite) TestDeploy() {
 		},
 		{
 			name: "Error - Invalid project ID",
-			config: ForgeConfig{
-				OrganizationID: "test-org-id",
-				ProjectID:      "invalid-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Organization: &organization{
+					ID: "test-org-id",
+				},
+				Project: &project{
+					ID: "invalid-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			inputs:        []string{"Y"},
@@ -779,20 +788,24 @@ func (s *ForgeTestSuite) TestDeploy() {
 		},
 		{
 			name: "Error - No organization selected",
-			config: ForgeConfig{
-				ProjectID: "test-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "test-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Success - No project selected (creates new project)",
-			config: ForgeConfig{
-				OrganizationID: "test-org-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Organization: &organization{
+					ID: "test-org-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			inputs: []string{
@@ -816,9 +829,6 @@ func (s *ForgeTestSuite) TestDeploy() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			err := SaveForgeConfig(tc.config)
-			s.Require().NoError(err)
-
 			inputIndex := 0
 			getInput = func(prompt string, defaultVal string) string {
 				if inputIndex >= len(tc.inputs) {
@@ -860,7 +870,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 				}
 			}()
 
-			err = deployment(s.ctx, "deploy")
+			err := deployment(s.ctx, tc.state, "deploy")
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {
@@ -873,85 +883,101 @@ func (s *ForgeTestSuite) TestDeploy() {
 func (s *ForgeTestSuite) TestStatus() {
 	testCases := []struct {
 		name          string
-		config        ForgeConfig
+		state         *ForgeCommandState
 		expectedError bool
 	}{
 		{
 			name: "Success - Valid deployment",
-			config: ForgeConfig{
-				ProjectID: "test-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "test-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Success - Valid undeployed project",
-			config: ForgeConfig{
-				ProjectID: "undeployed-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "undeployed-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Success - Valid failed build project",
-			config: ForgeConfig{
-				ProjectID: "failedbuild-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "failedbuild-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Success - Valid destroyed project",
-			config: ForgeConfig{
-				ProjectID: "destroyed-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "destroyed-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Success - Valid reset project",
-			config: ForgeConfig{
-				ProjectID: "reset-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "reset-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Error - Invalid project ID",
-			config: ForgeConfig{
-				OrganizationID: "test-org-id",
-				ProjectID:      "invalid-project-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "invalid-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: true,
 		},
 		{
 			name: "Error - No organization selected",
-			config: ForgeConfig{
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Project: &project{
+					ID: "test-project-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
 		},
 		{
 			name: "Error - No project selected",
-			config: ForgeConfig{
-				OrganizationID: "test-org-id",
-				Credential: Credential{
-					Token: "test-token",
+			state: &ForgeCommandState{
+				Organization: &organization{
+					ID: "test-org-id",
+				},
+				User: &User{
+					ID: "test-user-id",
 				},
 			},
 			expectedError: false,
@@ -960,10 +986,7 @@ func (s *ForgeTestSuite) TestStatus() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			err := SaveForgeConfig(tc.config)
-			s.Require().NoError(err)
-
-			err = status(s.ctx)
+			err := status(s.ctx, tc.state)
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {
@@ -1055,7 +1078,8 @@ func (s *ForgeTestSuite) TestDestroy() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			err = deployment(s.ctx, "destroy")
+			cmdState := &ForgeCommandState{}
+			err = deployment(s.ctx, cmdState, "destroy")
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {
@@ -1145,7 +1169,8 @@ func (s *ForgeTestSuite) TestReset() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			err = deployment(s.ctx, "reset")
+			cmdState := &ForgeCommandState{}
+			err = deployment(s.ctx, cmdState, "reset")
 			if tc.expectedError {
 				s.Require().Error(err)
 			} else {
@@ -1287,7 +1312,6 @@ func (s *ForgeTestSuite) TestLogin() {
 		name          string
 		key           string
 		expectedError bool
-		mockConfig    func(ctx context.Context) (*ForgeConfig, error)
 		orgInputs     []string // New field for organization creation inputs
 		testToken     string
 	}{
@@ -1295,29 +1319,21 @@ func (s *ForgeTestSuite) TestLogin() {
 			name:          "Success - Valid login flow",
 			key:           "valid-key",
 			expectedError: false,
-			mockConfig:    GetCurrentForgeConfigWithContext,
 		},
 		{
 			name:          "Success - Known project",
 			key:           "valid-key",
 			expectedError: false,
-			mockConfig: func(ctx context.Context) (*ForgeConfig, error) {
-				cfg, err := GetCurrentForgeConfigWithContext(ctx)
-				cfg.CurrRepoKnown = true
-				return cfg, err
-			},
 		},
 		{
 			name:          "Error - Invalid key",
 			key:           "invalid-key",
 			expectedError: true,
-			mockConfig:    GetCurrentForgeConfigWithContext,
 		},
 		{
 			name:          "Success - Create org with uppercase Y",
 			key:           "valid-key",
 			expectedError: false,
-			mockConfig:    GetCurrentForgeConfigWithContext,
 			orgInputs:     []string{"Y", "test", "testo", "https://test.com", "Y"},
 			testToken:     "empty-list", // Add this to test no orgs scenario
 		},
@@ -1325,7 +1341,6 @@ func (s *ForgeTestSuite) TestLogin() {
 			name:          "Success - Create org with lowercase y, bad input, cancel with n",
 			key:           "valid-key",
 			expectedError: false,
-			mockConfig:    GetCurrentForgeConfigWithContext,
 			orgInputs:     []string{"y", "asdas", "n"},
 			testToken:     "empty-list", // Add this to test no orgs scenario
 		},
@@ -1344,9 +1359,6 @@ func (s *ForgeTestSuite) TestLogin() {
 			// Mock browser opening
 			openBrowser = func(_ string) error { return nil }
 			defer func() { openBrowser = originalOpenBrowser }()
-
-			getCurrentForgeConfigWithContext = tc.mockConfig
-			defer func() { getCurrentForgeConfigWithContext = originalGetCtxConfig }()
 
 			// Mock organization creation inputs if provided
 			if len(tc.orgInputs) > 0 {

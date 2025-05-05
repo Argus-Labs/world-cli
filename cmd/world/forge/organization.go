@@ -60,7 +60,7 @@ func showOrganizationList(ctx context.Context) error {
 
 func getSelectedOrganization(ctx context.Context) (organization, error) {
 	// Get config
-	config, err := GetCurrentForgeConfigWithContext(ctx)
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return organization{}, eris.Wrap(err, "Failed to get config")
 	}

@@ -41,14 +41,9 @@ type deploymentPreview struct {
 }
 
 // Deployment a project.
-func deployment(ctx context.Context, deployType string) error {
-	globalConfig, err := GetCurrentForgeConfigWithContext(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get global config")
-	}
-
-	projectID := globalConfig.ProjectID
-	organizationID := globalConfig.OrganizationID
+func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType string) error {
+	projectID := cmdState.Project.ID
+	organizationID := cmdState.Organization.ID
 
 	if organizationID == "" {
 		printNoSelectedOrganization()
@@ -72,7 +67,7 @@ func deployment(ctx context.Context, deployType string) error {
 	}
 
 	// preview deployment
-	err = previewDeployment(ctx, deployType, organizationID, projectID)
+	err := previewDeployment(ctx, deployType, organizationID, projectID)
 	if err != nil {
 		return eris.Wrap(err, "Failed to preview deployment")
 	}
@@ -112,12 +107,8 @@ func deployment(ctx context.Context, deployType string) error {
 }
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
-func status(ctx context.Context) error {
-	globalConfig, err := GetCurrentForgeConfigWithContext(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get global config")
-	}
-	projectID := globalConfig.ProjectID
+func status(ctx context.Context, cmdState *ForgeCommandState) error {
+	projectID := cmdState.Project.ID
 	if projectID == "" {
 		printNoSelectedProject()
 		return nil
