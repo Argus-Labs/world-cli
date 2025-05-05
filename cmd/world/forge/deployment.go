@@ -42,16 +42,19 @@ type deploymentPreview struct {
 
 // Deployment a project.
 func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType string) error {
-	projectID := cmdState.Project.ID
-	organizationID := cmdState.Organization.ID
-
-	if organizationID == "" {
+	if cmdState.Organization == nil || cmdState.Organization.ID == "" {
 		printNoSelectedOrganization()
 		return nil
 	}
+	organizationID := cmdState.Organization.ID
+
+	var projectID string
+	if cmdState.Project != nil && cmdState.Project.ID != "" {
+		projectID = cmdState.Project.ID
+	}
 
 	// Ensure organization is not nil before this call.
-	if projectID == "" {
+	if cmdState.Project == nil || projectID == "" {
 		org, err := getSelectedOrganization(ctx)
 		if err != nil {
 			return eris.Wrap(err, "Failed on deployment to get selected organization")
@@ -108,11 +111,11 @@ func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType str
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
 func status(ctx context.Context, cmdState *ForgeCommandState) error {
-	projectID := cmdState.Project.ID
-	if projectID == "" {
+	if cmdState.Project == nil || cmdState.Project.ID == "" {
 		printNoSelectedProject()
 		return nil
 	}
+	projectID := cmdState.Project.ID
 	// Get project details
 	prj, err := getSelectedProject(ctx)
 	if err != nil {
