@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/printer"
 	logsv1 "pkg.world.dev/world-cli/gen/logs/v1"
 	"pkg.world.dev/world-cli/gen/logs/v1/logsv1connect"
@@ -172,12 +171,12 @@ func createLogsClient(params *logParams) (
 		Region:           params.region,
 	})
 
-	globalConfig, err := globalconfig.GetGlobalConfig()
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, nil, eris.Wrap(err, "Failed to get global config")
 	}
 
-	token := globalConfig.Credential.Token
+	token := config.Credential.Token
 	if !argusid {
 		token = "Bearer " + token
 	}

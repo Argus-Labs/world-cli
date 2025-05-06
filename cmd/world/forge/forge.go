@@ -17,10 +17,13 @@ const (
 	worldForgeBaseURLDev = "https://forge.world.dev"
 
 	// For Argus Production.
-	worldForgeBaseURLProd = "https://forge.world.dev"
+	worldForgeBaseURLProd = "https://forge.world.dev" // TODO: change this to the actual RPC URL
+
+	// For local development.
+	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
 
 	// RPC Dev URL.
-	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
+	worldForgeRPCBaseURLDev = "https://rpc.world.dev"
 
 	// RPC Prod URL.
 	worldForgeRPCBaseURLProd = "https://rpc.world.dev" // TODO: change this to the actual RPC URL

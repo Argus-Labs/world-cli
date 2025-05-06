@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 // initFlow represents the initialization flow for the forge system.
@@ -165,11 +166,11 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		switch flow.requiredOrganization { //nolint:exhaustive // don't need to handle all cases
 		case NeedData, NeedIDOnly:
 			if err := flow.handleNeedOrgData(); err != nil {
-				return err
+				return &flow.State, err
 			}
 		case NeedExistingData, NeedExistingIDOnly:
 			if err := flow.handleNeedExistingOrgData(); err != nil {
-				return err
+				return &flow.State, err
 			}
 		}
 	}
@@ -231,7 +232,7 @@ func doRepoLookup(ctx context.Context, config *ForgeConfig) error {
 		// save the config, but don't change the default ProjectID & OrgID
 		err := SaveForgeConfig(*config)
 		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to save config: ", err)
+			printer.Notificationf("Warning: Failed to save config: %s", err)
 			// continue on, this is not fatal
 		}
 		// now return a copy of it with the looked up ProjectID and OrganizationID set

@@ -13,7 +13,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/tomlutil"
 	"pkg.world.dev/world-cli/tea/component/multiselect"

@@ -2071,9 +2071,9 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 		},
 		{
 			name: "Success - Project name from world.toml",
-			config: globalconfig.GlobalConfig{
+			config: ForgeConfig{
 				OrganizationID: "test-org-id",
-				Credential: globalconfig.Credential{
+				Credential: Credential{
 					Token: "test-token",
 				},
 				KnownProjects: knownProjects,
