@@ -3,6 +3,7 @@ module pkg.world.dev/world-cli
 go 1.24.0
 
 require (
+	connectrpc.com/connect v1.18.1
 	github.com/BurntSushi/toml v1.3.2
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
@@ -26,6 +27,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/vbauerster/mpb/v8 v8.8.2
 	golang.org/x/mod v0.17.0
+	google.golang.org/protobuf v1.34.2
 	gotest.tools/v3 v3.5.1
 )
 
@@ -70,7 +72,6 @@ require (
 	golang.org/x/net v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -15,11 +15,18 @@ const (
 
 	// For production.
 	worldForgeBaseURLProd = "https://forge.world.dev"
+
+	// RPC Dev URL
+	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
+
+	// RPC Prod URL
+	worldForgeRPCBaseURLProd = "https://rpc.world.dev" // TODO: change this to the actual RPC URL
 )
 
 var (
 	// baseUrl is the base URL for the Forge API.
 	baseURL string
+	rpcURL  string
 
 	// login url stuff.
 	loginURL    string
@@ -382,6 +389,29 @@ with production-grade infrastructure and settings.`,
 			return deployment(cmd.Context(), "promote")
 		},
 	}
+
+	logsCmd = &cobra.Command{
+		Use:   "logs",
+		Short: "Tail logs for a project",
+		Long: `Stream logs from your deployed project in real-time.
+
+This command connects to your project's deployment and displays logs as they are generated,
+allowing you to monitor application behavior and troubleshoot issues in real-time.`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			region, err := cmd.Flags().GetString("region")
+			if err != nil {
+				region = ""
+			}
+			env, err := cmd.Flags().GetString("env")
+			if err != nil {
+				env = ""
+			}
+			return tailLogs(cmd.Context(), region, env)
+		},
+	}
 )
 
 func InitForge() {
@@ -395,8 +425,10 @@ func InitForge() {
 	// Set base URL
 	if globalconfig.Env == "PROD" {
 		baseURL = worldForgeBaseURLProd
+		rpcURL = worldForgeRPCBaseURLProd
 	} else {
 		baseURL = worldForgeBaseURLLocal
+		rpcURL = worldForgeRPCBaseURLLocal
 	}
 
 	// Set login URL
@@ -429,6 +461,9 @@ func InitForge() {
 	// Add deployment commands
 	deployCmd.Flags().Bool("force", false,
 		"Start the deploy even if one is currently running. Cancels current running deploy.")
+
+	logsCmd.Flags().String("region", "", "The region to tail logs for.")
+	logsCmd.Flags().String("env", "", "The environment to tail logs for.")
 }
 
 func AddCommands(rootCmd *cobra.Command) {
@@ -441,7 +476,7 @@ func AddCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(promoteCmd)
 	rootCmd.AddCommand(resetCmd)
-
+	rootCmd.AddCommand(logsCmd)
 	// user commands
 	rootCmd.AddCommand(userCmd)
 
