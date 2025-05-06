@@ -448,7 +448,7 @@ allowing you to monitor application behavior and troubleshoot issues in real-tim
 	}
 )
 
-func InitForge(env string) {
+func InitForgeBase(env string) {
 	// Set argusid flag
 	if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "argusid" {
 		argusid = true
@@ -478,7 +478,9 @@ func InitForge(env string) {
 
 	// Set user URL
 	userURL = fmt.Sprintf("%s/api/user", baseURL)
+}
 
+func InitForgeCmds() {
 	// Add organization commands
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)

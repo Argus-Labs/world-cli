@@ -30,8 +30,8 @@ var (
 func EnvVersionInit() {
 	env, version := getEnvAndVersion()
 	root.AppVersion = version
-	// Initialize forge
-	forge.InitForge(env)
+	// Initialize forge base environment
+	forge.InitForgeBase(env)
 }
 
 func main() {
@@ -81,7 +81,7 @@ func main() {
 	// Initialize packages
 	evm.EvmInit()
 	cardinal.Init()
-	forge.InitForge()
+	forge.InitForgeCmds()
 	root.RootCmdInit()
 	root.Execute()
 }

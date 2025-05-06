@@ -3167,6 +3167,6 @@ func (s *ForgeTestSuite) TestAddKnownProject() {
 }
 
 func TestForgeSuite(t *testing.T) {
-	InitForge("LOCAL")
+	InitForgeBase("LOCAL")
 	suite.Run(t, new(ForgeTestSuite))
 }
