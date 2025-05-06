@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/tomlutil"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
@@ -306,9 +309,15 @@ func (p *project) inputProjectName(ctx context.Context) error {
 			return err
 		}
 
+		// Get project name from world.toml if it exists, fails silently
+		err := p.getForgeProjectNameFromWorldToml()
+		if err != nil {
+			p.Name = ""
+		}
+
 		name := p.promptForName()
 
-		err := p.validateAndSetName(name)
+		err = p.validateAndSetName(name)
 		if err == nil {
 			fmt.Printf("\n✅ Project name \"%s\" accepted!\n", name)
 			return nil
@@ -319,6 +328,34 @@ func (p *project) inputProjectName(ctx context.Context) error {
 func (p *project) promptForName() string {
 	name := getInput("\nEnter project name", p.Name)
 	return name
+}
+
+func (p *project) getForgeProjectNameFromWorldToml() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return eris.Wrap(err, "Failed to get current working directory")
+	}
+
+	absProjectDir := filepath.Join(cwd, "world.toml")
+
+	// Get the forge section from world.toml
+	forgeSection, err := tomlutil.GetTOMLSection(absProjectDir, "forge")
+	if err != nil {
+		return eris.Wrap(err, "Failed to read forge section from world.toml")
+	}
+	if forgeSection == nil {
+		return eris.New("forge section not found in world.toml")
+	}
+
+	projectName, ok := forgeSection["PROJECT_NAME"].(string)
+	if !ok {
+		return eris.New("PROJECT_NAME not found in forge section")
+	}
+
+	if err := p.validateAndSetName(projectName); err != nil {
+		return eris.Wrap(err, "invalid project name in world.toml")
+	}
+	return nil
 }
 
 func (p *project) validateAndSetName(name string) error {

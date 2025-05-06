@@ -1864,6 +1864,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 		expectInputFail     int
 		expectedError       bool
 		expectedProject     *project
+		setupWorldToml      bool // New field to indicate if we should create world.toml
 	}{
 		{
 			name: "Success - Public repo default slug",
@@ -2037,6 +2038,42 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			expectedError:   false,
 			expectedProject: nil,
 		},
+		{
+			name: "Success - Project name from world.toml",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+				KnownProjects: knownProjects,
+			},
+			inputs: []string{
+				"", // name (should be taken from world.toml)
+				"", // take default slug
+				"https://github.com/argus-labs/starter-game-template", // repoURL
+				"",                // repoToken (empty for public repo)
+				"",                // repoPath (empty for default root path of repo)
+				"10",              // tick rate
+				"Y",               // enable discord notifications
+				"test-token",      // discord token
+				"1234567890",      // discord channel ID
+				"Y",               // enable slack notifications
+				"test-token",      // slack token
+				"1234567890",      // slack channel ID
+				"http://test.com", // avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedProject: &project{
+				Name: "test-project-from-toml",
+				Slug: "test_project_from_toml",
+			},
+			setupWorldToml: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -2044,6 +2081,28 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			// Setup test config
 			err := globalconfig.SaveGlobalConfig(tc.config)
 			s.Require().NoError(err)
+
+			// Create temporary directory for world.toml if needed
+			if tc.setupWorldToml {
+				tmpDir, err := os.MkdirTemp("", "world-cli-test")
+				s.Require().NoError(err)
+				defer os.RemoveAll(tmpDir)
+
+				// Create world.toml with forge section
+				worldTomlPath := filepath.Join(tmpDir, "world.toml")
+				worldTomlContent := `[forge]
+PROJECT_NAME = "test-project-from-toml"
+`
+				err = os.WriteFile(worldTomlPath, []byte(worldTomlContent), 0644)
+				s.Require().NoError(err)
+
+				// Change to the temporary directory
+				oldDir, err := os.Getwd()
+				s.Require().NoError(err)
+				defer os.Chdir(oldDir)
+				err = os.Chdir(tmpDir)
+				s.Require().NoError(err)
+			}
 
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
