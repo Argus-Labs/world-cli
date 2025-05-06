@@ -2,6 +2,7 @@ package forge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -59,11 +60,13 @@ var (
 //	               including sending requests to the server if we are logged in. But if we aren't logged in and
 //	               don't have an existing org id already known via config or other means, it will fail.
 //
-// NOTE: we ALWAYS return the state, even if there is an error, so you can use it in your error handling
-func SetupForgeCommandState(cmd *cobra.Command,
+// NOTE: we ALWAYS return the state, even if there is an error, so you can use it in your error handling.
+func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic simplified as much as possible
+	cmd *cobra.Command,
 	loginReq LoginStepRequirement,
 	orgReq StepRequirement,
-	projectReq StepRequirement) (*ForgeCommandState, error) {
+	projectReq StepRequirement,
+) (*ForgeCommandState, error) {
 	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, err
@@ -108,7 +111,7 @@ func SetupForgeCommandState(cmd *cobra.Command,
 	// if we need to lookup the project based on the git repo, do that now
 	if needRepoLookup {
 		if !loggedIn {
-			return &flow.State, fmt.Errorf("not logged in, can't lookup project from git repo")
+			return &flow.State, errors.New("not logged in, can't lookup project from git repo")
 		}
 		ctx := cmd.Context()
 		err := doRepoLookup(ctx, &config)
@@ -122,16 +125,15 @@ func SetupForgeCommandState(cmd *cobra.Command,
 	haveProjectId := flow.config.ProjectID != ""
 
 	switch {
-
 	// check for conditions where we can exit early without asking the user for anything
 
 	case flow.requiredOrganization == MustNotExist && haveOrgId:
 		// ERROR: we have an org id, but we need to not belong to any org
-		return &flow.State, fmt.Errorf("organization already exists")
+		return &flow.State, errors.New("organization already exists")
 
 	case flow.requiredProject == MustNotExist && haveProjectId:
 		// ERROR: we have a project id, but we need to not belong to any project
-		return &flow.State, fmt.Errorf("project already exists")
+		return &flow.State, errors.New("project already exists")
 
 	case flow.requiredOrganization == MustNotExist && flow.requiredProject == MustNotExist:
 		flow.organizationStepDone = true
@@ -160,7 +162,7 @@ func SetupForgeCommandState(cmd *cobra.Command,
 		}
 		flow.organizationStepDone = true
 	} else {
-		switch flow.requiredOrganization {
+		switch flow.requiredOrganization { //nolint:exhaustive // don't need to handle all cases
 		case NeedData, NeedIDOnly:
 			flow.handleNeedOrgData()
 		case NeedExistingData, NeedExistingIDOnly:
@@ -175,7 +177,7 @@ func SetupForgeCommandState(cmd *cobra.Command,
 			Name: flow.config.CurrProjectName,
 		}
 	} else {
-		switch flow.requiredProject {
+		switch flow.requiredProject { //nolint:exhaustive // don't need to handle all cases
 		case NeedData, NeedIDOnly:
 			flow.handleNeedProjectData()
 		case NeedExistingData, NeedExistingIDOnly:
@@ -201,7 +203,7 @@ func GetForgeCommandState() *ForgeCommandState {
 // it returns an error if the project is not found or if there is an error
 // it returns nil if the project is found and the config is updated
 // if the lookup worked but there is no matching project, it will return nil
-// and the config will not be changed
+// and the config will not be changed.
 func doRepoLookup(ctx context.Context, config *ForgeConfig) error {
 	// needed a repo lookup, and we are logged in, so try to lookup the project
 	deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",

@@ -335,10 +335,8 @@ func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 }
 
 func CreateSlugFromName(name string, minLength int, maxLength int) string {
-	shorten := false
-	if len(name) > maxLength {
-		shorten = true
-	}
+	shorten := len(name) > maxLength
+
 	var slug string
 	wroteUnderscore := false
 	hadCapital := false
