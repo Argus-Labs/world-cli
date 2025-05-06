@@ -39,7 +39,7 @@ const (
 	NeedExistingIDOnly                 // need id but can't create new one (not sure if we will use this or not)
 	NeedData                           // we need all the data, can create new one
 	NeedExistingData                   // we must all the data but we can't create a new one
-	MustNotExist                       // we must not have an this
+	MustNotExist                       // we must not have this
 )
 
 var (
