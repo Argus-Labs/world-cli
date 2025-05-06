@@ -128,7 +128,7 @@ optimized for deployment. You can optionally push the image to a registry with t
 	},
 }
 
-func init() {
+func buildCmdInit() {
 	registerEditorFlag(buildCmd, true)
 	buildCmd.Flags().String(flagLogLevel, "",
 		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels))

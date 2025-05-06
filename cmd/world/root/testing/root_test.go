@@ -12,7 +12,46 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
+	"pkg.world.dev/world-cli/cmd/world/root"
 )
+
+var (
+	// testEnv holds the global test environment.
+	testEnv *testEnvironment
+)
+
+// testEnvironment holds the test environment setup.
+type testEnvironment struct {
+	rootCmd *cobra.Command
+}
+
+// setupTestEnv initializes the test environment.
+func setupTestEnv() *testEnvironment {
+	// Initialize all commands
+	cardinal.Init()
+	evm.EvmInit()
+	root.RootCmdInit()
+
+	return &testEnvironment{
+		rootCmd: root.RootCmdTesting,
+	}
+}
+
+// TestMain runs before all tests and handles setup/teardown.
+func TestMain(m *testing.M) {
+	// Setup
+	testEnv = setupTestEnv()
+
+	// Run tests
+	code := m.Run()
+
+	// Teardown if needed
+	// Add any cleanup code here
+
+	os.Exit(code)
+}
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
@@ -45,7 +84,7 @@ func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
 }
 
 func TestSubcommandsHaveHelpText(t *testing.T) {
-	lines, err := outputFromCmd(rootCmd, "help")
+	lines, err := outputFromCmd(testEnv.rootCmd, "help")
 	assert.NilError(t, err)
 	seenSubcommands := map[string]int{
 		"cardinal": 0,
@@ -69,7 +108,7 @@ func TestSubcommandsHaveHelpText(t *testing.T) {
 
 func TestExecuteDoctorCommand(t *testing.T) {
 	teaOut := &bytes.Buffer{}
-	_, err := outputFromCmd(getDoctorCmd(teaOut), "")
+	_, err := outputFromCmd(root.GetDoctorCmdTesting(teaOut), "")
 	assert.NilError(t, err)
 
 	seenDependencies := map[string]int{
@@ -115,7 +154,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
+	createCmd := root.GetCreateCmdTesting(teaOut)
 
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
@@ -128,14 +167,14 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal
-	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
-	err = rootCmd.Execute()
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
+	err = testEnv.rootCmd.Execute()
 	assert.NilError(t, err)
 
 	defer func() {
 		// Purge cardinal
-		rootCmd.SetArgs([]string{"cardinal", "purge"})
-		err = rootCmd.Execute()
+		testEnv.rootCmd.SetArgs([]string{"cardinal", "purge"})
+		err = testEnv.rootCmd.Execute()
 		assert.NilError(t, err)
 	}()
 
@@ -143,16 +182,16 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Restart cardinal
-	rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
-	err = rootCmd.Execute()
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
+	err = testEnv.rootCmd.Execute()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal is healthy
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Stop cardinal
-	rootCmd.SetArgs([]string{"cardinal", "stop"})
-	err = rootCmd.Execute()
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "stop"})
+	err = testEnv.rootCmd.Execute()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal shutdowns
@@ -176,7 +215,7 @@ func TestDev(t *testing.T) {
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
+	createCmd := root.GetCreateCmdTesting(teaOut)
 	createCmd.SetArgs([]string{gameDir})
 
 	// checkout the repo
@@ -187,9 +226,9 @@ func TestDev(t *testing.T) {
 
 	// Start cardinal dev
 	ctx, cancel := context.WithCancel(context.Background())
-	rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
 	go func() {
-		err := rootCmd.ExecuteContext(ctx)
+		err := testEnv.rootCmd.ExecuteContext(ctx)
 		assert.NilError(t, err)
 	}()
 
@@ -205,18 +244,18 @@ func TestDev(t *testing.T) {
 
 func TestCheckLatestVersion(t *testing.T) {
 	t.Cleanup(func() {
-		AppVersion = ""
+		root.AppVersion = ""
 	})
 
 	t.Run("success scenario", func(t *testing.T) {
-		AppVersion = "v1.0.0"
-		err := checkLatestVersion()
+		root.AppVersion = "v1.0.0"
+		err := root.CheckLatestVersionTesting()
 		assert.NilError(t, err)
 	})
 
 	t.Run("error version format", func(t *testing.T) {
-		AppVersion = "wrong format"
-		err := checkLatestVersion()
+		root.AppVersion = "wrong format"
+		err := root.CheckLatestVersionTesting()
 		assert.Error(t, err, "error parsing current version: Malformed version: wrong format")
 	})
 }
@@ -286,7 +325,7 @@ func TestEVMStart(t *testing.T) {
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
+	createCmd := root.GetCreateCmdTesting(teaOut)
 	createCmd.SetArgs([]string{gameDir})
 
 	// checkout the repo
@@ -297,9 +336,9 @@ func TestEVMStart(t *testing.T) {
 
 	// Start evn dev
 	ctx, cancel := context.WithCancel(context.Background())
-	rootCmd.SetArgs([]string{"evm", "start", "--dev"})
+	testEnv.rootCmd.SetArgs([]string{"evm", "start", "--dev"})
 	go func() {
-		err := rootCmd.ExecuteContext(ctx)
+		err := testEnv.rootCmd.ExecuteContext(ctx)
 		assert.NilError(t, err)
 	}()
 

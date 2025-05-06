@@ -176,7 +176,7 @@ This will start the following Docker services and their dependencies:
 	},
 }
 
-func init() {
+func startCmdInit() {
 	registerEditorFlag(startCmd, true)
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
