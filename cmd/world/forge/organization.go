@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -65,7 +64,7 @@ func showOrganizationList(ctx context.Context) error {
 
 func getSelectedOrganization(ctx context.Context) (organization, error) {
 	// Get config
-	config, err := GetCurrentConfigWithContext(ctx)
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return organization{}, eris.Wrap(err, "Failed to get config")
 	}
@@ -164,12 +163,12 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 			selectedOrg := orgs[num-1]
 
 			// Save organization to config file
-			config, err := GetCurrentConfig()
+			config, err := GetCurrentForgeConfig()
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to get config")
 			}
 			config.OrganizationID = selectedOrg.ID
-			err = globalconfig.SaveGlobalConfig(config)
+			err = SaveForgeConfig(config)
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
@@ -183,7 +182,7 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 
 func handleProjectConfig(ctx context.Context) error {
 	// Get projectID from config
-	config, err := GetCurrentConfig()
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return eris.Wrap(err, "Failed to get config")
 	}
@@ -197,7 +196,7 @@ func handleProjectConfig(ctx context.Context) error {
 
 	// Save projectID to config
 	config.ProjectID = projectID
-	err = globalconfig.SaveGlobalConfig(config)
+	err = SaveForgeConfig(config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save project")
 	}
@@ -307,12 +306,12 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 	}
 
 	// Select organization to config file
-	config, err := GetCurrentConfig()
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get config")
 	}
 	config.OrganizationID = org.ID
-	err = globalconfig.SaveGlobalConfig(config)
+	err = SaveForgeConfig(config)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to save organization in config")
 	}

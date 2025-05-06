@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -25,7 +24,6 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/tidwall/gjson"
 	"golang.org/x/term"
-	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -42,9 +40,6 @@ var (
 	// Pre-compiled regex for merging multiple underscores.
 	underscoreRegex = regexp.MustCompile(`_+`)
 )
-
-// this is a variable so we can change it for testing login.
-var getCurrentConfigWithContext = GetCurrentConfigWithContext
 
 var generateKey = func() string {
 	return strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -115,7 +110,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	}
 
 	// Get credential from config
-	cred, err := globalconfig.GetGlobalConfig()
+	cred, err := GetForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get credential")
 	}
@@ -294,7 +289,7 @@ func printAuthenticationRequired() {
 
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return false
 		}
 	}
@@ -302,7 +297,7 @@ func isAlphanumeric(s string) bool {
 }
 
 func checkLogin() bool {
-	cred, err := GetCurrentConfig()
+	cred, err := GetCurrentForgeConfig()
 	if err != nil {
 		printAuthenticationRequired()
 		return false
@@ -345,10 +340,8 @@ func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 }
 
 func CreateSlugFromName(name string, minLength int, maxLength int) string {
-	shorten := false
-	if len(name) > maxLength {
-		shorten = true
-	}
+	shorten := len(name) > maxLength
+
 	var slug string
 	wroteUnderscore := false
 	hadCapital := false
@@ -413,97 +406,4 @@ func replaceLast(x, y, z string) string {
 		return x
 	}
 	return x[:i] + z + x[i+len(y):]
-}
-
-func GetCurrentConfig() (globalconfig.GlobalConfig, error) {
-	currConfig, err := globalconfig.GetGlobalConfig()
-	// we deliberately ignore any error here and just return it at the end
-	// so that we can fill out and much info as we do have
-	currConfig.CurrRepoKnown = false
-	currConfig.CurrRepoPath, currConfig.CurrRepoURL, _ = FindGitPathAndURL()
-	if currConfig.CurrRepoURL != "" {
-		for i := range currConfig.KnownProjects {
-			knownProject := currConfig.KnownProjects[i]
-			if knownProject.RepoURL == currConfig.CurrRepoURL && knownProject.RepoPath == currConfig.CurrRepoPath {
-				currConfig.ProjectID = knownProject.ProjectID
-				currConfig.OrganizationID = knownProject.OrganizationID
-				currConfig.CurrProjectName = knownProject.ProjectName
-				currConfig.CurrRepoKnown = true
-				break
-			}
-		}
-	}
-	return currConfig, err
-}
-
-func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfig, error) {
-	currConfig, err := GetCurrentConfig()
-	// we don't care if we got an error, we will just return it later
-	if !currConfig.CurrRepoKnown && //nolint: nestif // not too complex
-		currConfig.Credential.Token != "" &&
-		currConfig.CurrRepoURL != "" {
-		// needed a lookup, and have a token (so we should be logged in)
-		// get the organization and project from the project's URL and path
-		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
-			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
-		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
-		if err != nil {
-			printer.Infof("⚠️ Warning: Failed to lookup World Forge project for Git Repo %s and path %s: %v\n",
-				currConfig.CurrRepoURL, currConfig.CurrRepoPath, err)
-			return &currConfig, err
-		}
-
-		// Parse response
-		proj, err := parseResponse[project](body)
-		if err != nil && err.Error() != "Missing data field in response" {
-			// missing data field in response just means nothing was found
-			printer.Infof("⚠️ Warning: Failed to parse project lookup response: %v\n", err)
-			return &currConfig, err
-		}
-		if proj != nil {
-			// add to list of known projects
-			currConfig.KnownProjects = append(currConfig.KnownProjects, globalconfig.KnownProject{
-				ProjectID:      proj.ID,
-				OrganizationID: proj.OrgID,
-				RepoURL:        proj.RepoURL,
-				RepoPath:       proj.RepoPath,
-				ProjectName:    proj.Name,
-			})
-			// save the config, but don't change the default ProjectID & OrgID
-			err := globalconfig.SaveGlobalConfig(currConfig)
-			if err != nil {
-				printer.Infof("⚠️ Warning: Failed to save config: %v\n", err)
-				// continue on, this is not fatal
-			}
-			// now return a copy of it with the looked up ProjectID and OrganizationID set
-			currConfig.ProjectID = proj.ID
-			currConfig.OrganizationID = proj.OrgID
-			currConfig.CurrProjectName = proj.Name
-			currConfig.CurrRepoKnown = true
-		}
-	}
-	return &currConfig, err
-}
-
-func FindGitPathAndURL() (string, string, error) {
-	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
-	if err != nil {
-		return "", "", err
-	}
-	url := strings.TrimSpace(string(urlData))
-	url = replaceLast(url, ".git", "")
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return "", url, err
-	}
-	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		return "", url, err
-	}
-	rootPath := strings.TrimSpace(string(root))
-	path := strings.Replace(workingDir, rootPath, "", 1)
-	if len(path) > 0 && path[0] == '/' {
-		path = path[1:]
-	}
-	return path, url, nil
 }

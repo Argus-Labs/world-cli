@@ -11,7 +11,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/config"
 	_ "pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/telemetry"
 )
@@ -30,9 +30,8 @@ var (
 func EnvVersionInit() {
 	env, version := getEnvAndVersion()
 	root.AppVersion = version
-	globalconfig.Env = env
-	// Initialize forge
-	forge.InitForge()
+	// Initialize forge base environment
+	forge.InitForgeBase(env)
 }
 
 func main() {
@@ -56,11 +55,11 @@ func main() {
 	}()
 
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn, globalconfig.Env, root.AppVersion)
+	telemetry.SentryInit(SentryDsn, forge.Env, root.AppVersion)
 	defer telemetry.SentryFlush()
 
 	// Set up config directory "~/.worldcli/"
-	err := globalconfig.SetupConfigDir()
+	err := config.SetupCLIConfigDir()
 	if err != nil {
 		log.Err(err).Msg("could not setup config folder")
 		return
@@ -82,7 +81,7 @@ func main() {
 	// Initialize packages
 	evm.EvmInit()
 	cardinal.Init()
-	forge.InitForge()
+	forge.InitForgeCmds()
 	root.RootCmdInit()
 	root.Execute()
 }
@@ -102,7 +101,7 @@ func getEnvAndVersion() (string, string) {
 	// If the version is "(devel)", return the default values
 	if info.Main.Version == "(devel)" {
 		version = "v0.0.1-dev"
-		env = "DEV"
+		env = "LOCAL"
 	} else {
 		version = info.Main.Version
 		env = "PROD"

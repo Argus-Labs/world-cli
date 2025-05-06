@@ -13,7 +13,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/tomlutil"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
@@ -121,7 +120,7 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	}
 
 	// Get config
-	config, err := GetCurrentConfigWithContext(ctx)
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get config")
 	}
@@ -256,13 +255,13 @@ func createProject(ctx context.Context) (*project, error) {
 	}
 
 	// Select project
-	config, err := GetCurrentConfig()
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get config")
 	}
 	config.ProjectID = prj.ID
 
-	err = globalconfig.SaveGlobalConfig(config)
+	err = SaveForgeConfig(config)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to select project")
 	}
@@ -540,7 +539,7 @@ func (p *project) inputRepoPath(ctx context.Context) {
 }
 
 func selectProject(ctx context.Context) (*project, error) {
-	config, err := getCurrentConfigWithContext(ctx)
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Could not get config")
 	}
@@ -590,7 +589,7 @@ func selectProject(ctx context.Context) (*project, error) {
 		selectedProject := projects[num-1]
 
 		config.ProjectID = selectedProject.ID
-		err = globalconfig.SaveGlobalConfig(*config)
+		err = SaveForgeConfig(config)
 		if err != nil {
 			return nil, eris.Wrap(err, "Failed to save project")
 		}
@@ -655,12 +654,12 @@ func deleteProject(ctx context.Context) error {
 	printer.Successf("Project deleted: %s (%s)\n", project.Name, project.Slug)
 
 	// Remove project from config
-	config, err := GetCurrentConfig()
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return eris.Wrap(err, "Failed to get config")
 	}
 	config.ProjectID = ""
-	err = globalconfig.SaveGlobalConfig(config)
+	err = SaveForgeConfig(config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save config")
 	}

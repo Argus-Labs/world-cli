@@ -6,7 +6,6 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/globalconfig"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -14,11 +13,17 @@ const (
 	// For local development.
 	worldForgeBaseURLLocal = "http://localhost:8001"
 
-	// For production.
-	worldForgeBaseURLProd = "https://forge.world.dev"
+	// For Argus Dev.
+	worldForgeBaseURLDev = "https://forge.world.dev"
+
+	// For Argus Production.
+	worldForgeBaseURLProd = "https://forge.world.dev" // TODO: change this to the actual RPC URL
+
+	// For local development.
+	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
 
 	// RPC Dev URL.
-	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
+	worldForgeRPCBaseURLDev = "https://rpc.world.dev"
 
 	// RPC Prod URL.
 	worldForgeRPCBaseURLProd = "https://rpc.world.dev" // TODO: change this to the actual RPC URL
@@ -44,6 +49,9 @@ var (
 
 	// Set this to true if you want to use ArgusID for default login.
 	argusid = false
+
+	// Env is the environment to use for the Forge API.
+	Env = "PROD"
 )
 
 var ForgeCmd = &cobra.Command{
@@ -59,7 +67,7 @@ allowing you to organize teams, manage deployments, and monitor your game servic
 		}
 
 		// Get user info
-		globalConfig, err := GetCurrentConfig()
+		config, err := GetCurrentForgeConfig()
 		if err != nil {
 			return eris.Wrap(err, "Failed to get user")
 		}
@@ -69,8 +77,8 @@ allowing you to organize teams, manage deployments, and monitor your game servic
 		printer.NewLine(1)
 		printer.Headerln("    User Information   ")
 		printer.SectionDivider("-", 23)
-		printer.Infof("ID:   %s\n", globalConfig.Credential.ID)
-		printer.Infof("Name: %s\n", globalConfig.Credential.Name)
+		printer.Infof("ID:   %s\n", config.Credential.ID)
+		printer.Infof("Name: %s\n", config.Credential.Name)
 
 		// Try to show org list and project list
 		// Show organization list
@@ -330,7 +338,11 @@ is already in progress.`,
 			if force {
 				deployType = "forceDeploy"
 			}
-			return deployment(cmd.Context(), deployType)
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, deployType)
 		},
 	}
 
@@ -346,7 +358,11 @@ if needed.`,
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "destroy")
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, "destroy")
 		},
 	}
 
@@ -361,7 +377,11 @@ allowing you to start fresh without redeploying the entire infrastructure.`,
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "reset")
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, "reset")
 		},
 	}
 
@@ -376,7 +396,11 @@ including running instances, regions, and any ongoing deployment operations.`,
 			if !checkLogin() {
 				return nil
 			}
-			return status(cmd.Context())
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return status(cmd.Context(), cmdState)
 		},
 	}
 
@@ -392,7 +416,11 @@ with production-grade infrastructure and settings.`,
 			if !checkLogin() {
 				return nil
 			}
-			return deployment(cmd.Context(), "promote")
+			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
+			if err != nil {
+				return eris.Wrap(err, "Failed to setup forge command state")
+			}
+			return deployment(cmd.Context(), cmdState, "promote")
 		},
 	}
 
@@ -420,7 +448,7 @@ allowing you to monitor application behavior and troubleshoot issues in real-tim
 	}
 )
 
-func InitForge() {
+func InitForgeBase(env string) {
 	// Set argusid flag
 	if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "argusid" {
 		argusid = true
@@ -429,12 +457,16 @@ func InitForge() {
 	}
 
 	// Set base URL
-	if globalconfig.Env == "PROD" {
-		baseURL = worldForgeBaseURLProd
-		rpcURL = worldForgeRPCBaseURLProd
-	} else {
+	switch env {
+	case "LOCAL":
 		baseURL = worldForgeBaseURLLocal
 		rpcURL = worldForgeRPCBaseURLLocal
+	case "DEV":
+		baseURL = worldForgeBaseURLDev
+		rpcURL = worldForgeRPCBaseURLDev
+	default:
+		rpcURL = worldForgeRPCBaseURLProd
+		baseURL = worldForgeBaseURLProd
 	}
 
 	// Set login URL
@@ -446,7 +478,9 @@ func InitForge() {
 
 	// Set user URL
 	userURL = fmt.Sprintf("%s/api/user", baseURL)
+}
 
+func InitForgeCmds() {
 	// Add organization commands
 	organizationCmd.AddCommand(createOrganizationCmd)
 	organizationCmd.AddCommand(switchOrganizationCmd)
