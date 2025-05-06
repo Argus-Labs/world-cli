@@ -3,7 +3,6 @@ package evm
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 
 	"github.com/rotisserie/eris"
@@ -12,6 +11,7 @@ import (
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
@@ -146,7 +146,7 @@ func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docke
 }
 
 func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) (string, error) {
-	fmt.Println("Getting DA token")
+	printer.Infoln("Getting DA token")
 
 	containerName := service.CelestiaDevNet(cfg)
 

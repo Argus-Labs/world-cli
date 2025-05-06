@@ -26,6 +26,7 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/term"
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
@@ -60,22 +61,22 @@ var openBrowser = func(url string) error {
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:
-		fmt.Printf("Could not automatically open browser. Please visit this URL:\n%s\n", url)
+		printer.Infof("Could not automatically open browser. Please visit this URL:\n%s\n", url)
 	}
 	if err != nil {
-		fmt.Printf("Failed to open browser automatically. Please visit this URL:\n%s\n", url)
+		printer.Infof("Failed to open browser automatically. Please visit this URL:\n%s\n", url)
 	}
 	return nil
 }
 
 var getInput = func(prompt, defaultStr string) string {
 	if prompt != "" {
-		fmt.Print(prompt)
+		printer.Info(prompt)
 	}
 	if defaultStr != "" {
-		fmt.Printf(" [%s]: ", defaultStr)
+		printer.Infof(" [%s]: ", defaultStr)
 	} else {
-		fmt.Print(": ")
+		printer.Info(": ")
 	}
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n') // only returns error if input doesn't end in delimiter
@@ -83,8 +84,8 @@ var getInput = func(prompt, defaultStr string) string {
 	if input == "" && defaultStr != "" {
 		// display the default value as if they typed it in
 		promptEnd := len(defaultStr) + 4 + len(prompt)
-		fmt.Printf("\033[1A\033[%dC", promptEnd) // move cursor up one line, and right the length of the prompt
-		fmt.Printf("%s\n", defaultStr)
+		printer.Infof("\033[1A\033[%dC", promptEnd) // move cursor up one line, and right the length of the prompt
+		printer.Infoln(defaultStr)
 		return defaultStr
 	}
 	return input
@@ -164,8 +165,8 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 			}
 
 			if i < maxRetries-1 { // Don't print retry message on last attempt
-				fmt.Printf("Failed to make request [%s]: %s\n", req.URL, err.Error())
-				fmt.Println("Retrying...")
+				printer.Errorf("Failed to make request [%s]: %s\n", req.URL, err.Error())
+				printer.Infoln("Retrying...")
 
 				// Apply exponential backoff with jitter
 				delay := exponentialBackoffWithJitter(baseDelay, i)
@@ -252,38 +253,43 @@ func parseResponse[T any](body []byte) (*T, error) {
 }
 
 func printNoOrganizations() {
-	fmt.Println("\n   No Organizations Found")
-	fmt.Println("============================")
-	fmt.Println("\nYou don't have any organizations yet.")
-	fmt.Println("\nUse 'world forge organization create' to create one.")
+	printer.NewLine(1)
+	printer.Headerln("   No Organizations Found   ")
+	printer.Infoln("You don't have any organizations yet.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge organization create' to create one.")
 }
 
 func printNoSelectedOrganization() {
-	fmt.Println("\n   No Organization Selected")
-	fmt.Println("==============================")
-	fmt.Println("\nYou don't have any organization selected.")
-	fmt.Println("\nUse 'world forge organization switch' to select one")
+	printer.NewLine(1)
+	printer.Headerln("   No Organization Selected   ")
+	printer.Infoln("You don't have any organization selected.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge organization switch' to select one")
 }
 
 func printNoSelectedProject() {
-	fmt.Println("\n   No Project Selected")
-	fmt.Println("=========================")
-	fmt.Println("\nYou don't have any project selected.")
-	fmt.Println("\nUse 'world forge project switch' to select one")
+	printer.NewLine(1)
+	printer.Headerln("   No Project Selected   ")
+	printer.Infoln("You don't have any project selected.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge project switch' to select one")
 }
 
 func printNoProjectsInOrganization() {
-	fmt.Println("\n   No Projects Found")
-	fmt.Println("=======================")
-	fmt.Println("\nYou don't have any projects in this organization yet.")
-	fmt.Println("\nUse 'world forge project create' to create your first project!")
+	printer.NewLine(1)
+	printer.Headerln("   No Projects Found   ")
+	printer.Infoln("You don't have any projects in this organization yet.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge project create' to create your first project!")
 }
 
 func printAuthenticationRequired() {
-	fmt.Println("\n   Authentication Required")
-	fmt.Println("=============================")
-	fmt.Println("\nYou are not currently logged in")
-	fmt.Println("\nUse 'world login' to authenticate")
+	printer.NewLine(1)
+	printer.Headerln("   Authentication Required   ")
+	printer.Infoln("You are not currently logged in")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world login' to authenticate")
 }
 
 func isAlphanumeric(s string) bool {
@@ -442,8 +448,8 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
 		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
 		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo",
-				currConfig.CurrRepoURL, "and path", currConfig.CurrRepoPath, ":", err)
+			printer.Infof("⚠️ Warning: Failed to lookup World Forge project for Git Repo %s and path %s: %v\n",
+				currConfig.CurrRepoURL, currConfig.CurrRepoPath, err)
 			return &currConfig, err
 		}
 
@@ -451,7 +457,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 		proj, err := parseResponse[project](body)
 		if err != nil && err.Error() != "Missing data field in response" {
 			// missing data field in response just means nothing was found
-			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
+			printer.Infof("⚠️ Warning: Failed to parse project lookup response: %v\n", err)
 			return &currConfig, err
 		}
 		if proj != nil {
@@ -466,7 +472,7 @@ func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfi
 			// save the config, but don't change the default ProjectID & OrgID
 			err := globalconfig.SaveGlobalConfig(currConfig)
 			if err != nil {
-				fmt.Println("⚠️ Warning: Failed to save config: ", err)
+				printer.Infof("⚠️ Warning: Failed to save config: %v\n", err)
 				// continue on, this is not fatal
 			}
 			// now return a copy of it with the looked up ProjectID and OrganizationID set

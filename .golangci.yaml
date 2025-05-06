@@ -20,7 +20,7 @@ linters:
     - errorlint
     - exhaustive
     - fatcontext
-    # - forbidigo
+    - forbidigo
     - funlen
     - gocheckcompilerdirectives
     # - gochecknoglobals

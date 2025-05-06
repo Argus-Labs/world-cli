@@ -2,11 +2,11 @@ package logger
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
@@ -55,8 +55,9 @@ func PrintLogs() {
 		// Extract the logs from the buffer and print them
 		logs := logBuffer.String()
 		if len(logs) > 0 {
-			fmt.Println("\n----- Log -----")
-			fmt.Println(logs)
+			printer.NewLine(1)
+			printer.Infoln("----- Log -----")
+			printer.Infoln(logs)
 		}
 	}
 }

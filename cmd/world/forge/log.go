@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/printer"
 	logsv1 "pkg.world.dev/world-cli/gen/logs/v1"
 	"pkg.world.dev/world-cli/gen/logs/v1/logsv1connect"
 )
@@ -69,9 +70,9 @@ func selectRegion(project project) (string, error) {
 	}
 
 	// If there are multiple regions, print them and let the user choose
-	fmt.Println("Available regions:")
+	printer.Infoln("Available regions:")
 	for i, region := range project.Config.Region {
-		fmt.Printf("%d. %s\n", i+1, region)
+		printer.Infof("%d. %s\n", i+1, region)
 	}
 
 	inputStr := getInput("Choose a region", "1")
@@ -93,9 +94,10 @@ func selectEnvironment(availableEnvs []string) (string, error) {
 	}
 
 	// If there are multiple environments, print them and let the user choose
-	fmt.Println("\nAvailable environments:")
-	fmt.Printf("%d. %s\n", 1, "dev")
-	fmt.Printf("%d. %s\n", 2, "prod")
+	printer.NewLine(1)
+	printer.Infoln("Available environments:")
+	printer.Infof("%d. %s\n", 1, "dev")
+	printer.Infof("%d. %s\n", 2, "prod")
 
 	inputStr := getInput("Choose an environment", "1")
 	inputInt, err := strconv.Atoi(inputStr)
@@ -142,8 +144,10 @@ func getListOfEnvironments(ctx context.Context, project project) ([]string, erro
 }
 
 func confirmLogParams(params *logParams) error {
-	fmt.Printf("\nShowing logs for '%s-%s-cardinal' in '%s-%s'\n(Press Enter to continue | Ctrl+C to cancel/exit)",
+	printer.NewLine(1)
+	printer.Infof("Showing logs for '%s-%s-cardinal' in '%s-%s'\n",
 		params.organization.Slug, params.project.Slug, params.env, params.region)
+	printer.Infoln("(Press Enter to continue | Ctrl+C to cancel/exit)")
 	inputStr := getInput("", "")
 	if inputStr != "" {
 		return eris.New("Operation cancelled by user")
@@ -208,7 +212,7 @@ func streamLogs(ctx context.Context,
 				// Stream ended normally
 				return nil
 			}
-			log.Println(stream.Msg().Log)
+			log.Println(stream.Msg().GetLog())
 		}
 	}
 }
