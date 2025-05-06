@@ -2,10 +2,10 @@ package forge
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 type User struct {
@@ -71,7 +71,8 @@ func updateUser(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to update user")
 	}
 
-	fmt.Println("\n✅ User updated successfully")
+	printer.NewLine(1)
+	printer.Success("User updated successfully")
 
 	return nil
 }
@@ -82,17 +83,20 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n   Update User Name")
-			fmt.Println("======================")
+			printer.NewLine(1)
+			printer.Header("   Update User Name   ")
 
-			name := getInput("\nEnter name", currentUserName)
+			printer.NewLine(1)
+			name := getInput("Enter name", currentUserName)
 
 			if name == "" {
-				fmt.Printf("\n❌ Error: Name cannot be empty\n")
+				printer.NewLine(1)
+				printer.Errorf("Error: Name cannot be empty\n")
 				continue
 			}
 
-			fmt.Printf("\n✅ Name updated to: %s\n", name)
+			printer.NewLine(1)
+			printer.Successf("Name updated to: %s\n", name)
 			return name, nil
 		}
 	}
@@ -104,16 +108,19 @@ func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n   Update User Email")
-			fmt.Println("=======================")
+			printer.NewLine(1)
+			printer.Header("   Update User Email   ")
 
-			email := getInput("\nEnter email", currentUserEmail)
+			printer.NewLine(1)
+			email := getInput("Enter email", currentUserEmail)
 			if !isValidEmail(email) {
-				fmt.Printf("\n❌ Error: Invalid email format\n")
+				printer.NewLine(1)
+				printer.Errorf("Error: Invalid email format\n")
 				continue
 			}
 
-			fmt.Printf("\n✅ Email updated to: %s\n", email)
+			printer.NewLine(1)
+			printer.Successf("Email updated to: %s\n", email)
 			return email, nil
 		}
 	}
@@ -126,15 +133,19 @@ func inputUserAvatarURL(ctx context.Context, // TODO: refactor
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			fmt.Println("\n  Update User Avatar URL")
-			fmt.Println("=============================")
-			avatarURL := getInput("\nEnter avatar URL", currentUserAvatarURL)
+			printer.NewLine(1)
+			printer.Header("   Update User Avatar URL   ")
+
+			printer.NewLine(1)
+			avatarURL := getInput("Enter avatar URL", currentUserAvatarURL)
 			if !isValidURL(avatarURL) {
-				fmt.Printf("\n❌ Error: Invalid URL format\n")
+				printer.NewLine(1)
+				printer.Errorf("Error: Invalid URL format\n")
 				continue
 			}
 
-			fmt.Printf("\n✅ Avatar URL updated to: %s\n", avatarURL)
+			printer.NewLine(1)
+			printer.Successf("Avatar URL updated to: %s\n", avatarURL)
 			return avatarURL, nil
 		}
 	}

@@ -13,6 +13,7 @@ import (
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -111,7 +112,7 @@ This will start the following Docker services and their dependencies:
 		}
 
 		// Print out header
-		fmt.Println(style.CLIHeader("Cardinal", ""))
+		printer.Infoln(style.CLIHeader("Cardinal", ""))
 
 		// Print out service addresses
 		printServiceAddress("Redis", cfg.DockerEnv["REDIS_ADDRESS"])
@@ -127,14 +128,15 @@ This will start the following Docker services and their dependencies:
 		} else {
 			printServiceAddress("Cardinal Editor", "[disabled]")
 		}
-		fmt.Println()
+		printer.NewLine(1)
 
-		fmt.Print("Press <ENTER> to continue...")
+		printer.Info("Press <ENTER> to continue...")
 		_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 
-		fmt.Println("\nStarting Cardinal game shard...")
-		fmt.Println("This may take a few minutes to rebuild the Docker images.")
-		fmt.Println("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
+		printer.NewLine(1)
+		printer.Infoln("Starting Cardinal game shard...")
+		printer.Infoln("This may take a few minutes to rebuild the Docker images.")
+		printer.Infoln("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
 
 		group, ctx := errgroup.WithContext(cmd.Context())
 

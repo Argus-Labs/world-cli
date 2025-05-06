@@ -1,12 +1,11 @@
 package cardinal
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 /////////////////
@@ -46,7 +45,7 @@ need to free up system resources.`,
 			return err
 		}
 
-		fmt.Println("Cardinal successfully stopped")
+		printer.Successln("Cardinal successfully stopped")
 
 		return nil
 	},

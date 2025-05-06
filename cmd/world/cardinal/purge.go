@@ -1,12 +1,11 @@
 package cardinal
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 /////////////////
@@ -41,7 +40,7 @@ from scratch or resolve persistent state issues.`,
 		if err != nil {
 			return err
 		}
-		fmt.Println("Cardinal successfully purged")
+		printer.Infoln("Cardinal successfully purged")
 
 		return nil
 	},

@@ -69,7 +69,7 @@ func cleanUpDir(targetDir string) {
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 		err := os.RemoveAll(targetDir)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(err) //nolint:forbidigo // test
 		}
 	}
 }

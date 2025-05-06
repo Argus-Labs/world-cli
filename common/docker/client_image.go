@@ -23,6 +23,7 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -403,7 +404,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
-				fmt.Printf("Error pulling image %s: %v\n", imageName, err)
+				printer.Infof("Error pulling image %s: %v\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
 
 				// Stop the progress bar without clearing
@@ -420,7 +421,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
-					fmt.Printf("Pulling of image %s was canceled\n", imageName)
+					printer.Infof("Pulling of image %s was canceled\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:
@@ -520,7 +521,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
-				fmt.Printf("Error pushing image %s: %v\n", imageName, err)
+				printer.Infof("Error pushing image %s: %v\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pushing image %s", imageName)
 
 				// Stop the progress bar without clearing
@@ -537,7 +538,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
-					fmt.Printf("Pushing image %s was canceled\n", imageName)
+					printer.Infof("Pushing image %s was canceled\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:

@@ -1,9 +1,8 @@
 package style
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/lipgloss"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 func ContextPrint(title, titleColor, subject, object string) {
@@ -11,7 +10,7 @@ func ContextPrint(title, titleColor, subject, object string) {
 	arrowStr := ForegroundPrint("→", "241")
 	subjectStr := ForegroundPrint(subject, "4")
 
-	fmt.Printf("%s %s %s %s ", titleStr, arrowStr, subjectStr, object)
+	printer.Infof("%s %s %s %s ", titleStr, arrowStr, subjectStr, object)
 }
 
 func ForegroundPrint(text string, color string) string {

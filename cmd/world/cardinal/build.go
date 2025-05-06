@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -74,14 +75,14 @@ optimized for deployment. You can optionally push the image to a registry with t
 		}
 
 		// Print out header
-		fmt.Println(style.CLIHeader("Cardinal", ""))
+		printer.Infoln(style.CLIHeader("Cardinal", ""))
 		// Print out service addresses
 		printServiceAddress("Redis", cfg.DockerEnv["REDIS_ADDRESS"])
 		// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
 		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
-		fmt.Println()
-		fmt.Println("\nBuilding Cardinal game shard image...")
-		fmt.Println("This may take a few minutes.")
+		printer.NewLine(2)
+		printer.Infoln("Building Cardinal game shard image...")
+		printer.Infoln("This may take a few minutes.")
 
 		group, ctx := errgroup.WithContext(cmd.Context())
 

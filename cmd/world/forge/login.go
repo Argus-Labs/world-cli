@@ -17,6 +17,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog/log"
+	"pkg.world.dev/world-cli/common/printer"
 	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
@@ -101,14 +102,14 @@ func handlePostLoginConfig(ctx context.Context, config *ForgeConfig) error {
 func handleKnownRepoConfig(ctx context.Context, config *ForgeConfig) error {
 	proj, err := getSelectedProject(ctx)
 	if err != nil {
-		fmt.Println("⚠️ Warning: Failed to get project", config.ProjectID, ":", err)
+		printer.Infof("⚠️ Warning: Failed to get project %s: %s", config.ProjectID, err.Error())
 	}
 	org, err := getSelectedOrganization(ctx)
 	if err != nil {
-		fmt.Println("⚠️ Warning: Failed to get organization", config.OrganizationID, ":", err)
+		printer.Infof("⚠️ Warning: Failed to get organization %s: %s", config.OrganizationID, err.Error())
 	}
 	if proj.Name != "" && org.Name != "" {
-		fmt.Printf("Auto-selected project %s (%s) in organization %s (%s)\n",
+		printer.Infof("Auto-selected project %s (%s) in organization %s (%s)\n",
 			proj.Name, proj.Slug,
 			org.Name, org.Slug)
 	}
@@ -148,11 +149,13 @@ func handleNewRepoConfig(ctx context.Context, config *ForgeConfig) error {
 }
 
 func displayLoginSuccess(config ForgeConfig) {
-	fmt.Println("\n   Login successful!")
-	fmt.Println("=======================")
-	fmt.Printf("\nWelcome, %s!\n", config.Credential.Name)
-	fmt.Printf("Your ID is: %s\n", config.Credential.ID)
-	fmt.Println("\nYou're all set to start using World Forge!")
+	printer.NewLine(1)
+	printer.Headerln("   Login successful!  ")
+	printer.NewLine(1)
+	printer.Infof("Welcome, %s!\n", config.Credential.Name)
+	printer.Infof("Your ID is: %s\n", config.Credential.ID)
+	printer.NewLine(1)
+	printer.Infoln("You're all set to start using World Forge!")
 }
 
 // GetToken will get the token from the config file.
@@ -179,7 +182,7 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 		defer wg.Done()
 		if _, err := p.Run(); err != nil {
 			log.Error().Err(err).Msg("failed to run spinner")
-			fmt.Printf("Logging in...\n") // If the spinner doesn't start correctly, fallback to a simple print.
+			printer.Infoln("Logging in...") // If the spinner doesn't start correctly, fallback to a simple print.
 		}
 		spinnerExited.Store(true)
 	}()
@@ -192,9 +195,9 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 			wg.Wait()
 		}
 		if didLogin {
-			fmt.Printf("✅ Logged in!\n")
+			printer.Successln("Logged in!")
 		} else {
-			fmt.Printf("❌ Login failed!\n")
+			printer.Errorln("Login failed!")
 		}
 	}
 
@@ -282,7 +285,8 @@ func handleArgusIDToken(response []byte, result interface{}) error {
 	case "pending":
 		return errPending
 	case "success":
-		fmt.Println("\nLogin token received successfully!")
+		printer.NewLine(1)
+		printer.Successln("Login token received successfully!")
 		return nil
 	default:
 		return eris.New(fmt.Sprintf("Status: %s", tokenStruct.Status))

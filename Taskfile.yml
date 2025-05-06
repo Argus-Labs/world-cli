@@ -16,6 +16,9 @@ includes:
   build:
     taskfile: ./taskfiles/build.yaml
     dir: .
+  buf:
+    taskfile: ./taskfiles/buf.yaml
+    dir: .
 
 tasks:
   clean:

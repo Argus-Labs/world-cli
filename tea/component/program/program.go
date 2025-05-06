@@ -3,7 +3,6 @@ package program
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wrap"
 	"golang.org/x/term"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 // An interface describing the parts of BubbleTea's Program that we actually use.
@@ -78,10 +78,10 @@ func (p *fakeProgram) Start() error {
 func (p *fakeProgram) Send(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case StatusMsg:
-		fmt.Println(msg)
+		printer.Infoln(string(msg))
 	case PsqlMsg:
 		if msg != nil {
-			fmt.Println(*msg)
+			printer.Infoln(*msg)
 		}
 	}
 

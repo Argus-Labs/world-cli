@@ -6,6 +6,7 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
@@ -17,11 +18,18 @@ const (
 
 	// For Argus Production.
 	worldForgeBaseURLProd = "https://forge.world.dev"
+
+	// RPC Dev URL.
+	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
+
+	// RPC Prod URL.
+	worldForgeRPCBaseURLProd = "https://rpc.world.dev" // TODO: change this to the actual RPC URL
 )
 
 var (
 	// baseUrl is the base URL for the Forge API.
 	baseURL string
+	rpcURL  string
 
 	// login url stuff.
 	loginURL    string
@@ -56,17 +64,18 @@ allowing you to organize teams, manage deployments, and monitor your game servic
 		}
 
 		// Get user info
-		globalConfig, err := GetCurrentForgeConfig()
+		config, err := GetCurrentForgeConfig()
 		if err != nil {
 			return eris.Wrap(err, "Failed to get user")
 		}
 
-		fmt.Println("   World Forge Status")
-		fmt.Println("========================")
-		fmt.Println("\n    User Information")
-		fmt.Println("------------------------")
-		fmt.Printf("ID:   %s\n", globalConfig.Credential.ID)
-		fmt.Printf("Name: %s\n", globalConfig.Credential.Name)
+		printer.NewLine(1)
+		printer.Headerln("   World Forge Status  ")
+		printer.NewLine(1)
+		printer.Headerln("    User Information   ")
+		printer.SectionDivider("-", 23)
+		printer.Infof("ID:   %s\n", config.Credential.ID)
+		printer.Infof("Name: %s\n", config.Credential.Name)
 
 		// Try to show org list and project list
 		// Show organization list
@@ -78,7 +87,8 @@ allowing you to organize teams, manage deployments, and monitor your game servic
 		}
 
 		// add separator
-		fmt.Println("\n================================================")
+		printer.NewLine(1)
+		printer.SectionDivider("=", 50)
 
 		return cmd.Help()
 	},
@@ -110,7 +120,8 @@ that serve as containers for your World Forge projects and team members.`,
 			err := showOrganizationList(cmd.Context())
 			if err == nil {
 				// add separator
-				fmt.Println("\n================================================")
+				printer.NewLine(1)
+				printer.SectionDivider("=", 50)
 			}
 			return cmd.Help()
 		},
@@ -151,7 +162,7 @@ are organized within organizations.`,
 			if err != nil {
 				return eris.Wrap(err, "Failed to select organization")
 			}
-			fmt.Println("Switched to organization: ", org.Name)
+			printer.Successf("Switched to organization: %s\n", org.Name)
 			return nil
 		},
 	}
@@ -169,7 +180,8 @@ var (
 			err := showOrganizationList(cmd.Context())
 			if err == nil {
 				// add separator
-				fmt.Println("\n================================================")
+				printer.NewLine(1)
+				printer.SectionDivider("=", 50)
 			}
 			return cmd.Help()
 		},
@@ -219,7 +231,8 @@ providing a centralized way to handle your game's development lifecycle.`,
 			err := showProjectList(cmd.Context())
 			if err == nil {
 				// add separator
-				fmt.Println("\n================================================")
+				printer.NewLine(1)
+				printer.SectionDivider("=", 50)
 			}
 			return cmd.Help()
 		},
@@ -242,10 +255,10 @@ management operations will target this selected project.`,
 				return eris.Wrap(err, "Failed to select project")
 			}
 			if prj == nil {
-				fmt.Println("No project selected.")
+				printer.Infoln("No project selected.")
 				return nil
 			}
-			fmt.Println("Switched to project: ", prj.Name)
+			printer.Successf("Switched to project: %s\n", prj.Name)
 			return nil
 		},
 	}
@@ -407,6 +420,29 @@ with production-grade infrastructure and settings.`,
 			return deployment(cmd.Context(), cmdState, "promote")
 		},
 	}
+
+	logsCmd = &cobra.Command{
+		Use:   "logs",
+		Short: "Tail logs for a project",
+		Long: `Stream logs from your deployed project in real-time.
+
+This command connects to your project's deployment and displays logs as they are generated,
+allowing you to monitor application behavior and troubleshoot issues in real-time.`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !checkLogin() {
+				return nil
+			}
+			region, err := cmd.Flags().GetString("region")
+			if err != nil {
+				region = ""
+			}
+			env, err := cmd.Flags().GetString("env")
+			if err != nil {
+				env = ""
+			}
+			return tailLogs(cmd.Context(), region, env)
+		},
+	}
 )
 
 func InitForge(env string) {
@@ -421,9 +457,12 @@ func InitForge(env string) {
 	switch env {
 	case "LOCAL":
 		baseURL = worldForgeBaseURLLocal
+		rpcURL = worldForgeRPCBaseURLLocal
 	case "DEV":
 		baseURL = worldForgeBaseURLDev
+		rpcURL = worldForgeRPCBaseURLDev
 	default:
+		rpcURL = worldForgeRPCBaseURLProd
 		baseURL = worldForgeBaseURLProd
 	}
 
@@ -457,6 +496,9 @@ func InitForge(env string) {
 	// Add deployment commands
 	deployCmd.Flags().Bool("force", false,
 		"Start the deploy even if one is currently running. Cancels current running deploy.")
+
+	logsCmd.Flags().String("region", "", "The region to tail logs for.")
+	logsCmd.Flags().String("env", "", "The environment to tail logs for.")
 }
 
 func AddCommands(rootCmd *cobra.Command) {
@@ -469,7 +511,7 @@ func AddCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(promoteCmd)
 	rootCmd.AddCommand(resetCmd)
-
+	rootCmd.AddCommand(logsCmd)
 	// user commands
 	rootCmd.AddCommand(userCmd)
 

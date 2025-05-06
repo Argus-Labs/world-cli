@@ -1,0 +1,52 @@
+version: '3'
+
+silent: true
+
+vars:
+  BUF_VERSION: v1.50.1
+
+tasks:
+  default:
+    desc: Generate connect and pb files
+    cmds:
+      - task: generate
+
+  generate:
+    desc: Generate connect and pb files
+    deps: [_deps]
+    cmds:
+      - |
+        echo "--> Generating connect and pb files"
+        buf generate
+        echo "--> Generated to ./gen directory"
+
+  lint:
+    desc: Lint the proto files
+    deps: [_deps]
+    cmds:
+      - |
+        echo "--> Linting the proto files"
+        buf lint
+
+  format:
+    desc: Format the proto files
+    deps: [_deps]
+    cmds:
+      - |
+        echo "--> Formatting the proto files"
+        buf format
+
+  _deps:
+    internal: true
+    run: once
+    desc: Install buf
+    cmds:
+      - |
+        echo "--> Checking if buf {{.BUF_VERSION}} is installed"
+        INSTALLED_VERSION=$(buf --version 2>/dev/null | awk '{print $2}' || echo "none")
+        if [ "$INSTALLED_VERSION" != "{{.BUF_VERSION}}" ]; then
+          echo "--> Installing buf {{.BUF_VERSION}}"
+          go install github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}}
+        else
+          echo "--> buf {{.BUF_VERSION}} is already installed"
+        fi

@@ -2,7 +2,6 @@ package root
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +18,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -123,17 +123,10 @@ func checkLatestVersion() error {
 		}
 
 		if currentVersion.LessThan(latestVersion) {
-			notificationStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("178"))
-				// Bright yellow, good for notifications
-			fmt.Printf(
-				"\n%s\n",
-				notificationStyle.Render(fmt.Sprintf("New version %s is available!", latestVersion.String())),
-			)
-			fmt.Printf(
-				"%s\n\n",
-				notificationStyle.Render("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest"),
-			)
+			printer.NewLine(1)
+			printer.Notificationf("New version %s is available!", latestVersion.String())
+
+			printer.Notificationln("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest")
 		}
 	}
 	return nil
@@ -164,9 +157,9 @@ func contextWithSigterm(ctx context.Context) context.Context {
 
 		select {
 		case <-signalCh:
-			fmt.Println(textStyle.Render("Interrupt signal received. Terminating..."))
+			printer.Infoln(textStyle.Render("Interrupt signal received. Terminating..."))
 		case <-ctx.Done():
-			fmt.Println(textStyle.Render("Cancellation signal received. Terminating..."))
+			printer.Infoln(textStyle.Render("Cancellation signal received. Terminating..."))
 		}
 	}()
 

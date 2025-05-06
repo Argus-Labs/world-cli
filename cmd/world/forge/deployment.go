@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
@@ -60,7 +61,7 @@ func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType str
 			return eris.Wrap(err, "Failed on deployment to get selected organization")
 		}
 
-		fmt.Printf("Deploy requires a project created in World Forge: %s\n", org.Name)
+		printer.Infof("Deploy requires a project created in World Forge: %s\n", org.Name)
 
 		pID, err := createProject(ctx)
 		if err != nil {
@@ -76,20 +77,22 @@ func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType str
 	}
 
 	// prompt user to confirm deployment
-	fmt.Println("\n   Confirm Deployment")
-	fmt.Println("========================")
-	fmt.Println("\nReview the deployment details above.")
+	printer.NewLine(1)
+	printer.Headerln("   Confirm Deployment")
+	printer.Infoln("Review the deployment details above.")
 	prompt := fmt.Sprintf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
 
 	confirmation := getInput(prompt, "n")
 
 	if confirmation != "Y" {
 		if confirmation == "y" {
-			fmt.Println("You need to put Y (uppercase) to confirm deployment")
-			fmt.Println("\n❌ Deployment cancelled")
+			printer.Infoln("You need to put Y (uppercase) to confirm deployment")
+			printer.NewLine(1)
+			printer.Errorln("Deployment cancelled")
 			return nil
 		}
-		fmt.Println("\n❌ Deployment cancelled")
+		printer.NewLine(1)
+		printer.Errorln("Deployment cancelled")
 		return nil
 	}
 
@@ -102,9 +105,11 @@ func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType str
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
 
-	fmt.Printf("\nYour %s is being processed!\n", deployType)
-	fmt.Printf("\nTo check the status of your %s, run:\n", deployType)
-	fmt.Println("  $ 'world status'")
+	printer.NewLine(1)
+	printer.Successf("Your %s is being processed!\n", deployType)
+	printer.NewLine(1)
+	printer.Infof("To check the status of your %s, run:\n", deployType)
+	printer.Infoln("  $ 'world status'")
 
 	return nil
 }
@@ -143,13 +148,14 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 			return eris.New("Failed to unmarshal deployment data")
 		}
 	}
-	fmt.Println(" Deployment Status")
-	fmt.Println("-------------------")
-	fmt.Printf("Project:      %s\n", prj.Name)
-	fmt.Printf("Project Slug: %s\n", prj.Slug)
-	fmt.Printf("Repository:   %s\n", prj.RepoURL)
+	printer.Infoln(" Deployment Status ")
+	printer.SectionDivider("-", 19)
+	printer.Infof("Project:      %s\n", prj.Name)
+	printer.Infof("Project Slug: %s\n", prj.Slug)
+	printer.Infof("Repository:   %s\n", prj.RepoURL)
 	if len(envMap) == 0 {
-		fmt.Printf("\n** Project has not been deployed **\n")
+		printer.NewLine(1)
+		printer.Infoln("** Project has not been deployed **")
 		return nil
 	}
 	checkHealth := false
@@ -227,32 +233,32 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 
 			switch buildState {
 			case DeploymentStatusPassed:
-				fmt.Printf("✅ Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
+				printer.Successf("Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
 					strings.ToUpper(env), buildNumber,
 					formattedDuration(buildDuration),
 					bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID)
 				shouldShowHealth[env] = true
 			case DeploymentStatusFailed:
-				fmt.Printf("❌ Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
+				printer.Errorf("Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
 					strings.ToUpper(env), buildNumber, formattedDuration(buildDuration),
 					bet.Format(time.RFC822), formattedDuration(time.Since(bet)))
 			default:
-				fmt.Printf("🔄 Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
+				printer.Infof("🔄 Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
 					strings.ToUpper(env), buildNumber,
 					bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState)
 			}
 		case DeploymentTypeDestroy:
 			switch buildState {
 			case DeploymentStatusPassed:
-				fmt.Printf("✅ Destroyed: [%s] on %s by %s\n",
+				printer.Successf("Destroyed: [%s] on %s by %s\n",
 					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
 			case DeploymentStatusFailed:
-				fmt.Printf("❌ Destroy:   [%s] failed on %s by %s\n",
+				printer.Errorf("Destroy:   [%s] failed on %s by %s\n",
 					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
 				// if destroy failed, continue on to show health
 				shouldShowHealth[env] = true
 			default:
-				fmt.Printf("🔄 Destroy:   [%s] started %s (%s ago) by %s - %s\n",
+				printer.Infof("🔄 Destroy:   [%s] started %s (%s ago) by %s - %s\n",
 					strings.ToUpper(env), dt.Format(time.RFC822),
 					formattedDuration(time.Since(dt)), executorID, buildState)
 			}
@@ -260,16 +266,16 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 			// results can be "passed" or "failed", but either way continue to show the health
 			switch buildState {
 			case DeploymentStatusPassed:
-				fmt.Printf("✅ Reset:     [%s] on %s by %s\n",
+				printer.Successf("Reset:     [%s] on %s by %s\n",
 					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
 				shouldShowHealth[env] = true
 			case DeploymentStatusFailed:
-				fmt.Printf("❌ Reset:     [%s] failed on %s by %s\n",
+				printer.Errorf("Reset:     [%s] failed on %s by %s\n",
 					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
 				// if destroy failed, continue on to show health
 				shouldShowHealth[env] = true
 			default:
-				fmt.Printf("🔄 Reset:     [%s] started %s (%s ago) by %s - %s\n",
+				printer.Infof("🔄 Reset:     [%s] started %s (%s ago) by %s - %s\n",
 					strings.ToUpper(env), dt.Format(time.RFC822),
 					formattedDuration(time.Since(dt)), executorID, buildState)
 			}
@@ -318,17 +324,17 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 		// neither will be set if status is mixed
 		switch {
 		case data["ok"] == true:
-			fmt.Printf("✅ Health:    [%s] ", strings.ToUpper(env))
+			printer.Successf("Health:    [%s] ", strings.ToUpper(env))
 		case data["offline"] == true:
-			fmt.Printf("❌ Health:    [%s] ", strings.ToUpper(env))
+			printer.Errorf("Health:    [%s] ", strings.ToUpper(env))
 		default:
-			fmt.Printf("⚠️ Health:    [%s] ", strings.ToUpper(env))
+			printer.Infof("⚠️ Health:    [%s] ", strings.ToUpper(env))
 		}
 		if len(instances) == 0 {
-			fmt.Println("** No deployed instances found **")
+			printer.Infoln("** No deployed instances found **")
 			return nil
 		}
-		fmt.Printf("(%d deployed instances)\n", len(instances))
+		printer.Infof("(%d deployed instances)\n", len(instances))
 		currRegion := ""
 		for _, instance := range instances {
 			info, ok := instance.(map[string]any)
@@ -390,27 +396,27 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 			}
 			if region != currRegion {
 				currRegion = region
-				fmt.Printf("• %s\n", currRegion)
+				printer.Infof("• %s\n", currRegion)
 			}
-			fmt.Printf("  %d)", instanceNum)
+			printer.Infof("  %d)", instanceNum)
 			switch {
 			case cardinalOK:
-				fmt.Printf("\t✅ Cardinal: %s - OK\n", cardinalHost)
+				printer.Successf("Cardinal: %s - OK\n", cardinalHost)
 			case cardinalResultCode == 0:
-				fmt.Printf("\t❌ Cardinal: %s - FAIL %s\n", cardinalHost,
+				printer.Errorf("Cardinal: %s - FAIL %s\n", cardinalHost,
 					statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
 			default:
-				fmt.Printf("\t❌ Cardinal: %s - FAIL %d %s\n", cardinalHost, cardinalResultCode,
+				printer.Errorf("Cardinal: %s - FAIL %d %s\n", cardinalHost, cardinalResultCode,
 					statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
 			}
 			switch {
 			case nakamaOK:
-				fmt.Printf("\t✅ Nakama:   %s - OK\n", nakamaHost)
+				printer.Successf("Nakama:   %s - OK\n", nakamaHost)
 			case nakamaResultCode == 0:
-				fmt.Printf("\t❌ Nakama:   %s - FAIL %s\n", nakamaHost,
+				printer.Errorf("Nakama:   %s - FAIL %s\n", nakamaHost,
 					statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
 			default:
-				fmt.Printf("\t❌ Nakama:   %s - FAIL %d %s\n", nakamaHost, nakamaResultCode,
+				printer.Errorf("Nakama:   %s - FAIL %d %s\n", nakamaHost, nakamaResultCode,
 					statusFailRegEx.ReplaceAllString(nakamaResultStr, ""))
 			}
 		}
@@ -434,24 +440,28 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 	if err != nil {
 		return eris.Wrap(err, "Failed to unmarshal deployment preview")
 	}
-	fmt.Println("\n   Deployment Preview")
-	fmt.Println("========================")
-	fmt.Println("\n   Basic Information")
-	fmt.Println("------------------------")
-	fmt.Printf("Organization:    %s\n", response.Data.OrgName)
-	fmt.Printf("Org Slug:        %s\n", response.Data.OrgSlug)
-	fmt.Printf("Project:         %s\n", response.Data.ProjectName)
-	fmt.Printf("Project Slug:    %s\n", response.Data.ProjectSlug)
+	printer.NewLine(1)
+	printer.Headerln("   Deployment Preview")
 
-	fmt.Println("\n     Configuration")
-	fmt.Println("------------------------")
-	fmt.Printf("Executor:        %s\n", response.Data.ExecutorName)
-	fmt.Printf("Deployment Type: %s\n", response.Data.DeploymentType)
-	fmt.Printf("Tick Rate:       %d\n", response.Data.TickRate)
+	printer.NewLine(1)
+	printer.Headerln("   Basic Information   ")
+	printer.SectionDivider("-", 23)
+	printer.Infof("Organization:    %s\n", response.Data.OrgName)
+	printer.Infof("Org Slug:        %s\n", response.Data.OrgSlug)
+	printer.Infof("Project:         %s\n", response.Data.ProjectName)
+	printer.Infof("Project Slug:    %s\n", response.Data.ProjectSlug)
 
-	fmt.Println("\n  Deployment Regions")
-	fmt.Println("------------------------")
-	fmt.Printf("%s\n", strings.Join(response.Data.Regions, ", "))
+	printer.NewLine(1)
+	printer.Headerln("     Configuration     ")
+	printer.SectionDivider("-", 23)
+	printer.Infof("Executor:        %s\n", response.Data.ExecutorName)
+	printer.Infof("Deployment Type: %s\n", response.Data.DeploymentType)
+	printer.Infof("Tick Rate:       %d\n", response.Data.TickRate)
+
+	printer.NewLine(1)
+	printer.Headerln("  Deployment Regions  ")
+	printer.SectionDivider("-", 23)
+	printer.Infof("%s\n", strings.Join(response.Data.Regions, ", "))
 
 	return nil
 }

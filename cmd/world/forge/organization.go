@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 type organization struct {
@@ -39,19 +40,22 @@ func showOrganizationList(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to get organization list")
 	}
 
-	fmt.Println("\n  Organization Information")
-	fmt.Println("============================")
+	printer.NewLine(1)
+	printer.Headerln("  Organization Information  ")
 	if organization.Name == "" {
-		fmt.Println("\nNo organization selected")
-		fmt.Println("\nUse 'world forge organization switch' to choose an organization")
+		printer.NewLine(1)
+		printer.Errorln("No organization selected")
+		printer.NewLine(1)
+		printer.Infoln("Use 'world forge organization switch' to choose an organization")
 	} else {
-		fmt.Println("\n Available Organizations:")
-		fmt.Println("--------------------------")
+		printer.NewLine(1)
+		printer.Infoln(" Available Organizations: ")
+		printer.SectionDivider("-", 26)
 		for _, org := range organizations {
 			if org.ID == organization.ID {
-				fmt.Printf("• %s (%s) [SELECTED]\n", org.Name, org.Slug)
+				printer.Infof("• %s (%s) [SELECTED]\n", org.Name, org.Slug)
 			} else {
-				fmt.Printf("  %s (%s)\n", org.Name, org.Slug)
+				printer.Infof("  %s (%s)\n", org.Name, org.Slug)
 			}
 		}
 	}
@@ -127,10 +131,10 @@ func selectOrganization(ctx context.Context) (organization, error) {
 
 func promptForOrganization(ctx context.Context, orgs []organization) (organization, error) {
 	// Display organizations as a numbered list
-	fmt.Println("\n   Available Organizations")
-	fmt.Println("=============================")
+	printer.NewLine(1)
+	printer.Headerln("   Available Organizations  ")
 	for i, org := range orgs {
-		fmt.Printf("  %d. %s\n    └─ Slug: %s\n", i+1, org.Name, org.Slug)
+		printer.Infof("  %d. %s\n    └─ Slug: %s\n", i+1, org.Name, org.Slug)
 	}
 
 	// Get user input
@@ -139,17 +143,20 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 		case <-ctx.Done():
 			return organization{}, ctx.Err()
 		default:
-			input := getInput("\nEnter organization number (or 'q' to quit)", "")
+			printer.NewLine(1)
+			input := getInput("Enter organization number (or 'q' to quit)", "")
 
 			if input == "q" {
-				fmt.Println("\n❌ Organization selection canceled")
+				printer.NewLine(1)
+				printer.Errorln("Organization selection canceled")
 				return organization{}, eris.New("Organization selection canceled")
 			}
 
 			// Parse selection
 			num, err := strconv.Atoi(input)
 			if err != nil || num < 1 || num > len(orgs) {
-				fmt.Printf("\n❌ Invalid selection. Please enter a number between 1 and %d\n", len(orgs))
+				printer.NewLine(1)
+				printer.Errorf("Invalid selection. Please enter a number between 1 and %d\n", len(orgs))
 				continue
 			}
 
@@ -166,7 +173,8 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
 
-			fmt.Printf("\n✅ Selected organization: %s\n", selectedOrg.Name)
+			printer.NewLine(1)
+			printer.Successf("Selected organization: %s\n", selectedOrg.Name)
 			return selectedOrg, nil
 		}
 	}
@@ -197,18 +205,19 @@ func handleProjectConfig(ctx context.Context) error {
 	return showProjectList(ctx)
 }
 
-//nolint:gocognit // Makes sense to keep in one function.
+//nolint:gocognit,funlen // Makes sense to keep in one function.
 func createOrganization(ctx context.Context) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 
 	for {
 		// Get organization name
-		fmt.Println("\n  Create New Organization ")
-		fmt.Println("==============================")
+		printer.NewLine(1)
+		printer.Headerln("  Create New Organization  ")
 		for {
-			orgName = getInput("\nEnter organization name", "")
+			orgName = getInput("Enter organization name", "")
 			if orgName == "" {
-				fmt.Printf("\nOrganization name is required\n")
+				printer.NewLine(1)
+				printer.Errorln("Organization name is required")
 				continue
 			}
 			break
@@ -219,13 +228,14 @@ func createOrganization(ctx context.Context) (*organization, error) {
 			minLength := 3
 			maxLength := 15
 			orgSlug = CreateSlugFromName(orgName, minLength, maxLength)
-			orgSlug = getInput("\nEnter organization slug", orgSlug)
+			orgSlug = getInput("Enter organization slug", orgSlug)
 
 			// Validate slug
 			var err error
 			orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
 			if err != nil {
-				fmt.Printf("\n❌ Error: %s\n", err)
+				printer.NewLine(1)
+				printer.Errorf("Error: %s\n", err)
 				continue
 			}
 			break
@@ -233,15 +243,17 @@ func createOrganization(ctx context.Context) (*organization, error) {
 
 		// Get and validate organization avatar URL
 		for {
-			orgAvatarURL = getInput("\nEnter organization avatar URL [none]", "")
+			orgAvatarURL = getInput("Enter organization avatar URL [none]", "")
 
 			if orgAvatarURL == "" {
-				fmt.Print("\nSkipped. No avatar URL will be used.\n")
+				printer.NewLine(1)
+				printer.Infoln("Skipped. No avatar URL will be used.")
 				break
 			}
 
 			if !isValidURL(orgAvatarURL) {
-				fmt.Printf("\n❌ Error: Invalid URL, leave empty to skip\n")
+				printer.NewLine(1)
+				printer.Errorln("Invalid URL, leave empty to skip")
 				continue
 			}
 
@@ -249,26 +261,28 @@ func createOrganization(ctx context.Context) (*organization, error) {
 		}
 
 		// Show confirmation
-		fmt.Println("\n  Organization Details")
-		fmt.Println("==============================")
-		fmt.Printf("Name: %s\n", orgName)
-		fmt.Printf("Slug: %s\n", orgSlug)
+		printer.NewLine(1)
+		printer.Headerln("  Organization Details  ")
+		printer.Infof("Name: %s\n", orgName)
+		printer.Infof("Slug: %s\n", orgSlug)
 		if orgAvatarURL != "" {
-			fmt.Printf("Avatar URL: %s\n", orgAvatarURL)
+			printer.Infof("Avatar URL: %s\n", orgAvatarURL)
 		} else {
-			fmt.Println("Avatar URL: None")
+			printer.Infoln("Avatar URL: None")
 		}
 
 		// Get confirmation
 		for redo := true; redo; {
-			confirm := getInput("\nCreate organization with these details? (Y/n)", "n")
+			printer.NewLine(1)
+			confirm := getInput("Create organization with these details? (Y/n)", "n")
 			switch confirm {
 			case "Y":
 				return createOrgRequestAndSave(ctx, orgName, orgSlug, orgAvatarURL)
 			case "n":
 				redo = false
 			default:
-				fmt.Println("\nPlease enter capital 'Y' to confirm, 'n' to cancel, or 'redo' to start over")
+				printer.NewLine(1)
+				printer.Errorln("Please enter capital 'Y' to confirm, 'n' to cancel, or 'redo' to start over")
 			}
 		}
 	}
@@ -302,14 +316,15 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 		return nil, eris.Wrap(err, "Failed to save organization in config")
 	}
 
-	fmt.Printf("\nOrganization '%s' with slug '%s' created successfully!\n", name, slug)
+	printer.NewLine(1)
+	printer.Successf("Organization '%s' with slug '%s' created successfully!\n", name, slug)
 	return org, nil
 }
 
 func inviteUserToOrganization(ctx context.Context) error { //nolint:dupl // TODO: refactor
-	fmt.Println("\n   Invite User to Organization")
-	fmt.Println("=================================")
-	userID := getInput("\nEnter user ID to invite", "")
+	printer.NewLine(1)
+	printer.Headerln("   Invite User to Organization   ")
+	userID := getInput("Enter user ID to invite", "")
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
@@ -337,15 +352,16 @@ func inviteUserToOrganization(ctx context.Context) error { //nolint:dupl // TODO
 		return eris.Wrap(err, "Failed to invite user to organization")
 	}
 
-	fmt.Printf("\nSuccessfully invited user %s to organization!\n", userID)
-	fmt.Printf("Assigned role: %s\n", role)
+	printer.NewLine(1)
+	printer.Successf("Successfully invited user %s to organization!\n", userID)
+	printer.Infof("Assigned role: %s\n", role)
 	return nil
 }
 
 func updateUserRoleInOrganization(ctx context.Context) error { //nolint:dupl // TODO: refactor
-	fmt.Println("\n  Update User Role in Organization ")
-	fmt.Println("=====================================")
-	userID := getInput("\nEnter user ID to update", "")
+	printer.NewLine(1)
+	printer.Headerln("  Update User Role in Organization  ")
+	userID := getInput("Enter user ID to update", "")
 
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
@@ -374,8 +390,9 @@ func updateUserRoleInOrganization(ctx context.Context) error { //nolint:dupl // 
 		return eris.Wrap(err, "Failed to set user role in organization")
 	}
 
-	fmt.Printf("\nSuccessfully updated role for user %s!\n", userID)
-	fmt.Printf("New role: %s\n", role)
+	printer.NewLine(1)
+	printer.Successf("Successfully updated role for user %s!\n", userID)
+	printer.Infof("New role: %s\n", role)
 	return nil
 }
 
@@ -388,15 +405,17 @@ func getRoleInput(allowNone bool) string {
 		opts = "owner, admin, or member"
 	}
 	for {
-		fmt.Println("\n Role Assignment")
-		fmt.Println("----------------")
-		fmt.Printf("Available Roles: %s\n", opts)
-		role := getInput("\nEnter organization role", "member")
+		printer.NewLine(1)
+		printer.Headerln(" Role Assignment  ")
+		printer.Infof("Available Roles: %s\n", opts)
+		role := getInput("Enter organization role", "member")
 		if allowNone && role == "none" {
-			fmt.Print("\nWarning: Role \"none\" removes user from this organization")
-			answer := getInput("\nConfirm removal? (Yes/no)", "no")
+			printer.NewLine(1)
+			printer.Infoln("Warning: Role \"none\" removes user from this organization")
+			answer := getInput("Confirm removal? (Yes/no)", "no")
 			if answer != "Yes" {
-				fmt.Println("\n❌ User not removed")
+				printer.NewLine(1)
+				printer.Errorln("User not removed")
 				continue // let them try again
 			}
 			return role
@@ -404,7 +423,8 @@ func getRoleInput(allowNone bool) string {
 		if role == "admin" || role == "owner" || role == "member" {
 			return role
 		}
-		fmt.Printf("\n❌ Error: Role must be one of %s\n", opts)
+		printer.NewLine(1)
+		printer.Errorf("Error: Role must be one of %s\n", opts)
 	}
 }
 
@@ -444,18 +464,22 @@ func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) 
 func handleNoOrgs(ctx context.Context) (string, error) {
 	for redo := true; redo; {
 		// Confirmation prompt
-		confirmation := getInput("\nYou don't have any organizations. Create a new one now? (Y/n)", "n")
+		printer.NewLine(1)
+		confirmation := getInput("You don't have any organizations. Create a new one now? (Y/n)", "n")
 
 		switch confirmation {
 		case "Y":
 			redo = false
 		case "y":
-			fmt.Println("You need to enter Y (uppercase) to confirm creation")
+			printer.NewLine(1)
+			printer.Errorln("You need to enter Y (uppercase) to confirm creation")
 		case "n":
-			fmt.Println("❌ Organization creation canceled")
+			printer.NewLine(1)
+			printer.Errorln("Organization creation canceled")
 			return "", nil
 		default:
-			fmt.Println("❌ Invalid input")
+			printer.NewLine(1)
+			printer.Errorln("Invalid input")
 		}
 	}
 

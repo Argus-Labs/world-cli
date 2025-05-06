@@ -18,6 +18,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/stretchr/testify/suite"
 	"pkg.world.dev/world-cli/common/config"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
@@ -836,7 +837,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 				}
 				input := tc.inputs[inputIndex]
 				inputIndex++
-				fmt.Printf("%s [%s]: %s", prompt, defaultVal, input)
+				printer.Infof("%s [%s]: %s", prompt, defaultVal, input)
 				return input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -850,7 +851,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 				tea.WithInput(nil),
 			)
 			if regionSelector == nil {
-				print("failed to create region selector")
+				print("failed to create region selector") //nolint:forbidigo // test
 			}
 			defer func() { regionSelector = nil }()
 
@@ -865,7 +866,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 						// wait for 100ms to make sure the action is processed
 						time.Sleep(100 * time.Millisecond)
 					} else {
-						print("region selector is nil")
+						print("region selector is nil") //nolint:forbidigo // test
 					}
 				}
 			}()
@@ -1082,7 +1083,7 @@ func (s *ForgeTestSuite) TestDestroy() {
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			getInput = func(prompt string, defaultVal string) string {
-				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
+				printer.Infof("%s [%s]: %s", prompt, defaultVal, tc.input)
 				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -1183,7 +1184,7 @@ func (s *ForgeTestSuite) TestReset() {
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			getInput = func(prompt string, defaultVal string) string {
-				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
+				printer.Infof("%s [%s]: %s", prompt, defaultVal, tc.input)
 				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -1563,7 +1564,7 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 
 			case "select":
 				getInput = func(prompt string, defaultVal string) string {
-					fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
+					printer.Infof("%s [%s]: %s", prompt, defaultVal, tc.input)
 					return tc.input
 				}
 				defer func() { getInput = originalGetInput }()
@@ -1608,10 +1609,10 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				Slug: "testo",
 			},
 			expectedPrompt: []string{
-				"\nEnter organization name",
-				"\nEnter organization slug",
-				"\nEnter organization avatar URL [none]",
-				"\nCreate organization with these details? (Y/n)",
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization avatar URL [none]",
+				"Create organization with these details? (Y/n)",
 			},
 		},
 		{
@@ -1630,10 +1631,10 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				Slug: "testo",
 			},
 			expectedPrompt: []string{
-				"\nEnter organization name",
-				"\nEnter organization slug",
-				"\nEnter organization avatar URL [none]",
-				"\nCreate organization with these details? (Y/n)",
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization avatar URL [none]",
+				"Create organization with these details? (Y/n)",
 			},
 		},
 		{
@@ -1646,11 +1647,11 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"Y",               // confirm
 			},
 			expectedPrompt: []string{
-				"\nEnter organization name",
-				"\nEnter organization slug",
-				"\nEnter organization slug",
-				"\nEnter organization avatar URL [none]",
-				"\nCreate organization with these details? (Y/n)",
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization slug",
+				"Enter organization avatar URL [none]",
+				"Create organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
 			expectedError:   false,
@@ -1670,11 +1671,11 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"Y",               // confirm
 			},
 			expectedPrompt: []string{
-				"\nEnter organization name",
-				"\nEnter organization name",
-				"\nEnter organization slug",
-				"\nEnter organization avatar URL [none]",
-				"\nCreate organization with these details? (Y/n)",
+				"Enter organization name",
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization avatar URL [none]",
+				"Create organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
 			expectedError:   false,
@@ -1697,14 +1698,14 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"Y",                // Second attempt - confirm
 			},
 			expectedPrompt: []string{
-				"\nEnter organization name",
-				"\nEnter organization slug",
-				"\nEnter organization avatar URL [none]",
-				"\nCreate organization with these details? (Y/n)",
-				"\nEnter organization name",
-				"\nEnter organization slug",
-				"\nEnter organization avatar URL [none]",
-				"\nCreate organization with these details? (Y/n)",
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization avatar URL [none]",
+				"Create organization with these details? (Y/n)",
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization avatar URL [none]",
+				"Create organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
 			expectedError:   false,
@@ -1720,7 +1721,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 		s.Run(tc.name, func() {
 			inputIndex := 0
 			getInput = func(prompt string, defaultVal string) string {
-				fmt.Printf("%s [%s]: ", prompt, defaultVal)
+				fmt.Printf("%s [%s]: ", prompt, defaultVal) //nolint:forbidigo // test
 
 				// Validate against expected prompts if defined
 				if len(tc.expectedPrompt) > 0 {
@@ -1737,7 +1738,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				if input == "" {
 					input = defaultVal
 				}
-				fmt.Printf("%s\n", input)
+				printer.Infoln(input)
 				inputIndex++
 				return input
 			}
@@ -1894,6 +1895,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 		expectInputFail     int
 		expectedError       bool
 		expectedProject     *project
+		setupWorldToml      bool // New field to indicate if we should create world.toml
 	}{
 		{
 			name: "Success - Public repo default slug",
@@ -2067,6 +2069,42 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			expectedError:   false,
 			expectedProject: nil,
 		},
+		{
+			name: "Success - Project name from world.toml",
+			config: globalconfig.GlobalConfig{
+				OrganizationID: "test-org-id",
+				Credential: globalconfig.Credential{
+					Token: "test-token",
+				},
+				KnownProjects: knownProjects,
+			},
+			inputs: []string{
+				"", // name (should be taken from world.toml)
+				"", // take default slug
+				"https://github.com/argus-labs/starter-game-template", // repoURL
+				"",                // repoToken (empty for public repo)
+				"",                // repoPath (empty for default root path of repo)
+				"10",              // tick rate
+				"Y",               // enable discord notifications
+				"test-token",      // discord token
+				"1234567890",      // discord channel ID
+				"Y",               // enable slack notifications
+				"test-token",      // slack token
+				"1234567890",      // slack channel ID
+				"http://test.com", // avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedProject: &project{
+				Name: "test-project-from-toml",
+				Slug: "test_project_from_toml",
+			},
+			setupWorldToml: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -2075,10 +2113,32 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 			err := SaveForgeConfig(tc.config)
 			s.Require().NoError(err)
 
+			// Create temporary directory for world.toml if needed
+			if tc.setupWorldToml {
+				tmpDir, err := os.MkdirTemp("", "world-cli-test")
+				s.Require().NoError(err)
+				defer os.RemoveAll(tmpDir)
+
+				// Create world.toml with forge section
+				worldTomlPath := filepath.Join(tmpDir, "world.toml")
+				worldTomlContent := `[forge]
+PROJECT_NAME = "test-project-from-toml"
+`
+				err = os.WriteFile(worldTomlPath, []byte(worldTomlContent), 0644)
+				s.Require().NoError(err)
+
+				// Change to the temporary directory
+				oldDir, err := os.Getwd()
+				s.Require().NoError(err)
+				defer os.Chdir(oldDir)
+				err = os.Chdir(tmpDir)
+				s.Require().NoError(err)
+			}
+
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
 				getInput = func(prompt string, defaultVal string) string {
-					fmt.Printf("%s [%s]: ", prompt, defaultVal)
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
 
 					if inputIndex >= len(tc.inputs) {
 						panic(fmt.Errorf("Input %d Failed", inputIndex))
@@ -2091,7 +2151,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 						input = defaultVal
 					}
 
-					fmt.Printf("%s\n", input)
+					printer.Infoln(input)
 					return input
 				}
 				defer func() { getInput = originalGetInput }()
@@ -2106,7 +2166,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 				tea.WithInput(nil),
 			)
 			if regionSelector == nil {
-				print("failed to create region selector")
+				printer.Errorln("failed to create region selector")
 			}
 			defer func() { regionSelector = nil }()
 
@@ -2121,7 +2181,7 @@ func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
 						// wait for 100ms to make sure the action is processed
 						time.Sleep(100 * time.Millisecond)
 					} else {
-						print("region selector is nil")
+						printer.Errorln("region selector is nil")
 					}
 				}
 			}()
@@ -2230,7 +2290,8 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			s.Require().NoError(err)
 
 			getInput = func(prompt string, defaultVal string) string {
-				fmt.Printf("%s [%s]: %s", prompt, defaultVal, tc.input)
+				printer.Infof("%s [%s]: ", prompt, defaultVal)
+				printer.Infoln(tc.input)
 				return tc.input
 			}
 			defer func() { getInput = originalGetInput }()
@@ -2503,7 +2564,7 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() { //nolint: gocognit // 
 				inputIndex := 0
 				lastPrompt := ""
 				getInput = func(prompt string, defaultVal string) string {
-					fmt.Printf("%s [%s]: ", prompt, defaultVal)
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
 					if prompt == lastPrompt {
 						panic(eris.Errorf("Input %d Failed", inputIndex))
 					}
@@ -2512,7 +2573,7 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() { //nolint: gocognit // 
 					if input == "" {
 						input = defaultVal
 					}
-					fmt.Printf("%s\n", input)
+					printer.Infoln(input)
 					inputIndex++
 					return input
 				}
@@ -2653,7 +2714,7 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() { //nolint: gocognit // 
 				lastPrompt := ""
 				nextToLastPrompt := ""
 				getInput = func(prompt string, defaultVal string) string {
-					fmt.Printf("%s [%s]: ", prompt, defaultVal)
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
 					if (prompt == lastPrompt || prompt == nextToLastPrompt) && tc.expectInputFail <= inputIndex {
 						panic(eris.Errorf("Input %d Failed", inputIndex))
 					}
@@ -2663,7 +2724,7 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() { //nolint: gocognit // 
 					if input == "" {
 						input = defaultVal
 					}
-					fmt.Printf("%s\n", input)
+					printer.Infoln(input)
 					inputIndex++
 					return input
 				}
