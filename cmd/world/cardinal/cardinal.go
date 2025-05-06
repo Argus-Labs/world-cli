@@ -33,7 +33,7 @@ var BaseCmd = &cobra.Command{
 	},
 }
 
-func init() {
+func cardinalInit() {
 	// Register subcommands - `world cardinal [subcommand]`
 	BaseCmd.AddCommand(startCmd, devCmd, restartCmd, purgeCmd, stopCmd, buildCmd)
 	registerConfigAndVerboseFlags(startCmd, devCmd, restartCmd, purgeCmd, stopCmd, buildCmd)

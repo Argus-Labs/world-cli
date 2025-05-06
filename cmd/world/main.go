@@ -7,6 +7,8 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog/log"
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/config"
@@ -25,14 +27,17 @@ var (
 	SentryDsn     string
 )
 
-func init() {
+func EnvVersionInit() {
 	env, version := getEnvAndVersion()
 	root.AppVersion = version
-
+	// Initialize forge
 	forge.InitForge(env)
 }
 
 func main() {
+	// Initialize environment and version
+	EnvVersionInit()
+
 	// Create a channel to receive signals.
 	sigChan := make(chan os.Signal, 1)
 
@@ -73,6 +78,11 @@ func main() {
 	// Capture event running
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
+	// Initialize packages
+	evm.EvmInit()
+	cardinal.Init()
+	forge.InitForge()
+	root.RootCmdInit()
 	root.Execute()
 }
 

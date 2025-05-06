@@ -39,6 +39,7 @@ var rootCmd = &cobra.Command{
 		return checkLatestVersion()
 	},
 }
+var RootCmdTesting = rootCmd
 
 // Release structure to hold the data of the latest release.
 type Release struct {
@@ -47,7 +48,8 @@ type Release struct {
 	HTMLURL string `json:"html_url"`
 }
 
-func init() {
+// RootCmdInit initializes the root command.
+func RootCmdInit() {
 	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true
 
@@ -75,6 +77,17 @@ func init() {
 
 	// Remove completion subcommand
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// It only needs to happen once to the rootCmd.
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		sentry.CaptureException(err)
+		logger.Errors(err)
+	}
+	// print log stack
+	logger.PrintLogs()
 }
 
 func checkLatestVersion() error {
@@ -132,15 +145,8 @@ func checkLatestVersion() error {
 	return nil
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		sentry.CaptureException(err)
-		logger.Errors(err)
-	}
-	// print log stack
-	logger.PrintLogs()
+func CheckLatestVersionTesting() error {
+	return checkLatestVersion()
 }
 
 // contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or

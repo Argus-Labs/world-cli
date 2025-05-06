@@ -25,7 +25,7 @@ var BaseCmd = &cobra.Command{
 	GroupID: "core",
 }
 
-func init() {
+func registerCommands() {
 	// Register subcommands - `world evm [subcommand]`
 	BaseCmd.AddCommand(startCmd, stopCmd)
 	registerConfigAndVerboseFlags(startCmd, stopCmd)

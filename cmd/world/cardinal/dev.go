@@ -117,7 +117,7 @@ This mode runs Cardinal directly from your source code, providing:
 // Cobra Setup //
 /////////////////
 
-func init() {
+func devCmdInit() {
 	registerEditorFlag(devCmd, true)
 	devCmd.Flags().Bool(flagPrettyLog, true, "Run Cardinal with pretty logging")
 }

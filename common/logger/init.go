@@ -24,6 +24,7 @@ var (
 	verboseMode = false
 )
 
+//nolint:gochecknoinits // Common package init, should self init as it shouldn't have dependencies..
 func init() {
 	var (
 		lgr zerolog.Logger

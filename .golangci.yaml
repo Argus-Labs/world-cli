@@ -24,7 +24,7 @@ linters:
     - funlen
     - gocheckcompilerdirectives
     # - gochecknoglobals
-    # - gochecknoinits
+    - gochecknoinits
     - gochecksumtype
     - gocognit
     - goconst

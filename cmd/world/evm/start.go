@@ -73,10 +73,12 @@ to run with a local development data availability layer.`,
 	},
 }
 
-func init() {
+func EvmInit() {
 	startCmd.Flags().String(FlagDAAuthToken, "",
 		"DA Auth Token that allows the rollup to communicate with the Celestia client.")
 	startCmd.Flags().Bool(FlagUseDevDA, false, "Use a locally running DA layer")
+
+	registerCommands()
 }
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
