@@ -16,6 +16,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/printer"
@@ -43,10 +44,14 @@ type ForgeTestSuite struct {
 	server    *httptest.Server
 	testToken string
 	ctx       context.Context
+	cmd       *cobra.Command
 }
 
-func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care about cylomatic complexity
+func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't care about cylomatic complexity
 	s.ctx = context.Background()
+	s.cmd = &cobra.Command{}
+	s.cmd.SetContext(s.ctx)
+
 	// Create test server on port 8001
 	listener, err := net.Listen("tcp", ":8001")
 	s.Require().NoError(err)
@@ -91,6 +96,8 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop // test, don't care abou
 					http.Error(w, "Organization not found", http.StatusNotFound)
 				case "/api/organization/invalid-org-id/role":
 					http.Error(w, "Organization not found", http.StatusNotFound)
+				case "/api/user":
+					s.handleGetUser(w, r)
 				case "/api/user/login":
 					s.handleLogin(w, r)
 				case "/api/user/login/get-token":
@@ -153,6 +160,15 @@ func (s *ForgeTestSuite) TearDownTest() {
 
 	// Restore original functions
 	config.GetCLIConfigDir = originalGetConfigDir
+}
+
+func (s *ForgeTestSuite) handleGetUser(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, map[string]interface{}{"data": User{
+		ID:        "test-user-id",
+		Name:      "Test User",
+		Email:     "test@example.com",
+		AvatarURL: "https://example.com/avatar.png",
+	}})
 }
 
 func (s *ForgeTestSuite) handleInvite(w http.ResponseWriter, _ *http.Request) {
@@ -2912,6 +2928,242 @@ func (s *ForgeTestSuite) TestFindGitPathAndURL() {
 	s.Contains(path, "cmd")
 	s.Contains(url, "https://github")
 	s.NotContains(url, ".git")
+}
+
+func (s *ForgeTestSuite) TestSetupForgeCommandState() {
+	testCases := []struct {
+		name          string
+		config        ForgeConfig
+		loginReq      LoginStepRequirement
+		orgReq        StepRequirement
+		projectReq    StepRequirement
+		expectedError bool
+		checkState    func(*ForgeCommandState)
+	}{
+		{
+			name: "Success - Ignore all requirements",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			loginReq:      IgnoreLogin,
+			orgReq:        Ignore,
+			projectReq:    Ignore,
+			expectedError: false,
+			checkState: func(state *ForgeCommandState) {
+				s.Nil(state.User)
+				s.Nil(state.Organization)
+				s.Nil(state.Project)
+			},
+		},
+		{
+			name: "Success - Need login and have token",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			loginReq:      NeedLogin,
+			orgReq:        Ignore,
+			projectReq:    Ignore,
+			expectedError: false,
+			checkState: func(state *ForgeCommandState) {
+				s.NotNil(state.User)
+				s.Nil(state.Organization)
+				s.Nil(state.Project)
+			},
+		},
+		{
+			name: "Success - Need org ID and have it",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+				OrganizationID: "test-org-id",
+			},
+			loginReq:      NeedLogin,
+			orgReq:        NeedIDOnly,
+			projectReq:    Ignore,
+			expectedError: false,
+			checkState: func(state *ForgeCommandState) {
+				s.NotNil(state.User)
+				s.NotNil(state.Organization)
+				s.Equal("test-org-id", state.Organization.ID)
+				s.Nil(state.Project)
+			},
+		},
+		{
+			name: "Success - Need project ID and have it",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+				OrganizationID:  "test-org-id",
+				ProjectID:       "test-project-id",
+				CurrProjectName: "Test Project",
+			},
+			loginReq:      NeedLogin,
+			orgReq:        NeedIDOnly,
+			projectReq:    NeedIDOnly,
+			expectedError: false,
+			checkState: func(state *ForgeCommandState) {
+				s.NotNil(state.User)
+				s.NotNil(state.Organization)
+				s.Equal("test-org-id", state.Organization.ID)
+				s.NotNil(state.Project)
+				s.Equal("test-project-id", state.Project.ID)
+				// s.Equal("Test Project", state.Project.Name)
+			},
+		},
+		{
+			name: "Error - Need login but no token",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "",
+				},
+			},
+			loginReq:      NeedLogin,
+			orgReq:        Ignore,
+			projectReq:    Ignore,
+			expectedError: true,
+			checkState: func(state *ForgeCommandState) {
+				s.Nil(state.User)
+				s.Nil(state.Organization)
+				s.Nil(state.Project)
+			},
+		},
+		{
+			name: "Error - Must not have org but have org ID",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+				OrganizationID: "test-org-id",
+			},
+			loginReq:      NeedLogin,
+			orgReq:        MustNotExist,
+			projectReq:    Ignore,
+			expectedError: true,
+			checkState: func(state *ForgeCommandState) {
+				s.NotNil(state.User)
+				s.Nil(state.Organization)
+				s.Nil(state.Project)
+			},
+		},
+		{
+			name: "Error - Must not have project but have project ID",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+			},
+			loginReq:      NeedLogin,
+			orgReq:        NeedIDOnly,
+			projectReq:    MustNotExist,
+			expectedError: true,
+			checkState: func(state *ForgeCommandState) {
+				s.NotNil(state.User)
+				s.Nil(state.Organization)
+				s.Nil(state.Project)
+			},
+		},
+		{
+			name: "Success - Need repo lookup and have URL",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token: "test-token",
+				},
+				ProjectID:      "test-project-id",
+				OrganizationID: "test-org-id",
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "cmd/world/forge",
+			},
+			loginReq:      NeedLogin,
+			orgReq:        NeedIDOnly,
+			projectReq:    NeedIDOnly,
+			expectedError: false,
+			checkState: func(state *ForgeCommandState) {
+				s.NotNil(state.User)
+				s.NotNil(state.Organization)
+				s.NotNil(state.Project)
+			},
+		},
+	}
+
+	// Mock browser opening
+	openBrowser = func(_ string) error { return nil }
+	defer func() { openBrowser = originalOpenBrowser }()
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Save the test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Run the test
+			state, err := SetupForgeCommandState(s.cmd, tc.loginReq, tc.orgReq, tc.projectReq)
+
+			// Check error
+			if tc.expectedError {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
+
+			// Check state
+			tc.checkState(state)
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestGetForgeCommandState() {
+	// Test that GetForgeCommandState panics when flow is nil
+	s.Panics(func() {
+		GetForgeCommandState()
+	})
+
+	// Test that GetForgeCommandState returns the correct state after setup
+	config := ForgeConfig{
+		Credential: Credential{
+			Token: "test-token",
+		},
+	}
+	err := SaveForgeConfig(config)
+	s.Require().NoError(err)
+
+	state, err := SetupForgeCommandState(s.cmd, NeedLogin, Ignore, Ignore)
+	s.Require().NoError(err)
+
+	retrievedState := GetForgeCommandState()
+	s.Equal(state, retrievedState)
+}
+
+func (s *ForgeTestSuite) TestAddKnownProject() {
+	config := &ForgeConfig{
+		KnownProjects: []KnownProject{},
+	}
+
+	proj := &project{
+		ID:       "test-project-id",
+		OrgID:    "test-org-id",
+		RepoURL:  "https://github.com/test/repo",
+		RepoPath: "cmd/world/forge",
+		Name:     "Test Project",
+	}
+
+	AddKnownProject(config, proj)
+
+	s.Len(config.KnownProjects, 1)
+	s.Equal(KnownProject{
+		ProjectID:      "test-project-id",
+		OrganizationID: "test-org-id",
+		RepoURL:        "https://github.com/test/repo",
+		RepoPath:       "cmd/world/forge",
+		ProjectName:    "Test Project",
+	}, config.KnownProjects[0])
 }
 
 func TestForgeSuite(t *testing.T) {
