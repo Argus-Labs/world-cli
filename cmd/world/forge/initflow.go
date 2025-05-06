@@ -89,7 +89,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 			Project:      nil,
 		},
 	}
-	loggedIn := config.Credential.Token == ""
+	loggedIn := config.Credential.Token != ""
 	// TODO: check for credential expiration
 
 	if flow.requiredLogin == NeedLogin && !loggedIn {
