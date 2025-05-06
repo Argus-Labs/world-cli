@@ -164,9 +164,13 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	} else {
 		switch flow.requiredOrganization { //nolint:exhaustive // don't need to handle all cases
 		case NeedData, NeedIDOnly:
-			flow.handleNeedOrgData()
+			if err := flow.handleNeedOrgData(); err != nil {
+				return err
+			}
 		case NeedExistingData, NeedExistingIDOnly:
-			flow.handleNeedExistingOrgData()
+			if err := flow.handleNeedExistingOrgData(); err != nil {
+				return err
+			}
 		}
 	}
 
