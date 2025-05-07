@@ -133,7 +133,13 @@ func loadConfigFromFile(filename string) (*Config, error) {
 		if !ok {
 			continue
 		}
-		for key, val := range m.(map[string]any) {
+
+		typedMap, ok := m.(map[string]any)
+		if !ok {
+			return nil, eris.Errorf("expected %q section to be a map[string]any", header)
+		}
+
+		for key, val := range typedMap {
 			if _, okay := cfg.DockerEnv[key]; okay {
 				return nil, eris.Errorf("duplicate env variable %q", key)
 			}

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -213,7 +214,11 @@ func appendToToml(filePath, section string, fields map[string]any) error {
 
 	// Add the fields to the section
 	for key, value := range fields {
-		config[section].(map[string]any)[key] = value
+		sectionMap, ok := config[section].(map[string]any)
+		if !ok {
+			return fmt.Errorf("expected config[%q] to be a map[string]any", section)
+		}
+		sectionMap[key] = value
 	}
 
 	// Marshal the updated config back to TOML
