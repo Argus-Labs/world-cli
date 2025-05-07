@@ -180,7 +180,7 @@ func (m logModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.psqlOutputs = append(m.psqlOutputs, *msg)
 		// set max output length to 5
-		if len(m.psqlOutputs) > 5 { //nolint:gomnd
+		if len(m.psqlOutputs) > 5 {
 			m.psqlOutputs = m.psqlOutputs[1:]
 		}
 		return m, nil

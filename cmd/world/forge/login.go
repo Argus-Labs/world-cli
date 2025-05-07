@@ -160,7 +160,7 @@ func displayLoginSuccess(config ForgeConfig) {
 
 // GetToken will get the token from the config file.
 //
-//nolint:funlen,gocognit // This is a long function, but it's not too complex, better to keep it in one place.
+//nolint:gocognit // This is a long function, but it's not too complex, better to keep it in one place.
 func getToken(ctx context.Context, url string, argusid bool, result interface{}) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -315,7 +315,7 @@ func handleWorldForgeToken(response []byte, result interface{}) error {
 // parseCredential will parse the id and name from the token.
 func parseCredential(token string) (Credential, error) {
 	parts := strings.Split(token, ".")
-	if len(parts) != 3 { //nolint:gomnd
+	if len(parts) != 3 {
 		return Credential{}, eris.New("invalid token format")
 	}
 
@@ -365,7 +365,7 @@ func parseArgusIDToken(jwtToken string) (Credential, error) {
 	}
 
 	parts := strings.Split(jwtToken, ".")
-	if len(parts) != 3 { //nolint:gomnd
+	if len(parts) != 3 {
 		return Credential{}, eris.New("invalid token format")
 	}
 

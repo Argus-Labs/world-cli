@@ -321,7 +321,7 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 	return org, nil
 }
 
-func inviteUserToOrganization(ctx context.Context) error { //nolint:dupl // TODO: refactor
+func inviteUserToOrganization(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Headerln("   Invite User to Organization   ")
 	userID := getInput("Enter user ID to invite", "")
@@ -358,7 +358,7 @@ func inviteUserToOrganization(ctx context.Context) error { //nolint:dupl // TODO
 	return nil
 }
 
-func updateUserRoleInOrganization(ctx context.Context) error { //nolint:dupl // TODO: refactor
+func updateUserRoleInOrganization(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Headerln("  Update User Role in Organization  ")
 	userID := getInput("Enter user ID to update", "")

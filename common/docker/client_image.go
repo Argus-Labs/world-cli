@@ -387,7 +387,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 		// Capture imageName and platform in the loop
 
 		// Create a new progress bar for this image
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -457,7 +457,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(100)
 		}()
 	}
 
@@ -503,7 +503,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 				imageName, service.Name, err))
 		}
 
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pushing", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -574,7 +574,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(100)
 		}()
 	}
 

@@ -11,6 +11,8 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
+const minimumURLParts = 2
+
 // identifyProvider determines the Git provider based on the URL's host.
 func identifyProvider(repoURL string) (string, string, error) {
 	parsedURL, err := url.Parse(repoURL)
@@ -66,7 +68,7 @@ func validateRepoPath(_ context.Context, _, _, path string) error {
 func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the owner and repo name from the URL
 	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 { //nolint:gomnd
+	if len(parts) < minimumURLParts {
 		return eris.New("invalid github repository URL")
 	}
 	repo := strings.TrimSuffix(parts[len(parts)-1], ".git")
@@ -104,7 +106,7 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the project path from the URL
 	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 { //nolint:gomnd
+	if len(parts) < minimumURLParts {
 		return eris.New("invalid gitlab repository URL")
 	}
 	projectPath := fmt.Sprintf("%s/%s", parts[len(parts)-2], strings.TrimSuffix(parts[len(parts)-1], ".git"))
@@ -141,7 +143,7 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the workspace and repo slug from the URL
 	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 { //nolint:gomnd
+	if len(parts) < minimumURLParts {
 		return eris.New("invalid bitbucket repository URL")
 	}
 	workspace := parts[len(parts)-2]

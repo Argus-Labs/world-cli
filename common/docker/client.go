@@ -236,7 +236,7 @@ func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (st
 
 	// Read and demultiplex the output
 	var outputBuf bytes.Buffer
-	header := make([]byte, 8) //nolint:gomnd
+	header := make([]byte, 8)
 
 	for {
 		_, err := io.ReadFull(resp.Reader, header)

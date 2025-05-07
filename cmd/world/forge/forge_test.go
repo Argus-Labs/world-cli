@@ -1904,7 +1904,7 @@ func (s *ForgeTestSuite) TestShowProjectList() {
 	}
 }
 
-func (s *ForgeTestSuite) TestCreateProject() { //nolint:gocognit
+func (s *ForgeTestSuite) TestCreateProject() {
 	testCases := []struct {
 		name                string
 		config              ForgeConfig
@@ -2491,7 +2491,7 @@ func (s *ForgeTestSuite) TestGetInput() {
 	}
 }
 
-func (s *ForgeTestSuite) TestInviteUserToOrganization() { //nolint: gocognit // it's a test
+func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 	testCases := []struct {
 		name            string
 		config          ForgeConfig
@@ -2615,7 +2615,7 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() { //nolint: gocognit // 
 	}
 }
 
-func (s *ForgeTestSuite) TestUpdateRoleInOrganization() { //nolint: gocognit // it's a test
+func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 	testCases := []struct {
 		name            string
 		config          ForgeConfig
