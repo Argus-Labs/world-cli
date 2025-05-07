@@ -66,7 +66,7 @@ func TestStart(t *testing.T) {
 	dockerClient, err := NewClient(cfg)
 	assert.NilError(t, err, "Failed to create docker client")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
 	cleanUp(t, dockerClient)
 
@@ -87,7 +87,7 @@ func TestStop(t *testing.T) {
 	dockerClient, err := NewClient(cfg)
 	assert.NilError(t, err, "Failed to create docker client")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
 	cleanUp(t, dockerClient)
 
@@ -110,7 +110,7 @@ func TestRestart(t *testing.T) {
 	dockerClient, err := NewClient(cfg)
 	assert.NilError(t, err, "Failed to create docker client")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
 	cleanUp(t, dockerClient)
 
@@ -133,7 +133,7 @@ func TestPurge(t *testing.T) {
 	dockerClient, err := NewClient(cfg)
 	assert.NilError(t, err, "Failed to create docker client")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
 	assert.NilError(t, dockerClient.Purge(ctx, service.Redis), "failed to purge container")
 
@@ -153,7 +153,7 @@ func TestStartUndetach(t *testing.T) {
 	dockerClient, err := NewClient(cfg)
 	assert.NilError(t, err, "Failed to create docker client")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go func() {
 		assert.NilError(t, dockerClient.Start(ctx, service.Redis), "failed to start container")
 		cleanUp(t, dockerClient)
@@ -166,24 +166,16 @@ func TestStartUndetach(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	// Create a temporary directory
-	dir, err := os.MkdirTemp("", "sgt")
-	assert.NilError(t, err)
-
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(dir)
-		assert.NilError(t, err)
-	}()
+	dir := t.TempDir()
 
 	// Change to the temporary directory
-	err = os.Chdir(dir)
-	assert.NilError(t, err)
+	t.Chdir(dir)
 
 	sgtDir := dir + "/sgt"
 
 	// Pull the repository
 	templateGitURL := "https://github.com/Argus-Labs/starter-game-template.git"
-	err = teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
+	err := teacmd.GitCloneCmd(templateGitURL, sgtDir, "Initial commit from World CLI")
 	assert.NilError(t, err)
 
 	// Preparation
@@ -194,7 +186,7 @@ func TestBuild(t *testing.T) {
 		RootDir: sgtDir,
 	}
 	cardinalService := service.Cardinal(cfg)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dockerClient, err := NewClient(cfg)
 	assert.NilError(t, err, "Failed to create docker client")
@@ -241,6 +233,7 @@ func redisIsDown(t *testing.T) bool {
 
 func cleanUp(t *testing.T, dockerClient *Client) {
 	t.Cleanup(func() {
+		//nolint:usetesting // don't use t.Context() here; it's canceled during cleanup
 		assert.NilError(t, dockerClient.Purge(context.Background(), service.Nakama,
 			service.Cardinal, service.Redis, service.NakamaDB, service.Jaeger, service.Prometheus),
 			"Failed to purge container during cleanup")
