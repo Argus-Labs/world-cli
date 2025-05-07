@@ -56,7 +56,7 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	}
 
 	// Set BuildkitSupport
-	service.BuildkitSupport = checkBuildkitSupport(cli)
+	service.SetBuildkitSupport(checkBuildkitSupport(cli))
 
 	return &Client{
 		client: cli,

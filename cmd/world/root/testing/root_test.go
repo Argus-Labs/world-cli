@@ -244,17 +244,17 @@ func TestDev(t *testing.T) {
 
 func TestCheckLatestVersion(t *testing.T) {
 	t.Cleanup(func() {
-		root.AppVersion = ""
+		root.AppVersion = "" //nolint:reassign // Might cause issues with parallel tests
 	})
 
 	t.Run("success scenario", func(t *testing.T) {
-		root.AppVersion = "v1.0.0"
+		root.AppVersion = "v1.0.0" //nolint:reassign // Might cause issues with parallel tests
 		err := root.CheckLatestVersionTesting()
 		assert.NilError(t, err)
 	})
 
 	t.Run("error version format", func(t *testing.T) {
-		root.AppVersion = "wrong format"
+		root.AppVersion = "wrong format" //nolint:reassign // Might cause issues with parallel tests
 		err := root.CheckLatestVersionTesting()
 		assert.Error(t, err, "error parsing current version: Malformed version: wrong format")
 	})

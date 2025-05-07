@@ -20,3 +20,7 @@ or verifying compatibility with World Engine features.`,
 		printer.Infof("World CLI %s\n", AppVersion)
 	},
 }
+
+func SetAppVersion(version string) {
+	AppVersion = version
+}

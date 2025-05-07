@@ -51,7 +51,7 @@ type Release struct {
 // RootCmdInit initializes the root command.
 func RootCmdInit() {
 	// Enable case-insensitive commands
-	cobra.EnableCaseInsensitive = true
+	cobra.EnableCaseInsensitive = true //nolint:reassign // intentionally setting cobra global config as designed
 
 	// Disable printing usage help text when command returns a non-nil error
 	rootCmd.SilenceUsage = true

@@ -29,7 +29,7 @@ var (
 
 func EnvVersionInit() {
 	env, version := getEnvAndVersion()
-	root.AppVersion = version
+	root.SetAppVersion(version)
 	// Initialize forge base environment
 	forge.InitForgeBase(env)
 }

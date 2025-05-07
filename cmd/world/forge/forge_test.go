@@ -135,6 +135,7 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 
 	// Create temp config dir
 	tempDir = filepath.Join(os.TempDir(), "worldcli")
+	//nolint:reassign // Might cause issues with parallel tests
 	config.GetCLIConfigDir = func() (string, error) {
 		return tempDir, nil
 	}
@@ -159,7 +160,7 @@ func (s *ForgeTestSuite) TearDownTest() {
 	os.RemoveAll(tempDir)
 
 	// Restore original functions
-	config.GetCLIConfigDir = originalGetConfigDir
+	config.GetCLIConfigDir = originalGetConfigDir //nolint:reassign // Might cause issues with parallel tests
 }
 
 func (s *ForgeTestSuite) handleGetUser(w http.ResponseWriter, _ *http.Request) {
@@ -2404,11 +2405,13 @@ func (s *ForgeTestSuite) TestGetRoleInput() {
 			s.Require().NoError(err)
 
 			// Save original stdin
+
 			oldStdin := os.Stdin
+			//nolint:reassign // Might cause issues with parallel tests
 			defer func() { os.Stdin = oldStdin }()
 
 			// Set stdin to our test file
-			os.Stdin = tmpfile
+			os.Stdin = tmpfile //nolint:reassign // Might cause issues with parallel tests
 
 			// Test getInput
 			result := getRoleInput(tc.allowNone)
@@ -2480,9 +2483,10 @@ func (s *ForgeTestSuite) TestGetInput() {
 
 			// Save original stdin
 			oldStdin := os.Stdin
+			//nolint:reassign // Might cause issues with parallel tests
 			defer func() { os.Stdin = oldStdin }()
 			// Set stdin to our test file
-			os.Stdin = tmpfile
+			os.Stdin = tmpfile //nolint:reassign // Might cause issues with parallel tests
 
 			// Test getInput
 			result := getInput("test-prompt: ", tc.defaultInput)
