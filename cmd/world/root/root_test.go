@@ -137,19 +137,12 @@ func TestExecuteDoctorCommand(t *testing.T) {
 }
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
+	var err error
+
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-start")
-	assert.NilError(t, err)
+	gameDir := t.TempDir()
 
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(gameDir)
-		assert.NilError(t, err)
-	}()
-
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
+	t.Chdir(gameDir)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -162,8 +155,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Change dir
-	err = os.Chdir(sgtDir)
-	assert.NilError(t, err)
+	t.Chdir(sgtDir)
 
 	// Start cardinal
 	testEnv.rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
@@ -198,19 +190,11 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 }
 
 func TestDev(t *testing.T) {
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
-	assert.NilError(t, err)
+	// Use t.TempDir(), which also auto-cleans the dir
+	gameDir := t.TempDir()
 
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(gameDir)
-		assert.NilError(t, err)
-	}()
-
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
+	// Change working directory
+	t.Chdir(gameDir)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -220,11 +204,13 @@ func TestDev(t *testing.T) {
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
 	createCmd.SetArgs([]string{sgtDir})
-	err = createCmd.Execute()
+	err := createCmd.Execute()
 	assert.NilError(t, err)
 
 	// Start cardinal dev
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
 	testEnv.rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
 	go func() {
 		err := testEnv.rootCmd.ExecuteContext(ctx)
@@ -308,19 +294,11 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 }
 
 func TestEVMStart(t *testing.T) {
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
-	assert.NilError(t, err)
+	// Create temp working dir (auto-cleans up)
+	gameDir := t.TempDir()
 
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(gameDir)
-		assert.NilError(t, err)
-	}()
-
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
+	// Change to temp dir (auto-resets after test)
+	t.Chdir(gameDir)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -330,11 +308,12 @@ func TestEVMStart(t *testing.T) {
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
 	createCmd.SetArgs([]string{sgtDir})
-	err = createCmd.Execute()
+	err := createCmd.Execute()
 	assert.NilError(t, err)
 
 	// Start evn dev
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
 	testEnv.rootCmd.SetArgs([]string{"evm", "start", "--dev"})
 	go func() {
 		err := testEnv.rootCmd.ExecuteContext(ctx)
