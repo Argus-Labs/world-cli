@@ -56,7 +56,7 @@ linters:
     - promlinter
     - protogetter
     - reassign
-    # - recvcheck
+    - recvcheck
     # - revive
     - rowserrcheck
     - sloglint

@@ -21,13 +21,13 @@ type Spinner struct {
 type LogMsg string
 
 // Init is called when the program starts and returns the initial command.
-func (s Spinner) Init() tea.Cmd {
+func (s *Spinner) Init() tea.Cmd {
 	// Start the spinner
 	return s.Spinner.Tick
 }
 
 // Update handles incoming messages.
-func (s Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// case ctrl + c
@@ -54,7 +54,7 @@ func (s Spinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the UI.
-func (s Spinner) View() string {
+func (s *Spinner) View() string {
 	if s.done {
 		return "Build completed!"
 	}

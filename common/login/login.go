@@ -49,12 +49,12 @@ func (enc *Encryption) generateKeys() error {
 }
 
 // encodedPublicKey returns the public key as a hex string.
-func (enc Encryption) EncodedPublicKey() string {
+func (enc *Encryption) EncodedPublicKey() string {
 	return hex.EncodeToString(enc.publicKey.Bytes())
 }
 
 // decryptAccessToken decrypts the access token using the private key and nonce.
-func (enc Encryption) DecryptAccessToken(accessToken string, publicKey string, nonce string) (string, error) {
+func (enc *Encryption) DecryptAccessToken(accessToken string, publicKey string, nonce string) (string, error) {
 	decodedAccessToken, err := hex.DecodeString(accessToken)
 	if err != nil {
 		return "", eris.Wrap(err, decryptionErrorMsg)

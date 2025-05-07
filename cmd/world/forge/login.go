@@ -175,7 +175,7 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 		Cancel:  cancel,
 	}
 	spin.SetText("Logging in...")
-	p := tea.NewProgram(spin)
+	p := tea.NewProgram(&spin)
 
 	// Run the spinner in a goroutine
 	go func() {
