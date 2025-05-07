@@ -117,7 +117,7 @@ func makeTempDir(t *testing.T) string {
 func TestConfigFromLocalFile(t *testing.T) {
 	tempdir := makeTempDir(t)
 
-	configFile := path.Join(tempdir, WorldCLIConfigFilename)
+	configFile := path.Join(tempdir, WorldCLIConfigFilename) //nolint:govet // test
 	makeConfigAtPath(t, configFile, "alpha")
 
 	cfg, err := GetConfig()
@@ -135,7 +135,7 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 	assert.NilError(t, os.MkdirAll(deepPath, 0755))
 	assert.NilError(t, os.Chdir(deepPath))
 
-	configFile := path.Join(deepPath, WorldCLIConfigFilename)
+	configFile := path.Join(deepPath, WorldCLIConfigFilename) //nolint:govet // test
 	// The eventual call to LoadConfig should find this config file
 	makeConfigAtPath(t, configFile, "alpha")
 

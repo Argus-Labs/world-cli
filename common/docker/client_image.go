@@ -432,18 +432,18 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
+						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
 							errChan <- eris.New(errorMessage.(string))
 							continue
 						}
-					} else if errorMsg, ok := event["error"]; ok {
+					} else if errorMsg, okay := event["error"]; okay {
 						errChan <- eris.New(errorMsg.(string))
 						continue
 					}
 
 					// Handle progress updates
 					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
+						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
 							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
 							if calculatedCurrent > current {
 								bar.SetCurrent(int64(calculatedCurrent))
@@ -549,18 +549,18 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
+						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
 							errChan <- eris.New(errorMessage.(string))
 							continue
 						}
-					} else if errorMsg, ok := event["error"]; ok {
+					} else if errorMsg, okay := event["error"]; okay {
 						errChan <- eris.New(errorMsg.(string))
 						continue
 					}
 
 					// Handle progress updates
 					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
+						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
 							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
 							if calculatedCurrent > current {
 								bar.SetCurrent(int64(calculatedCurrent))

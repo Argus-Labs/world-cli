@@ -134,7 +134,7 @@ func loadConfigFromFile(filename string) (*Config, error) {
 			continue
 		}
 		for key, val := range m.(map[string]any) {
-			if _, ok := cfg.DockerEnv[key]; ok {
+			if _, okay := cfg.DockerEnv[key]; okay {
 				return nil, eris.Errorf("duplicate env variable %q", key)
 			}
 			cfg.DockerEnv[key] = fmt.Sprintf("%v", val)

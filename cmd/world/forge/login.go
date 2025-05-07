@@ -447,14 +447,14 @@ func loginWithArgusID(ctx context.Context) (Credential, error) {
 	}
 
 	// Wait for user to login
-	var tokenStruct tokenStruct
-	err = getToken(ctx, loginLink.CallBackURL, true, &tokenStruct)
+	var token tokenStruct
+	err = getToken(ctx, loginLink.CallBackURL, true, &token)
 	if err != nil {
 		return Credential{}, eris.Wrap(err, "Failed to get token")
 	}
 
 	// Parse jwt token to get name from metadata
-	cred, err := parseArgusIDToken(tokenStruct.JWT)
+	cred, err := parseArgusIDToken(token.JWT)
 	if err != nil {
 		return Credential{}, eris.Wrap(err, "Failed to get name from token")
 	}

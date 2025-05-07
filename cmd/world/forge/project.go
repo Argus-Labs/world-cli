@@ -79,14 +79,14 @@ func showProjectList(ctx context.Context) error {
 		return nil
 	}
 
-	project, err := getSelectedProject(ctx)
+	selectedProject, err := getSelectedProject(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
 
 	printer.NewLine(1)
 	printer.Headerln("   Project Information   ")
-	if project.Name == "" {
+	if selectedProject.Name == "" {
 		printer.NewLine(1)
 		printer.Errorln("No project selected")
 		printer.NewLine(1)
@@ -96,7 +96,7 @@ func showProjectList(ctx context.Context) error {
 		printer.Infoln("  Available Projects:")
 		printer.SectionDivider("-", 23)
 		for _, prj := range projects {
-			if prj.ID == project.ID {
+			if prj.ID == selectedProject.ID {
 				printer.Infof("• %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
 			} else {
 				printer.Infof("  %s (%s)\n", prj.Name, prj.Slug)
@@ -599,7 +599,7 @@ func selectProject(ctx context.Context) (*project, error) {
 }
 
 func deleteProject(ctx context.Context) error {
-	project, err := getSelectedProject(ctx)
+	selectedProject, err := getSelectedProject(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project")
 	}
@@ -609,8 +609,8 @@ func deleteProject(ctx context.Context) error {
 	printer.Headerln("   Project Deletion   ")
 	printer.NewLine(1)
 	printer.Infoln("Project Details:")
-	printer.Infof("• Name: %s\n", project.Name)
-	printer.Infof("• Slug: %s\n", project.Slug)
+	printer.Infof("• Name: %s\n", selectedProject.Name)
+	printer.Infof("• Slug: %s\n", selectedProject.Slug)
 
 	// Warning message with fancy formatting
 	printer.NewLine(1)
@@ -622,7 +622,7 @@ func deleteProject(ctx context.Context) error {
 	printer.NewLine(1)
 
 	// Confirmation prompt with fancy formatting
-	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s': ", project.Name)
+	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s': ", selectedProject.Name)
 	confirmation := getInput(deletePrompt, "")
 
 	if confirmation != "Yes" {
@@ -636,7 +636,7 @@ func deleteProject(ctx context.Context) error {
 	}
 
 	// Send request
-	url := fmt.Sprintf(projectURLPattern, baseURL, project.OrgID) + "/" + project.ID
+	url := fmt.Sprintf(projectURLPattern, baseURL, selectedProject.OrgID) + "/" + selectedProject.ID
 	body, err := sendRequest(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return eris.Wrap(err, "Failed to delete project")
@@ -651,7 +651,7 @@ func deleteProject(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Infoln("  Success!  ")
 	printer.SectionDivider("-", 12)
-	printer.Successf("Project deleted: %s (%s)\n", project.Name, project.Slug)
+	printer.Successf("Project deleted: %s (%s)\n", selectedProject.Name, selectedProject.Slug)
 
 	// Remove project from config
 	config, err := GetCurrentForgeConfig()

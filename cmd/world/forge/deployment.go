@@ -200,13 +200,13 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 		}
 		switch deployType {
 		case DeploymentTypeDeploy:
-			bnf, ok := data["build_number"].(float64)
-			if !ok {
+			bnf, okInner := data["build_number"].(float64)
+			if !okInner {
 				return eris.New("Failed to unmarshal deployment build_number")
 			}
 			buildNumber := int(bnf)
-			buildStartTimeStr, ok := data["build_start_time"].(string)
-			if !ok {
+			buildStartTimeStr, okInner := data["build_start_time"].(string)
+			if !okInner {
 				return eris.New("Failed to unmarshal deployment build_start_time")
 			}
 			bst, bte := time.Parse(time.RFC3339, buildStartTimeStr)
@@ -216,8 +216,8 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 			if bst.Before(dt) {
 				bst = dt // we don't have a real build start time yet because build kite hasn't run yet
 			}
-			buildEndTimeStr, ok := data["build_end_time"].(string)
-			if !ok {
+			buildEndTimeStr, okInner := data["build_end_time"].(string)
+			if !okInner {
 				buildEndTimeStr = buildStartTimeStr // we don't know how long this took
 			}
 			bet, bte := time.Parse(time.RFC3339, buildEndTimeStr)
@@ -311,14 +311,14 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 		if !shouldShowHealth[env] {
 			continue
 		}
-		data, ok := val.(map[string]any)
-		if !ok {
+		data, okay := val.(map[string]any)
+		if !okay {
 			return eris.Errorf("Failed to unmarshal response for environment %s", env)
 		}
-		instances, ok := data["deployed_instances"].([]any)
-		if !ok {
+		instances, okay := data["deployed_instances"].([]any)
+		if !okay {
 			return eris.Errorf("Failed to unmarshal health data: expected array, got %T",
-				response["deployed_instances"])
+				data["deployed_instances"])
 		}
 		// ok will be true if everything is up. offline will be true if everything is down
 		// neither will be set if status is mixed
@@ -337,61 +337,61 @@ func status(ctx context.Context, cmdState *ForgeCommandState) error {
 		printer.Infof("(%d deployed instances)\n", len(instances))
 		currRegion := ""
 		for _, instance := range instances {
-			info, ok := instance.(map[string]any)
-			if !ok {
+			info, okayInner := instance.(map[string]any)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d info", instance)
 			}
-			region, ok := info["region"].(string)
-			if !ok {
+			region, okayInner := info["region"].(string)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d region", instance)
 			}
-			instancef, ok := info["instance"].(float64)
-			if !ok {
+			instancef, okayInner := info["instance"].(float64)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d instance number", instance)
 			}
 			instanceNum := int(instancef)
-			cardinalInfo, ok := info["cardinal"].(map[string]any)
-			if !ok {
+			cardinalInfo, okayInner := info["cardinal"].(map[string]any)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal data", instance)
 			}
-			nakamaInfo, ok := info["nakama"].(map[string]any)
-			if !ok {
+			nakamaInfo, okayInner := info["nakama"].(map[string]any)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d nakama data", instance)
 			}
-			cardinalURL, ok := cardinalInfo["url"].(string)
-			if !ok {
+			cardinalURL, okayInner := cardinalInfo["url"].(string)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal url", instance)
 			}
 			cardinalHost := strings.Split(cardinalURL, "/")[2]
-			cardinalOK, ok := cardinalInfo["ok"].(bool)
-			if !ok {
+			cardinalOK, okayInner := cardinalInfo["ok"].(bool)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal ok flag", instance)
 			}
-			cardinalResultCodef, ok := cardinalInfo["result_code"].(float64)
-			if !ok {
+			cardinalResultCodef, okayInner := cardinalInfo["result_code"].(float64)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_code", instance)
 			}
 			cardinalResultCode := int(cardinalResultCodef)
-			cardinalResultStr, ok := cardinalInfo["result_str"].(string)
-			if !ok {
+			cardinalResultStr, okayInner := cardinalInfo["result_str"].(string)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_str", instance)
 			}
-			nakamaURL, ok := nakamaInfo["url"].(string)
-			if !ok {
+			nakamaURL, okayInner := nakamaInfo["url"].(string)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d nakama url", instance)
 			}
 			nakamaHost := strings.Split(nakamaURL, "/")[2]
-			nakamaOK, ok := nakamaInfo["ok"].(bool)
-			if !ok {
+			nakamaOK, okayInner := nakamaInfo["ok"].(bool)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d nakama ok", instance)
 			}
-			nakamaResultCodef, ok := nakamaInfo["result_code"].(float64)
-			if !ok {
+			nakamaResultCodef, okayInner := nakamaInfo["result_code"].(float64)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d result_code", instance)
 			}
 			nakamaResultCode := int(nakamaResultCodef)
-			nakamaResultStr, ok := nakamaInfo["result_str"].(string)
-			if !ok {
+			nakamaResultStr, okayInner := nakamaInfo["result_str"].(string)
+			if !okayInner {
 				return eris.Errorf("Failed to unmarshal deployment instance %d result_str", instance)
 			}
 			if region != currRegion {

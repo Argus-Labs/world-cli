@@ -34,7 +34,7 @@ linters:
     - gomodguard
     - goprintffuncname
     - gosec
-    # - govet
+    - govet
     - iface
     - ineffassign
     - intrange

@@ -313,6 +313,7 @@ func (s *ForgeTestSuite) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// check if preview flag is set
 	preview := r.URL.Query().Get("preview")
 	if preview == "true" {
+		//nolint:govet // test
 		deploymentPreview := deploymentPreview{
 			ProjectName:    "Test Project",
 			ProjectSlug:    "testp",
@@ -465,6 +466,7 @@ func (s *ForgeTestSuite) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	// check if preview flag is set
 	preview := r.URL.Query().Get("preview")
 	if preview == "true" {
+		//nolint:govet // test
 		deploymentPreview := deploymentPreview{
 			ProjectName:    "Test Project",
 			ProjectSlug:    "testp",
@@ -518,7 +520,7 @@ func (s *ForgeTestSuite) handleReset(w http.ResponseWriter, r *http.Request) {
 	// check if preview flag is set
 	preview := r.URL.Query().Get("preview")
 	if preview == "true" {
-		deploymentPreview := deploymentPreview{
+		deploymentPreview := deploymentPreview{ //nolint:govet // test
 			ProjectName:    "Test Project",
 			ProjectSlug:    "testp",
 			OrgName:        "Test Org",
@@ -1398,7 +1400,7 @@ func (s *ForgeTestSuite) TestLogin() {
 			// Mock organization creation inputs if provided
 			if len(tc.orgInputs) > 0 {
 				inputIndex := 0
-				originalGetInput := getInput
+				originalGetInput := getInput //nolint:govet // test
 				getInput = func(prompt string, defaultVal string) string {
 					if inputIndex >= len(tc.orgInputs) {
 						return defaultVal

@@ -30,7 +30,7 @@ type createOrgRequest struct {
 }
 
 func showOrganizationList(ctx context.Context) error {
-	organization, err := getSelectedOrganization(ctx)
+	selectedOrg, err := getSelectedOrganization(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organization")
 	}
@@ -42,7 +42,7 @@ func showOrganizationList(ctx context.Context) error {
 
 	printer.NewLine(1)
 	printer.Headerln("  Organization Information  ")
-	if organization.Name == "" {
+	if selectedOrg.Name == "" {
 		printer.NewLine(1)
 		printer.Errorln("No organization selected")
 		printer.NewLine(1)
@@ -52,7 +52,7 @@ func showOrganizationList(ctx context.Context) error {
 		printer.Infoln(" Available Organizations: ")
 		printer.SectionDivider("-", 26)
 		for _, org := range organizations {
-			if org.ID == organization.ID {
+			if org.ID == selectedOrg.ID {
 				printer.Infof("• %s (%s) [SELECTED]\n", org.Name, org.Slug)
 			} else {
 				printer.Infof("  %s (%s)\n", org.Name, org.Slug)
