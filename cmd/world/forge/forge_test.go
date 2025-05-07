@@ -254,12 +254,12 @@ func (s *ForgeTestSuite) handleOrganizationGet(w http.ResponseWriter, r *http.Re
 func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		parsedBody, err := io.ReadAll(r.Body)
-		s.Require().NoError(err)
+		s.NoError(err)
 		defer r.Body.Close()
 
 		body := map[string]interface{}{}
 		err = json.Unmarshal(parsedBody, &body)
-		s.Require().NoError(err)
+		s.NoError(err)
 
 		proj := project{
 			ID:      "test-project-id",
@@ -3114,9 +3114,9 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 
 			// Check error
 			if tc.expectedError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 			}
 
 			// Check state

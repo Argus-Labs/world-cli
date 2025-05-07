@@ -64,7 +64,7 @@ linters:
     - sqlclosecheck
     - staticcheck
     - testableexamples
-    # - testifylint
+    - testifylint
     # - testpackage
     - tparallel
     - unconvert
