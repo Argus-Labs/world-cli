@@ -65,7 +65,7 @@ linters:
     - staticcheck
     - testableexamples
     - testifylint
-    # - testpackage
+    - testpackage
     - tparallel
     - unconvert
     - unparam
