@@ -10,7 +10,7 @@ type Credential struct {
 	Name  string `json:"name"`
 }
 
-type ForgeCommandState struct {
+type CommandState struct {
 	Command      *cobra.Command
 	User         *User
 	Organization *organization

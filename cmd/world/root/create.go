@@ -97,9 +97,8 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.depStatusErr = msg.Err
 		if msg.Err != nil {
 			return m, tea.Quit
-		} else {
-			return m, nil
 		}
+		return m, nil
 
 	case tea.KeyMsg: //nolint:exhaustive // not applicable
 		switch msg.Type {

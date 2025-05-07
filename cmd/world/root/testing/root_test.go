@@ -31,8 +31,8 @@ type testEnvironment struct {
 func setupTestEnv() *testEnvironment {
 	// Initialize all commands
 	cardinal.Init()
-	evm.EvmInit()
-	root.RootCmdInit()
+	evm.Init()
+	root.CmdInit()
 
 	return &testEnvironment{
 		rootCmd: root.RootCmdTesting,

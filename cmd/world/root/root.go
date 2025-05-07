@@ -48,8 +48,8 @@ type Release struct {
 	HTMLURL string `json:"html_url"`
 }
 
-// RootCmdInit initializes the root command.
-func RootCmdInit() {
+// CmdInit initializes the root command.
+func CmdInit() {
 	// Enable case-insensitive commands
 	cobra.EnableCaseInsensitive = true //nolint:reassign // intentionally setting cobra global config as designed
 
