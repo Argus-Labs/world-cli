@@ -39,7 +39,6 @@ var rootCmd = &cobra.Command{
 		return checkLatestVersion()
 	},
 }
-var RootCmdTesting = rootCmd
 
 // Release structure to hold the data of the latest release.
 type Release struct {
@@ -143,10 +142,6 @@ func checkLatestVersion() error {
 		}
 	}
 	return nil
-}
-
-func CheckLatestVersionTesting() error {
-	return checkLatestVersion()
 }
 
 // contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or

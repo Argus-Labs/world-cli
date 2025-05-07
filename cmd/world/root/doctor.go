@@ -98,7 +98,3 @@ If any dependencies are missing, you'll receive guidance on how to install them.
 
 	return doctorCmd
 }
-
-func GetDoctorCmdTesting(writer io.Writer) *cobra.Command {
-	return getDoctorCmd(writer)
-}

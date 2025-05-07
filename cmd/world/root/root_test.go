@@ -14,7 +14,6 @@ import (
 	"gotest.tools/v3/assert"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/cmd/world/root"
 )
 
 var (
@@ -32,10 +31,10 @@ func setupTestEnv() *testEnvironment {
 	// Initialize all commands
 	cardinal.Init()
 	evm.Init()
-	root.CmdInit()
+	CmdInit()
 
 	return &testEnvironment{
-		rootCmd: root.RootCmdTesting,
+		rootCmd: rootCmd,
 	}
 }
 
@@ -108,7 +107,7 @@ func TestSubcommandsHaveHelpText(t *testing.T) {
 
 func TestExecuteDoctorCommand(t *testing.T) {
 	teaOut := &bytes.Buffer{}
-	_, err := outputFromCmd(root.GetDoctorCmdTesting(teaOut), "")
+	_, err := outputFromCmd(getDoctorCmd(teaOut), "")
 	assert.NilError(t, err)
 
 	seenDependencies := map[string]int{
@@ -154,7 +153,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
-	createCmd := root.GetCreateCmdTesting(teaOut)
+	createCmd := getCreateCmd(teaOut)
 
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
@@ -215,7 +214,7 @@ func TestDev(t *testing.T) {
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
-	createCmd := root.GetCreateCmdTesting(teaOut)
+	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})
 
 	// checkout the repo
@@ -244,18 +243,18 @@ func TestDev(t *testing.T) {
 
 func TestCheckLatestVersion(t *testing.T) {
 	t.Cleanup(func() {
-		root.AppVersion = "" //nolint:reassign // Might cause issues with parallel tests
+		AppVersion = ""
 	})
 
 	t.Run("success scenario", func(t *testing.T) {
-		root.AppVersion = "v1.0.0" //nolint:reassign // Might cause issues with parallel tests
-		err := root.CheckLatestVersionTesting()
+		AppVersion = "v1.0.0"
+		err := checkLatestVersion()
 		assert.NilError(t, err)
 	})
 
 	t.Run("error version format", func(t *testing.T) {
-		root.AppVersion = "wrong format" //nolint:reassign // Might cause issues with parallel tests
-		err := root.CheckLatestVersionTesting()
+		AppVersion = "wrong format"
+		err := checkLatestVersion()
 		assert.Error(t, err, "error parsing current version: Malformed version: wrong format")
 	})
 }
@@ -325,7 +324,7 @@ func TestEVMStart(t *testing.T) {
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
-	createCmd := root.GetCreateCmdTesting(teaOut)
+	createCmd := getCreateCmd(teaOut)
 	createCmd.SetArgs([]string{gameDir})
 
 	// checkout the repo
