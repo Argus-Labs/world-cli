@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/printer"
@@ -31,7 +32,7 @@ const (
 	NeedLogin
 )
 
-// / OrganizationRequirement is the requirement for the organization step.
+// StepRequirement is the requirement used for the organization, and project steps.
 type StepRequirement int
 
 const (
@@ -85,21 +86,26 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		projectStepDone:      false,
 		State: ForgeCommandState{
 			Command:      cmd,
+			LoggedIn:     false,
 			User:         nil,
 			Organization: nil,
 			Project:      nil,
 		},
 	}
-	loggedIn := config.Credential.Token != ""
-	// TODO: check for credential expiration
 
-	if flow.requiredLogin == NeedLogin && !loggedIn {
-		err := performLogin(cmd.Context(), &config)
-		if err != nil {
-			return &flow.State, err
-		}
-		loggedIn = true
+	// if we have an unexpired token, we are logged in
+	loggedIn := config.Credential.Token != ""
+	tokenExpiresAt := config.Credential.TokenExpiresAt
+	if tokenExpiresAt.Before(time.Now()) {
+		loggedIn = false
 	}
+
+	// if we need to login and we are not logged in, return an error
+	if flow.requiredLogin == NeedLogin && !loggedIn {
+		return &flow.State, errors.New("not logged in")
+	}
+
+	// if we need the lo
 	if flow.requiredLogin == NeedLogin {
 		user, err := getUser(cmd.Context())
 		if err != nil {
@@ -108,6 +114,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		flow.State.User = &user
 		flow.loginStepDone = true
 	}
+	flow.State.LoggedIn = loggedIn
 
 	// if we need to lookup the project based on the git repo, do that now
 	if needRepoLookup {

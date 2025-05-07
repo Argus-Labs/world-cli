@@ -52,6 +52,8 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 	s.cmd = &cobra.Command{}
 	s.cmd.SetContext(s.ctx)
 
+	argusIDAuthURL = "http://localhost:8001/api/auth/service-auth-session"
+
 	// Create test server on port 8001
 	listener, err := net.Listen("tcp", ":8001")
 	s.Require().NoError(err)
@@ -122,6 +124,8 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 					s.handleHealth(w, r)
 				case "/api/project/":
 					s.handleProjectLookup(w, r)
+				case "/api/auth/service-auth-session":
+					s.handleArgusIDAuthSession(w, r)
 				default:
 					http.Error(w, "Not found", http.StatusNotFound)
 				}
@@ -170,6 +174,13 @@ func (s *ForgeTestSuite) handleGetUser(w http.ResponseWriter, _ *http.Request) {
 		Email:     "test@example.com",
 		AvatarURL: "https://example.com/avatar.png",
 	}})
+}
+
+func (s *ForgeTestSuite) handleArgusIDAuthSession(w http.ResponseWriter, _ *http.Request) {
+	s.writeJSON(w, map[string]string{
+		"callbackUrl": "http://localhost:8001/api/user/login/get-token?key=" + generateKey(),
+		"clientUrl":   "http://localhost:8001/api/user/login",
+	})
 }
 
 func (s *ForgeTestSuite) handleInvite(w http.ResponseWriter, _ *http.Request) {
@@ -504,8 +515,9 @@ func (s *ForgeTestSuite) handleGetToken(w http.ResponseWriter, r *http.Request) 
 	if key == "valid-key" {
 		token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
 			"eyJ1c2VyX21ldGFkYXRhIjp7Im5hbWUiOiJUZXN0IFVzZXIiLCJzdWIiOiJ0ZXN0LXVzZXItaWQifX0.sign"
-		s.writeJSON(w, map[string]interface{}{
-			"data": token,
+		s.writeJSON(w, map[string]string{
+			"status": "success",
+			"jwt":    token,
 		})
 	} else {
 		http.Error(w, "Invalid key", http.StatusBadRequest)
@@ -2950,7 +2962,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			name: "Success - Ignore all requirements",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token: "",
 				},
 			},
 			loginReq:      IgnoreLogin,
@@ -2967,7 +2979,8 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			name: "Success - Need login and have token",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 			},
 			loginReq:      NeedLogin,
@@ -2981,10 +2994,29 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			},
 		},
 		{
+			name: "Error - Need login but expired token",
+			config: ForgeConfig{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
+				},
+			},
+			loginReq:      NeedLogin,
+			orgReq:        Ignore,
+			projectReq:    Ignore,
+			expectedError: true,
+			checkState: func(state *ForgeCommandState) {
+				s.Nil(state.User)
+				s.Nil(state.Organization)
+				s.Nil(state.Project)
+			},
+		},
+		{
 			name: "Success - Need org ID and have it",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID: "test-org-id",
 			},
@@ -3003,7 +3035,8 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			name: "Success - Need project ID and have it",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID:  "test-org-id",
 				ProjectID:       "test-project-id",
@@ -3043,7 +3076,8 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			name: "Error - Must not have org but have org ID",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID: "test-org-id",
 			},
@@ -3061,7 +3095,8 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			name: "Error - Must not have project but have project ID",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID: "test-org-id",
 				ProjectID:      "test-project-id",
@@ -3080,7 +3115,8 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			name: "Success - Need repo lookup and have URL",
 			config: ForgeConfig{
 				Credential: Credential{
-					Token: "test-token",
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				ProjectID:      "test-project-id",
 				OrganizationID: "test-org-id",
@@ -3141,7 +3177,8 @@ func (s *ForgeTestSuite) TestGetForgeCommandState() {
 	s.Require().NoError(err)
 
 	state, err := SetupForgeCommandState(s.cmd, NeedLogin, Ignore, Ignore)
-	s.Require().NoError(err)
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "not logged in")
 
 	retrievedState := GetForgeCommandState()
 	s.Equal(state, retrievedState)

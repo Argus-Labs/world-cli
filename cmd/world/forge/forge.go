@@ -2,7 +2,6 @@ package forge
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
@@ -27,6 +26,12 @@ const (
 
 	// RPC Prod URL.
 	worldForgeRPCBaseURLProd = "https://rpc.world.dev"
+
+	// For Argus ID Dev.
+	argusIDBaseURLDev = "https://id.argus-dev.com"
+
+	// For Argus ID Production.
+	argusIDBaseURLProd = "https://id.argus.gg"
 )
 
 var (
@@ -35,8 +40,8 @@ var (
 	rpcURL  string
 
 	// login url stuff.
-	loginURL    string
-	getTokenURL string
+	argusIDBaseURL string
+	argusIDAuthURL string
 
 	// organization url stuff.
 	organizationURL string
@@ -46,9 +51,6 @@ var (
 
 	// user url stuff.
 	userURL string
-
-	// Set this to true if you want to use ArgusID for default login.
-	argusid = false
 
 	// Env is the environment to use for the Forge API.
 	Env = "PROD"
@@ -449,29 +451,24 @@ allowing you to monitor application behavior and troubleshoot issues in real-tim
 )
 
 func InitForgeBase(env string) {
-	// Set argusid flag
-	if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "argusid" {
-		argusid = true
-	} else if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "github" {
-		argusid = false
-	}
-
-	// Set base URL
+	// Set urls based on env
 	switch env {
 	case "LOCAL":
 		baseURL = worldForgeBaseURLLocal
 		rpcURL = worldForgeRPCBaseURLLocal
+		argusIDBaseURL = argusIDBaseURLDev
 	case "DEV":
 		baseURL = worldForgeBaseURLDev
 		rpcURL = worldForgeRPCBaseURLDev
+		argusIDBaseURL = argusIDBaseURLDev
 	default:
 		rpcURL = worldForgeRPCBaseURLProd
 		baseURL = worldForgeBaseURLProd
+		argusIDBaseURL = argusIDBaseURLProd
 	}
 
 	// Set login URL
-	loginURL = fmt.Sprintf("%s/api/user/login", baseURL)
-	getTokenURL = fmt.Sprintf("%s/api/user/login/get-token", baseURL)
+	argusIDAuthURL = fmt.Sprintf("%s/api/auth/service-auth-session", argusIDBaseURL)
 
 	// Set organization URL
 	organizationURL = fmt.Sprintf("%s/api/organization", baseURL)
