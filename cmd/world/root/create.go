@@ -255,7 +255,3 @@ that directory. Otherwise, you'll be prompted to enter a name for your new proje
 
 	return createCmd
 }
-
-func GetCreateCmdTesting(writer io.Writer) *cobra.Command {
-	return getCreateCmd(writer)
-}
