@@ -323,12 +323,17 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 
 	// Only show the step if it's a build step
 	step := ""
-	if val, ok := event["stream"]; ok && val != "" && strings.HasPrefix(val.(string), "Step") {
-		if step, ok = val.(string); ok && step != "" {
-			step = strings.TrimSpace(step)
+	if rawVal, ok := event["stream"]; ok {
+		val, okInner := rawVal.(string)
+		if okInner && val != "" && strings.HasPrefix(val, "Step") {
+			step = strings.TrimSpace(val)
 		}
-	} else if val, ok = event["error"]; ok && val != "" {
-		return "", eris.New(val.(string))
+	}
+	if rawVal, ok := event["error"]; ok {
+		val, okInner := rawVal.(string)
+		if okInner && val != "" {
+			return "", eris.New(val)
+		}
 	}
 
 	return step, nil
@@ -366,113 +371,139 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 	}
 }
 
-// Pulls the image if it does not exist.
-func (c *Client) pullImages(ctx context.Context, services ...service.Service) error { //nolint:gocognit
-	// Filter the images that need to be pulled
+func (c *Client) createProgressBar(p *mpb.Progress, imageName, action string) *mpb.Bar {
+	return p.AddBar(100,
+		mpb.PrependDecorators(
+			decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint(action, "2"), imageName)),
+			decor.Percentage(decor.WCSyncSpace),
+		),
+	)
+}
+
+func (c *Client) handleDockerEvent(
+	ctx context.Context,
+	imageName string,
+	decoder *json.Decoder,
+	bar *mpb.Bar,
+	errChan chan error,
+	current *int,
+) {
+	var event map[string]interface{}
+	for decoder.More() {
+		select {
+		case <-ctx.Done():
+			printer.Infof("Operation for image %s was canceled\n", imageName)
+			bar.Abort(false)
+			return
+		default:
+			err := decoder.Decode(&event)
+			if err != nil {
+				errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
+				continue
+			}
+
+			if msg := c.parseDockerError(event); msg != "" {
+				errChan <- eris.New(msg)
+				continue
+			}
+
+			c.updateProgress(event, bar, current)
+		}
+	}
+
+	bar.SetCurrent(100)
+}
+
+func (c *Client) parseDockerError(event map[string]interface{}) string {
+	if detailRaw, okOuter := event["errorDetail"]; okOuter {
+		detailMap, ok := detailRaw.(map[string]interface{})
+		if !ok {
+			return ""
+		}
+
+		msgRaw, ok := detailMap["message"]
+		if !ok {
+			return ""
+		}
+
+		msg, ok := msgRaw.(string)
+		if ok {
+			return msg
+		}
+	}
+
+	errRaw, ok := event["error"]
+	if !ok {
+		return ""
+	}
+
+	msg, ok := errRaw.(string)
+	if ok {
+		return msg
+	}
+
+	return ""
+}
+
+func (c *Client) updateProgress(event map[string]interface{}, bar *mpb.Bar, current *int) {
+	progressDetail, ok := event["progressDetail"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	total, ok := progressDetail["total"].(float64)
+	if !ok || total <= 0 {
+		return
+	}
+	currentVal, ok := progressDetail["current"].(float64)
+	if !ok {
+		return
+	}
+	calculatedCurrent := int(currentVal * 100 / total)
+	if calculatedCurrent > *current {
+		bar.SetCurrent(int64(calculatedCurrent))
+		*current = calculatedCurrent
+	}
+}
+
+func (c *Client) pullImages(ctx context.Context, services ...service.Service) error {
 	images := make(map[string]string)
 	c.filterImages(ctx, images, services...)
 
-	// Create a new progress container with a wait group
 	var wg sync.WaitGroup
 	p := mpb.New(mpb.WithWaitGroup(&wg))
-
-	// Channel to collect errors from the goroutines
 	errChan := make(chan error, len(images))
-
-	// Add a wait group counter for each image
 	wg.Add(len(images))
 
-	// Pull each image concurrently
 	for imageName, platform := range images {
-		// Capture imageName and platform in the loop
+		bar := c.createProgressBar(p, imageName, "Pulling")
 
-		// Create a new progress bar for this image
-		bar := p.AddBar(100,
-			mpb.PrependDecorators(
-				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
-				decor.Percentage(decor.WCSyncSpace),
-			),
-		)
-
-		go func() {
+		go func(imageName, platform string, bar *mpb.Bar) {
 			defer wg.Done()
 
-			// Start pulling the image
-			responseBody, err := c.client.ImagePull(ctx, imageName, image.PullOptions{
-				Platform: platform,
-			})
-
+			responseBody, err := c.client.ImagePull(ctx, imageName, image.PullOptions{Platform: platform})
 			if err != nil {
-				// Handle the error: log it and send it to the error channel
 				printer.Infof("Error pulling image %s: %v\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
-
-				// Stop the progress bar without clearing
 				bar.Abort(false)
 				return
 			}
 			defer responseBody.Close()
 
-			// Process each event and update the progress bar
 			decoder := json.NewDecoder(responseBody)
 			var current int
-			var event map[string]interface{}
-			for decoder.More() { //nolint:dupl // different commands
-				select {
-				case <-ctx.Done():
-					// Handle context cancellation
-					printer.Infof("Pulling of image %s was canceled\n", imageName)
-					bar.Abort(false) // Stop the progress bar without clearing
-					return
-				default:
-					if err := decoder.Decode(&event); err != nil {
-						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
-						continue
-					}
-
-					// Check for errorDetail and error fields
-					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
-							errChan <- eris.New(errorMessage.(string))
-							continue
-						}
-					} else if errorMsg, okay := event["error"]; okay {
-						errChan <- eris.New(errorMsg.(string))
-						continue
-					}
-
-					// Handle progress updates
-					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
-							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
-							if calculatedCurrent > current {
-								bar.SetCurrent(int64(calculatedCurrent))
-								current = calculatedCurrent
-							}
-						}
-					}
-				}
-			}
-
-			// Finish the progress bar
-			// Handle if the current and total is not available in the response body
-			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100)
-		}()
+			c.handleDockerEvent(ctx, imageName, decoder, bar, errChan, &current)
+		}(imageName, platform, bar)
 	}
 
-	// Wait for all progress bars to complete
 	wg.Wait()
 	p.Wait()
-
-	// Close the error channel and check for errors
 	close(errChan)
+
 	errs := make([]error, 0)
 	for err := range errChan {
 		errs = append(errs, err)
 	}
 
-	// If there were any errors, return them as a combined error
 	if len(errs) > 0 {
 		return eris.New(fmt.Sprintf("Errors: %v", errs))
 	}
@@ -480,116 +511,52 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 	return nil
 }
 
-// Pulls the image if it does not exist.
-func (c *Client) pushImages(ctx context.Context, pushTo string, authString string, //nolint:gocognit
-	services ...service.Service) error {
-	// Create a new progress container with a wait group
+func (c *Client) pushImages(ctx context.Context, pushTo string, authString string, services ...service.Service) error {
 	var wg sync.WaitGroup
 	p := mpb.New(mpb.WithWaitGroup(&wg))
-
-	// Channel to collect errors from the goroutines
 	errChan := make(chan error, len(services))
-
-	// Add a wait group counter for each image
 	wg.Add(len(services))
 
 	for _, service := range services {
 		imageName := service.Image
 
-		// check if the image exists
 		_, _, err := c.client.ImageInspectWithRaw(ctx, imageName)
 		if err != nil {
-			return eris.New(fmt.Sprintf("Error inspecting image %s for service %s: %v\n",
-				imageName, service.Name, err))
+			return eris.New(fmt.Sprintf("Error inspecting image %s for service %s: %v\n", imageName, service.Name, err))
 		}
 
-		bar := p.AddBar(100,
-			mpb.PrependDecorators(
-				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pushing", "2"), imageName)),
-				decor.Percentage(decor.WCSyncSpace),
-			),
-		)
+		bar := c.createProgressBar(p, imageName, "Pushing")
 
-		go func() {
+		go func(imageName string, bar *mpb.Bar) {
 			defer wg.Done()
 
-			// Start pushing the image
 			responseBody, err := c.client.ImagePush(ctx, pushTo, image.PushOptions{
 				All:          true,
 				RegistryAuth: authString,
 			})
-
 			if err != nil {
-				// Handle the error: log it and send it to the error channel
 				printer.Infof("Error pushing image %s: %v\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pushing image %s", imageName)
-
-				// Stop the progress bar without clearing
 				bar.Abort(false)
 				return
 			}
 			defer responseBody.Close()
 
-			// Process each event and update the progress bar
 			decoder := json.NewDecoder(responseBody)
 			var current int
-			var event map[string]interface{}
-			for decoder.More() { //nolint:dupl // different commands
-				select {
-				case <-ctx.Done():
-					// Handle context cancellation
-					printer.Infof("Pushing image %s was canceled\n", imageName)
-					bar.Abort(false) // Stop the progress bar without clearing
-					return
-				default:
-					if err := decoder.Decode(&event); err != nil {
-						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
-						continue
-					}
-
-					// Check for errorDetail and error fields
-					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
-							errChan <- eris.New(errorMessage.(string))
-							continue
-						}
-					} else if errorMsg, okay := event["error"]; okay {
-						errChan <- eris.New(errorMsg.(string))
-						continue
-					}
-
-					// Handle progress updates
-					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
-							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
-							if calculatedCurrent > current {
-								bar.SetCurrent(int64(calculatedCurrent))
-								current = calculatedCurrent
-							}
-						}
-					}
-				}
-			}
-
-			// Finish the progress bar
-			// Handle if the current and total is not available in the response body
-			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100)
-		}()
+			c.handleDockerEvent(ctx, imageName, decoder, bar, errChan, &current)
+		}(imageName, bar)
 	}
 
-	// Wait for all progress bars to complete
 	wg.Wait()
 	p.Wait()
-
-	// Close the error channel and check for errors
 	close(errChan)
+
 	errs := make([]error, 0)
 	for err := range errChan {
 		errs = append(errs, err)
 	}
 
-	// If there were any errors, return them as a combined error
 	if len(errs) > 0 {
 		return eris.New(fmt.Sprintf("Errors: %v", errs))
 	}

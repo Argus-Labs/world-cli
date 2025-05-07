@@ -15,7 +15,7 @@ linters:
     # - depguard
     - dupl
     - durationcheck
-    # - errcheck
+    - errcheck
     - errname
     - errorlint
     - exhaustive
