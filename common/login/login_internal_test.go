@@ -13,6 +13,7 @@ import (
 )
 
 func TestDecryptAccessToken(t *testing.T) {
+	t.Parallel()
 	// Initialize encryption
 	enc, err := NewEncryption()
 	require.NoError(t, err)
