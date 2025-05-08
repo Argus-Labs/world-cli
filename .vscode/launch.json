@@ -5,81 +5,42 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug: DEV - ArgusID Login",
+            "name": "Debug: DEV",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/world/main.go",
             "cwd": "${workspaceFolder}",
             "args": ["login"],
+            "console": "integratedTerminal",
             "env": {
-                "WORLD_CLI_ENV": "DEV",
-                "WORLD_CLI_LOGIN_METHOD": "argusid"
+                "WORLD_CLI_ENV": "DEV"
             }
         },
         {
-            "name": "Debug: DEV - Github Login",
+            "name": "Debug: PROD",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/world/main.go",
             "cwd": "${workspaceFolder}",
             "args": ["login"],
+            "console": "integratedTerminal",
             "env": {
-                "WORLD_CLI_ENV": "DEV",
-                "WORLD_CLI_LOGIN_METHOD": "github"
+                "WORLD_CLI_ENV": "PROD"
             }
         },
         {
-            "name": "Debug: PROD - ArgusID Login",
+            "name": "Debug: LOCAL",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/world/main.go",
             "cwd": "${workspaceFolder}",
             "args": ["login"],
+            "console": "integratedTerminal",
             "env": {
-                "WORLD_CLI_ENV": "PROD",
-                "WORLD_CLI_LOGIN_METHOD": "argusid"
-            }
-        },
-        {
-            "name": "Debug: PROD - Github Login",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}/cmd/world/main.go",
-            "cwd": "${workspaceFolder}",
-            "args": ["login"],
-            "env": {
-                "WORLD_CLI_ENV": "PROD",
-                "WORLD_CLI_LOGIN_METHOD": "github"
-            }
-        },
-        {
-            "name": "Debug: LOCAL - ArgusID Login",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}/cmd/world/main.go",
-            "cwd": "${workspaceFolder}",
-            "args": ["login"],
-            "env": {
-                "WORLD_CLI_ENV": "LOCAL",
-                "WORLD_CLI_LOGIN_METHOD": "argusid"
-            }
-        },
-        {
-            "name": "Debug: LOCAL - Github Login",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}/cmd/world/main.go",
-            "cwd": "${workspaceFolder}",
-            "args": ["login"],
-            "env": {
-                "WORLD_CLI_ENV": "LOCAL",
-                "WORLD_CLI_LOGIN_METHOD": "github"
+                "WORLD_CLI_ENV": "LOCAL"
             }
         }
     ]

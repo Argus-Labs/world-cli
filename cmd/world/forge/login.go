@@ -75,7 +75,13 @@ func performLogin(ctx context.Context, config *ForgeConfig) error {
 func handleArgusIDPostLogin(ctx context.Context, config *ForgeConfig) error {
 	user, err := getUser(ctx)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get user")
+		errStr := eris.ToString(err, false)
+		if strings.Contains(errStr, "503") {
+			printer.Errorln("World Forge is currently experiencing issues, please try again later.")
+		} else {
+			printer.Errorln(err.Error())
+		}
+		return err
 	}
 
 	config.Credential.ID = user.ID

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -29,7 +30,7 @@ import (
 
 const (
 	jitterDivisor  time.Duration = 2 // Divisor used to calculate maximum jitter range
-	RetryBaseDelay time.Duration = 100 * time.Millisecond
+	RetryBaseDelay time.Duration = 500 * time.Millisecond
 )
 
 var (
@@ -78,8 +79,8 @@ var getInput = func(prompt, defaultStr string) string {
 	input = strings.TrimSpace(input)
 	if input == "" && defaultStr != "" {
 		// display the default value as if they typed it in
-		promptEnd := len(defaultStr) + 4 + len(prompt)
-		printer.Infof("\033[1A\033[%dC", promptEnd) // move cursor up one line, and right the length of the prompt
+		printer.MoveCursorUp(1)
+		printer.MoveCursorRight(len(defaultStr) + 4 + len(prompt))
 		printer.Infoln(defaultStr)
 		return defaultStr
 	}
@@ -141,13 +142,18 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
+			if i > 0 {
+				printer.MoveCursorUp(1)
+				printer.ClearToEndOfLine()
+				printer.Infoln("Retrying...                                                                  ")
+			}
 			respBody, err := doRequest(req)
 			if err == nil {
 				return respBody, nil
 			}
 
 			// Don't retry if unauthorized
-			if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world login' command") {
+			if strings.Contains(err.Error(), "Unauthorized.") || strings.Contains(err.Error(), "Forbidden.") {
 				return nil, err
 			}
 
@@ -157,11 +163,11 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 			}
 
 			if i < maxRetries-1 { // Don't print retry message on last attempt
-				printer.Errorf("Failed to make request [%s]: %s\n", req.URL, err.Error())
-				printer.Infoln("Retrying...")
-
 				// Apply exponential backoff with jitter
 				delay := exponentialBackoffWithJitter(baseDelay, i)
+				prompt := fmt.Sprintf("Failed to make request [%s]: %s. Will retry...", req.URL, err.Error())
+				printer.MoveCursorUp(1) // move cursor up to overwrite the previous "Retrying" line
+				printer.Errorln(prompt)
 
 				// Use timer instead of Sleep to handle cancellation
 				timer := time.NewTimer(delay)
@@ -171,6 +177,9 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 					return nil, ctx.Err()
 				case <-timer.C:
 				}
+			} else {
+				printer.MoveCursorUp(1)
+				printer.ClearToEndOfLine()
 			}
 			lastErr = err
 		}
@@ -216,14 +225,19 @@ func doRequest(req *http.Request) ([]byte, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, eris.New("Unauthorized. Please login again using 'world login' command")
+			return nil, eris.New("401 Unauthorized.")
 		}
-
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, eris.New("403 Forbidden.")
+		}
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
 		message := gjson.GetBytes(body, "message").String()
+		if message == "" {
+			return nil, eris.New(resp.Status)
+		}
 		return nil, eris.New(message)
 	}
 
