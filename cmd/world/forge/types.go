@@ -8,7 +8,7 @@ import (
 
 type Credential struct {
 	Token          string    `json:"token"`
-	TokenExpiresAt time.Time `json:"token_expires_at"`
+	TokenExpiresAt time.Time `json:"token_expires_at,omitempty"`
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
 }
