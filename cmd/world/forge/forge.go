@@ -357,9 +357,6 @@ This command terminates all running instances of your game in the cloud, freeing
 resources. Your project configuration remains intact, allowing you to redeploy later
 if needed.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -376,9 +373,6 @@ if needed.`,
 This command clears all game state data while keeping your deployment running,
 allowing you to start fresh without redeploying the entire infrastructure.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -395,9 +389,6 @@ allowing you to start fresh without redeploying the entire infrastructure.`,
 This command shows detailed information about your project's deployment status,
 including running instances, regions, and any ongoing deployment operations.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -415,9 +406,6 @@ This command transitions your game from a development environment to production,
 making it ready for a wider audience. This process ensures your game is deployed
 with production-grade infrastructure and settings.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -453,18 +441,21 @@ allowing you to monitor application behavior and troubleshoot issues in real-tim
 func InitForgeBase(env string) {
 	// Set urls based on env
 	switch env {
-	case "LOCAL":
+	case EnvLocal:
 		baseURL = worldForgeBaseURLLocal
 		rpcURL = worldForgeRPCBaseURLLocal
 		argusIDBaseURL = argusIDBaseURLDev
-	case "DEV":
+		Env = EnvLocal
+	case EnvDev:
 		baseURL = worldForgeBaseURLDev
 		rpcURL = worldForgeRPCBaseURLDev
 		argusIDBaseURL = argusIDBaseURLDev
+		Env = EnvDev
 	default:
 		rpcURL = worldForgeRPCBaseURLProd
 		baseURL = worldForgeBaseURLProd
 		argusIDBaseURL = argusIDBaseURLProd
+		Env = EnvProd
 	}
 
 	// Set login URL

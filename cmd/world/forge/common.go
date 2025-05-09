@@ -111,7 +111,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	}
 
 	// Get credential from config
-	cred, err := GetForgeConfig()
+	config, err := GetForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get credential")
 	}
@@ -124,7 +124,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 
 	// Add headers
 	prefix := "ArgusID "
-	req.Header.Add("Authorization", prefix+cred.Credential.Token)
+	req.Header.Add("Authorization", prefix+config.Credential.Token)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -132,7 +132,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	return req, nil
 }
 
-func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
+func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) { //nolint:gocognit
 	maxRetries := 5
 	baseDelay := RetryBaseDelay
 	var lastErr error
