@@ -96,7 +96,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	// if we have an unexpired token, we are logged in
 	loggedIn := config.Credential.Token != ""
 	tokenExpiresAt := config.Credential.TokenExpiresAt
-	if tokenExpiresAt.Before(time.Now()) {
+	if tokenExpiresAt.IsZero() || tokenExpiresAt.Before(time.Now()) {
 		loggedIn = false
 	}
 
