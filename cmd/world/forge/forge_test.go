@@ -2995,7 +2995,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 		},
 		{
 			name: "Error - Need login but expired token",
-			config: ForgeConfig{
+			config: Config{
 				Credential: Credential{
 					Token:          "test-token",
 					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
@@ -3005,7 +3005,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			orgReq:        Ignore,
 			projectReq:    Ignore,
 			expectedError: true,
-			checkState: func(state *ForgeCommandState) {
+			checkState: func(state *CommandState) {
 				s.Nil(state.User)
 				s.Nil(state.Organization)
 				s.Nil(state.Project)
