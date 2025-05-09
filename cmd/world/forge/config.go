@@ -20,7 +20,7 @@ const (
 	EnvProd  = "PROD"
 )
 
-type ForgeConfig struct {
+type Config struct {
 	OrganizationID string         `json:"organization_id"`
 	ProjectID      string         `json:"project_id"`
 	Credential     Credential     `json:"credential"`
@@ -46,8 +46,8 @@ func getConfigFileName() (string, error) {
 	return configFile, nil
 }
 
-func GetForgeConfig() (ForgeConfig, error) {
-	var config ForgeConfig
+func GetForgeConfig() (Config, error) {
+	var config Config
 
 	configFile, err := getConfigFileName()
 	if err != nil {
@@ -76,7 +76,7 @@ func GetForgeConfig() (ForgeConfig, error) {
 	return config, nil
 }
 
-func GetCurrentForgeConfig() (ForgeConfig, error) {
+func GetCurrentForgeConfig() (Config, error) {
 	currConfig, err := GetForgeConfig()
 	// we deliberately ignore any error here and just return it at the end
 	// so that we can fill out and much info as we do have
@@ -120,7 +120,7 @@ func FindGitPathAndURL() (string, string, error) {
 	return path, url, nil
 }
 
-func SaveForgeConfig(globalConfig ForgeConfig) error {
+func SaveForgeConfig(globalConfig Config) error {
 	configFile, err := getConfigFileName()
 	if err != nil {
 		return eris.Wrap(err, "failed get config file name")

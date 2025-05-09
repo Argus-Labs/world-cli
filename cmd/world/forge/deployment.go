@@ -42,7 +42,7 @@ type deploymentPreview struct {
 }
 
 // Deployment a project.
-func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType string) error {
+func deployment(ctx context.Context, cmdState *CommandState, deployType string) error {
 	if cmdState.Organization == nil || cmdState.Organization.ID == "" {
 		printNoSelectedOrganization()
 		return nil
@@ -115,7 +115,7 @@ func deployment(ctx context.Context, cmdState *ForgeCommandState, deployType str
 }
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
-func status(ctx context.Context, cmdState *ForgeCommandState) error {
+func status(ctx context.Context, cmdState *CommandState) error {
 	if cmdState.Project == nil || cmdState.Project.ID == "" {
 		printNoSelectedProject()
 		return nil

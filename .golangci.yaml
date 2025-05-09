@@ -57,14 +57,14 @@ linters:
     - protogetter
     - reassign
     - recvcheck
-    # - revive
+    - revive
     - rowserrcheck
     - sloglint
     - spancheck
     - sqlclosecheck
     - staticcheck
     - testableexamples
-    # - testifylint
+    - testifylint
     # - testpackage
     - tparallel
     - unconvert

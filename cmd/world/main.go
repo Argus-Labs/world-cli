@@ -79,10 +79,10 @@ func main() {
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
 	// Initialize packages
-	evm.EvmInit()
+	evm.Init()
 	cardinal.Init()
 	forge.InitForgeCmds()
-	root.RootCmdInit()
+	root.CmdInit()
 	root.Execute()
 }
 

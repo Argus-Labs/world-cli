@@ -14,8 +14,8 @@ import (
 
 // initFlow represents the initialization flow for the forge system.
 type initFlow struct {
-	config               ForgeConfig
-	State                ForgeCommandState
+	config               Config
+	State                CommandState
 	requiredLogin        LoginStepRequirement
 	requiredOrganization StepRequirement
 	requiredProject      StepRequirement
@@ -68,7 +68,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	loginReq LoginStepRequirement,
 	orgReq StepRequirement,
 	projectReq StepRequirement,
-) (*ForgeCommandState, error) {
+) (*CommandState, error) {
 	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		loginStepDone:        false,
 		organizationStepDone: false,
 		projectStepDone:      false,
-		State: ForgeCommandState{
+		State: CommandState{
 			Command:      cmd,
 			LoggedIn:     false,
 			User:         nil,
@@ -127,19 +127,19 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 			return &flow.State, err
 		}
 	}
-	needOrgIdOnly := flow.requiredOrganization == NeedIDOnly || flow.requiredOrganization == NeedExistingIDOnly
-	needProjectIdOnly := flow.requiredProject == NeedIDOnly || flow.requiredProject == NeedExistingIDOnly
-	haveOrgId := flow.config.OrganizationID != ""
-	haveProjectId := flow.config.ProjectID != ""
+	needOrgIDOnly := flow.requiredOrganization == NeedIDOnly || flow.requiredOrganization == NeedExistingIDOnly
+	needProjectIDOnly := flow.requiredProject == NeedIDOnly || flow.requiredProject == NeedExistingIDOnly
+	haveOrgID := flow.config.OrganizationID != ""
+	haveProjectID := flow.config.ProjectID != ""
 
 	switch {
 	// check for conditions where we can exit early without asking the user for anything
 
-	case flow.requiredOrganization == MustNotExist && haveOrgId:
+	case flow.requiredOrganization == MustNotExist && haveOrgID:
 		// ERROR: we have an org id, but we need to not belong to any org
 		return &flow.State, errors.New("organization already exists")
 
-	case flow.requiredProject == MustNotExist && haveProjectId:
+	case flow.requiredProject == MustNotExist && haveProjectID:
 		// ERROR: we have a project id, but we need to not belong to any project
 		return &flow.State, errors.New("project already exists")
 
@@ -149,7 +149,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		return &flow.State, nil // everything is as it should be
 
 		// check for only needing IDs and we have them
-	case needOrgIdOnly && haveOrgId && needProjectIdOnly && haveProjectId:
+	case needOrgIDOnly && haveOrgID && needProjectIDOnly && haveProjectID:
 		flow.State.Organization = &organization{
 			ID: flow.config.OrganizationID,
 		}
@@ -164,7 +164,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 
 	// FIXME: handle the errors coming back from the handleX() functions
 	// now make sure we get the org info
-	if haveOrgId && needOrgIdOnly {
+	if haveOrgID && needOrgIDOnly {
 		flow.State.Organization = &organization{
 			ID: flow.config.OrganizationID,
 		}
@@ -183,7 +183,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	}
 
 	// now get the project info
-	if haveProjectId && needProjectIdOnly {
+	if haveProjectID && needProjectIDOnly {
 		flow.State.Project = &project{
 			ID:   flow.config.ProjectID,
 			Name: flow.config.CurrProjectName,
@@ -203,7 +203,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 }
 
 // so you can get the state from anywhere.
-func GetForgeCommandState() *ForgeCommandState {
+func GetForgeCommandState() *CommandState {
 	if flow == nil {
 		// this is a logic error so we want to have it fail fast and loudly
 		panic("SetupForgeCommandState must be called before GetForgeCommandState")
@@ -216,7 +216,7 @@ func GetForgeCommandState() *ForgeCommandState {
 // it returns nil if the project is found and the config is updated
 // if the lookup worked but there is no matching project, it will return nil
 // and the config will not be changed.
-func doRepoLookup(ctx context.Context, config *ForgeConfig) error {
+func doRepoLookup(ctx context.Context, config *Config) error {
 	// needed a repo lookup, and we are logged in, so try to lookup the project
 	deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
 		baseURL, url.QueryEscape(config.CurrRepoURL), url.QueryEscape(config.CurrRepoPath))
@@ -251,7 +251,7 @@ func doRepoLookup(ctx context.Context, config *ForgeConfig) error {
 	return nil
 }
 
-func AddKnownProject(config *ForgeConfig, proj *project) {
+func AddKnownProject(config *Config, proj *project) {
 	config.KnownProjects = append(config.KnownProjects, KnownProject{
 		ProjectID:      proj.ID,
 		OrganizationID: proj.OrgID,

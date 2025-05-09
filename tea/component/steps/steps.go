@@ -65,11 +65,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if m.index == len(m.Steps)-1 {
 			// Send a signal that all the steps have been finished
 			return m, tea.Sequence(m.SignalStepCompletedCmd(m.index), m.SignalAllStepCompletedCmd())
-		} else {
-			m.index++
-			// Send a signal that the current step has been completed and the next step has started
-			return m, tea.Sequence(m.SignalStepCompletedCmd(m.index-1), m.SignalStepStartedCmd(m.index))
 		}
+		m.index++
+		// Send a signal that the current step has been completed and the next step has started
+		return m, tea.Sequence(m.SignalStepCompletedCmd(m.index-1), m.SignalStepStartedCmd(m.index))
+
 	default:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)

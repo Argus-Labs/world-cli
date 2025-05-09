@@ -56,7 +56,7 @@ func login(ctx context.Context) error {
 	return nil
 }
 
-func performLogin(ctx context.Context, config *ForgeConfig) error {
+func performLogin(ctx context.Context, config *Config) error {
 	var err error
 	config.Credential, err = loginWithArgusID(ctx)
 	if err != nil {
@@ -71,7 +71,7 @@ func performLogin(ctx context.Context, config *ForgeConfig) error {
 	return handleArgusIDPostLogin(ctx, config)
 }
 
-func handleArgusIDPostLogin(ctx context.Context, config *ForgeConfig) error {
+func handleArgusIDPostLogin(ctx context.Context, config *Config) error {
 	user, err := getUser(ctx)
 	if err != nil {
 		errStr := eris.ToString(err, false)
@@ -87,14 +87,14 @@ func handleArgusIDPostLogin(ctx context.Context, config *ForgeConfig) error {
 	return SaveForgeConfig(*config)
 }
 
-func handlePostLoginConfig(ctx context.Context, config *ForgeConfig) error {
+func handlePostLoginConfig(ctx context.Context, config *Config) error {
 	if config.CurrRepoKnown {
 		return handleKnownRepoConfig(ctx, config)
 	}
 	return handleNewRepoConfig(ctx, config)
 }
 
-func handleKnownRepoConfig(ctx context.Context, config *ForgeConfig) error {
+func handleKnownRepoConfig(ctx context.Context, config *Config) error {
 	proj, err := getSelectedProject(ctx)
 	if err != nil {
 		printer.Infof("⚠️ Warning: Failed to get project %s: %s", config.ProjectID, err.Error())
@@ -111,7 +111,7 @@ func handleKnownRepoConfig(ctx context.Context, config *ForgeConfig) error {
 	return nil
 }
 
-func handleNewRepoConfig(ctx context.Context, config *ForgeConfig) error {
+func handleNewRepoConfig(ctx context.Context, config *Config) error {
 	// Handle organization selection
 	orgID, err := handleOrganizationSelection(ctx, config.OrganizationID)
 	if err != nil {
@@ -143,7 +143,7 @@ func handleNewRepoConfig(ctx context.Context, config *ForgeConfig) error {
 	return showProjectList(ctx)
 }
 
-func displayLoginSuccess(config ForgeConfig) {
+func displayLoginSuccess(config Config) {
 	printer.NewLine(1)
 	printer.Headerln("   Login successful!  ")
 	printer.NewLine(1)
