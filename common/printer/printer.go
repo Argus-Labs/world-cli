@@ -2,10 +2,12 @@ package printer
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/guumaster/logsymbols"
+	"github.com/muesli/termenv"
 )
 
 var (
@@ -90,6 +92,21 @@ func NewLine(numberOfLines int) {
 		numberOfLines = 1
 	}
 	fmt.Print(strings.Repeat("\n", numberOfLines)) //nolint:forbidigo // Need customer friendly output
+}
+
+func MoveCursorUp(numberOfLines int) {
+	output := termenv.NewOutput(os.Stdout)
+	output.CursorUp(numberOfLines)
+}
+
+func MoveCursorRight(numberOfCells int) {
+	output := termenv.NewOutput(os.Stdout)
+	output.CursorForward(numberOfCells)
+}
+
+func ClearToEndOfLine() {
+	output := termenv.NewOutput(os.Stdout)
+	output.ClearLineRight()
 }
 
 // SectionDivider prints a divider line of a given symbol and length.

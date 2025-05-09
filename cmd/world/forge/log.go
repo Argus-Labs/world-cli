@@ -177,9 +177,6 @@ func createLogsClient(params *logParams) (
 	}
 
 	token := config.Credential.Token
-	if !argusid {
-		token = "Bearer " + token
-	}
 	req.Header().Set("Authorization", token)
 
 	return client, req, nil
