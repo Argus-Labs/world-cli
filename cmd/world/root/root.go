@@ -2,7 +2,6 @@ package root
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +18,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -47,9 +47,10 @@ type Release struct {
 	HTMLURL string `json:"html_url"`
 }
 
-func init() {
+// CmdInit initializes the root command.
+func CmdInit() {
 	// Enable case-insensitive commands
-	cobra.EnableCaseInsensitive = true
+	cobra.EnableCaseInsensitive = true //nolint:reassign // intentionally setting cobra global config as designed
 
 	// Disable printing usage help text when command returns a non-nil error
 	rootCmd.SilenceUsage = true
@@ -75,6 +76,17 @@ func init() {
 
 	// Remove completion subcommand
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// It only needs to happen once to the rootCmd.
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		sentry.CaptureException(err)
+		logger.Errors(err)
+	}
+	// print log stack
+	logger.PrintLogs()
 }
 
 func checkLatestVersion() error {
@@ -123,31 +135,13 @@ func checkLatestVersion() error {
 		}
 
 		if currentVersion.LessThan(latestVersion) {
-			notificationStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("178"))
-				// Bright yellow, good for notifications
-			fmt.Printf(
-				"\n%s\n",
-				notificationStyle.Render(fmt.Sprintf("New version %s is available!", latestVersion.String())),
-			)
-			fmt.Printf(
-				"%s\n\n",
-				notificationStyle.Render("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest"),
-			)
+			printer.NewLine(1)
+			printer.Notificationf("New version %s is available!", latestVersion.String())
+
+			printer.Notificationln("To update, run: go install pkg.world.dev/world-cli/cmd/world@latest")
 		}
 	}
 	return nil
-}
-
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		sentry.CaptureException(err)
-		logger.Errors(err)
-	}
-	// print log stack
-	logger.PrintLogs()
 }
 
 // contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or
@@ -164,9 +158,9 @@ func contextWithSigterm(ctx context.Context) context.Context {
 
 		select {
 		case <-signalCh:
-			fmt.Println(textStyle.Render("Interrupt signal received. Terminating..."))
+			printer.Infoln(textStyle.Render("Interrupt signal received. Terminating..."))
 		case <-ctx.Done():
-			fmt.Println(textStyle.Render("Cancellation signal received. Terminating..."))
+			printer.Infoln(textStyle.Render("Cancellation signal received. Terminating..."))
 		}
 	}()
 

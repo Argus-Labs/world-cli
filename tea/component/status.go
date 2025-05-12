@@ -64,7 +64,7 @@ func (s *StatusObject) GetStatusMessage(spinnerModel *spinner.Model) string {
 	return finalString
 }
 
-type StatusCollection struct { //nolint:decorder
+type StatusCollection struct {
 	Style             lipgloss.Style
 	Spinner           spinner.Model
 	Statuses          []*StatusObject
@@ -81,8 +81,8 @@ func NewStatusCollection(statuses []*StatusObject, options ...Option) *StatusCol
 		Statuses:          statuses,
 		ShutdownChan:      make(chan bool),
 		ShutdownOnChecked: false,
-		width:             500, //nolint:gomnd
-		height:            500, //nolint:gomnd
+		width:             500,
+		height:            500,
 	}
 	for _, option := range options {
 		option(&res)
@@ -114,7 +114,7 @@ func (s *StatusCollection) Init() tea.Cmd {
 	go func() {
 	loop:
 		for {
-			time.Sleep(500 * time.Millisecond) //nolint:gomnd
+			time.Sleep(500 * time.Millisecond)
 			for _, status := range s.Statuses {
 				status.AutoSetStatus()
 			}

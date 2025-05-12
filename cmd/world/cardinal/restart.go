@@ -50,6 +50,6 @@ This command will rebuild and restart the following Docker services:
 // Cobra Setup //
 /////////////////
 
-func init() {
+func restartCmdInit() {
 	restartCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 }

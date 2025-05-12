@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package logs.v1;
+
+service LogsService {
+    rpc GetLogs(GetLogsRequest) returns (stream GetLogsResponse);
+}
+
+message GetLogsRequest {
+    string organization_slug = 1;
+    string project_slug = 2;
+    string env = 3;
+    string region = 4;
+}
+
+message GetLogsResponse {
+    string log = 1;
+}

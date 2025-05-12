@@ -12,7 +12,45 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
 )
+
+var (
+	// testEnv holds the global test environment.
+	testEnv *testEnvironment
+)
+
+// testEnvironment holds the test environment setup.
+type testEnvironment struct {
+	rootCmd *cobra.Command
+}
+
+// setupTestEnv initializes the test environment.
+func setupTestEnv() *testEnvironment {
+	// Initialize all commands
+	cardinal.Init()
+	evm.Init()
+	CmdInit()
+
+	return &testEnvironment{
+		rootCmd: rootCmd,
+	}
+}
+
+// TestMain runs before all tests and handles setup/teardown.
+func TestMain(m *testing.M) {
+	// Setup
+	testEnv = setupTestEnv()
+
+	// Run tests
+	code := m.Run()
+
+	// Teardown if needed
+	// Add any cleanup code here
+
+	os.Exit(code)
+}
 
 // outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
 // any errors.
@@ -45,7 +83,7 @@ func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
 }
 
 func TestSubcommandsHaveHelpText(t *testing.T) {
-	lines, err := outputFromCmd(rootCmd, "help")
+	lines, err := outputFromCmd(testEnv.rootCmd, "help")
 	assert.NilError(t, err)
 	seenSubcommands := map[string]int{
 		"cardinal": 0,
@@ -99,19 +137,12 @@ func TestExecuteDoctorCommand(t *testing.T) {
 }
 
 func TestCreateStartStopRestartPurge(t *testing.T) {
+	var err error
+
 	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-start")
-	assert.NilError(t, err)
+	gameDir := t.TempDir()
 
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(gameDir)
-		assert.NilError(t, err)
-	}()
-
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
+	t.Chdir(gameDir)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -124,18 +155,17 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Change dir
-	err = os.Chdir(sgtDir)
-	assert.NilError(t, err)
+	t.Chdir(sgtDir)
 
 	// Start cardinal
-	rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
-	err = rootCmd.Execute()
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
+	err = testEnv.rootCmd.Execute()
 	assert.NilError(t, err)
 
 	defer func() {
 		// Purge cardinal
-		rootCmd.SetArgs([]string{"cardinal", "purge"})
-		err = rootCmd.Execute()
+		testEnv.rootCmd.SetArgs([]string{"cardinal", "purge"})
+		err = testEnv.rootCmd.Execute()
 		assert.NilError(t, err)
 	}()
 
@@ -143,16 +173,16 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Restart cardinal
-	rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
-	err = rootCmd.Execute()
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
+	err = testEnv.rootCmd.Execute()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal is healthy
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Stop cardinal
-	rootCmd.SetArgs([]string{"cardinal", "stop"})
-	err = rootCmd.Execute()
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "stop"})
+	err = testEnv.rootCmd.Execute()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal shutdowns
@@ -160,19 +190,11 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 }
 
 func TestDev(t *testing.T) {
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
-	assert.NilError(t, err)
+	// Use t.TempDir(), which also auto-cleans the dir
+	gameDir := t.TempDir()
 
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(gameDir)
-		assert.NilError(t, err)
-	}()
-
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
+	// Change working directory
+	t.Chdir(gameDir)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -182,14 +204,16 @@ func TestDev(t *testing.T) {
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
 	createCmd.SetArgs([]string{sgtDir})
-	err = createCmd.Execute()
+	err := createCmd.Execute()
 	assert.NilError(t, err)
 
 	// Start cardinal dev
-	ctx, cancel := context.WithCancel(context.Background())
-	rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	testEnv.rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
 	go func() {
-		err := rootCmd.ExecuteContext(ctx)
+		err := testEnv.rootCmd.ExecuteContext(ctx)
 		assert.NilError(t, err)
 	}()
 
@@ -270,19 +294,11 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 }
 
 func TestEVMStart(t *testing.T) {
-	// Create Cardinal
-	gameDir, err := os.MkdirTemp("", "game-template-dev")
-	assert.NilError(t, err)
+	// Create temp working dir (auto-cleans up)
+	gameDir := t.TempDir()
 
-	// Remove dir
-	defer func() {
-		err = os.RemoveAll(gameDir)
-		assert.NilError(t, err)
-	}()
-
-	// Change dir
-	err = os.Chdir(gameDir)
-	assert.NilError(t, err)
+	// Change to temp dir (auto-resets after test)
+	t.Chdir(gameDir)
 
 	// set tea output to variable
 	teaOut := &bytes.Buffer{}
@@ -292,14 +308,15 @@ func TestEVMStart(t *testing.T) {
 	// checkout the repo
 	sgtDir := gameDir + "/sgt"
 	createCmd.SetArgs([]string{sgtDir})
-	err = createCmd.Execute()
+	err := createCmd.Execute()
 	assert.NilError(t, err)
 
 	// Start evn dev
-	ctx, cancel := context.WithCancel(context.Background())
-	rootCmd.SetArgs([]string{"evm", "start", "--dev"})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	testEnv.rootCmd.SetArgs([]string{"evm", "start", "--dev"})
 	go func() {
-		err := rootCmd.ExecuteContext(ctx)
+		err := testEnv.rootCmd.ExecuteContext(ctx)
 		assert.NilError(t, err)
 	}()
 

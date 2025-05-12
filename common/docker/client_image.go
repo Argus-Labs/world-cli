@@ -23,6 +23,7 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -386,7 +387,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 		// Capture imageName and platform in the loop
 
 		// Create a new progress bar for this image
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pulling", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -403,7 +404,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
-				fmt.Printf("Error pulling image %s: %v\n", imageName, err)
+				printer.Infof("Error pulling image %s: %v\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
 
 				// Stop the progress bar without clearing
@@ -420,7 +421,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
-					fmt.Printf("Pulling of image %s was canceled\n", imageName)
+					printer.Infof("Pulling of image %s was canceled\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:
@@ -431,18 +432,18 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
+						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
 							errChan <- eris.New(errorMessage.(string))
 							continue
 						}
-					} else if errorMsg, ok := event["error"]; ok {
+					} else if errorMsg, okay := event["error"]; okay {
 						errChan <- eris.New(errorMsg.(string))
 						continue
 					}
 
 					// Handle progress updates
 					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
+						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
 							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
 							if calculatedCurrent > current {
 								bar.SetCurrent(int64(calculatedCurrent))
@@ -456,7 +457,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(100)
 		}()
 	}
 
@@ -502,7 +503,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 				imageName, service.Name, err))
 		}
 
-		bar := p.AddBar(100, //nolint:gomnd
+		bar := p.AddBar(100,
 			mpb.PrependDecorators(
 				decor.Name(fmt.Sprintf("%s %s: ", style.ForegroundPrint("Pushing", "2"), imageName)),
 				decor.Percentage(decor.WCSyncSpace),
@@ -520,7 +521,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
-				fmt.Printf("Error pushing image %s: %v\n", imageName, err)
+				printer.Infof("Error pushing image %s: %v\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pushing image %s", imageName)
 
 				// Stop the progress bar without clearing
@@ -537,7 +538,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
-					fmt.Printf("Pushing image %s was canceled\n", imageName)
+					printer.Infof("Pushing image %s was canceled\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:
@@ -548,18 +549,18 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
-						if errorMessage, ok := errorDetail.(map[string]interface{})["message"]; ok {
+						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
 							errChan <- eris.New(errorMessage.(string))
 							continue
 						}
-					} else if errorMsg, ok := event["error"]; ok {
+					} else if errorMsg, okay := event["error"]; okay {
 						errChan <- eris.New(errorMsg.(string))
 						continue
 					}
 
 					// Handle progress updates
 					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
-						if total, ok := progressDetail["total"].(float64); ok && total > 0 {
+						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
 							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
 							if calculatedCurrent > current {
 								bar.SetCurrent(int64(calculatedCurrent))
@@ -573,7 +574,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 			// Finish the progress bar
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
-			bar.SetCurrent(100) //nolint:gomnd
+			bar.SetCurrent(100)
 		}()
 	}
 

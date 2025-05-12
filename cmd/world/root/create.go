@@ -38,7 +38,7 @@ func NewLogCmd(log string) tea.Cmd {
 // Bubble Tea Model //
 //////////////////////
 
-type WorldCreateModel struct { //nolint:decorder
+type WorldCreateModel struct {
 	logs             []string
 	steps            steps.Model
 	projectNameInput textinput.Model
@@ -97,9 +97,8 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.depStatusErr = msg.Err
 		if msg.Err != nil {
 			return m, tea.Quit
-		} else {
-			return m, nil
 		}
+		return m, nil
 
 	case tea.KeyMsg: //nolint:exhaustive // not applicable
 		switch msg.Type {
@@ -130,7 +129,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				teaCmd,
 			)
 		}
-		if msg.Index == 2 { //nolint:gomnd
+		if msg.Index == 2 {
 			err := updateWorldToml(m.projectNameInput.Value())
 			teaCmd := func() tea.Msg {
 				return teacmd.GitCloneFinishMsg{Err: err}
@@ -141,7 +140,7 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				teaCmd,
 			)
 		}
-		if msg.Index == 3 { //nolint:gomnd
+		if msg.Index == 3 {
 			err := editor.SetupCardinalEditor(".", "cardinal")
 			teaCmd := func() tea.Msg {
 				return teacmd.GitCloneFinishMsg{Err: err}

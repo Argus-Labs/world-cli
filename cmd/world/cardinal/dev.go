@@ -20,6 +20,7 @@ import (
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
@@ -62,7 +63,7 @@ This mode runs Cardinal directly from your source code, providing:
 		}
 
 		// Print out header
-		fmt.Println(style.CLIHeader("Cardinal", ""))
+		printer.Infoln(style.CLIHeader("Cardinal", ""))
 
 		// Print out service addresses
 		printServiceAddress("Redis", fmt.Sprintf("localhost:%s", RedisPort))
@@ -77,7 +78,7 @@ This mode runs Cardinal directly from your source code, providing:
 		} else {
 			printServiceAddress("Cardinal Editor", "[disabled]")
 		}
-		fmt.Println()
+		printer.NewLine(1)
 
 		// Start redis, cardinal, and cardinal editor
 		// If any of the services terminates, the entire group will be terminated.
@@ -116,7 +117,7 @@ This mode runs Cardinal directly from your source code, providing:
 // Cobra Setup //
 /////////////////
 
-func init() {
+func devCmdInit() {
 	registerEditorFlag(devCmd, true)
 	devCmd.Flags().Bool(flagPrettyLog, true, "Run Cardinal with pretty logging")
 }
@@ -127,8 +128,9 @@ func init() {
 
 // Otherwise, it runs cardinal using `go run .`.
 func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error { //nolint:gocognit
-	fmt.Println("Starting Cardinal...")
-	fmt.Println(style.BoldText.Render("Press Ctrl+C to stop\n"))
+	printer.Infoln("Starting Cardinal...")
+	printer.Infoln(style.BoldText.Render("Press Ctrl+C to stop"))
+	printer.NewLine(1)
 
 	// Check and wait until Redis is running and is available in the expected port
 	isRedisHealthy := false
@@ -284,5 +286,5 @@ func printServiceAddress(service string, address string) {
 	serviceStr := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render(service)
 	arrowStr := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Render(" → ")
 	addressStr := lipgloss.NewStyle().Render(address)
-	fmt.Println(serviceStr + arrowStr + addressStr)
+	printer.Infoln(serviceStr + arrowStr + addressStr)
 }

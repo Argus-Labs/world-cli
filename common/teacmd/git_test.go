@@ -69,14 +69,14 @@ func cleanUpDir(targetDir string) {
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 		err := os.RemoveAll(targetDir)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(err) //nolint:forbidigo // test
 		}
 	}
 }
 
 func TestAppendToToml(t *testing.T) {
 	// Create a temporary TOML file for testing
-	tempFile, err := os.CreateTemp("", "test.toml")
+	tempFile, err := os.CreateTemp(t.TempDir(), "test.toml")
 	if err != nil {
 		t.Fatalf("failed to create temporary file: %v", err)
 	}

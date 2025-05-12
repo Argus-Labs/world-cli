@@ -20,11 +20,11 @@ linters:
     - errorlint
     - exhaustive
     - fatcontext
-    # - forbidigo
+    - forbidigo
     - funlen
     - gocheckcompilerdirectives
     # - gochecknoglobals
-    # - gochecknoinits
+    - gochecknoinits
     - gochecksumtype
     - gocognit
     - goconst
@@ -34,7 +34,7 @@ linters:
     - gomodguard
     - goprintffuncname
     - gosec
-    # - govet
+    - govet
     - iface
     - ineffassign
     - intrange
@@ -48,30 +48,30 @@ linters:
     - nilerr
     - nilnil
     - noctx
-    # - nolintlint
+    - nolintlint
     - nonamedreturns
     - nosprintfhostport
     - perfsprint
     - predeclared
     - promlinter
     - protogetter
-    # - reassign
-    # - recvcheck
-    # - revive
+    - reassign
+    - recvcheck
+    - revive
     - rowserrcheck
     - sloglint
     - spancheck
     - sqlclosecheck
     - staticcheck
     - testableexamples
-    # - testifylint
+    - testifylint
     # - testpackage
     - tparallel
     - unconvert
     - unparam
     - unused
     - usestdlibvars
-    # - usetesting
+    - usetesting
     - wastedassign
     - whitespace
   settings:

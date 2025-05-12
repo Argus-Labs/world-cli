@@ -113,7 +113,7 @@ func Nakama(cfg *config.Config) Service {
 				Test:     []string{"CMD", "/nakama/nakama", "healthcheck"},
 				Interval: 1 * time.Second,
 				Timeout:  1 * time.Second,
-				Retries:  20, //nolint:gomnd
+				Retries:  20,
 			},
 		},
 		HostConfig: container.HostConfig{

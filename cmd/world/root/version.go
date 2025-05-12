@@ -1,9 +1,8 @@
 package root
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 var AppVersion string
@@ -18,6 +17,10 @@ var versionCmd = &cobra.Command{
 This information is useful when reporting issues, checking for updates,
 or verifying compatibility with World Engine features.`,
 	Run: func(_ *cobra.Command, _ []string) {
-		fmt.Printf("World CLI %s\n", AppVersion)
+		printer.Infof("World CLI %s\n", AppVersion)
 	},
+}
+
+func SetAppVersion(version string) {
+	AppVersion = version
 }

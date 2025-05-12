@@ -1,12 +1,11 @@
 package evm
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 var stopCmd = &cobra.Command{
@@ -35,7 +34,7 @@ done working with your EVM environment.`,
 			return err
 		}
 
-		fmt.Println("EVM successfully stopped")
+		printer.Infoln("EVM successfully stopped")
 		return nil
 	},
 }

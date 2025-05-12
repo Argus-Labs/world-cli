@@ -28,6 +28,7 @@ The World CLI uses Task as a task runner for common development tasks. You can i
 task lint # This will install golangci-lint if it's not already installed
 task test # This will install gotestsum if it's not already installed
 task build # This will install goreleaser if it's not already installed
+task buf # this will install buf if it's not already installed
 ```
 
 ## Development Workflow
@@ -48,12 +49,25 @@ The World CLI is organized around several core systems:
   - `globalconfig/` - Global configuration persistence
   - `logger/` - Logging utilities
   - `teacmd/` - Terminal UI command utilities
+- `proto` - Contain proto files for Connect RPC
 - `tea/` - Terminal UI components using Bubble Tea framework
   - `component/` - Reusable UI components
   - `style/` - Terminal styling utilities
 - `telemetry/` - Telemetry integration for error tracking and analytics
 - `taskfiles/` - Task definitions for building, testing, and linting
 - `example-world.toml` - Example configuration file
+
+### Generating Connect and PB files
+
+World CLI use Connect RPC library for some endpoint [connectrpc.com](https://connectrpc.com/docs/introduction).
+
+To generate Connect and PB files:
+
+```bash
+task buf
+```
+
+This will generate the files in the `./gen` directory.
 
 ### Building the CLI
 

@@ -34,7 +34,7 @@ func getNamespace(t *testing.T, cfg *Config) string {
 }
 
 func makeConfigAtTemp(t *testing.T, namespace string) string {
-	file, err := os.CreateTemp("", "config*.toml")
+	file, err := os.CreateTemp(t.TempDir(), "config*.toml")
 	assert.NilError(t, err)
 	defer file.Close()
 	t.Cleanup(func() {
@@ -70,10 +70,6 @@ func TestCanSetNamespaceWithFilename(t *testing.T) {
 }
 
 func replaceEnvVarForTest(t *testing.T, env, value string) {
-	original := os.Getenv(env)
-	t.Cleanup(func() {
-		assert.NilError(t, os.Setenv(env, original))
-	})
 	t.Setenv(env, value)
 }
 
@@ -97,27 +93,23 @@ func TestConfigPreference(t *testing.T) {
 }
 
 func makeTempDir(t *testing.T) string {
-	tempdir, err := os.MkdirTemp("", "")
-	assert.NilError(t, err)
-	t.Cleanup(func() {
-		os.RemoveAll(tempdir)
-	})
+	tempdir := t.TempDir()
 
-	// cd over to the temporary directory. Make sure to jump back to the current directory
-	// at the end of the test
+	// Save current dir and restore later
 	currDir, err := os.Getwd()
 	assert.NilError(t, err)
 	t.Cleanup(func() {
-		_ = os.Chdir(currDir)
+		t.Chdir(currDir)
 	})
-	assert.NilError(t, os.Chdir(tempdir))
+
+	t.Chdir(tempdir)
 	return tempdir
 }
 
 func TestConfigFromLocalFile(t *testing.T) {
 	tempdir := makeTempDir(t)
 
-	configFile := path.Join(tempdir, WorldCLIConfigFilename)
+	configFile := path.Join(tempdir, WorldCLIConfigFilename) //nolint:govet // test
 	makeConfigAtPath(t, configFile, "alpha")
 
 	cfg, err := GetConfig()
@@ -133,9 +125,10 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 
 	deepPath = path.Join(deepPath, "/h/i/j/k/l/m/n")
 	assert.NilError(t, os.MkdirAll(deepPath, 0755))
-	assert.NilError(t, os.Chdir(deepPath))
 
-	configFile := path.Join(deepPath, WorldCLIConfigFilename)
+	t.Chdir(deepPath)
+
+	configFile := path.Join(deepPath, WorldCLIConfigFilename) //nolint:govet // test
 	// The eventual call to LoadConfig should find this config file
 	makeConfigAtPath(t, configFile, "alpha")
 
@@ -145,7 +138,7 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 }
 
 func makeTempConfigWithContent(t *testing.T, content string) string {
-	file, err := os.CreateTemp("", "config*.toml")
+	file, err := os.CreateTemp(t.TempDir(), "config*.toml")
 	assert.NilError(t, err)
 	defer file.Close()
 	t.Cleanup(func() {

@@ -8,7 +8,10 @@ import (
 	"strings"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/printer"
 )
+
+const minimumURLParts = 2
 
 // identifyProvider determines the Git provider based on the URL's host.
 func identifyProvider(repoURL string) (string, string, error) {
@@ -65,7 +68,7 @@ func validateRepoPath(_ context.Context, _, _, path string) error {
 func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the owner and repo name from the URL
 	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 { //nolint:gomnd
+	if len(parts) < minimumURLParts {
 		return eris.New("invalid github repository URL")
 	}
 	repo := strings.TrimSuffix(parts[len(parts)-1], ".git")
@@ -93,7 +96,7 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("✅ GitHub repository and token validation successful!")
+		printer.Successln("GitHub repository and token validation successful!")
 		return nil
 	}
 	return fmt.Errorf("GitHub validation failed: %s", resp.Status)
@@ -103,7 +106,7 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the project path from the URL
 	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 { //nolint:gomnd
+	if len(parts) < minimumURLParts {
 		return eris.New("invalid gitlab repository URL")
 	}
 	projectPath := fmt.Sprintf("%s/%s", parts[len(parts)-2], strings.TrimSuffix(parts[len(parts)-1], ".git"))
@@ -130,7 +133,7 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("GitLab repository and token are valid!")
+		printer.Successln("GitLab repository and token are valid!")
 		return nil
 	}
 	return fmt.Errorf("GitLab validation failed: %s", resp.Status)
@@ -140,7 +143,7 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) error {
 	// Extract the workspace and repo slug from the URL
 	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 { //nolint:gomnd
+	if len(parts) < minimumURLParts {
 		return eris.New("invalid bitbucket repository URL")
 	}
 	workspace := parts[len(parts)-2]
@@ -168,7 +171,7 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("Bitbucket repository and token are valid!")
+		printer.Successln("Bitbucket repository and token are valid!")
 		return nil
 	}
 	return fmt.Errorf("bitbucket validation failed: %s", resp.Status)

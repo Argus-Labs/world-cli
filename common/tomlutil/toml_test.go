@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,11 +17,11 @@ func (s *TOMLTestSuite) SetupTest() {
 	s.tempDir = s.T().TempDir()
 }
 
-// createTestFile is a helper function that creates a temporary TOML file with given content
+// createTestFile is a helper function that creates a temporary TOML file with given content.
 func (s *TOMLTestSuite) createTestFile(content string) string {
 	tmpFile := filepath.Join(s.tempDir, "test.toml")
 	err := os.WriteFile(tmpFile, []byte(content), 0644)
-	require.NoError(s.T(), err, "Failed to create test file")
+	s.Require().NoError(err, "Failed to create test file")
 	return tmpFile
 }
 
@@ -136,7 +135,7 @@ number = 42
 
 	// Test getting non-existent section
 	_, err = GetTOMLSection(tmpFile, "nonexistent")
-	s.Error(err)
+	s.Require().Error(err)
 
 	// Test getting empty section
 	emptySection, err := GetTOMLSection(tmpFile, "empty")
@@ -180,7 +179,7 @@ func (s *TOMLTestSuite) TestCreateTOMLFile() {
 	s.Equal("value", config["section1"].(map[string]any)["key"])
 }
 
-// TestTOMLSuite runs the test suite
+// TestTOMLSuite runs the test suite.
 func TestTOMLSuite(t *testing.T) {
 	suite.Run(t, new(TOMLTestSuite))
 }

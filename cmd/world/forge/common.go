@@ -25,12 +25,12 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/tidwall/gjson"
 	"golang.org/x/term"
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
 	jitterDivisor  time.Duration = 2 // Divisor used to calculate maximum jitter range
-	RetryBaseDelay time.Duration = 100 * time.Millisecond
+	RetryBaseDelay time.Duration = 500 * time.Millisecond
 )
 
 var (
@@ -41,9 +41,6 @@ var (
 	// Pre-compiled regex for merging multiple underscores.
 	underscoreRegex = regexp.MustCompile(`_+`)
 )
-
-// this is a variable so we can change it for testing login.
-var getCurrentConfigWithContext = GetCurrentConfigWithContext
 
 var generateKey = func() string {
 	return strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -60,31 +57,31 @@ var openBrowser = func(url string) error {
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:
-		fmt.Printf("Could not automatically open browser. Please visit this URL:\n%s\n", url)
+		printer.Infof("Could not automatically open browser. Please visit this URL:\n%s\n", url)
 	}
 	if err != nil {
-		fmt.Printf("Failed to open browser automatically. Please visit this URL:\n%s\n", url)
+		printer.Infof("Failed to open browser automatically. Please visit this URL:\n%s\n", url)
 	}
 	return nil
 }
 
 var getInput = func(prompt, defaultStr string) string {
 	if prompt != "" {
-		fmt.Print(prompt)
+		printer.Info(prompt)
 	}
 	if defaultStr != "" {
-		fmt.Printf(" [%s]: ", defaultStr)
+		printer.Infof(" [%s]: ", defaultStr)
 	} else {
-		fmt.Print(": ")
+		printer.Info(": ")
 	}
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n') // only returns error if input doesn't end in delimiter
 	input = strings.TrimSpace(input)
 	if input == "" && defaultStr != "" {
 		// display the default value as if they typed it in
-		promptEnd := len(defaultStr) + 4 + len(prompt)
-		fmt.Printf("\033[1A\033[%dC", promptEnd) // move cursor up one line, and right the length of the prompt
-		fmt.Printf("%s\n", defaultStr)
+		printer.MoveCursorUp(1)
+		printer.MoveCursorRight(len(defaultStr) + 4 + len(prompt))
+		printer.Infoln(defaultStr)
 		return defaultStr
 	}
 	return input
@@ -114,7 +111,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	}
 
 	// Get credential from config
-	cred, err := globalconfig.GetGlobalConfig()
+	config, err := GetForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get credential")
 	}
@@ -126,11 +123,8 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	}
 
 	// Add headers
-	prefix := "Bearer "
-	if argusid {
-		prefix = "ArgusID "
-	}
-	req.Header.Add("Authorization", prefix+cred.Credential.Token)
+	prefix := "ArgusID "
+	req.Header.Add("Authorization", prefix+config.Credential.Token)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -138,7 +132,7 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	return req, nil
 }
 
-func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
+func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) { //nolint:gocognit
 	maxRetries := 5
 	baseDelay := RetryBaseDelay
 	var lastErr error
@@ -148,13 +142,18 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
+			if i > 0 {
+				printer.MoveCursorUp(1)
+				printer.ClearToEndOfLine()
+				printer.Infoln("Retrying...                                                                  ")
+			}
 			respBody, err := doRequest(req)
 			if err == nil {
 				return respBody, nil
 			}
 
 			// Don't retry if unauthorized
-			if strings.Contains(err.Error(), "Unauthorized. Please login again using 'world login' command") {
+			if strings.Contains(err.Error(), "Unauthorized.") || strings.Contains(err.Error(), "Forbidden.") {
 				return nil, err
 			}
 
@@ -164,11 +163,11 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 			}
 
 			if i < maxRetries-1 { // Don't print retry message on last attempt
-				fmt.Printf("Failed to make request [%s]: %s\n", req.URL, err.Error())
-				fmt.Println("Retrying...")
-
 				// Apply exponential backoff with jitter
 				delay := exponentialBackoffWithJitter(baseDelay, i)
+				prompt := fmt.Sprintf("Failed to make request [%s]: %s. Will retry...", req.URL, err.Error())
+				printer.MoveCursorUp(1) // move cursor up to overwrite the previous "Retrying" line
+				printer.Errorln(prompt)
 
 				// Use timer instead of Sleep to handle cancellation
 				timer := time.NewTimer(delay)
@@ -178,6 +177,9 @@ func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, err
 					return nil, ctx.Err()
 				case <-timer.C:
 				}
+			} else {
+				printer.MoveCursorUp(1)
+				printer.ClearToEndOfLine()
 			}
 			lastErr = err
 		}
@@ -223,14 +225,19 @@ func doRequest(req *http.Request) ([]byte, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, eris.New("Unauthorized. Please login again using 'world login' command")
+			return nil, eris.New("401 Unauthorized.")
 		}
-
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, eris.New("403 Forbidden.")
+		}
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
 		message := gjson.GetBytes(body, "message").String()
+		if message == "" {
+			return nil, eris.New(resp.Status)
+		}
 		return nil, eris.New(message)
 	}
 
@@ -252,43 +259,48 @@ func parseResponse[T any](body []byte) (*T, error) {
 }
 
 func printNoOrganizations() {
-	fmt.Println("\n   No Organizations Found")
-	fmt.Println("============================")
-	fmt.Println("\nYou don't have any organizations yet.")
-	fmt.Println("\nUse 'world forge organization create' to create one.")
+	printer.NewLine(1)
+	printer.Headerln("   No Organizations Found   ")
+	printer.Infoln("You don't have any organizations yet.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge organization create' to create one.")
 }
 
 func printNoSelectedOrganization() {
-	fmt.Println("\n   No Organization Selected")
-	fmt.Println("==============================")
-	fmt.Println("\nYou don't have any organization selected.")
-	fmt.Println("\nUse 'world forge organization switch' to select one")
+	printer.NewLine(1)
+	printer.Headerln("   No Organization Selected   ")
+	printer.Infoln("You don't have any organization selected.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge organization switch' to select one")
 }
 
 func printNoSelectedProject() {
-	fmt.Println("\n   No Project Selected")
-	fmt.Println("=========================")
-	fmt.Println("\nYou don't have any project selected.")
-	fmt.Println("\nUse 'world forge project switch' to select one")
+	printer.NewLine(1)
+	printer.Headerln("   No Project Selected   ")
+	printer.Infoln("You don't have any project selected.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge project switch' to select one")
 }
 
 func printNoProjectsInOrganization() {
-	fmt.Println("\n   No Projects Found")
-	fmt.Println("=======================")
-	fmt.Println("\nYou don't have any projects in this organization yet.")
-	fmt.Println("\nUse 'world forge project create' to create your first project!")
+	printer.NewLine(1)
+	printer.Headerln("   No Projects Found   ")
+	printer.Infoln("You don't have any projects in this organization yet.")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world forge project create' to create your first project!")
 }
 
 func printAuthenticationRequired() {
-	fmt.Println("\n   Authentication Required")
-	fmt.Println("=============================")
-	fmt.Println("\nYou are not currently logged in")
-	fmt.Println("\nUse 'world login' to authenticate")
+	printer.NewLine(1)
+	printer.Headerln("   Authentication Required   ")
+	printer.Infoln("You are not currently logged in")
+	printer.NewLine(1)
+	printer.Infoln("Use 'world login' to authenticate")
 }
 
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return false
 		}
 	}
@@ -296,7 +308,7 @@ func isAlphanumeric(s string) bool {
 }
 
 func checkLogin() bool {
-	cred, err := GetCurrentConfig()
+	cred, err := GetCurrentForgeConfig()
 	if err != nil {
 		printAuthenticationRequired()
 		return false
@@ -339,10 +351,8 @@ func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 }
 
 func CreateSlugFromName(name string, minLength int, maxLength int) string {
-	shorten := false
-	if len(name) > maxLength {
-		shorten = true
-	}
+	shorten := len(name) > maxLength
+
 	var slug string
 	wroteUnderscore := false
 	hadCapital := false
@@ -407,97 +417,4 @@ func replaceLast(x, y, z string) string {
 		return x
 	}
 	return x[:i] + z + x[i+len(y):]
-}
-
-func GetCurrentConfig() (globalconfig.GlobalConfig, error) {
-	currConfig, err := globalconfig.GetGlobalConfig()
-	// we deliberately ignore any error here and just return it at the end
-	// so that we can fill out and much info as we do have
-	currConfig.CurrRepoKnown = false
-	currConfig.CurrRepoPath, currConfig.CurrRepoURL, _ = FindGitPathAndURL()
-	if currConfig.CurrRepoURL != "" {
-		for i := range currConfig.KnownProjects {
-			knownProject := currConfig.KnownProjects[i]
-			if knownProject.RepoURL == currConfig.CurrRepoURL && knownProject.RepoPath == currConfig.CurrRepoPath {
-				currConfig.ProjectID = knownProject.ProjectID
-				currConfig.OrganizationID = knownProject.OrganizationID
-				currConfig.CurrProjectName = knownProject.ProjectName
-				currConfig.CurrRepoKnown = true
-				break
-			}
-		}
-	}
-	return currConfig, err
-}
-
-func GetCurrentConfigWithContext(ctx context.Context) (*globalconfig.GlobalConfig, error) {
-	currConfig, err := GetCurrentConfig()
-	// we don't care if we got an error, we will just return it later
-	if !currConfig.CurrRepoKnown && //nolint: nestif // not too complex
-		currConfig.Credential.Token != "" &&
-		currConfig.CurrRepoURL != "" {
-		// needed a lookup, and have a token (so we should be logged in)
-		// get the organization and project from the project's URL and path
-		deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
-			baseURL, url.QueryEscape(currConfig.CurrRepoURL), url.QueryEscape(currConfig.CurrRepoPath))
-		body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
-		if err != nil {
-			fmt.Println("⚠️ Warning: Failed to lookup World Forge project for Git Repo",
-				currConfig.CurrRepoURL, "and path", currConfig.CurrRepoPath, ":", err)
-			return &currConfig, err
-		}
-
-		// Parse response
-		proj, err := parseResponse[project](body)
-		if err != nil && err.Error() != "Missing data field in response" {
-			// missing data field in response just means nothing was found
-			fmt.Println("⚠️ Warning: Failed to parse project lookup response: ", err)
-			return &currConfig, err
-		}
-		if proj != nil {
-			// add to list of known projects
-			currConfig.KnownProjects = append(currConfig.KnownProjects, globalconfig.KnownProject{
-				ProjectID:      proj.ID,
-				OrganizationID: proj.OrgID,
-				RepoURL:        proj.RepoURL,
-				RepoPath:       proj.RepoPath,
-				ProjectName:    proj.Name,
-			})
-			// save the config, but don't change the default ProjectID & OrgID
-			err := globalconfig.SaveGlobalConfig(currConfig)
-			if err != nil {
-				fmt.Println("⚠️ Warning: Failed to save config: ", err)
-				// continue on, this is not fatal
-			}
-			// now return a copy of it with the looked up ProjectID and OrganizationID set
-			currConfig.ProjectID = proj.ID
-			currConfig.OrganizationID = proj.OrgID
-			currConfig.CurrProjectName = proj.Name
-			currConfig.CurrRepoKnown = true
-		}
-	}
-	return &currConfig, err
-}
-
-func FindGitPathAndURL() (string, string, error) {
-	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
-	if err != nil {
-		return "", "", err
-	}
-	url := strings.TrimSpace(string(urlData))
-	url = replaceLast(url, ".git", "")
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return "", url, err
-	}
-	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		return "", url, err
-	}
-	rootPath := strings.TrimSpace(string(root))
-	path := strings.Replace(workingDir, rootPath, "", 1)
-	if len(path) > 0 && path[0] == '/' {
-		path = path[1:]
-	}
-	return path, url, nil
 }

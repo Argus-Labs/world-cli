@@ -26,7 +26,7 @@ func CelestiaDevNet(cfg *config.Config) Service {
 				Test:     []string{"CMD", "curl", "-f", "http://127.0.0.1:26659/head"},
 				Interval: 1 * time.Second,
 				Timeout:  1 * time.Second,
-				Retries:  20, //nolint:gomnd
+				Retries:  20,
 			},
 		},
 		HostConfig: container.HostConfig{

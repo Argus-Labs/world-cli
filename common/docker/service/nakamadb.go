@@ -35,9 +35,9 @@ func NakamaDB(cfg *config.Config) Service {
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{
 				Test:     []string{"CMD", "pg_isready", "-U", "postgres", "-d", "nakama"},
-				Interval: 3 * time.Second, //nolint:gomnd
-				Timeout:  3 * time.Second, //nolint:gomnd
-				Retries:  5,               //nolint:gomnd
+				Interval: 3 * time.Second,
+				Timeout:  3 * time.Second,
+				Retries:  5,
 			},
 		},
 		HostConfig: container.HostConfig{

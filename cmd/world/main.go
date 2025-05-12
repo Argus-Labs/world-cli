@@ -7,9 +7,11 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog/log"
+	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
-	"pkg.world.dev/world-cli/common/globalconfig"
+	"pkg.world.dev/world-cli/common/config"
 	_ "pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/telemetry"
 )
@@ -25,15 +27,17 @@ var (
 	SentryDsn     string
 )
 
-func init() {
+func EnvVersionInit() {
 	env, version := getEnvAndVersion()
-	root.AppVersion = version
-	globalconfig.Env = env
-
-	forge.InitForge()
+	root.SetAppVersion(version)
+	// Initialize forge base environment
+	forge.InitForgeBase(env)
 }
 
 func main() {
+	// Initialize environment and version
+	EnvVersionInit()
+
 	// Create a channel to receive signals.
 	sigChan := make(chan os.Signal, 1)
 
@@ -51,11 +55,11 @@ func main() {
 	}()
 
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn, globalconfig.Env, root.AppVersion)
+	telemetry.SentryInit(SentryDsn, forge.Env, root.AppVersion)
 	defer telemetry.SentryFlush()
 
 	// Set up config directory "~/.worldcli/"
-	err := globalconfig.SetupConfigDir()
+	err := config.SetupCLIConfigDir()
 	if err != nil {
 		log.Err(err).Msg("could not setup config folder")
 		return
@@ -74,6 +78,11 @@ func main() {
 	// Capture event running
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
+	// Initialize packages
+	evm.Init()
+	cardinal.Init()
+	forge.InitForgeCmds()
+	root.CmdInit()
 	root.Execute()
 }
 
@@ -92,7 +101,7 @@ func getEnvAndVersion() (string, string) {
 	// If the version is "(devel)", return the default values
 	if info.Main.Version == "(devel)" {
 		version = "v0.0.1-dev"
-		env = "DEV"
+		env = "LOCAL"
 	} else {
 		version = info.Main.Version
 		env = "PROD"

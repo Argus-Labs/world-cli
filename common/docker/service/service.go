@@ -35,6 +35,10 @@ type Service struct {
 	BuildTarget string
 }
 
+func SetBuildkitSupport(buildkitSupport bool) {
+	BuildkitSupport = buildkitSupport
+}
+
 func getExposedPorts(ports []int) nat.PortSet {
 	exposedPorts := make(nat.PortSet)
 	for _, port := range ports {

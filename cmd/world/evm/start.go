@@ -3,7 +3,6 @@ package evm
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 
 	"github.com/rotisserie/eris"
@@ -12,6 +11,7 @@ import (
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
@@ -73,10 +73,12 @@ to run with a local development data availability layer.`,
 	},
 }
 
-func init() {
+func Init() {
 	startCmd.Flags().String(FlagDAAuthToken, "",
 		"DA Auth Token that allows the rollup to communicate with the Celestia client.")
 	startCmd.Flags().Bool(FlagUseDevDA, false, "Use a locally running DA layer")
+
+	registerCommands()
 }
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
@@ -146,7 +148,7 @@ func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docke
 }
 
 func getDAToken(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) (string, error) {
-	fmt.Println("Getting DA token")
+	printer.Infoln("Getting DA token")
 
 	containerName := service.CelestiaDevNet(cfg)
 
