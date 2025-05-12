@@ -59,7 +59,7 @@ optimized for deployment. You can optionally push the image to a registry with t
 		if logLevel != "" {
 			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
 			if err != nil {
-				return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels)
+				return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels())
 			}
 			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
 		}
@@ -71,7 +71,7 @@ optimized for deployment. You can optionally push the image to a registry with t
 			// make sure the log level is valid when the flag is not set and using env var from config
 			// Error when CARDINAL_LOG_LEVEL is not a valid log level
 			return eris.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
-				DockerCardinalEnvLogLevel, validLogLevels)
+				DockerCardinalEnvLogLevel, validLogLevels())
 		}
 
 		// Print out header
@@ -131,7 +131,7 @@ optimized for deployment. You can optionally push the image to a registry with t
 func buildCmdInit() {
 	registerEditorFlag(buildCmd, true)
 	buildCmd.Flags().String(flagLogLevel, "",
-		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels))
+		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels()))
 	buildCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
 	buildCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
 	buildCmd.Flags().String(flagPush, "", "Push your cardinal image to a given image repository")

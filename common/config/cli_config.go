@@ -9,6 +9,7 @@ const (
 	configDir = ".worldcli"
 )
 
+// Ok as global, Only used in test during setup and will not interfere with parallel tests.
 var GetCLIConfigDir = func() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
