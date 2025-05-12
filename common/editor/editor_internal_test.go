@@ -12,13 +12,15 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-const (
-	testDir       = ".test-worldcli"
-	testTargetDir = ".test-worldcli/.editor"
-)
-
 func TestSetupCardinalEditor(t *testing.T) {
+	t.Parallel()
+
+	// Create test-specific directories
+	testDir := filepath.Join(t.TempDir(), "test-worldcli")
+	testTargetDir := filepath.Join(testDir, ".editor")
+
 	t.Run("setup cardinal editor", func(t *testing.T) {
+		t.Parallel()
 		assert.NilError(t, cleanUpDir(testDir))
 
 		latestVersion, err := getLatestReleaseVersion()
@@ -93,85 +95,117 @@ func containsCardinalProjectIDPlaceholder(dir string, originalID string) (bool, 
 
 	return false, nil
 }
+
 func TestCopyDir(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Test copy directory", func(t *testing.T) {
-		err := os.MkdirAll("tmp", 0755)
+		t.Parallel()
+		// Use test-specific directories
+		srcDir := filepath.Join(t.TempDir(), "tmp")
+		dstDir := filepath.Join(t.TempDir(), "tmp2")
+
+		err := os.MkdirAll(srcDir, 0755)
 		assert.NilError(t, err)
 
-		err = os.MkdirAll(filepath.Join("tmp", "subdir"), 0755)
+		err = os.MkdirAll(filepath.Join(srcDir, "subdir"), 0755)
 		assert.NilError(t, err)
 
-		_, err = os.Create(filepath.Join("tmp", "file1"))
+		_, err = os.Create(filepath.Join(srcDir, "file1"))
 		assert.NilError(t, err)
 
-		_, err = os.Create(filepath.Join("tmp", "subdir", "file2"))
+		_, err = os.Create(filepath.Join(srcDir, "subdir", "file2"))
 		assert.NilError(t, err)
 
-		err = copyDir("tmp", "tmp2")
+		err = copyDir(srcDir, dstDir)
 		assert.NilError(t, err)
 
-		_, err = os.Stat("tmp")
+		_, err = os.Stat(srcDir)
 		assert.NilError(t, err)
 
-		_, err = os.Stat("tmp2")
+		_, err = os.Stat(dstDir)
 		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join("tmp2", "subdir"))
+		_, err = os.Stat(filepath.Join(dstDir, "subdir"))
 		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join("tmp2", "file1"))
+		_, err = os.Stat(filepath.Join(dstDir, "file1"))
 		assert.NilError(t, err)
 
-		_, err = os.Stat(filepath.Join("tmp2", "subdir", "file2"))
+		_, err = os.Stat(filepath.Join(dstDir, "subdir", "file2"))
 		assert.NilError(t, err)
 
-		assert.NilError(t, cleanUpDir("tmp"))
-		assert.NilError(t, cleanUpDir("tmp2"))
+		assert.NilError(t, cleanUpDir(srcDir))
+		assert.NilError(t, cleanUpDir(dstDir))
 	})
 }
 
 func TestStrippedGUID(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Test guid doesn't contain -", func(t *testing.T) {
+		t.Parallel()
 		s := strippedGUID()
 		assert.Check(t, !strings.Contains(s, "-"))
 	})
 }
 
 func TestAddFileVersion(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
+		name       string
 		version    string
 		shouldFail bool
 	}{
-		{"v0.1.0", false},
-		{"/v1.0.1", true},
+		{
+			name:       "valid version",
+			version:    "v0.1.0",
+			shouldFail: false,
+		},
+		{
+			name:       "invalid version with leading slash",
+			version:    "/v1.0.1",
+			shouldFail: true,
+		},
 	}
 
 	for _, tc := range testCases {
-		err := addFileVersion(tc.version)
+		tc := tc
+		// capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		if tc.shouldFail && err == nil {
-			t.Errorf("Expected addFileVersion to fail for version '%s', but it didn't", tc.version)
-		} else if !tc.shouldFail {
-			if err != nil {
-				t.Errorf("addFileVersion failed for version '%s': %s", tc.version, err)
+			// For invalid paths, use the original path to test the error case
+			versionPath := tc.version
+			if !tc.shouldFail {
+				versionPath = filepath.Join(t.TempDir(), tc.version)
 			}
 
-			// Check if file exists
-			_, err = os.Stat(tc.version)
-			if os.IsNotExist(err) {
-				t.Errorf("file %s was not created", tc.version)
-			}
+			err := addFileVersion(versionPath)
 
-			// Cleanup
-			err = os.Remove(tc.version)
-			if err != nil {
-				t.Logf("Failed to delete test file '%s': %s", tc.version, err)
+			if tc.shouldFail {
+				if err == nil {
+					t.Errorf("Expected addFileVersion to fail for version '%s', but it didn't", tc.version)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("addFileVersion failed for version '%s': %s", tc.version, err)
+				}
+
+				// Check if file exists
+				_, err = os.Stat(versionPath)
+				if os.IsNotExist(err) {
+					t.Errorf("file %s was not created", versionPath)
+				}
 			}
-		}
+		})
 	}
 }
 
 func TestGetModuleVersion(t *testing.T) {
+	t.Parallel()
+
 	// Setup temporary go.mod file for testing
 	gomodContent := `
 module example.com/mymodule
@@ -183,12 +217,11 @@ require (
 	github.com/moduleexample/v3 v3.2.1
 )
 `
-	gomodPath := "./test-go.mod"
+	gomodPath := filepath.Join(t.TempDir(), "test-go.mod")
 	err := os.WriteFile(gomodPath, []byte(gomodContent), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(gomodPath) // clean up
 
 	tests := []struct {
 		name        string
@@ -213,7 +246,7 @@ require (
 		},
 		{
 			name:        "go.mod file does not exist",
-			gomodPath:   "./nonexistent-go.mod",
+			gomodPath:   filepath.Join(t.TempDir(), "nonexistent-go.mod"),
 			modulePath:  "github.com/moduleexample",
 			wantVersion: "",
 			expectError: true,
@@ -221,7 +254,11 @@ require (
 	}
 
 	for _, tt := range tests {
+		tt := tt
+		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			version, err := getModuleVersion(tt.gomodPath, tt.modulePath)
 			if (err != nil) != tt.expectError {
 				t.Errorf("getModuleVersion() error = %v, expectError %v", err, tt.expectError)
@@ -235,37 +272,41 @@ require (
 }
 
 func TestFileExists(t *testing.T) {
-	// Create a temporary file and defer its removal
-	tempFile, err := os.CreateTemp(t.TempDir(), "example")
-	if err != nil {
-		t.Fatalf("Unable to create temporary file: %s", err)
-	}
-	defer os.Remove(tempFile.Name())
+	t.Parallel()
 
-	// Test case where the file does exist
-	if exists := fileExists(tempFile.Name()); !exists {
-		t.Errorf("fileExists(%s) = %v, want %v", tempFile.Name(), exists, true)
-	}
+	t.Run("Test file exists", func(t *testing.T) {
+		t.Parallel()
+		// Create a temporary file
+		tempFile, err := os.CreateTemp(t.TempDir(), "example")
+		if err != nil {
+			t.Fatalf("Unable to create temporary file: %s", err)
+		}
+		defer os.Remove(tempFile.Name())
 
-	// Remove the file to simulate it not existing
-	tempFile.Close()
-	os.Remove(tempFile.Name())
+		// Test case where the file does exist
+		if exists := fileExists(tempFile.Name()); !exists {
+			t.Errorf("fileExists(%s) = %v, want %v", tempFile.Name(), exists, true)
+		}
 
-	// Test case where the file does not exist
-	if exists := fileExists(tempFile.Name()); exists {
-		t.Errorf("fileExists(%s) = %v, want %v", tempFile.Name(), exists, false)
-	}
+		// Remove the file to simulate it not existing
+		tempFile.Close()
+		os.Remove(tempFile.Name())
 
-	// Create a temporary directory and defer its removal
-	tempDir := t.TempDir()
+		// Test case where the file does not exist
+		if exists := fileExists(tempFile.Name()); exists {
+			t.Errorf("fileExists(%s) = %v, want %v", tempFile.Name(), exists, false)
+		}
 
-	// Test case where the path is a directory
-	if exists := fileExists(tempDir); exists {
-		t.Errorf("fileExists(%s) = %v, want %v", tempDir, exists, false)
-	}
+		// Test case where the path is a directory
+		if exists := fileExists(t.TempDir()); exists {
+			t.Errorf("fileExists(%s) = %v, want %v", t.TempDir(), exists, false)
+		}
+	})
 }
 
 func TestGetVersionMap(t *testing.T) {
+	t.Parallel()
+
 	// Define test cases
 	tests := []struct {
 		name           string
@@ -306,7 +347,10 @@ func TestGetVersionMap(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		// capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Setup a test server
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.serverStatus)
