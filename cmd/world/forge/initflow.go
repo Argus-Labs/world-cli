@@ -184,9 +184,15 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	} else {
 		switch flow.requiredProject { //nolint:exhaustive // don't need to handle all cases
 		case NeedData, NeedIDOnly:
-			flow.handleNeedProjectData()
+			err = flow.handleNeedProjectData()
+			if err != nil {
+				return &flow.State, err
+			}
 		case NeedExistingData, NeedExistingIDOnly:
-			flow.handleNeedExistingProjectData()
+			err = flow.handleNeedExistingProjectData()
+			if err != nil {
+				return &flow.State, err
+			}
 		}
 	}
 
