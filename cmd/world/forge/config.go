@@ -15,7 +15,9 @@ import (
 // TODO: break this config into credentials and known projects. Don't save org/project id in the config.
 // consider adding a .forge directory with project config alongside the world.toml file.
 const (
-	forgeConfigFileName = "forgeconfig.json"
+	EnvLocal = "LOCAL"
+	EnvDev   = "DEV"
+	EnvProd  = "PROD"
 )
 
 type Config struct {
@@ -31,19 +33,33 @@ type Config struct {
 	CurrProjectName string `json:"-"`
 }
 
+func getConfigFileName() (string, error) {
+	fileName := "forge-config.json"
+	if Env == EnvDev || Env == EnvLocal {
+		fileName = strings.ToLower(Env) + "-" + fileName
+	}
+	fullConfigDir, err := commonConfig.GetCLIConfigDir()
+	if err != nil {
+		return "", eris.Wrap(err, "failed get config dir")
+	}
+	configFile := filepath.Join(fullConfigDir, fileName)
+	return configFile, nil
+}
+
 func GetForgeConfig() (Config, error) {
 	var config Config
 
-	fullConfigDir, err := commonConfig.GetCLIConfigDir()
+	configFile, err := getConfigFileName()
 	if err != nil {
-		return config, err
+		return config, eris.Wrap(err, "failed get config file name")
 	}
-
-	configFile := filepath.Join(fullConfigDir, forgeConfigFileName)
 
 	file, err := os.ReadFile(configFile)
 	if err != nil {
-		return config, err
+		if os.IsNotExist(err) {
+			return config, nil // this is ok, just create empty config
+		}
+		return config, eris.Wrap(err, "failed to read config file")
 	}
 
 	// Unmarshal the config
@@ -105,12 +121,10 @@ func FindGitPathAndURL() (string, string, error) {
 }
 
 func SaveForgeConfig(globalConfig Config) error {
-	fullConfigDir, err := commonConfig.GetCLIConfigDir()
+	configFile, err := getConfigFileName()
 	if err != nil {
-		return eris.Wrap(err, "failed to get config dir")
+		return eris.Wrap(err, "failed get config file name")
 	}
-
-	configFile := filepath.Join(fullConfigDir, forgeConfigFileName)
 
 	configJSON, err := json.Marshal(globalConfig)
 	if err != nil {

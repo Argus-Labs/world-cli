@@ -21,13 +21,9 @@ import (
 	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
-const (
-	// ArgusID Service URL.
-	argusIDServiceURL = "https://id.argus-dev.com/api/auth/service-auth-session"
-)
-
 var (
-	maxLoginAttempts = 220 // 11 min x 60 sec ÷ 3 sec per attempt = 220 attempts
+	maxLoginAttempts = 220              // 11 min x 60 sec ÷ 3 sec per attempt = 220 attempts
+	tokenLeeway      = 60 * time.Second // expire early to account for clock skew and command execution time
 
 	errPending = eris.New("token status pending")
 )
@@ -62,11 +58,7 @@ func login(ctx context.Context) error {
 
 func performLogin(ctx context.Context, config *Config) error {
 	var err error
-	if argusid {
-		config.Credential, err = loginWithArgusID(ctx)
-	} else {
-		config.Credential, err = loginWithWorldForge(ctx)
-	}
+	config.Credential, err = loginWithArgusID(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to login")
 	}
@@ -76,16 +68,19 @@ func performLogin(ctx context.Context, config *Config) error {
 		return eris.Wrap(err, "Failed to save credential")
 	}
 
-	if argusid {
-		return handleArgusIDPostLogin(ctx, config)
-	}
-	return nil
+	return handleArgusIDPostLogin(ctx, config)
 }
 
 func handleArgusIDPostLogin(ctx context.Context, config *Config) error {
 	user, err := getUser(ctx)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get user")
+		errStr := eris.ToString(err, false)
+		if strings.Contains(errStr, "503") {
+			printer.Errorln("World Forge is currently experiencing issues, please try again later.")
+		} else {
+			printer.Errorln(err.Error())
+		}
+		return err
 	}
 
 	config.Credential.ID = user.ID
@@ -161,7 +156,7 @@ func displayLoginSuccess(config Config) {
 // GetToken will get the token from the config file.
 //
 //nolint:gocognit // This is a long function, but it's not too complex, better to keep it in one place.
-func getToken(ctx context.Context, url string, argusid bool, result interface{}) error {
+func getToken(ctx context.Context, url string, result interface{}) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -221,7 +216,7 @@ func getToken(ctx context.Context, url string, argusid bool, result interface{})
 				continue
 			}
 
-			if err := handleTokenResponse(token, argusid, result); err != nil {
+			if err := handleTokenResponse(token, result); err != nil {
 				if errors.Is(err, errPending) {
 					attempts++
 					continue
@@ -263,14 +258,7 @@ func makeTokenRequest(ctx context.Context, url string) ([]byte, error) {
 	return response, nil
 }
 
-func handleTokenResponse(response []byte, argusid bool, result interface{}) error {
-	if argusid {
-		return handleArgusIDToken(response, result)
-	}
-	return handleWorldForgeToken(response, result)
-}
-
-func handleArgusIDToken(response []byte, result interface{}) error {
+func handleTokenResponse(response []byte, result interface{}) error {
 	err := json.Unmarshal(response, &result)
 	if err != nil {
 		return eris.Wrap(err, "failed to parse response")
@@ -293,62 +281,7 @@ func handleArgusIDToken(response []byte, result interface{}) error {
 	}
 }
 
-func handleWorldForgeToken(response []byte, result interface{}) error {
-	token, err := parseResponse[string](response)
-	if err != nil {
-		return eris.Wrap(err, "failed to parse response")
-	}
-
-	if token == nil {
-		return eris.New("token is nil")
-	}
-
-	strPtr, ok := result.(*string)
-	if !ok {
-		return eris.New("invalid result type")
-	}
-
-	*strPtr = *token
-	return nil
-}
-
-// parseCredential will parse the id and name from the token.
-func parseCredential(token string) (Credential, error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return Credential{}, eris.New("invalid token format")
-	}
-
-	// Get the payload (second part) of the JWT
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return Credential{}, eris.Wrap(err, "failed to decode token payload")
-	}
-
-	// Parse the JSON payload
-	var claims struct {
-		UserMetadata struct {
-			Name string `json:"name"`
-			ID   string `json:"sub"`
-		} `json:"user_metadata"`
-	}
-
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return Credential{}, eris.Wrap(err, "failed to parse token claims")
-	}
-
-	if claims.UserMetadata.Name == "" {
-		return Credential{}, eris.New("name not found in token")
-	}
-
-	return Credential{
-		Token: token,
-		Name:  claims.UserMetadata.Name,
-		ID:    claims.UserMetadata.ID,
-	}, nil
-}
-
-func parseArgusIDToken(jwtToken string) (Credential, error) {
+func parseJWTToken(jwtToken string) (Credential, error) {
 	var claims struct {
 		Name          string    `json:"name"`
 		ID            string    `json:"id"`
@@ -379,42 +312,16 @@ func parseArgusIDToken(jwtToken string) (Credential, error) {
 	}
 
 	return Credential{
-		Token: jwtToken,
-		Name:  claims.Name,
-		ID:    claims.Sub,
+		Token:          jwtToken,
+		TokenExpiresAt: time.Unix(claims.Exp, 0).Add(-tokenLeeway), // expire shortly before real expiration
+		Name:           claims.Name,
+		ID:             claims.Sub,
 	}, nil
-}
-
-func loginWithWorldForge(ctx context.Context) (Credential, error) {
-	key := generateKey()
-	url := fmt.Sprintf("%s?key=%s", loginURL, key)
-
-	// Open browser
-	err := openBrowser(url)
-	if err != nil {
-		return Credential{}, eris.Wrap(err, "Failed to open browser")
-	}
-
-	// Wait for user to login
-	url = fmt.Sprintf("%s?key=%s", getTokenURL, key)
-	var token string
-	err = getToken(ctx, url, false, &token)
-	if err != nil {
-		return Credential{}, eris.Wrap(err, "Failed to get token")
-	}
-
-	// Parse jwt token to get name from metadata
-	cred, err := parseCredential(token)
-	if err != nil {
-		return Credential{}, eris.Wrap(err, "Failed to get name from token")
-	}
-
-	return cred, nil
 }
 
 func loginWithArgusID(ctx context.Context) (Credential, error) {
 	// Get the link to login
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, argusIDServiceURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, argusIDAuthURL, nil)
 	if err != nil {
 		return Credential{}, eris.Wrap(err, "Failed to create request")
 	}
@@ -448,13 +355,13 @@ func loginWithArgusID(ctx context.Context) (Credential, error) {
 
 	// Wait for user to login
 	var token tokenStruct
-	err = getToken(ctx, loginLink.CallBackURL, true, &token)
+	err = getToken(ctx, loginLink.CallBackURL, &token)
 	if err != nil {
 		return Credential{}, eris.Wrap(err, "Failed to get token")
 	}
 
 	// Parse jwt token to get name from metadata
-	cred, err := parseArgusIDToken(token.JWT)
+	cred, err := parseJWTToken(token.JWT)
 	if err != nil {
 		return Credential{}, eris.Wrap(err, "Failed to get name from token")
 	}

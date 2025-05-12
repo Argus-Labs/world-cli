@@ -2,7 +2,6 @@ package forge
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
@@ -27,6 +26,12 @@ const (
 
 	// RPC Prod URL.
 	worldForgeRPCBaseURLProd = "https://rpc.world.dev"
+
+	// For Argus ID Dev.
+	argusIDBaseURLDev = "https://id.argus-dev.com"
+
+	// For Argus ID Production.
+	argusIDBaseURLProd = "https://id.argus.gg"
 )
 
 var (
@@ -35,8 +40,8 @@ var (
 	rpcURL  string
 
 	// login url stuff.
-	loginURL    string
-	getTokenURL string
+	argusIDBaseURL string
+	argusIDAuthURL string
 
 	// organization url stuff.
 	organizationURL string
@@ -46,9 +51,6 @@ var (
 
 	// user url stuff.
 	userURL string
-
-	// Set this to true if you want to use ArgusID for default login.
-	argusid = false
 
 	// Env is the environment to use for the Forge API.
 	Env = "PROD"
@@ -355,9 +357,6 @@ This command terminates all running instances of your game in the cloud, freeing
 resources. Your project configuration remains intact, allowing you to redeploy later
 if needed.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -374,9 +373,6 @@ if needed.`,
 This command clears all game state data while keeping your deployment running,
 allowing you to start fresh without redeploying the entire infrastructure.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -393,9 +389,6 @@ allowing you to start fresh without redeploying the entire infrastructure.`,
 This command shows detailed information about your project's deployment status,
 including running instances, regions, and any ongoing deployment operations.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -413,9 +406,6 @@ This command transitions your game from a development environment to production,
 making it ready for a wider audience. This process ensures your game is deployed
 with production-grade infrastructure and settings.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
 			cmdState, err := SetupForgeCommandState(cmd, NeedLogin, NeedIDOnly, NeedIDOnly)
 			if err != nil {
 				return eris.Wrap(err, "Failed to setup forge command state")
@@ -449,29 +439,27 @@ allowing you to monitor application behavior and troubleshoot issues in real-tim
 )
 
 func InitForgeBase(env string) {
-	// Set argusid flag
-	if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "argusid" {
-		argusid = true
-	} else if os.Getenv("WORLD_CLI_LOGIN_METHOD") == "github" {
-		argusid = false
-	}
-
-	// Set base URL
+	// Set urls based on env
 	switch env {
-	case "LOCAL":
+	case EnvLocal:
 		baseURL = worldForgeBaseURLLocal
 		rpcURL = worldForgeRPCBaseURLLocal
-	case "DEV":
+		argusIDBaseURL = argusIDBaseURLDev
+		Env = EnvLocal
+	case EnvDev:
 		baseURL = worldForgeBaseURLDev
 		rpcURL = worldForgeRPCBaseURLDev
+		argusIDBaseURL = argusIDBaseURLDev
+		Env = EnvDev
 	default:
 		rpcURL = worldForgeRPCBaseURLProd
 		baseURL = worldForgeBaseURLProd
+		argusIDBaseURL = argusIDBaseURLProd
+		Env = EnvProd
 	}
 
 	// Set login URL
-	loginURL = fmt.Sprintf("%s/api/user/login", baseURL)
-	getTokenURL = fmt.Sprintf("%s/api/user/login/get-token", baseURL)
+	argusIDAuthURL = fmt.Sprintf("%s/api/auth/service-auth-session", argusIDBaseURL)
 
 	// Set organization URL
 	organizationURL = fmt.Sprintf("%s/api/organization", baseURL)
