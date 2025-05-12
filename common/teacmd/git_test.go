@@ -76,7 +76,7 @@ func cleanUpDir(targetDir string) {
 
 func TestAppendToToml(t *testing.T) {
 	// Create a temporary TOML file for testing
-	tempFile, err := os.CreateTemp("", "test.toml")
+	tempFile, err := os.CreateTemp(t.TempDir(), "test.toml")
 	if err != nil {
 		t.Fatalf("failed to create temporary file: %v", err)
 	}
