@@ -132,7 +132,8 @@ func prepareRequest(ctx context.Context, method, url string, body interface{}) (
 	return req, nil
 }
 
-func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) { //nolint:gocognit
+//nolint:cyclop // Better to keep in one function, common code and should not be broken up.
+func makeRequestWithRetries(ctx context.Context, req *http.Request) ([]byte, error) {
 	maxRetries := 5
 	baseDelay := RetryBaseDelay
 	var lastErr error
@@ -350,6 +351,7 @@ func slugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 	return returnSlug, nil
 }
 
+//nolint:cyclop // Better to keep in one function, common code and should not be broken up.
 func CreateSlugFromName(name string, minLength int, maxLength int) string {
 	shorten := len(name) > maxLength
 

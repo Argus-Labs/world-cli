@@ -20,9 +20,10 @@ const (
 var dockerfileContent string
 
 func getCardinalContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-cardinal", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-cardinal"
 }
 
+//nolint:cyclop, funlen // easy to read and follow
 func Cardinal(cfg *config.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
@@ -91,13 +92,13 @@ func Cardinal(cfg *config.Config) Service {
 			Env: []string{
 				fmt.Sprintf("REDIS_ADDRESS=%s:6379", getRedisContainerName(cfg)),
 				fmt.Sprintf("BASE_SHARD_SEQUENCER_ADDRESS=%s:9601", getEVMContainerName(cfg)),
-				fmt.Sprintf("BASE_SHARD_ROUTER_KEY=%s", baseShardRouterKey),
-				fmt.Sprintf("CARDINAL_LOG_LEVEL=%s", cardinalLogLevel),
-				fmt.Sprintf("CARDINAL_LOG_PRETTY=%s", cardinalLogPretty),
-				fmt.Sprintf("CARDINAL_ROLLUP_ENABLED=%s", cardinalRollupEnabled),
-				fmt.Sprintf("TELEMETRY_PROFILER_ENABLED=%s", telemetryProfilerEnabled),
-				fmt.Sprintf("TELEMETRY_TRACE_ENABLED=%s", telemetryTraceEnabled),
-				fmt.Sprintf("ROUTER_KEY=%s", routerKey),
+				"BASE_SHARD_ROUTER_KEY=" + baseShardRouterKey,
+				"CARDINAL_LOG_LEVEL=" + cardinalLogLevel,
+				"CARDINAL_LOG_PRETTY=" + cardinalLogPretty,
+				"CARDINAL_ROLLUP_ENABLED=" + cardinalRollupEnabled,
+				"TELEMETRY_PROFILER_ENABLED=" + telemetryProfilerEnabled,
+				"TELEMETRY_TRACE_ENABLED=" + telemetryTraceEnabled,
+				"ROUTER_KEY=" + routerKey,
 			},
 			ExposedPorts: getExposedPorts(exposedPorts),
 		},

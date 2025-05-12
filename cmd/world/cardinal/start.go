@@ -105,7 +105,7 @@ This will start the following Docker services and their dependencies:
 		// Print out service addresses
 		printServiceAddress("Redis", cfg.DockerEnv["REDIS_ADDRESS"])
 		// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
-		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
+		printServiceAddress("Cardinal", "localhost:"+CardinalPort)
 		var editorPort int
 		if runEditor {
 			editorPort, err = common.FindUnusedPort(cePortStart, cePortEnd)

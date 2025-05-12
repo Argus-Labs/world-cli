@@ -107,6 +107,7 @@ func (c *Client) Build(ctx context.Context,
 	return nil
 }
 
+//nolint:cyclop // This is a complex function, but it is not too complex.
 func (c *Client) Start(ctx context.Context,
 	serviceBuilders ...service.Builder) error {
 	defer func() {

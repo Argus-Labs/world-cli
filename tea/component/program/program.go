@@ -130,63 +130,91 @@ func (m logModel) Init() tea.Cmd {
 func (m logModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.Type { //nolint:exhaustive // not applicable
-		case tea.KeyCtrlC:
-			if m.cancel != nil {
-				m.cancel()
-			}
-			return m, tea.Quit
-		default:
-			return m, nil
-		}
+		return handleKeyPress(m, msg)
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		return m, nil
+		return handleWindowSize(m, msg), nil
 	case spinner.TickMsg:
-		spinnerModel, cmd := m.spinner.Update(msg)
-		m.spinner = spinnerModel
-		return m, cmd
+		return handleSpinnerTick(m, msg)
 	case progress.FrameMsg:
-		if m.progress == nil {
-			return m, nil
-		}
-
-		tmp, cmd := m.progress.Update(msg)
-		progressModel, ok := tmp.(progress.Model)
-		if ok {
-			m.progress = &progressModel
-		}
-		return m, cmd
+		return handleProgressFrame(m, msg)
 	case StatusMsg:
-		m.status = string(msg)
-		return m, nil
+		return handleStatus(m, msg), nil
 	case ProgressMsg:
-		if msg == nil {
-			m.progress = nil
-			return m, nil
-		}
-
-		if m.progress == nil {
-			progressModel := progress.New(progress.WithGradient("#1c1c1c", "#34b27b"))
-			m.progress = &progressModel
-		}
-
-		return m, m.progress.SetPercent(*msg)
+		return handleProgress(m, msg)
 	case PsqlMsg:
-		if msg == nil {
-			m.psqlOutputs = []string{}
-			return m, nil
-		}
-
-		m.psqlOutputs = append(m.psqlOutputs, *msg)
-		// set max output length to 5
-		if len(m.psqlOutputs) > 5 {
-			m.psqlOutputs = m.psqlOutputs[1:]
-		}
-		return m, nil
+		return handlePsql(m, msg), nil
 	default:
 		return m, nil
 	}
+}
+
+func handleKeyPress(m logModel, msg tea.KeyMsg) (logModel, tea.Cmd) {
+	switch msg.Type { //nolint:exhaustive // not applicable
+	case tea.KeyCtrlC:
+		if m.cancel != nil {
+			m.cancel()
+		}
+		return m, tea.Quit
+	default:
+		return m, nil
+	}
+}
+
+func handleWindowSize(m logModel, msg tea.WindowSizeMsg) logModel {
+	m.width = msg.Width
+	return m
+}
+
+func handleSpinnerTick(m logModel, msg spinner.TickMsg) (logModel, tea.Cmd) {
+	spinnerModel, cmd := m.spinner.Update(msg)
+	m.spinner = spinnerModel
+	return m, cmd
+}
+
+func handleProgressFrame(m logModel, msg progress.FrameMsg) (logModel, tea.Cmd) {
+	if m.progress == nil {
+		return m, nil
+	}
+
+	tmp, cmd := m.progress.Update(msg)
+	progressModel, ok := tmp.(progress.Model)
+	if ok {
+		m.progress = &progressModel
+	}
+	return m, cmd
+}
+
+func handleStatus(m logModel, msg StatusMsg) logModel {
+	m.status = string(msg)
+	return m
+}
+
+func handleProgress(m logModel, msg *float64) (logModel, tea.Cmd) {
+	if msg == nil {
+		m.progress = nil
+		return m, nil
+	}
+
+	if m.progress == nil {
+		progressModel := progress.New(progress.WithGradient("#1c1c1c", "#34b27b"))
+		m.progress = &progressModel
+	}
+
+	return m, m.progress.SetPercent(*msg)
+}
+
+func handlePsql(m logModel, msg *string) logModel {
+	if msg == nil {
+		m.psqlOutputs = []string{}
+		return m
+	}
+
+	m.psqlOutputs = append(m.psqlOutputs, *msg)
+	// set max output length to 5
+	if len(m.psqlOutputs) > 5 {
+		m.psqlOutputs = m.psqlOutputs[1:]
+	}
+	return m
 }
 
 func (m logModel) View() string {

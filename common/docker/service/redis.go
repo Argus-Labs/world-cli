@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/docker/docker/api/types/container"
@@ -11,7 +10,7 @@ import (
 )
 
 func getRedisContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-redis", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-redis"
 }
 
 func Redis(cfg *config.Config) Service {

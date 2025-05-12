@@ -79,7 +79,7 @@ optimized for deployment. You can optionally push the image to a registry with t
 		// Print out service addresses
 		printServiceAddress("Redis", cfg.DockerEnv["REDIS_ADDRESS"])
 		// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
-		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
+		printServiceAddress("Cardinal", "localhost:"+CardinalPort)
 		printer.NewLine(2)
 		printer.Infoln("Building Cardinal game shard image...")
 		printer.Infoln("This may take a few minutes.")

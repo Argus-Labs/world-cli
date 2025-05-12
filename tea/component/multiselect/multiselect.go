@@ -44,27 +44,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case <-m.Ctx.Done():
 		return m, tea.Quit
 	default:
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			switch keyMsg.String() {
-			case "up", "k":
-				if m.Cursor > 0 {
-					m.Cursor--
-				}
-			case "down", "j":
-				if m.Cursor < len(m.Items)-1 {
-					m.Cursor++
-				}
-			case " ":
-				m.Selected[m.Cursor] = !m.Selected[m.Cursor]
-			case "enter":
-				return m, tea.Quit
-			case "q", "ctrl+c":
-				m.Aborted = true
-				return m, tea.Quit
-			}
-		}
-		return m, nil
+		return handleUpdateDefault(m, msg)
 	}
+}
+
+func handleUpdateDefault(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "up", "k":
+			if m.Cursor > 0 {
+				m.Cursor--
+			}
+		case "down", "j":
+			if m.Cursor < len(m.Items)-1 {
+				m.Cursor++
+			}
+		case " ":
+			m.Selected[m.Cursor] = !m.Selected[m.Cursor]
+		case "enter":
+			return m, tea.Quit
+		case "q", "ctrl+c":
+			m.Aborted = true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
 }
 
 // View renders the current state of the region selection menu.

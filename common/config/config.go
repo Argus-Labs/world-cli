@@ -95,6 +95,7 @@ func findAndLoadConfigFile() (*Config, error) {
 	return nil, eris.New("No config file found")
 }
 
+//nolint:cyclop // slightly over limit, but not too complex
 func loadConfigFromFile(filename string) (*Config, error) {
 	cfg := Config{
 		DockerEnv: map[string]string{},

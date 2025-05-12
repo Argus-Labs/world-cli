@@ -32,6 +32,55 @@ type deploymentPreview struct {
 	Regions        []string `json:"regions"`
 }
 
+func promptForDeployment(
+	ctx context.Context,
+	organizationID,
+	projectID,
+	deployType string,
+) error {
+	processTitle := map[string]string{
+		DeploymentTypeDeploy:  "Deploying",
+		DeploymentTypeDestroy: "Destroying",
+		DeploymentTypeReset:   "Resetting",
+	}
+
+	// prompt user to confirm deployment
+	printer.NewLine(1)
+	printer.Headerln("   Confirm Deployment")
+	printer.Infoln("Review the deployment details above.")
+	prompt := fmt.Sprintf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
+
+	confirmation := getInput(prompt, "n")
+
+	if confirmation != "Y" {
+		if confirmation == "y" {
+			printer.Infoln("You need to put Y (uppercase) to confirm deployment")
+			printer.NewLine(1)
+			printer.Errorln("Deployment cancelled")
+			return nil
+		}
+		printer.NewLine(1)
+		printer.Errorln("Deployment cancelled")
+		return nil
+	}
+
+	if deployType == "forceDeploy" {
+		deployType = "deploy?force=true"
+	}
+	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL, organizationID, projectID, deployType)
+	_, err := sendRequest(ctx, http.MethodPost, deployURL, nil)
+	if err != nil {
+		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+	}
+
+	printer.NewLine(1)
+	printer.Successf("Your %s is being processed!\n", deployType)
+	printer.NewLine(1)
+	printer.Infof("To check the status of your %s, run:\n", deployType)
+	printer.Infoln("  $ 'world status'")
+	return nil
+}
+
 // Deployment a project.
 func deployment(ctx context.Context, cmdState *CommandState, deployType string) error {
 	if cmdState.Organization == nil || cmdState.Organization.ID == "" {
@@ -67,48 +116,7 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 		return eris.Wrap(err, "Failed to preview deployment")
 	}
 
-	processTitle := map[string]string{
-		DeploymentTypeDeploy:  "Deploying",
-		DeploymentTypeDestroy: "Destroying",
-		DeploymentTypeReset:   "Resetting",
-	}
-
-	// prompt user to confirm deployment
-	printer.NewLine(1)
-	printer.Headerln("   Confirm Deployment")
-	printer.Infoln("Review the deployment details above.")
-	prompt := fmt.Sprintf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
-
-	confirmation := getInput(prompt, "n")
-
-	if confirmation != "Y" {
-		if confirmation == "y" {
-			printer.Infoln("You need to put Y (uppercase) to confirm deployment")
-			printer.NewLine(1)
-			printer.Errorln("Deployment cancelled")
-			return nil
-		}
-		printer.NewLine(1)
-		printer.Errorln("Deployment cancelled")
-		return nil
-	}
-
-	if deployType == "forceDeploy" {
-		deployType = "deploy?force=true"
-	}
-	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL, organizationID, projectID, deployType)
-	_, err = sendRequest(ctx, http.MethodPost, deployURL, nil)
-	if err != nil {
-		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
-	}
-
-	printer.NewLine(1)
-	printer.Successf("Your %s is being processed!\n", deployType)
-	printer.NewLine(1)
-	printer.Infof("To check the status of your %s, run:\n", deployType)
-	printer.Infoln("  $ 'world status'")
-
-	return nil
+	return promptForDeployment(ctx, organizationID, projectID, deployType)
 }
 
 //nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling

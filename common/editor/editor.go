@@ -53,7 +53,7 @@ func getDefaultCardinalVersionMap() map[string]string {
 	}
 }
 
-func SetupCardinalEditor(rootDir string, gameDir string) error {
+func getCardinalEditorVersion(rootDir, gameDir string) (string, error) {
 	// Get the version map
 	cardinalVersionMap, err := getVersionMap(versionMapURL)
 	if err != nil {
@@ -64,7 +64,7 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 	// Check version
 	cardinalVersion, err := getModuleVersion(filepath.Join(rootDir, gameDir, "go.mod"), cardinalPkgPath)
 	if err != nil {
-		return eris.Wrap(err, "failed to get cardinal version")
+		return "", eris.Wrap(err, "failed to get cardinal version")
 	}
 
 	downloadVersion, versionExists := cardinalVersionMap[cardinalVersion]
@@ -72,9 +72,18 @@ func SetupCardinalEditor(rootDir string, gameDir string) error {
 		// Get the latest release version
 		latestReleaseVersion, err := getLatestReleaseVersion()
 		if err != nil {
-			return eris.Wrap(err, "failed to get latest release version")
+			return "", eris.Wrap(err, "failed to get latest release version")
 		}
 		downloadVersion = latestReleaseVersion
+	}
+
+	return downloadVersion, nil
+}
+
+func SetupCardinalEditor(rootDir string, gameDir string) error {
+	downloadVersion, err := getCardinalEditorVersion(rootDir, gameDir)
+	if err != nil {
+		return eris.Wrap(err, "failed to get cardinal editor version")
 	}
 
 	downloadURL := fmt.Sprintf(downloadURLPattern, downloadVersion, downloadVersion)
@@ -171,6 +180,7 @@ func downloadAndUnzip(url string, targetDir string) error {
 	return os.Remove(tmpZipFileName)
 }
 
+//nolint:cyclop // zip file is complex but makes sense in a single function
 func unzipFile(filename string, targetDir string) error {
 	reader, err := zip.OpenReader(filename)
 	if err != nil {

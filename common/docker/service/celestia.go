@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -10,7 +9,7 @@ import (
 )
 
 func getCelestiaDevNetContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-celestia-devnet", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-celestia-devnet"
 }
 
 func CelestiaDevNet(cfg *config.Config) Service {

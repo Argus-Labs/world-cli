@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/docker/docker/api/types/network"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/world/forge"
@@ -47,21 +48,7 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 		}
 
 		if !networkExist {
-			_, err = c.client.NetworkCreate(ctx, networkName, network.CreateOptions{
-				Driver: "bridge",
-			})
-			if err != nil {
-				p.Send(multispinner.ProcessState{
-					Icon:   style.CrossIcon.Render(),
-					Type:   "network",
-					Name:   networkName,
-					State:  "creating",
-					Detail: err.Error(),
-					Done:   true,
-				})
-				errChan <- eris.Wrapf(err, "Failed to create network %s", networkName)
-				return
-			}
+			handleNetworkDoesNotExist(ctx, networkName, c, p, errChan)
 		}
 
 		p.Send(multispinner.ProcessState{
@@ -85,4 +72,26 @@ func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName strin
 	}
 
 	return nil
+}
+
+func handleNetworkDoesNotExist(ctx context.Context,
+	networkName string,
+	c *Client,
+	p *tea.Program,
+	errChan chan error,
+) {
+	_, err := c.client.NetworkCreate(ctx, networkName, network.CreateOptions{
+		Driver: "bridge",
+	})
+	if err != nil {
+		p.Send(multispinner.ProcessState{
+			Icon:   style.CrossIcon.Render(),
+			Type:   "network",
+			Name:   networkName,
+			State:  "creating",
+			Detail: err.Error(),
+			Done:   true,
+		})
+		errChan <- eris.Wrapf(err, "Failed to create network %s", networkName)
+	}
 }

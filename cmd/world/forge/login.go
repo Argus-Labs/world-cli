@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -155,7 +154,7 @@ func displayLoginSuccess(config Config) {
 
 // GetToken will get the token from the config file.
 //
-//nolint:gocognit // This is a long function, but it's not too complex, better to keep it in one place.
+//nolint:cyclop,funlen // This is a long function, but it's not too complex, better to keep it in one place.
 func getToken(ctx context.Context, url string, result interface{}) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -277,7 +276,7 @@ func handleTokenResponse(response []byte, result interface{}) error {
 		printer.Successln("Login token received successfully!")
 		return nil
 	default:
-		return eris.New(fmt.Sprintf("Status: %s", tokenStruct.Status))
+		return eris.New("Status: " + tokenStruct.Status)
 	}
 }
 

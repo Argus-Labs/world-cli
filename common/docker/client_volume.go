@@ -25,7 +25,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 			Name:  volumeName,
 		})
 
-		volumes, err := c.client.VolumeList(ctx, volume.ListOptions{})
+		volumeExist, err := c.processVolumeLogic(ctx, volumeName)
 		if err != nil {
 			p.Send(multispinner.ProcessState{
 				Icon:   style.CrossIcon.Render(),
@@ -39,29 +39,7 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 			return
 		}
 
-		volumeExist := false
-		for _, volume := range volumes.Volumes {
-			if volume.Name == volumeName {
-				volumeExist = true
-				break
-			}
-		}
-
-		switch processType {
-		case CREATE:
-			if !volumeExist {
-				_, err = c.client.VolumeCreate(ctx, volume.CreateOptions{Name: volumeName})
-			}
-		case REMOVE:
-			if volumeExist {
-				err = c.client.VolumeRemove(ctx, volumeName, true)
-			}
-		case START, STOP:
-			err = eris.New(fmt.Sprintf("%s process type is not supported for volumes", processName[processType]))
-		default:
-			err = eris.New(fmt.Sprintf("Unknown process type: %d", processType))
-		}
-
+		err = c.handleProcessType(ctx, processType, volumeName, volumeExist)
 		if err != nil {
 			p.Send(multispinner.ProcessState{
 				Icon:   style.CrossIcon.Render(),
@@ -96,4 +74,46 @@ func (c *Client) processVolume(ctx context.Context, processType processType, vol
 	}
 
 	return nil
+}
+
+func (c *Client) processVolumeLogic(ctx context.Context, volumeName string) (bool, error) {
+	volumes, err := c.client.VolumeList(ctx, volume.ListOptions{})
+	if err != nil {
+		return false, eris.Wrap(err, "Failed to list volumes")
+	}
+
+	volumeExist := false
+	for _, volume := range volumes.Volumes {
+		if volume.Name == volumeName {
+			volumeExist = true
+			break
+		}
+	}
+
+	return volumeExist, nil
+}
+
+func (c *Client) handleProcessType(
+	ctx context.Context,
+	processType processType,
+	volumeName string,
+	volumeExist bool,
+) error {
+	var err error
+	switch processType {
+	case CREATE:
+		if !volumeExist {
+			_, err = c.client.VolumeCreate(ctx, volume.CreateOptions{Name: volumeName})
+		}
+	case REMOVE:
+		if volumeExist {
+			err = c.client.VolumeRemove(ctx, volumeName, true)
+		}
+	case START, STOP:
+		err = eris.New(processName[processType] + " process type is not supported for volumes")
+	default:
+		err = eris.New(fmt.Sprintf("Unknown process type: %d", processType))
+	}
+
+	return err
 }

@@ -74,7 +74,7 @@ linters:
     - usetesting
     - wastedassign
     - whitespace
-  settings:
+  linters-settings:
     cyclop:
       max-complexity: 30
       package-average: 10

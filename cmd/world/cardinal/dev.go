@@ -66,8 +66,8 @@ This mode runs Cardinal directly from your source code, providing:
 		printer.Infoln(style.CLIHeader("Cardinal", ""))
 
 		// Print out service addresses
-		printServiceAddress("Redis", fmt.Sprintf("localhost:%s", RedisPort))
-		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
+		printServiceAddress("Redis", "localhost:"+RedisPort)
+		printServiceAddress("Cardinal", "localhost:"+CardinalPort)
 		var port int
 		if editor {
 			port, err = common.FindUnusedPort(cePortStart, cePortEnd)
@@ -126,21 +126,35 @@ func devCmdInit() {
 // Cardinal Helpers //
 //////////////////////
 
-// Otherwise, it runs cardinal using `go run .`.
-func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error { //nolint:gocognit
+func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog bool) error {
 	printer.Infoln("Starting Cardinal...")
 	printer.Infoln(style.BoldText.Render("Press Ctrl+C to stop"))
 	printer.NewLine(1)
 
-	// Check and wait until Redis is running and is available in the expected port
+	if err := waitForRedisHealth(ctx); err != nil {
+		return err
+	}
+
+	if err := setupCardinalEnvironment(cfg, prettyLog); err != nil {
+		return err
+	}
+
+	group, ctx := errgroup.WithContext(ctx)
+	if err := runCardinalProcess(ctx, group); err != nil {
+		return err
+	}
+
+	return group.Wait()
+}
+
+func waitForRedisHealth(ctx context.Context) error {
 	isRedisHealthy := false
 	for !isRedisHealthy {
-		// using select to allow for context cancellation
 		select {
 		case <-ctx.Done():
 			return eris.Wrap(ctx.Err(), "Context canceled")
 		default:
-			redisAddress := fmt.Sprintf("localhost:%s", RedisPort)
+			redisAddress := "localhost:" + RedisPort
 			conn, err := net.DialTimeout("tcp", redisAddress, time.Second)
 			if err != nil {
 				logger.Printf("Failed to connect to Redis at %s: %s\n", redisAddress, err)
@@ -148,7 +162,6 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 				continue
 			}
 
-			// Cleanup connection
 			if err := conn.Close(); err != nil {
 				continue
 			}
@@ -156,7 +169,10 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 			isRedisHealthy = true
 		}
 	}
+	return nil
+}
 
+func setupCardinalEnvironment(cfg *config.Config, prettyLog bool) error {
 	// Move into the cardinal directory
 	if err := os.Chdir(filepath.Join(cfg.RootDir, cfg.GameDir)); err != nil {
 		return eris.New("Unable to find cardinal directory. Are you in the project root?")
@@ -177,14 +193,15 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 		return eris.Wrap(err, "Failed to set dev mode environment variables")
 	}
 
-	// Create an error group for managing cardinal lifecycle
-	group, ctx := errgroup.WithContext(ctx)
+	return nil
+}
 
-	// Run cardinal
+func runCardinalProcess(ctx context.Context, group *errgroup.Group) error {
 	cmd := exec.Command("go", "run", ".")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
+
 	group.Go(func() error {
 		if err := cmd.Start(); err != nil {
 			return eris.Wrap(err, "Failed to start Cardinal")
@@ -196,35 +213,19 @@ func startCardinalDevMode(ctx context.Context, cfg *config.Config, prettyLog boo
 		return nil
 	})
 
-	// Goroutine to handle termination
-	// There are two ways that a termination sequence can be triggered:
-	// 1) The cardinal goroutine returns a non-nil error
-	// 2) The parent context is canceled for whatever reason.
+	// Handle termination
 	group.Go(func() error {
 		<-ctx.Done()
 
-		// No need to do anything if cardinal already exited or is not running
 		if cmd.ProcessState == nil || cmd.ProcessState.Exited() {
 			return nil
 		}
 
 		if runtime.GOOS == "windows" {
-			// Sending interrupt signal is not supported in Windows
-			if err := cmd.Process.Kill(); err != nil {
-				return err
-			}
-		} else {
-			if err := cmd.Process.Signal(os.Interrupt); err != nil {
-				return err
-			}
+			return cmd.Process.Kill()
 		}
-
-		return nil
+		return cmd.Process.Signal(os.Interrupt)
 	})
-
-	if err := group.Wait(); err != nil {
-		return err
-	}
 
 	return nil
 }

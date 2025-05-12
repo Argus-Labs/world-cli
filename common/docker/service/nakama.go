@@ -12,9 +12,10 @@ import (
 )
 
 func getNakamaContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-nakama", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-nakama"
 }
 
+//nolint:cyclop,funlen // Removing Nakama in WEv2 no point refactoring
 func Nakama(cfg *config.Config) Service {
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
@@ -88,15 +89,15 @@ func Nakama(cfg *config.Config) Service {
 		Config: container.Config{
 			Image: nakamaImage,
 			Env: []string{
-				fmt.Sprintf("CARDINAL_CONTAINER=%s", getCardinalContainerName(cfg)),
+				"CARDINAL_CONTAINER=" + getCardinalContainerName(cfg),
 				fmt.Sprintf("CARDINAL_ADDR=%s:4040", getCardinalContainerName(cfg)),
-				fmt.Sprintf("CARDINAL_NAMESPACE=%s", cfg.DockerEnv["CARDINAL_NAMESPACE"]),
-				fmt.Sprintf("DB_PASSWORD=%s", dbPassword),
-				fmt.Sprintf("ENABLE_ALLOWLIST=%s", enableAllowList),
-				fmt.Sprintf("OUTGOING_QUEUE_SIZE=%s", outgoingQueueSize),
-				fmt.Sprintf("TRACE_ENABLED=%s", traceEnabled),
+				"CARDINAL_NAMESPACE=" + cfg.DockerEnv["CARDINAL_NAMESPACE"],
+				"DB_PASSWORD=" + dbPassword,
+				"ENABLE_ALLOWLIST=" + enableAllowList,
+				"OUTGOING_QUEUE_SIZE=" + outgoingQueueSize,
+				"TRACE_ENABLED=" + traceEnabled,
 				fmt.Sprintf("JAEGER_ADDR=%s:4317", getJaegerContainerName(cfg)),
-				fmt.Sprintf("JAEGER_SAMPLE_RATE=%s", traceSampleRate),
+				"JAEGER_SAMPLE_RATE=" + traceSampleRate,
 			},
 			Entrypoint: []string{
 				"/bin/sh",

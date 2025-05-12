@@ -1,8 +1,6 @@
 package forge
 
 import (
-	"fmt"
-
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/printer"
@@ -459,13 +457,13 @@ func InitForgeBase(env string) {
 	}
 
 	// Set login URL
-	argusIDAuthURL = fmt.Sprintf("%s/api/auth/service-auth-session", argusIDBaseURL)
+	argusIDAuthURL = argusIDBaseURL + "/api/auth/service-auth-session"
 
 	// Set organization URL
-	organizationURL = fmt.Sprintf("%s/api/organization", baseURL)
+	organizationURL = baseURL + "/api/organization"
 
 	// Set user URL
-	userURL = fmt.Sprintf("%s/api/user", baseURL)
+	userURL = baseURL + "/api/user"
 }
 
 func InitForgeCmds() {

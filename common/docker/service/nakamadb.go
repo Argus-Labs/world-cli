@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -11,7 +10,7 @@ import (
 )
 
 func getNakamaDBContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-nakama-db", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-nakama-db"
 }
 
 func NakamaDB(cfg *config.Config) Service {
@@ -30,7 +29,7 @@ func NakamaDB(cfg *config.Config) Service {
 			Image: "postgres:12.2-alpine",
 			Env: []string{
 				"POSTGRES_DB=nakama",
-				fmt.Sprintf("POSTGRES_PASSWORD=%s", dbPassword),
+				"POSTGRES_PASSWORD=" + dbPassword,
 			},
 			ExposedPorts: getExposedPorts(exposedPorts),
 			Healthcheck: &container.HealthConfig{

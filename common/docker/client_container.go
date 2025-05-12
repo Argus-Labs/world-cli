@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/rotisserie/eris"
@@ -23,92 +24,126 @@ import (
 
 type processType int
 
-func (c *Client) processMultipleContainers(ctx context.Context, processType processType,
-	services ...service.Service) error {
-	// Collect the names of the services
-	dockerServicesNames := make([]string, len(services))
-	for i, dockerService := range services {
-		dockerServicesNames[i] = dockerService.Name
-	}
-
+func (c *Client) processMultipleContainers(
+	ctx context.Context,
+	processType processType,
+	services ...service.Service,
+) error {
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// Channel to collect errors from the goroutines
-	errChan := make(chan error, len(dockerServicesNames))
+	// Setup error channel and program
+	errChan := make(chan error, len(services))
+	p := c.setupProcessProgram(services, cancel)
 
-	// Create tea program for multispinner
-	p := forge.NewTeaProgram(multispinner.CreateSpinner(dockerServicesNames, cancel))
-
-	// Process all containers
-	for _, ds := range services {
-		// capture the dockerService
-		dockerService := ds
-
-		go func() {
-			p.Send(multispinner.ProcessState{
-				Icon:  style.CrossIcon.Render(),
-				Type:  "container",
-				Name:  dockerService.Name,
-				State: processInitName[processType],
-			})
-
-			// call the respective function based on the process type
-			var err error
-			switch processType {
-			case STOP:
-				err = c.stopContainer(ctx, dockerService.Name)
-			case REMOVE:
-				err = c.removeContainer(ctx, dockerService.Name)
-			case START:
-				err = c.startContainer(ctx, dockerService)
-			case CREATE:
-				err = eris.New("CREATE process type is not supported for containers")
-			default:
-				err = eris.New(fmt.Sprintf("Unknown process type: %d", processType))
-			}
-
-			if err != nil {
-				p.Send(multispinner.ProcessState{
-					Icon:   style.CrossIcon.Render(),
-					Type:   "container",
-					Name:   dockerService.Name,
-					State:  processInitName[processType],
-					Detail: err.Error(),
-					Done:   true,
-				})
-				errChan <- err
-				return
-			}
-
-			// if no error, send success
-			p.Send(multispinner.ProcessState{
-				Icon:  style.TickIcon.Render(),
-				Type:  "container",
-				Name:  dockerService.Name,
-				State: processFinishName[processType],
-				Done:  true,
-			})
-		}()
-	}
+	// Launch processing goroutines
+	c.launchProcessGoroutines(ctx, processType, services, p, errChan)
 
 	// Run the program
 	if _, err := p.Run(); err != nil {
 		return eris.Wrap(err, "Failed to run multispinner")
 	}
 
-	// Close the error channel and check for errors
+	// Collect and process errors
+	return c.collectProcessErrors(errChan)
+}
+
+func (c *Client) setupProcessProgram(services []service.Service, cancel context.CancelFunc) *tea.Program {
+	dockerServicesNames := make([]string, len(services))
+	for i, dockerService := range services {
+		dockerServicesNames[i] = dockerService.Name
+	}
+	return forge.NewTeaProgram(multispinner.CreateSpinner(dockerServicesNames, cancel))
+}
+
+func (c *Client) launchProcessGoroutines(
+	ctx context.Context,
+	processType processType,
+	services []service.Service,
+	p *tea.Program,
+	errChan chan error,
+) {
+	for _, ds := range services {
+		dockerService := ds
+		go c.processSingleContainer(ctx, processType, dockerService, p, errChan)
+	}
+}
+
+func (c *Client) processSingleContainer(
+	ctx context.Context,
+	processType processType,
+	dockerService service.Service,
+	p *tea.Program,
+	errChan chan error,
+) {
+	c.sendProcessInitState(p, dockerService.Name, processType)
+
+	err := c.executeProcessType(ctx, processType, dockerService)
+	if err != nil {
+		c.sendProcessErrorState(p, dockerService.Name, processType, err)
+		errChan <- err
+		return
+	}
+
+	c.sendProcessSuccessState(p, dockerService.Name, processType)
+}
+
+func (c *Client) executeProcessType(ctx context.Context, processType processType, dockerService service.Service) error {
+	switch processType {
+	case STOP:
+		return c.stopContainer(ctx, dockerService.Name)
+	case REMOVE:
+		return c.removeContainer(ctx, dockerService.Name)
+	case START:
+		return c.startContainer(ctx, dockerService)
+	case CREATE:
+		return eris.New("CREATE process type is not supported for containers")
+	default:
+		return eris.New(fmt.Sprintf("Unknown process type: %d", processType))
+	}
+}
+
+func (c *Client) sendProcessInitState(p *tea.Program, name string, processType processType) {
+	p.Send(multispinner.ProcessState{
+		Icon:  style.CrossIcon.Render(),
+		Type:  "container",
+		Name:  name,
+		State: processInitName[processType],
+	})
+}
+
+func (c *Client) sendProcessErrorState(p *tea.Program, name string, processType processType, err error) {
+	p.Send(multispinner.ProcessState{
+		Icon:   style.CrossIcon.Render(),
+		Type:   "container",
+		Name:   name,
+		State:  processInitName[processType],
+		Detail: err.Error(),
+		Done:   true,
+	})
+}
+
+func (c *Client) sendProcessSuccessState(p *tea.Program, name string, processType processType) {
+	p.Send(multispinner.ProcessState{
+		Icon:  style.TickIcon.Render(),
+		Type:  "container",
+		Name:  name,
+		State: processFinishName[processType],
+		Done:  true,
+	})
+}
+
+func (c *Client) collectProcessErrors(errChan chan error) error {
 	close(errChan)
 	errs := make([]error, 0)
 	for err := range errChan {
 		errs = append(errs, err)
 	}
 
-	// If there were any errors, return them as a combined error
 	if len(errs) > 0 {
 		return eris.New(fmt.Sprintf("Errors: %v", errs))
 	}
-
 	return nil
 }
 

@@ -89,7 +89,7 @@ func (m WorldCreateModel) Init() tea.Cmd {
 
 // Update handles incoming events and updates the model accordingly.
 //
-//nolint:funlen // Long function, but it's ok because it's structured
+//nolint:funlen,cyclop // Long function, but it's ok because it's structured
 func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teacmd.CheckDependenciesMsg:

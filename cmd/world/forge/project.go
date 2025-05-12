@@ -266,6 +266,12 @@ func createProject(ctx context.Context) (*project, error) {
 		return nil, eris.Wrap(err, "Failed to select project")
 	}
 
+	createProjectPrint(prj)
+
+	return prj, nil
+}
+
+func createProjectPrint(prj *project) {
 	printer.NewLine(1)
 	printer.Successf("Project '%s' created successfully!\n", prj.Name)
 	printer.Infoln("Project Details:")
@@ -299,8 +305,6 @@ func createProject(ctx context.Context) (*project, error) {
 	printer.Infoln("• Deploy Secret (for deploy via CI/CD pipeline tools):")
 	printer.Infof("    %s\n", prj.DeploySecret)
 	printer.Infoln("Note: Deploy Secret will not be shown again. Save it now in a secure location.")
-
-	return prj, nil
 }
 
 func (p *project) inputProjectName(ctx context.Context) error {
@@ -538,28 +542,7 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	}
 }
 
-func selectProject(ctx context.Context) (*project, error) {
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return nil, eris.Wrap(err, "Could not get config")
-	}
-	if config.CurrRepoKnown {
-		printer.Errorf("Current git working directory belongs to project %s. Cannot switch.\n",
-			config.CurrProjectName)
-		return nil, nil //nolint: nilnil // See: https://www.dolthub.com/blog/2024-05-31-benchmarking-go-error-handling/
-	}
-
-	// Get projects from selected organization
-	projects, err := getListOfProjects(ctx)
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get projects")
-	}
-
-	if len(projects) == 0 {
-		printNoProjectsInOrganization()
-		return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
-	}
-
+func selectProjectPrint(projects []project) {
 	// Display projects as a numbered list
 	printer.NewLine(1)
 	printer.Headerln("   Available Projects   ")
@@ -569,7 +552,9 @@ func selectProject(ctx context.Context) (*project, error) {
 	for i, proj := range projects {
 		printer.Infof("  %d. %s\n     └─ Slug: %s\n", i+1, proj.Name, proj.Slug)
 	}
+}
 
+func selectProjectInput(projects []project, config Config) (*project, error) {
 	// Get user input
 	for {
 		input := getInput("\nEnter project number (or 'q' to quit)", "")
@@ -598,12 +583,34 @@ func selectProject(ctx context.Context) (*project, error) {
 	}
 }
 
-func deleteProject(ctx context.Context) error {
-	selectedProject, err := getSelectedProject(ctx)
+func selectProject(ctx context.Context) (*project, error) {
+	config, err := GetCurrentForgeConfig()
 	if err != nil {
-		return eris.Wrap(err, "Failed to get project")
+		return nil, eris.Wrap(err, "Could not get config")
+	}
+	if config.CurrRepoKnown {
+		printer.Errorf("Current git working directory belongs to project %s. Cannot switch.\n",
+			config.CurrProjectName)
+		return nil, nil //nolint: nilnil // See: https://www.dolthub.com/blog/2024-05-31-benchmarking-go-error-handling/
 	}
 
+	// Get projects from selected organization
+	projects, err := getListOfProjects(ctx)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get projects")
+	}
+
+	if len(projects) == 0 {
+		printNoProjectsInOrganization()
+		return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
+	}
+
+	selectProjectPrint(projects)
+
+	return selectProjectInput(projects, config)
+}
+
+func deleteProjectPrint(selectedProject *project) {
 	// Print project details with fancy formatting
 	printer.NewLine(1)
 	printer.Headerln("   Project Deletion   ")
@@ -620,6 +627,15 @@ func deleteProject(ctx context.Context) error {
 	printer.Infoln("• All logs")
 	printer.Infoln("• All associated resources")
 	printer.NewLine(1)
+}
+
+func deleteProject(ctx context.Context) error {
+	selectedProject, err := getSelectedProject(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get project")
+	}
+
+	deleteProjectPrint(&selectedProject)
 
 	// Confirmation prompt with fancy formatting
 	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s': ", selectedProject.Name)
@@ -715,6 +731,11 @@ func updateProject(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
+	updateProjectPrint(&p)
+	return nil
+}
+
+func updateProjectPrint(p *project) {
 	printer.NewLine(1)
 	printer.Successf("Project '%s' updated successfully!\n", p.Name)
 	printer.Infoln("Project Details:")
@@ -745,9 +766,9 @@ func updateProject(ctx context.Context) error {
 		printer.Infoln("  - Enabled: No")
 	}
 	printer.Infof("• Avatar URL: %s\n", p.AvatarURL)
-	return nil
 }
 
+//nolint:cyclop // Sinple function just getting inputs from user
 func (p *project) projectInput(ctx context.Context, regions []string) error {
 	// Get organization
 	org, err := getSelectedOrganization(ctx)

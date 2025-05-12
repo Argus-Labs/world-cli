@@ -85,7 +85,7 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 
 	// Only set authorization header if token is provided
 	if token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+		req.Header.Set("Authorization", "token "+token)
 	}
 
 	client := &http.Client{}
@@ -160,7 +160,7 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 
 	// Only set authorization header if token is provided
 	if token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	client := &http.Client{}

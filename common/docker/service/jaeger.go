@@ -1,15 +1,13 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"pkg.world.dev/world-cli/common/config"
 )
 
 func getJaegerContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-jaeger", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-jaeger"
 }
 
 func Jaeger(cfg *config.Config) Service {

@@ -129,6 +129,7 @@ func selectOrganization(ctx context.Context) (organization, error) {
 	return selectedOrg, nil
 }
 
+//nolint:cyclop // Makes sense to keep in one function.
 func promptForOrganization(ctx context.Context, orgs []organization) (organization, error) {
 	// Display organizations as a numbered list
 	printer.NewLine(1)
@@ -205,7 +206,7 @@ func handleProjectConfig(ctx context.Context) error {
 	return showProjectList(ctx)
 }
 
-//nolint:gocognit,funlen // Makes sense to keep in one function.
+//nolint:funlen,cyclop // Makes sense to keep in one function.
 func createOrganization(ctx context.Context) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 

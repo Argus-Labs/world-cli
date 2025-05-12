@@ -1,4 +1,3 @@
-//nolint:reassign // customizing zerolog globals is safe and intentional for this CLI
 package logger
 
 import (

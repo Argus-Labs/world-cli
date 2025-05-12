@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -26,7 +25,7 @@ EOF
 `
 
 func getPrometheusContainerName(cfg *config.Config) string {
-	return fmt.Sprintf("%s-prometheus", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	return cfg.DockerEnv["CARDINAL_NAMESPACE"] + "-prometheus"
 }
 
 func Prometheus(cfg *config.Config) Service {

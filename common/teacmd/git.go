@@ -46,6 +46,7 @@ func git(args ...string) (string, error) {
 	return strings.TrimSpace(outBuff.String()), nil
 }
 
+//nolint:cyclop,funlen // git commands are complex
 func GitCloneCmd(url, targetDir, initMsg string) error {
 	// Check if targetDir exists
 	if _, err := os.Stat(targetDir); err == nil {

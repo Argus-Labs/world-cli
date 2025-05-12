@@ -1,7 +1,6 @@
 package telemetry
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -22,7 +21,7 @@ func SentryInit(sentryDsn string, env string, appVersion string) {
 			ProfilesSampleRate: 1.0,
 			AttachStacktrace:   true,
 			Environment:        env,
-			Release:            fmt.Sprintf("world-cli@%s", appVersion),
+			Release:            "world-cli@" + appVersion,
 		})
 		if err != nil {
 			log.Err(err).Msg("Cannot initialize sentry")

@@ -139,7 +139,7 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 
 	// Create temp config dir
 	tempDir = filepath.Join(os.TempDir(), "worldcli")
-	//nolint:reassign // Might cause issues with parallel tests
+
 	config.GetCLIConfigDir = func() (string, error) {
 		return tempDir, nil
 	}
@@ -164,7 +164,7 @@ func (s *ForgeTestSuite) TearDownTest() {
 	os.RemoveAll(tempDir)
 
 	// Restore original functions
-	config.GetCLIConfigDir = originalGetConfigDir //nolint:reassign // Might cause issues with parallel tests
+	config.GetCLIConfigDir = originalGetConfigDir
 }
 
 func (s *ForgeTestSuite) handleGetUser(w http.ResponseWriter, _ *http.Request) {
@@ -325,7 +325,6 @@ func (s *ForgeTestSuite) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// check if preview flag is set
 	preview := r.URL.Query().Get("preview")
 	if preview == "true" {
-		//nolint:govet // test
 		deploymentPreview := deploymentPreview{
 			ProjectName:    "Test Project",
 			ProjectSlug:    "testp",
@@ -478,7 +477,6 @@ func (s *ForgeTestSuite) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	// check if preview flag is set
 	preview := r.URL.Query().Get("preview")
 	if preview == "true" {
-		//nolint:govet // test
 		deploymentPreview := deploymentPreview{
 			ProjectName:    "Test Project",
 			ProjectSlug:    "testp",
@@ -533,7 +531,7 @@ func (s *ForgeTestSuite) handleReset(w http.ResponseWriter, r *http.Request) {
 	// check if preview flag is set
 	preview := r.URL.Query().Get("preview")
 	if preview == "true" {
-		deploymentPreview := deploymentPreview{ //nolint:govet // test
+		deploymentPreview := deploymentPreview{
 			ProjectName:    "Test Project",
 			ProjectSlug:    "testp",
 			OrgName:        "Test Org",
@@ -1413,7 +1411,7 @@ func (s *ForgeTestSuite) TestLogin() {
 			// Mock organization creation inputs if provided
 			if len(tc.orgInputs) > 0 {
 				inputIndex := 0
-				originalGetInput := getInput //nolint:govet // test
+				originalGetInput := getInput
 				getInput = func(prompt string, defaultVal string) string {
 					if inputIndex >= len(tc.orgInputs) {
 						return defaultVal
@@ -1917,6 +1915,7 @@ func (s *ForgeTestSuite) TestShowProjectList() {
 	}
 }
 
+//nolint:cyclop // test function.
 func (s *ForgeTestSuite) TestCreateProject() {
 	testCases := []struct {
 		name                string
@@ -2419,11 +2418,11 @@ func (s *ForgeTestSuite) TestGetRoleInput() {
 			// Save original stdin
 
 			oldStdin := os.Stdin
-			//nolint:reassign // Might cause issues with parallel tests
+
 			defer func() { os.Stdin = oldStdin }()
 
 			// Set stdin to our test file
-			os.Stdin = tmpfile //nolint:reassign // Might cause issues with parallel tests
+			os.Stdin = tmpfile
 
 			// Test getInput
 			result := getRoleInput(tc.allowNone)
@@ -2495,10 +2494,10 @@ func (s *ForgeTestSuite) TestGetInput() {
 
 			// Save original stdin
 			oldStdin := os.Stdin
-			//nolint:reassign // Might cause issues with parallel tests
+
 			defer func() { os.Stdin = oldStdin }()
 			// Set stdin to our test file
-			os.Stdin = tmpfile //nolint:reassign // Might cause issues with parallel tests
+			os.Stdin = tmpfile
 
 			// Test getInput
 			result := getInput("test-prompt: ", tc.defaultInput)

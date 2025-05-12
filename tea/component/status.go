@@ -172,5 +172,5 @@ func (s *StatusCollection) GetWidth() int {
 }
 
 func WithShutdownOnChecked(box StatusCollection) {
-	box.ShutdownOnChecked = true //nolint:govet // not applicable
+	box.ShutdownOnChecked = true
 }
