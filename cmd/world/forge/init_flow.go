@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
@@ -66,7 +65,7 @@ var (
 //
 // NOTE: we ALWAYS return the state, even if there is an error, so you can use it in your error handling.
 func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic simplified as much as possible
-	cmd *cobra.Command,
+	ctx context.Context,
 	loginReq LoginStepRequirement,
 	orgReq StepRequirement,
 	projectReq StepRequirement,
@@ -87,7 +86,6 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		organizationStepDone: false,
 		projectStepDone:      false,
 		State: CommandState{
-			Command:      cmd,
 			LoggedIn:     false,
 			User:         nil,
 			Organization: nil,
@@ -107,9 +105,9 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		return &flow.State, errors.New("not logged in")
 	}
 
-	// if we need the lo
+	// if we need the login step, always get the user info
 	if flow.requiredLogin == NeedLogin {
-		user, err := getUser(cmd.Context())
+		user, err := getUser(ctx)
 		if err != nil {
 			return &flow.State, err
 		}
@@ -123,7 +121,6 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		if !loggedIn {
 			return &flow.State, errors.New("not logged in, can't lookup project from git repo")
 		}
-		ctx := cmd.Context()
 		err := flow.doRepoLookup(ctx)
 		if err != nil {
 			return &flow.State, err

@@ -2,8 +2,6 @@ package forge
 
 import (
 	"time"
-
-	"github.com/spf13/cobra"
 )
 
 type Credential struct {
@@ -14,7 +12,6 @@ type Credential struct {
 }
 
 type CommandState struct {
-	Command      *cobra.Command
 	LoggedIn     bool
 	User         *User
 	Organization *organization
