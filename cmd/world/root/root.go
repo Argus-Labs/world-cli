@@ -9,14 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/go-version"
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/cmd/world/cardinal"
-	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
@@ -29,15 +25,21 @@ const (
 	httpTimeout = 2 * time.Second
 )
 
-// rootCmd represents the base command.
-// Usage: `world`.
-var rootCmd = &cobra.Command{
-	Use:   "world",
-	Short: "Your complete toolkit for World Engine development",
-	Long:  style.CLIHeader("World CLI", "Create, manage, and deploy World Engine projects with ease"),
-	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-		return checkLatestVersion()
-	},
+var CLI struct {
+	Create       *CreateCmd  `cmd:"" group:"Getting Started:" help:"Create a new World Engine project"`
+	Doctor       *DoctorCmd  `cmd:"" group:"Getting Started:" help:"Check your development environment"`
+	kong.Plugins             // put this here so tools will be in the right place
+	Version      *VersionCmd `cmd:"" group:"Additional Commands:" help:"Show the version of the CLI"`
+	// Help    *root.HelpCmd    `cmd:"" default:"1" group:"Additional Commands:" help:"Show more detailed help"`
+}
+
+type HelpCmd struct {
+}
+
+func (c *HelpCmd) Run() error {
+	printer.Infoln(style.CLIHeader("World CLI", "Create, manage, and deploy World Engine projects with ease"))
+	_ = checkLatestVersion()
+	return nil
 }
 
 // Release structure to hold the data of the latest release.
@@ -45,48 +47,6 @@ type Release struct {
 	TagName string `json:"tag_name"`
 	Name    string `json:"name"`
 	HTMLURL string `json:"html_url"`
-}
-
-// CmdInit initializes the root command.
-func CmdInit() {
-	// Enable case-insensitive commands
-	cobra.EnableCaseInsensitive = true //nolint:reassign // intentionally setting cobra global config as designed
-
-	// Disable printing usage help text when command returns a non-nil error
-	rootCmd.SilenceUsage = true
-
-	// Injects a context that is canceled when a sigterm signal is received
-	rootCmd.SetContext(contextWithSigterm(context.Background()))
-
-	// Register groups
-	rootCmd.AddGroup(&cobra.Group{ID: "starter", Title: "Getting Started:"})
-	rootCmd.AddGroup(&cobra.Group{ID: "core", Title: "Tools:"})
-
-	// Register base commands
-	doctorCmd := getDoctorCmd(os.Stdout)
-	createCmd := getCreateCmd(os.Stdout)
-	rootCmd.AddCommand(createCmd, doctorCmd, versionCmd)
-
-	// Register subcommands
-	rootCmd.AddCommand(cardinal.BaseCmd)
-	rootCmd.AddCommand(evm.BaseCmd)
-
-	// Register forge command
-	forge.AddCommands(rootCmd)
-
-	// Remove completion subcommand
-	rootCmd.CompletionOptions.DisableDefaultCmd = true
-}
-
-// Execute adds all child commands to the root command and sets flags appropriately.
-// It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		sentry.CaptureException(err)
-		logger.Errors(err)
-	}
-	// print log stack
-	logger.PrintLogs()
 }
 
 func checkLatestVersion() error {

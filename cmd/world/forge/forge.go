@@ -1,11 +1,10 @@
 package forge
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
@@ -56,6 +55,93 @@ var (
 	Env = "PROD"
 )
 
+var ForgeCmdPlugin struct {
+	Forge *ForgeCmd `cmd:"" group:"Tools:" help:"Manage your World Forge projects"`
+	Login *LoginCmd `cmd:"" group:"Additional Commands:" help:"Login to World Forge, creating a new account if necessary"`
+	User  *UserCmd  `cmd:"" group:"Additional Commands:" help:"Manage World Forge users"`
+}
+
+type ForgeCmd struct {
+	Organization *OrganizationCmd `cmd:"" alias:"org" help:"Manage your organizations"`
+	// Project      *ProjectCmd      `cmd:"" alias:"prj" help:"Manage your projects"`
+	//
+}
+
+type LoginCmd struct {
+}
+
+func (c *LoginCmd) Run() error {
+	return login(context.Background())
+}
+
+type OrganizationCmd struct {
+	Create *CreateOrganizationCmd `cmd:"" help:"Create a new organization"`
+	Switch *SwitchOrganizationCmd `cmd:"" help:"Switch to an organization"`
+	Update *UpdateOrganizationCmd `cmd:"" help:"Update your organization"`
+}
+
+type ProjectCmd struct {
+	Create *CreateProjectCmd `cmd:"" help:"Create a new project"`
+	Switch *SwitchProjectCmd `cmd:"" help:"Switch to a different project"`
+	Update *UpdateProjectCmd `cmd:"" help:"Update your project"`
+	Delete *DeleteProjectCmd `cmd:"" help:"Delete your project"`
+}
+
+type UserCmd struct {
+	Invite *InviteUserToOrganizationCmd     `cmd:"" help:"Invite a user to an organization"`
+	Role   *ChangeUserRoleInOrganizationCmd `cmd:"" help:"Change a user's role in an organization"`
+}
+
+type CreateOrganizationCmd struct {
+	Name      string `arg:"" optional:"" help:"The name of the organization"`
+	Slug      string `arg:"" optional:"" help:"The slug of the organization"`
+	AvatarURL string `arg:"" optional:"" type:"url" help:"The avatar URL of the organization"`
+}
+
+type SwitchOrganizationCmd struct {
+	Slug string `arg:"" optional:"" help:"The slug of the organization to switch to"`
+}
+
+type UpdateOrganizationCmd struct {
+	Name      string `arg:"" optional:"" help:"The new name of the organization"`
+	Slug      string `arg:"" optional:"" help:"The new slug of the organization"`
+	AvatarURL string `arg:"" optional:"" type:"url" help:"The new avatar URL of the organization"`
+}
+
+type CreateProjectCmd struct {
+	Name      string `arg:"" optional:"" help:"The name of the project"`
+	Slug      string `arg:"" optional:"" help:"The slug of the project"`
+	AvatarURL string `arg:"" optional:"" type:"url" help:"The avatar URL of the project"`
+}
+
+type SwitchProjectCmd struct {
+	Slug string `arg:"" optional:"" help:"The slug of the project to switch to"`
+}
+
+type UpdateProjectCmd struct {
+	Name      string `arg:"" optional:"" help:"The new name of the project"`
+	Slug      string `arg:"" optional:"" help:"The new slug of the project"`
+	AvatarURL string `arg:"" optional:"" type:"url" help:"The new avatar URL of the project"`
+}
+
+type DeleteProjectCmd struct {
+}
+
+type InviteUserToOrganizationCmd struct {
+	Email string `arg:"" help:"The email of the user to invite"`
+	Role  string `arg:"" help:"The role of the user to invite"`
+}
+
+type ChangeUserRoleInOrganizationCmd struct {
+	Email string `arg:"" help:"The email of the user to change the role of"`
+	Role  string `arg:"" help:"The new role of the user"`
+}
+
+func (c *ForgeCmd) Run() error {
+	return nil
+}
+
+/*
 var ForgeCmd = &cobra.Command{
 	Use:   "forge",
 	Short: "Manage and deploy your World Forge projects with ease",
@@ -118,7 +204,7 @@ var (
 		Use:   "organization",
 		Short: "Create and manage your development teams",
 		Long: `Organize your development teams and control project access.
-		
+
 This command helps you create, switch between, and manage organizations
 that serve as containers for your World Forge projects and team members.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -136,7 +222,7 @@ that serve as containers for your World Forge projects and team members.`,
 		Use:   "create",
 		Short: "Set up a new development team",
 		Long: `Create a new organization to manage your team and projects.
-		
+
 This command walks you through setting up a new organization with a unique name,
 slug, and avatar URL. Organizations serve as containers for your projects and team members.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -155,7 +241,7 @@ slug, and avatar URL. Organizations serve as containers for your projects and te
 		Use:   "switch",
 		Short: "Change your active development team",
 		Long: `Select a different organization as your active working context.
-		
+
 This command displays a list of all organizations you belong to and allows you
 to select one as your active context for subsequent commands. Projects and resources
 are organized within organizations.`,
@@ -226,7 +312,7 @@ var (
 		Use:   "project",
 		Short: "Create and manage your game projects",
 		Long: `Build and organize your World Engine game projects.
-		
+
 This command helps you create, switch between, and manage your game projects,
 providing a centralized way to handle your game's development lifecycle.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -247,7 +333,7 @@ providing a centralized way to handle your game's development lifecycle.`,
 		Use:   "switch",
 		Short: "Change your active game project",
 		Long: `Select a different project as your active working context.
-		
+
 This command displays a list of all projects in your current organization and allows you
 to select one as your active context for subsequent commands. All deployment and
 management operations will target this selected project.`,
@@ -272,7 +358,7 @@ management operations will target this selected project.`,
 		Use:   "create",
 		Short: "Set up a new game project",
 		Long: `Create a new World Engine game project with customized settings.
-		
+
 This command guides you through creating a new project with your desired configuration,
 including repository settings, deployment regions, notification integrations, and more.
 All settings can be updated later using the 'update' command.`,
@@ -292,7 +378,7 @@ All settings can be updated later using the 'update' command.`,
 		Use:   "delete",
 		Short: "Remove a game project from your organization",
 		Long: `Permanently delete a project from your organization.
-		
+
 This command allows you to remove a project that is no longer needed. You will be
 prompted to confirm the deletion to prevent accidental removal of important projects.
 This action cannot be undone.`,
@@ -308,8 +394,8 @@ This action cannot be undone.`,
 		Use:   "update",
 		Short: "Modify your existing game project settings",
 		Long: `Update configuration settings for your current game project.
-		
-This command allows you to modify various aspects of your project including name, 
+
+This command allows you to modify various aspects of your project including name,
 repository settings, deployment regions, notification integrations, and more. You'll
 be guided through each setting with the option to keep existing values.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -327,7 +413,7 @@ var (
 		Use:   "deploy",
 		Short: "Launch your game project to the cloud",
 		Long: `Deploy your World Engine game project to production servers.
-		
+
 This command builds and deploys your game to the selected regions, making it
 available for players. Use the --force flag to restart a deployment if one
 is already in progress.`,
@@ -352,7 +438,7 @@ is already in progress.`,
 		Use:   "destroy",
 		Short: "Shut down your deployed game services",
 		Long: `Remove your game project's deployed infrastructure from the cloud.
-		
+
 This command terminates all running instances of your game in the cloud, freeing up
 resources. Your project configuration remains intact, allowing you to redeploy later
 if needed.`,
@@ -369,7 +455,7 @@ if needed.`,
 		Use:   "reset",
 		Short: "Restart your game project with a clean state",
 		Long: `Reset your deployed game project to its initial state.
-		
+
 This command clears all game state data while keeping your deployment running,
 allowing you to start fresh without redeploying the entire infrastructure.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -385,7 +471,7 @@ allowing you to start fresh without redeploying the entire infrastructure.`,
 		Use:   "status",
 		Short: "Check your game project's deployment status",
 		Long: `View the current state of your deployed game project.
-		
+
 This command shows detailed information about your project's deployment status,
 including running instances, regions, and any ongoing deployment operations.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -401,7 +487,7 @@ including running instances, regions, and any ongoing deployment operations.`,
 		Use:   "promote",
 		Short: "Move your game from development to production",
 		Long: `Promote your game project from development to production environment.
-		
+
 This command transitions your game from a development environment to production,
 making it ready for a wider audience. This process ensures your game is deployed
 with production-grade infrastructure and settings.`,
@@ -437,6 +523,7 @@ allowing you to monitor application behavior and troubleshoot issues in real-tim
 		},
 	}
 )
+*/
 
 func InitForgeBase(env string) {
 	// Set urls based on env
@@ -470,44 +557,44 @@ func InitForgeBase(env string) {
 
 func InitForgeCmds() {
 	// Add organization commands
-	organizationCmd.AddCommand(createOrganizationCmd)
-	organizationCmd.AddCommand(switchOrganizationCmd)
-	ForgeCmd.AddCommand(organizationCmd)
+	/*	organizationCmd.AddCommand(createOrganizationCmd)
+		organizationCmd.AddCommand(switchOrganizationCmd)
+		ForgeCmd.AddCommand(organizationCmd)
 
-	// Add user commands
-	userCmd.AddCommand(inviteUserToOrganizationCmd)
-	userCmd.AddCommand(changeUserRoleInOrganizationCmd)
-	userCmd.AddCommand(updateUserCmd)
+		// Add user commands
+		userCmd.AddCommand(inviteUserToOrganizationCmd)
+		userCmd.AddCommand(changeUserRoleInOrganizationCmd)
+		userCmd.AddCommand(updateUserCmd)
 
-	// Add project commands
-	projectCmd.AddCommand(createProjectCmd)
-	projectCmd.AddCommand(switchProjectCmd)
-	projectCmd.AddCommand(deleteProjectCmd)
-	projectCmd.AddCommand(updateProjectCmd)
-	ForgeCmd.AddCommand(projectCmd)
+		// Add project commands
+		projectCmd.AddCommand(createProjectCmd)
+		projectCmd.AddCommand(switchProjectCmd)
+		projectCmd.AddCommand(deleteProjectCmd)
+		projectCmd.AddCommand(updateProjectCmd)
+		ForgeCmd.AddCommand(projectCmd)
 
-	// Add deployment commands
-	deployCmd.Flags().Bool("force", false,
-		"Start the deploy even if one is currently running. Cancels current running deploy.")
+		// Add deployment commands
+		deployCmd.Flags().Bool("force", false,
+			"Start the deploy even if one is currently running. Cancels current running deploy.")
 
-	logsCmd.Flags().String("region", "", "The region to tail logs for.")
-	logsCmd.Flags().String("env", "", "The environment to tail logs for.")
+		logsCmd.Flags().String("region", "", "The region to tail logs for.")
+		logsCmd.Flags().String("env", "", "The environment to tail logs for.") */
 }
 
 func AddCommands(rootCmd *cobra.Command) {
 	// Add login command  `world login`
-	rootCmd.AddCommand(loginCmd)
+	/*	rootCmd.AddCommand(loginCmd)
 
-	// deployment and status commands
-	rootCmd.AddCommand(deployCmd)
-	rootCmd.AddCommand(destroyCmd)
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(promoteCmd)
-	rootCmd.AddCommand(resetCmd)
-	rootCmd.AddCommand(logsCmd)
-	// user commands
-	rootCmd.AddCommand(userCmd)
+		// deployment and status commands
+		rootCmd.AddCommand(deployCmd)
+		rootCmd.AddCommand(destroyCmd)
+		rootCmd.AddCommand(statusCmd)
+		rootCmd.AddCommand(promoteCmd)
+		rootCmd.AddCommand(resetCmd)
+		rootCmd.AddCommand(logsCmd)
+		// user commands
+		rootCmd.AddCommand(userCmd)
 
-	// add all the other 'forge' commands
-	rootCmd.AddCommand(ForgeCmd)
+		// add all the other 'forge' commands
+		rootCmd.AddCommand(ForgeCmd) */
 }

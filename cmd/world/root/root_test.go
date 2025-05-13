@@ -9,39 +9,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 )
 
-var (
-	// testEnv holds the global test environment.
-	testEnv *testEnvironment
-)
-
-// testEnvironment holds the test environment setup.
-type testEnvironment struct {
-	rootCmd *cobra.Command
-}
-
 // setupTestEnv initializes the test environment.
-func setupTestEnv() *testEnvironment {
+func setupTestEnv() {
 	// Initialize all commands
 	cardinal.Init()
 	evm.Init()
-	CmdInit()
-
-	return &testEnvironment{
-		rootCmd: rootCmd,
-	}
 }
 
 // TestMain runs before all tests and handles setup/teardown.
 func TestMain(m *testing.M) {
 	// Setup
-	testEnv = setupTestEnv()
+	setupTestEnv()
 
 	// Run tests
 	code := m.Run()
@@ -52,27 +37,31 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
+// outputFromCmd runs the command with the given arguments and returns the output of the command along with
 // any errors.
-func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
+func outputFromCmd(parser *kong.Kong, args []string) ([]string, error) {
 	stdOut := &bytes.Buffer{}
 	stdErr := &bytes.Buffer{}
-	cobra.SetOut(stdOut)
+
+	ctx, err := parser.Parse(args)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to parse command")
+	}
+
+	// Capture stdout/stderr
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	os.Stdout = os.NewFile(1, "stdout")
+	os.Stderr = os.NewFile(2, "stderr")
 	defer func() {
-		cobra.SetOut(nil)
-	}()
-	cobra.SetErr(stdErr)
-	defer func() {
-		cobra.SetErr(nil)
-	}()
-	cobra.SetArgs(strings.Split(cmd, " "))
-	defer func() {
-		cobra.SetArgs(nil)
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
 	}()
 
-	if err := cobra.Execute(); err != nil {
-		return nil, eris.Errorf("root command failed with: %v", err)
+	if err := ctx.Run(); err != nil {
+		return nil, eris.Wrap(err, "command failed")
 	}
+
 	lines := strings.Split(stdOut.String(), "\n")
 	errorStr := stdErr.String()
 	if len(errorStr) > 0 {
@@ -83,7 +72,7 @@ func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
 }
 
 func TestSubcommandsHaveHelpText(t *testing.T) {
-	lines, err := outputFromCmd(testEnv.rootCmd, "help")
+	lines, err := outputFromCmd(testEnv.cli, []string{"--help"})
 	assert.NilError(t, err)
 	seenSubcommands := map[string]int{
 		"cardinal": 0,
@@ -107,7 +96,22 @@ func TestSubcommandsHaveHelpText(t *testing.T) {
 
 func TestExecuteDoctorCommand(t *testing.T) {
 	teaOut := &bytes.Buffer{}
-	_, err := outputFromCmd(getDoctorCmd(teaOut), "")
+
+	// Create a new Kong parser with our CLI struct
+	cli := &cli{
+		Doctor: &DoctorCmd{},
+	}
+
+	// Parse the command
+	parser, err := kong.New(cli)
+	assert.NilError(t, err)
+
+	// Execute the doctor command
+	ctx, err := parser.Parse([]string{"doctor"})
+	assert.NilError(t, err)
+
+	// Run the command
+	err = ctx.Run()
 	assert.NilError(t, err)
 
 	seenDependencies := map[string]int{
@@ -141,31 +145,43 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// Create Cardinal
 	gameDir := t.TempDir()
-
 	t.Chdir(gameDir)
 
-	// set tea output to variable
-	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
+	// Create a new Kong parser with our CLI struct
+	cli := &cli{
+		Create: &CreateCmd{},
+	}
 
-	// checkout the repo
-	sgtDir := gameDir + "/sgt"
-	createCmd.SetArgs([]string{sgtDir})
-	err = createCmd.Execute()
+	// Parse and execute the create command
+	parser, err := kong.New(cli)
+	assert.NilError(t, err)
+
+	ctx, err := parser.Parse([]string{"create", gameDir + "/sgt"})
+	assert.NilError(t, err)
+
+	err = ctx.Run()
 	assert.NilError(t, err)
 
 	// Change dir
-	t.Chdir(sgtDir)
+	t.Chdir(gameDir + "/sgt")
 
 	// Start cardinal
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
-	err = testEnv.rootCmd.Execute()
+	cli = &cli{}
+	parser, err = kong.New(cli)
+	assert.NilError(t, err)
+
+	ctx, err = parser.Parse([]string{"cardinal", "start", "--detach", "--editor=false"})
+	assert.NilError(t, err)
+
+	err = ctx.Run()
 	assert.NilError(t, err)
 
 	defer func() {
 		// Purge cardinal
-		testEnv.rootCmd.SetArgs([]string{"cardinal", "purge"})
-		err = testEnv.rootCmd.Execute()
+		ctx, err = parser.Parse([]string{"cardinal", "purge"})
+		assert.NilError(t, err)
+
+		err = ctx.Run()
 		assert.NilError(t, err)
 	}()
 
@@ -173,16 +189,20 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Restart cardinal
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
-	err = testEnv.rootCmd.Execute()
+	ctx, err = parser.Parse([]string{"cardinal", "restart", "--detach"})
+	assert.NilError(t, err)
+
+	err = ctx.Run()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal is healthy
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Stop cardinal
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "stop"})
-	err = testEnv.rootCmd.Execute()
+	ctx, err = parser.Parse([]string{"cardinal", "stop"})
+	assert.NilError(t, err)
+
+	err = ctx.Run()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal shutdowns
@@ -196,24 +216,34 @@ func TestDev(t *testing.T) {
 	// Change working directory
 	t.Chdir(gameDir)
 
-	// set tea output to variable
-	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
+	// Create a new Kong parser with our CLI struct
+	cli := &cli{
+		Create: &CreateCmd{},
+	}
 
-	// checkout the repo
-	sgtDir := gameDir + "/sgt"
-	createCmd.SetArgs([]string{sgtDir})
-	err := createCmd.Execute()
+	// Parse and execute the create command
+	parser, err := kong.New(cli)
+	assert.NilError(t, err)
+
+	ctx, err := parser.Parse([]string{"create", gameDir + "/sgt"})
+	assert.NilError(t, err)
+
+	err = ctx.Run()
 	assert.NilError(t, err)
 
 	// Start cardinal dev
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
+	cli = &cli{}
+	parser, err = kong.New(cli)
+	assert.NilError(t, err)
+
+	ctx, err = parser.Parse([]string{"cardinal", "dev", "--editor=false"})
+	assert.NilError(t, err)
+
 	go func() {
-		err := testEnv.rootCmd.ExecuteContext(ctx)
+		err := ctx.Run()
 		assert.NilError(t, err)
 	}()
 
@@ -300,23 +330,34 @@ func TestEVMStart(t *testing.T) {
 	// Change to temp dir (auto-resets after test)
 	t.Chdir(gameDir)
 
-	// set tea output to variable
-	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
+	// Create a new Kong parser with our CLI struct
+	cli := &cli{
+		Create: &CreateCmd{},
+	}
 
-	// checkout the repo
-	sgtDir := gameDir + "/sgt"
-	createCmd.SetArgs([]string{sgtDir})
-	err := createCmd.Execute()
+	// Parse and execute the create command
+	parser, err := kong.New(cli)
 	assert.NilError(t, err)
 
-	// Start evn dev
+	ctx, err := parser.Parse([]string{"create", gameDir + "/sgt"})
+	assert.NilError(t, err)
+
+	err = ctx.Run()
+	assert.NilError(t, err)
+
+	// Start evm dev
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	testEnv.rootCmd.SetArgs([]string{"evm", "start", "--dev"})
+
+	cli = &cli{}
+	parser, err = kong.New(cli)
+	assert.NilError(t, err)
+
+	ctx, err = parser.Parse([]string{"evm", "start", "--dev"})
+	assert.NilError(t, err)
+
 	go func() {
-		err := testEnv.rootCmd.ExecuteContext(ctx)
+		err := ctx.Run()
 		assert.NilError(t, err)
 	}()
 
