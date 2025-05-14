@@ -1,11 +1,24 @@
 package cardinal
 
 import (
-	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/docker"
+	// "pkg.world.dev/world-cli/common/docker"
 )
 
+type RestartCmd struct {
+	Detach bool `flag:"" help:"Run in detached mode"`
+	Debug  bool `flag:"" help:"Enable debugging"`
+}
+
+func (c *RestartCmd) Run() error {
+	_, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/*
 // restartCmd restarts your Cardinal game shard stack.
 // Usage: `world cardinal restart`.
 var restartCmd = &cobra.Command{
@@ -45,11 +58,4 @@ This command will rebuild and restart the following Docker services:
 		return nil
 	},
 }
-
-/////////////////
-// Cobra Setup //
-/////////////////
-
-func restartCmdInit() {
-	restartCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
-}
+*/

@@ -10,6 +10,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/config"
@@ -80,16 +81,17 @@ func main() {
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
 	// Initialize packages
-	root.CLI.Plugins = kong.Plugins{&forge.ForgeCmdPlugin}
-
-	cardinal.Init()
-	forge.InitForgeCmds()
+	root.CLI.Plugins = kong.Plugins{&forge.ForgeCmdPlugin, &evm.EvmCmdPlugin, &cardinal.CardinalCmdPlugin}
 
 	ctx := kong.Parse(
 		&root.CLI,
 		kong.Name("world"),
 		kong.Description("World CLI: Your complete toolkit for World Engine development"),
 		kong.UsageOnError(),
+		kong.ConfigureHelp(kong.HelpOptions{
+			Compact: true,
+			Summary: true,
+		}),
 	)
 	err = ctx.Run()
 	if err != nil {

@@ -2,13 +2,14 @@ package cardinal
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
-	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
@@ -37,154 +38,112 @@ var (
 	ErrGracefulExit = eris.New("Process gracefully exited")
 )
 
-// Usage: `world cardinal start`.
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Launch your Cardinal game shard environment",
-	Long: `Launch your complete Cardinal game shard environment with a single command.
+type StartCmd struct {
+	Build      bool   `flag:"" help:"Rebuild Docker images before starting"`
+	Detach     bool   `flag:"" help:"Run in detached mode"`
+	LogLevel   string `flag:"" help:"Set the log level for Cardinal"`
+	Debug      bool   `flag:"" help:"Enable delve debugging"`
+	Telemetry  bool   `flag:"" help:"Enable tracing, metrics, and profiling"`
+	Editor     bool   `flag:"" help:"Run Cardinal Editor, useful for prototyping and debugging"`
+	EditorPort string `flag:"" default:"auto" help:"Port for Cardinal Editor"`
+}
 
-This will start the following Docker services and their dependencies:
-- Cardinal (Game shard) - Your core game logic engine
-- Nakama (Relay) - Handles multiplayer and backend services
-- Redis (Cardinal dependency) - In-memory data store`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig()
+func (c *StartCmd) Run() error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+    cfg.Build = c.Build
+    cfg.Debug = c.Debug
+    cfg.Detach = c.Detach
+    cfg.Telemetry = c.Telemetry
+
+	if c.LogLevel != "" {
+		zeroLogLevel, err := zerolog.ParseLevel(c.LogLevel)
 		if err != nil {
-			return err
+			return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels())
 		}
-		// Parameters set at the command line overwrite toml values
-		if err := replaceBoolWithFlag(cmd, flagBuild, &cfg.Build); err != nil {
-			return err
-		}
+		cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
+	}
 
-		if err := replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
-			return err
-		}
+	if val, exists := cfg.DockerEnv[DockerCardinalEnvLogLevel]; !exists || val == "" {
+		// Set default log level to 'info' if log level is not set
+		cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.InfoLevel.String()
+	} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil {
+		// make sure the log level is valid when the flag is not set and using env var from config
+		// Error when CARDINAL_LOG_LEVEL is not a valid log level
+		return eris.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
+			DockerCardinalEnvLogLevel, validLogLevels)
+	}
 
-		if err := replaceBoolWithFlag(cmd, flagDetach, &cfg.Detach); err != nil {
-			return err
-		}
+	// Print out header
+	printer.Infoln(style.CLIHeader("Cardinal", ""))
 
-		if err := replaceBoolWithFlag(cmd, flagTelemetry, &cfg.Telemetry); err != nil {
-			return err
-		}
-		cfg.Timeout = -1
-
-		// Replace cardinal log level using flag value if flag is set
-		logLevel, err := cmd.Flags().GetString(flagLogLevel)
-		if err != nil {
-			return err
-		}
-
-		if logLevel != "" {
-			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
-			if err != nil {
-				return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels())
-			}
-			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
-		}
-
-		if val, exists := cfg.DockerEnv[DockerCardinalEnvLogLevel]; !exists || val == "" {
-			// Set default log level to 'info' if log level is not set
-			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.InfoLevel.String()
-		} else if _, err := zerolog.ParseLevel(cfg.DockerEnv[DockerCardinalEnvLogLevel]); err != nil {
-			// make sure the log level is valid when the flag is not set and using env var from config
-			// Error when CARDINAL_LOG_LEVEL is not a valid log level
-			return eris.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
-				DockerCardinalEnvLogLevel, validLogLevels())
-		}
-
-		runEditor, err := cmd.Flags().GetBool(flagEditor)
-		if err != nil {
-			return err
-		}
-
-		// Print out header
-		printer.Infoln(style.CLIHeader("Cardinal", ""))
-
-		// Print out service addresses
-		printServiceAddress("Redis", cfg.DockerEnv["REDIS_ADDRESS"])
-		// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
-		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
-		var editorPort int
-		if runEditor {
+	// Print out service addresses
+	printServiceAddress("Redis", cfg.DockerEnv["REDIS_ADDRESS"])
+	// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
+	printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
+	var editorPort int
+	if c.Editor {
+		if c.EditorPort == "auto" {
 			editorPort, err = common.FindUnusedPort(cePortStart, cePortEnd)
 			if err != nil {
 				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
 			}
-			printServiceAddress("Cardinal Editor", fmt.Sprintf("localhost:%d", editorPort))
 		} else {
-			printServiceAddress("Cardinal Editor", "[disabled]")
-		}
-		printer.NewLine(1)
-
-		printer.Info("Press <ENTER> to continue...")
-		_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
-
-		printer.NewLine(1)
-		printer.Infoln("Starting Cardinal game shard...")
-		printer.Infoln("This may take a few minutes to rebuild the Docker images.")
-		printer.Infoln("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
-
-		group, ctx := errgroup.WithContext(cmd.Context())
-
-		// Create docker client
-		dockerClient, err := docker.NewClient(cfg)
-		if err != nil {
-			return err
-		}
-		defer dockerClient.Close()
-
-		services := getServices(cfg)
-
-		// Start the World Engine stack
-		group.Go(func() error {
-			if err := dockerClient.Start(ctx, services...); err != nil {
-				return eris.Wrap(err, "Encountered an error with Docker")
+			editorPort, err = strconv.Atoi(c.EditorPort)
+			if err != nil {
+				return eris.Wrap(err, "Failed to convert EditorPort to int")
 			}
-			return eris.Wrap(ErrGracefulExit, "Stack terminated")
-		})
-
-		// Start Cardinal Editor is flag is set to true
-		if runEditor {
-			group.Go(func() error {
-				if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, editorPort); err != nil {
-					return eris.Wrap(err, "Encountered an error with Cardinal Editor")
-				}
-				return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
-			})
 		}
-
-		// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
-		if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {
-			return err
-		}
-
-		return nil
-	},
-}
-
-func startCmdInit() {
-	registerEditorFlag(startCmd, true)
-	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
-	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
-	startCmd.Flags().String(flagLogLevel, "",
-		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels()))
-	startCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
-	startCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
-}
-
-// replaceBoolWithFlag overwrites the contents of vale with the contents of the given flag. If the flag
-// has not been set, value will remain unchanged.
-func replaceBoolWithFlag(cmd *cobra.Command, flagName string, value *bool) error {
-	if !cmd.Flags().Changed(flagName) {
-		return nil
+		printServiceAddress("Cardinal Editor", fmt.Sprintf("localhost:%d", editorPort))
+	} else {
+		printServiceAddress("Cardinal Editor", "[disabled]")
 	}
-	newVal, err := cmd.Flags().GetBool(flagName)
+	printer.NewLine(1)
+
+	printer.Info("Press <ENTER> to continue...")
+	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
+
+	printer.NewLine(1)
+	printer.Infoln("Starting Cardinal game shard...")
+	printer.Infoln("This may take a few minutes to rebuild the Docker images.")
+	printer.Infoln("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
+
+	group, ctx := errgroup.WithContext(context.Background())
+
+	// Create docker client
+	dockerClient, err := docker.NewClient(cfg)
 	if err != nil {
 		return err
 	}
-	*value = newVal
+	defer dockerClient.Close()
+
+	services := getServices(cfg)
+
+	// Start the World Engine stack
+	group.Go(func() error {
+		if err := dockerClient.Start(ctx, services...); err != nil {
+			return eris.Wrap(err, "Encountered an error with Docker")
+		}
+		return eris.Wrap(ErrGracefulExit, "Stack terminated")
+	})
+
+	// Start Cardinal Editor is flag is set to true
+	if c.Editor {
+		group.Go(func() error {
+			if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, editorPort); err != nil {
+				return eris.Wrap(err, "Encountered an error with Cardinal Editor")
+			}
+			return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
+		})
+	}
+
+	// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
+	if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {
+		return err
+	}
+
 	return nil
 }
 

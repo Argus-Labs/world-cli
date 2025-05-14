@@ -22,6 +22,21 @@ const (
 	flagRegToken = "regtoken"
 )
 
+type BuildCmd struct {
+	LogLevel  string `flag:"" help:"Set the log level for Cardinal"`
+	Debug     bool   `flag:"" help:"Enable debugging"`
+	Telemetry bool   `flag:"" help:"Enable tracing, metrics, and profiling"`
+	Push      string `flag:"" help:"Push your cardinal image to a given image repository"`
+}
+
+func (c *BuildCmd) Run() error {
+	_, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 /////////////////
 // Cobra Setup //
 /////////////////
@@ -41,13 +56,13 @@ optimized for deployment. You can optionally push the image to a registry with t
 			return err
 		}
 		// Parameters set at the command line overwrite toml values
-		if err := replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
-			return err
-		}
+		// if err := replaceBoolWithFlag(cmd, flagDebug, &cfg.Debug); err != nil {
+		// 	return err
+		// }
 
-		if err := replaceBoolWithFlag(cmd, flagTelemetry, &cfg.Telemetry); err != nil {
-			return err
-		}
+		// if err := replaceBoolWithFlag(cmd, flagTelemetry, &cfg.Telemetry); err != nil {
+		// 	return err
+		// }
 		cfg.Timeout = -1
 
 		// Replace cardinal log level using flag value if flag is set
@@ -129,7 +144,7 @@ optimized for deployment. You can optionally push the image to a registry with t
 }
 
 func buildCmdInit() {
-	registerEditorFlag(buildCmd, true)
+	//registerEditorFlag(buildCmd, true)
 	buildCmd.Flags().String(flagLogLevel, "",
 		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels()))
 	buildCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")

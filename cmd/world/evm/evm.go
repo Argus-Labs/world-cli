@@ -1,11 +1,7 @@
 package evm
 
 import (
-	"github.com/spf13/cobra"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/teacmd"
-	"pkg.world.dev/world-cli/tea/style"
 )
 
 const (
@@ -18,22 +14,13 @@ const (
 	daService = teacmd.DockerServiceDA
 )
 
-var BaseCmd = &cobra.Command{
-	Use:     "evm",
-	Short:   "Streamlined tools for EVM blockchain integration",
-	Long:    style.CLIHeader("World CLI — EVM", "Manage your EVM blockchain integration with ease"),
-	GroupID: "core",
+var EvmCmdPlugin struct {
+	Evm *EvmCmd `cmd:"" group:"EVM Commands:" help:"Manage your EVM blockchain environment"`
 }
 
-func registerCommands() {
-	// Register subcommands - `world evm [subcommand]`
-	BaseCmd.AddCommand(startCmd, stopCmd)
-	registerConfigAndVerboseFlags(startCmd, stopCmd)
-}
+type EvmCmd struct {
+	Config string `flag:"" help:"A TOML config file"`
 
-func registerConfigAndVerboseFlags(cmds ...*cobra.Command) {
-	for _, cmd := range cmds {
-		config.AddConfigFlag(cmd)
-		logger.AddVerboseFlag(cmd)
-	}
+	Start *StartCmd `cmd:"" group:"Management Commands:" help:"Launch your EVM blockchain environment"`
+	Stop  *StopCmd  `cmd:"" group:"Management Commands:" help:"Shut down your EVM blockchain environment"`
 }

@@ -168,9 +168,9 @@ type OrganizationCmd struct {
 }
 
 type CreateOrganizationCmd struct {
-	Name      string `arg:"" optional:"" help:"The name of the organization"`
-	Slug      string `arg:"" optional:"" help:"The slug of the organization"`
-	AvatarURL string `arg:"" optional:"" type:"url" help:"The avatar URL of the organization"`
+	Name      string `flag:"" help:"The name of the organization"`
+	Slug      string `flag:"" help:"The slug of the organization"`
+	AvatarURL string `flag:"" type:"url" help:"The avatar URL of the organization"`
 }
 
 func (c *CreateOrganizationCmd) Run() error {
@@ -184,7 +184,7 @@ func (c *CreateOrganizationCmd) Run() error {
 }
 
 type SwitchOrganizationCmd struct {
-	Slug string `arg:"" optional:"" help:"The slug of the organization to switch to"`
+	Slug string `flag:"" help:"The slug of the organization to switch to"`
 }
 
 func (c *SwitchOrganizationCmd) Run() error {
@@ -209,9 +209,9 @@ type ProjectCmd struct {
 }
 
 type CreateProjectCmd struct {
-	Name      string `arg:"" optional:"" help:"The name of the project"`
-	Slug      string `arg:"" optional:"" help:"The slug of the project"`
-	AvatarURL string `arg:"" optional:"" type:"url" help:"The avatar URL of the project"`
+	Name      string `flag:"" help:"The name of the project"`
+	Slug      string `flag:"" help:"The slug of the project"`
+	AvatarURL string `flag:"" type:"url" help:"The avatar URL of the project"`
 }
 
 func (c *CreateProjectCmd) Run() error {
@@ -225,7 +225,7 @@ func (c *CreateProjectCmd) Run() error {
 }
 
 type SwitchProjectCmd struct {
-	Slug string `arg:"" optional:"" help:"The slug of the project to switch to"`
+	Slug string `flag:"" help:"The slug of the project to switch to"`
 }
 
 func (c *SwitchProjectCmd) Run() error {
@@ -243,9 +243,9 @@ func (c *SwitchProjectCmd) Run() error {
 }
 
 type UpdateProjectCmd struct {
-	Name      string `arg:"" optional:"" help:"The new name of the project"`
-	Slug      string `arg:"" optional:"" help:"The new slug of the project"`
-	AvatarURL string `arg:"" optional:"" type:"url" help:"The new avatar URL of the project"`
+	Name      string `flag:"" help:"The new name of the project"`
+	Slug      string `flag:"" help:"The new slug of the project"`
+	AvatarURL string `flag:"" type:"url" help:"The new avatar URL of the project"`
 }
 
 func (c *UpdateProjectCmd) Run() error {
@@ -271,8 +271,8 @@ type UserCmd struct {
 }
 
 type InviteUserToOrganizationCmd struct {
-	Email string `arg:"" help:"The email of the user to invite"`
-	Role  string `arg:"" help:"The role of the user to invite"`
+	Email string `flag:"" help:"The email of the user to invite"`
+	Role  string `flag:"" help:"The role of the user to invite"`
 }
 
 func (c *InviteUserToOrganizationCmd) Run() error {
@@ -281,8 +281,8 @@ func (c *InviteUserToOrganizationCmd) Run() error {
 }
 
 type ChangeUserRoleInOrganizationCmd struct {
-	Email string `arg:"" help:"The email of the user to change the role of"`
-	Role  string `arg:"" help:"The new role of the user"`
+	Email string `flag:"" help:"The email of the user to change the role of"`
+	Role  string `flag:"" help:"The new role of the user"`
 }
 
 func (c *ChangeUserRoleInOrganizationCmd) Run() error {
@@ -291,41 +291,14 @@ func (c *ChangeUserRoleInOrganizationCmd) Run() error {
 }
 
 type UpdateUserCmd struct {
-	Email string `arg:"" help:"The email of the user to update"`
-	Role  string `arg:"" help:"The new role of the user"`
+	Email string `flag:"" help:"The email of the user to update"`
+	Role  string `flag:"" help:"The new role of the user"`
 }
 
 func (c *UpdateUserCmd) Run() error {
 	// TODO: pass in email, role if provided
 	return updateUser(context.Background())
 }
-
-/*
-
-	logsCmd = &cobra.Command{
-		Use:   "logs",
-		Short: "Tail logs for a project",
-		Long: `Stream logs from your deployed project in real-time.
-
-This command connects to your project's deployment and displays logs as they are generated,
-allowing you to monitor application behavior and troubleshoot issues in real-time.`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !checkLogin() {
-				return nil
-			}
-			region, err := cmd.Flags().GetString("region")
-			if err != nil {
-				region = ""
-			}
-			env, err := cmd.Flags().GetString("env")
-			if err != nil {
-				env = ""
-			}
-			return tailLogs(cmd.Context(), region, env)
-		},
-	}
-)
-*/
 
 func InitForgeBase(env string) {
 	// Set urls based on env
@@ -356,47 +329,3 @@ func InitForgeBase(env string) {
 	// Set user URL
 	userURL = fmt.Sprintf("%s/api/user", baseURL)
 }
-
-func InitForgeCmds() {
-	// Add organization commands
-	/*	organizationCmd.AddCommand(createOrganizationCmd)
-		organizationCmd.AddCommand(switchOrganizationCmd)
-		ForgeCmd.AddCommand(organizationCmd)
-
-		// Add user commands
-		userCmd.AddCommand(inviteUserToOrganizationCmd)
-		userCmd.AddCommand(changeUserRoleInOrganizationCmd)
-		userCmd.AddCommand(updateUserCmd)
-
-		// Add project commands
-		projectCmd.AddCommand(createProjectCmd)
-		projectCmd.AddCommand(switchProjectCmd)
-		projectCmd.AddCommand(deleteProjectCmd)
-		projectCmd.AddCommand(updateProjectCmd)
-		ForgeCmd.AddCommand(projectCmd)
-
-		// Add deployment commands
-		deployCmd.Flags().Bool("force", false,
-			"Start the deploy even if one is currently running. Cancels current running deploy.")
-
-		logsCmd.Flags().String("region", "", "The region to tail logs for.")
-		logsCmd.Flags().String("env", "", "The environment to tail logs for.") */
-}
-
-//func AddCommands(rootCmd *cobra.Command) {
-// Add login command  `world login`
-/*	rootCmd.AddCommand(loginCmd)
-
-	// deployment and status commands
-	rootCmd.AddCommand(deployCmd)
-	rootCmd.AddCommand(destroyCmd)
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(promoteCmd)
-	rootCmd.AddCommand(resetCmd)
-	rootCmd.AddCommand(logsCmd)
-	// user commands
-	rootCmd.AddCommand(userCmd)
-
-	// add all the other 'forge' commands
-	rootCmd.AddCommand(ForgeCmd) */
-//}

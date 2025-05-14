@@ -31,6 +31,7 @@ var CLI struct {
 	kong.Plugins             // put this here so tools will be in the right place
 	Version      *VersionCmd `cmd:"" group:"Additional Commands:" help:"Show the version of the CLI"`
 	// Help    *root.HelpCmd    `cmd:"" default:"1" group:"Additional Commands:" help:"Show more detailed help"`
+	Verbose bool `flag:"" short:"v" help:"Enable World CLI Debug logs"`
 }
 
 type HelpCmd struct {

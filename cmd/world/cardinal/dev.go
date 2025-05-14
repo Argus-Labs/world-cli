@@ -36,6 +36,18 @@ const (
 	flagPrettyLog = "pretty-log"
 )
 
+type DevCmd struct {
+	Editor bool `flag:"" help:"Enable Cardinal Editor"`
+}
+
+func (c *DevCmd) Run() error {
+	_, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Usage: `world cardinal dev`.
 var devCmd = &cobra.Command{
 	Use:   "dev",
@@ -118,7 +130,7 @@ This mode runs Cardinal directly from your source code, providing:
 /////////////////
 
 func devCmdInit() {
-	registerEditorFlag(devCmd, true)
+	//registerEditorFlag(devCmd, true)
 	devCmd.Flags().Bool(flagPrettyLog, true, "Run Cardinal with pretty logging")
 }
 

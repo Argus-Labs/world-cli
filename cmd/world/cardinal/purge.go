@@ -8,9 +8,16 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-/////////////////
-// Cobra Setup //
-/////////////////
+type PurgeCmd struct {
+}
+
+func (c *PurgeCmd) Run() error {
+	_, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // purgeCmd stops and resets the state of your Cardinal game shard.
 // Usage: `world cardinal purge`.

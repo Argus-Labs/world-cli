@@ -8,9 +8,16 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-/////////////////
-// Cobra Setup //
-/////////////////
+type StopCmd struct {
+}
+
+func (c *StopCmd) Run() error {
+	_, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // stopCmd stops your Cardinal game shard stack.
 // Usage: `world cardinal stop`.
