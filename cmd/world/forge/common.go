@@ -30,12 +30,12 @@ import (
 
 const (
 	jitterDivisor  time.Duration = 2 // Divisor used to calculate maximum jitter range
-	RetryBaseDelay time.Duration = 500 * time.Millisecond
+	RetryBaseDelay time.Duration = 100 * time.Millisecond
+	requestTimeout time.Duration = 5 * time.Second
 )
 
 var (
-	requestTimeout = 5 * time.Second
-	httpClient     = &http.Client{
+	httpClient = &http.Client{
 		Timeout: requestTimeout,
 	}
 	// Pre-compiled regex for merging multiple underscores.

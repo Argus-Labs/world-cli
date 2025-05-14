@@ -33,16 +33,6 @@ const (
 	versionMapURL = "https://raw.githubusercontent.com/Argus-Labs/cardinal-editor/main/version_map.json"
 )
 
-var (
-	// This is the default value for fallback if cannot get version from repository.
-	defaultCardinalVersionMap = map[string]string{
-		"v1.2.2-beta": "v0.1.0",
-		"v1.2.3-beta": "v0.1.0",
-		"v1.2.4-beta": "v0.3.1",
-		"v1.2.5-beta": "v0.3.1",
-	}
-)
-
 type Asset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
@@ -52,12 +42,23 @@ type Release struct {
 	Assets []Asset `json:"assets"`
 }
 
+// getDefaultCardinalVersionMap returns the default version map for Cardinal Editor.
+// This is used when the version map cannot be fetched from the repository.
+func getDefaultCardinalVersionMap() map[string]string {
+	return map[string]string{
+		"v1.2.2-beta": "v0.1.0",
+		"v1.2.3-beta": "v0.1.0",
+		"v1.2.4-beta": "v0.3.1",
+		"v1.2.5-beta": "v0.3.1",
+	}
+}
+
 func SetupCardinalEditor(rootDir string, gameDir string) error {
 	// Get the version map
 	cardinalVersionMap, err := getVersionMap(versionMapURL)
 	if err != nil {
 		logger.Warn("Failed to get version map, using default version map")
-		cardinalVersionMap = defaultCardinalVersionMap
+		cardinalVersionMap = getDefaultCardinalVersionMap()
 	}
 
 	// Check version

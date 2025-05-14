@@ -8,7 +8,8 @@ import (
 	"pkg.world.dev/world-cli/common/config"
 )
 
-var containerCmd = `sh -s <<EOF
+// containerCmd is a static template used immutably within Prometheus().
+const containerCmd = `sh -s <<EOF
 cat > ./prometheus.yaml <<EON
 global:
   scrape_interval:     __NAKAMA_METRICS_INTERVAL__s
@@ -36,15 +37,17 @@ func Prometheus(cfg *config.Config) Service {
 
 	exposedPorts := []int{9090}
 
-	containerCmd = strings.ReplaceAll(containerCmd, "__NAKAMA_CONTAINER__", getNakamaContainerName(cfg))
-	containerCmd = strings.ReplaceAll(containerCmd, "__NAKAMA_METRICS_INTERVAL__", nakamaMetricsInterval)
+	cmd := containerCmd
+
+	cmd = strings.ReplaceAll(cmd, "__NAKAMA_CONTAINER__", getNakamaContainerName(cfg))
+	cmd = strings.ReplaceAll(cmd, "__NAKAMA_METRICS_INTERVAL__", nakamaMetricsInterval)
 
 	return Service{
 		Name: getPrometheusContainerName(cfg),
 		Config: container.Config{
 			Image:      "prom/prometheus:v2.54.1",
 			Entrypoint: []string{"/bin/sh", "-c"},
-			Cmd:        []string{containerCmd},
+			Cmd:        []string{cmd},
 		},
 		HostConfig: container.HostConfig{
 			PortBindings: newPortMap(exposedPorts),

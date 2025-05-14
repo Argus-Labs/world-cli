@@ -21,15 +21,6 @@ const (
 	DeploymentStatusPassed = "passed"
 )
 
-var (
-	statusFailRegEx = regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
-	processTitle    = map[string]string{
-		DeploymentTypeDeploy:  "Deploying",
-		DeploymentTypeDestroy: "Destroying",
-		DeploymentTypeReset:   "Resetting",
-	}
-)
-
 type deploymentPreview struct {
 	OrgName        string   `json:"org_name"`
 	OrgSlug        string   `json:"org_slug"`
@@ -74,6 +65,12 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 	err := previewDeployment(ctx, deployType, organizationID, projectID)
 	if err != nil {
 		return eris.Wrap(err, "Failed to preview deployment")
+	}
+
+	processTitle := map[string]string{
+		DeploymentTypeDeploy:  "Deploying",
+		DeploymentTypeDestroy: "Destroying",
+		DeploymentTypeReset:   "Resetting",
 	}
 
 	// prompt user to confirm deployment
@@ -307,6 +304,8 @@ func status(ctx context.Context, cmdState *CommandState) error {
 	if !ok {
 		return eris.New("Failed to unmarshal health data")
 	}
+
+	statusFailRegEx := regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
 	for env, val := range envMap {
 		if !shouldShowHealth[env] {
 			continue

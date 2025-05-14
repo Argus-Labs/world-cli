@@ -34,18 +34,6 @@ const (
 )
 
 var (
-	// ValidLogLevels Valid log levels for zerolog.
-	validLogLevels = strings.Join([]string{
-		zerolog.TraceLevel.String(),
-		zerolog.DebugLevel.String(),
-		zerolog.InfoLevel.String(),
-		zerolog.WarnLevel.String(),
-		zerolog.ErrorLevel.String(),
-		zerolog.FatalLevel.String(),
-		zerolog.PanicLevel.String(),
-		zerolog.Disabled.String(),
-	}, ", ")
-
 	ErrGracefulExit = eris.New("Process gracefully exited")
 )
 
@@ -91,7 +79,7 @@ This will start the following Docker services and their dependencies:
 		if logLevel != "" {
 			zeroLogLevel, err := zerolog.ParseLevel(logLevel)
 			if err != nil {
-				return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels)
+				return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels())
 			}
 			cfg.DockerEnv[DockerCardinalEnvLogLevel] = zeroLogLevel.String()
 		}
@@ -103,7 +91,7 @@ This will start the following Docker services and their dependencies:
 			// make sure the log level is valid when the flag is not set and using env var from config
 			// Error when CARDINAL_LOG_LEVEL is not a valid log level
 			return eris.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
-				DockerCardinalEnvLogLevel, validLogLevels)
+				DockerCardinalEnvLogLevel, validLogLevels())
 		}
 
 		runEditor, err := cmd.Flags().GetBool(flagEditor)
@@ -181,7 +169,7 @@ func startCmdInit() {
 	startCmd.Flags().Bool(flagBuild, true, "Rebuild Docker images before starting")
 	startCmd.Flags().Bool(flagDetach, false, "Run in detached mode")
 	startCmd.Flags().String(flagLogLevel, "",
-		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels))
+		fmt.Sprintf("Set the log level for Cardinal. Must be one of (%v)", validLogLevels()))
 	startCmd.Flags().Bool(flagDebug, false, "Enable delve debugging")
 	startCmd.Flags().Bool(flagTelemetry, false, "Enable tracing, metrics, and profiling")
 }
@@ -198,4 +186,18 @@ func replaceBoolWithFlag(cmd *cobra.Command, flagName string, value *bool) error
 	}
 	*value = newVal
 	return nil
+}
+
+// validLogLevels returns a string of all Valid log levels for zerolog.
+func validLogLevels() string {
+	return strings.Join([]string{
+		zerolog.TraceLevel.String(),
+		zerolog.DebugLevel.String(),
+		zerolog.InfoLevel.String(),
+		zerolog.WarnLevel.String(),
+		zerolog.ErrorLevel.String(),
+		zerolog.FatalLevel.String(),
+		zerolog.PanicLevel.String(),
+		zerolog.Disabled.String(),
+	}, ", ")
 }

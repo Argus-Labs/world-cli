@@ -15,6 +15,7 @@ const (
 	mountCacheScript = `--mount=type=cache,target="/root/.cache/go-build"`
 )
 
+//nolint:gochecknoglobals // dockerfileContent is embedded at compile time and is read-only
 //go:embed cardinal.Dockerfile
 var dockerfileContent string
 

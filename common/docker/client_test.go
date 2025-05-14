@@ -201,7 +201,7 @@ func TestBuild(t *testing.T) {
 
 func redislIsUp(t *testing.T) bool {
 	up := false
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		conn, err := net.DialTimeout("tcp", "localhost:"+redisPort, time.Second)
 		if err != nil {
 			time.Sleep(time.Second)
@@ -217,7 +217,7 @@ func redislIsUp(t *testing.T) bool {
 
 func redisIsDown(t *testing.T) bool {
 	down := false
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		conn, err := net.DialTimeout("tcp", "localhost:"+redisPort, time.Second)
 		if err != nil {
 			down = true
