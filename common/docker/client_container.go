@@ -202,7 +202,7 @@ func (c *Client) logMultipleContainers(ctx context.Context, services ...service.
 					err := c.logContainerOutput(ctx, id, i)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						printer.Infof("Error logging container %s: %v. Reattaching...\n", id, err)
-						time.Sleep(2 * time.Second) //nolint:gomnd // Sleep for 2 seconds before reattaching
+						time.Sleep(2 * time.Second) // Sleep for 2 seconds before reattaching
 					}
 				}
 			}
@@ -273,7 +273,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 		case 1: // Stdout
 			// TODO: what content should be printed for stdout?
 			printer.Infof("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
-		case 2: //nolint:gomnd // Stderr
+		case 2: // Stderr
 			// TODO: what content should be printed for stderr?
 			printer.Infof("[%s] %s", style.ForegroundPrint(containerID, colors[styleNumber]), cleanLog)
 		}

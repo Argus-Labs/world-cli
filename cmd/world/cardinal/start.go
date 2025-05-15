@@ -53,10 +53,10 @@ func (c *StartCmd) Run() error { //nolint:gocognit // this is a naturally comple
 	if err != nil {
 		return err
 	}
-    cfg.Build = c.Build
-    cfg.Debug = c.Debug
-    cfg.Detach = c.Detach
-    cfg.Telemetry = c.Telemetry
+	cfg.Build = c.Build
+	cfg.Debug = c.Debug
+	cfg.Detach = c.Detach
+	cfg.Telemetry = c.Telemetry
 	if c.LogLevel != "" {
 		zeroLogLevel, err := zerolog.ParseLevel(c.LogLevel)
 		if err != nil {
@@ -72,7 +72,7 @@ func (c *StartCmd) Run() error { //nolint:gocognit // this is a naturally comple
 		// make sure the log level is valid when the flag is not set and using env var from config
 		// Error when CARDINAL_LOG_LEVEL is not a valid log level
 		return eris.Errorf("invalid value for %s env variable in the config file: must be one of (%v)",
-			DockerCardinalEnvLogLevel, validLogLevels)
+			DockerCardinalEnvLogLevel, validLogLevels())
 	}
 
 	// Print out header

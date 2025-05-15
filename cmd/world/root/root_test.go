@@ -152,7 +152,7 @@ func TestDev(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start cardinal dev with a 10-second timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	devCmd := cardinal.DevCmd{ // cardinal dev --editor=false
