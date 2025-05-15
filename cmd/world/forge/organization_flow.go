@@ -15,7 +15,7 @@ var (
 ///////////////////////
 
 func (flow *initFlow) handleNeedOrgData() error {
-	orgs, err := getListOfOrganizations(flow.State.Command.Context())
+	orgs, err := getListOfOrganizations(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organizations")
 	}
@@ -38,7 +38,7 @@ func (flow *initFlow) handleNeedOrganizationCaseNoOrgs() error {
 
 		switch choice {
 		case "Y":
-			org, err := createOrganization(flow.State.Command.Context())
+			org, err := createOrganization(flow.context)
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in no-orgs case")
 			}
@@ -67,7 +67,7 @@ func (flow *initFlow) handleNeedOrganizationCaseOneOrg(orgs []organization) erro
 		case "n":
 			return ErrOrganizationSelectionCanceled
 		case "c":
-			org, err := createOrganization(flow.State.Command.Context())
+			org, err := createOrganization(flow.context)
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in one-org case")
 			}
@@ -81,7 +81,7 @@ func (flow *initFlow) handleNeedOrganizationCaseOneOrg(orgs []organization) erro
 }
 
 func (flow *initFlow) handleNeedOrganizationCaseMultipleOrgs(orgs []organization) error {
-	org, err := promptForOrganization(flow.State.Command.Context(), orgs, true)
+	org, err := promptForOrganization(flow.context, orgs, true)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to prompt for organization in multiple-orgs case")
 	}
@@ -95,7 +95,7 @@ func (flow *initFlow) handleNeedOrganizationCaseMultipleOrgs(orgs []organization
 
 func (flow *initFlow) handleNeedExistingOrgData() error {
 	// First check if we already have a selected organization
-	selectedOrg, err := getSelectedOrganization(flow.State.Command.Context())
+	selectedOrg, err := getSelectedOrganization(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get selected organization")
 	}
@@ -107,7 +107,7 @@ func (flow *initFlow) handleNeedExistingOrgData() error {
 	}
 
 	// No org selected, get list of organizations
-	orgs, err := getListOfOrganizations(flow.State.Command.Context())
+	orgs, err := getListOfOrganizations(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organizations")
 	}
@@ -137,7 +137,7 @@ func (flow *initFlow) handleNeedExistingOrganizationCaseOneOrg(orgs []organizati
 }
 
 func (flow *initFlow) handleNeedExistingOrganizationCaseMultipleOrgs(orgs []organization) error {
-	org, err := promptForOrganization(flow.State.Command.Context(), orgs, false)
+	org, err := promptForOrganization(flow.context, orgs, false)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to prompt for organization in existing multiple-orgs case")
 	}

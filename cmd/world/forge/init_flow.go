@@ -15,6 +15,7 @@ import (
 
 // initFlow represents the initialization flow for the forge system.
 type initFlow struct {
+	context              context.Context
 	config               Config
 	State                CommandState
 	requiredLogin        LoginStepRequirement
@@ -78,6 +79,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	needRepoLookup := !config.CurrRepoKnown && projectReq != Ignore && orgReq != Ignore && config.CurrRepoURL != ""
 
 	flow = &initFlow{
+		context:              ctx,
 		config:               config,
 		requiredLogin:        loginReq,
 		requiredOrganization: orgReq,

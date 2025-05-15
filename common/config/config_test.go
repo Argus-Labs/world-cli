@@ -93,7 +93,7 @@ func makeTempDir(t *testing.T) string {
 func TestConfigFromLocalFile(t *testing.T) {
 	tempdir := makeTempDir(t)
 
-	configPath := path.Join(tempdir, WorldCLIConfigFilename) //nolint:govet // test
+	configPath := path.Join(tempdir, WorldCLIConfigFilename)
 	makeConfigAtPath(t, configPath, "alpha")
 
 	configFile = ""
