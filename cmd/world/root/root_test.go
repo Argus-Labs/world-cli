@@ -1,48 +1,21 @@
 package root
 
 import (
-	"bytes"
 	"context"
+	"io"
 	"net"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 )
 
-var (
-	// testEnv holds the global test environment.
-	testEnv *testEnvironment
-)
-
-// testEnvironment holds the test environment setup.
-type testEnvironment struct {
-	rootCmd *cobra.Command
-}
-
-// setupTestEnv initializes the test environment.
-func setupTestEnv() *testEnvironment {
-	// Initialize all commands
-	cardinal.Init()
-	evm.Init()
-	CmdInit()
-
-	return &testEnvironment{
-		rootCmd: rootCmd,
-	}
-}
-
 // TestMain runs before all tests and handles setup/teardown.
 func TestMain(m *testing.M) {
-	// Setup
-	testEnv = setupTestEnv()
-
 	// Run tests
 	code := m.Run()
 
@@ -52,62 +25,37 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// outputFromCmd runs the rootCmd with the given cmd arguments and returns the output of the command along with
-// any errors.
-func outputFromCmd(cobra *cobra.Command, cmd string) ([]string, error) {
-	stdOut := &bytes.Buffer{}
-	stdErr := &bytes.Buffer{}
-	cobra.SetOut(stdOut)
+//nolint:reassign // reassigning os package output is needed to capture the output
+func captureOutput(f func() error) ([]string, error) {
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
 	defer func() {
-		cobra.SetOut(nil)
-	}()
-	cobra.SetErr(stdErr)
-	defer func() {
-		cobra.SetErr(nil)
-	}()
-	cobra.SetArgs(strings.Split(cmd, " "))
-	defer func() {
-		cobra.SetArgs(nil)
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+		w.Close()
 	}()
 
-	if err := cobra.Execute(); err != nil {
-		return nil, eris.Errorf("root command failed with: %v", err)
+	if err := f(); err != nil { // run the command
+		return nil, err
 	}
-	lines := strings.Split(stdOut.String(), "\n")
-	errorStr := stdErr.String()
-	if len(errorStr) > 0 {
-		return lines, eris.New(errorStr)
+	w.Close()
+
+	out, _ := io.ReadAll(r)
+	lines := strings.Split(string(out), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, "\r")
 	}
 
 	return lines, nil
 }
 
-func TestSubcommandsHaveHelpText(t *testing.T) {
-	lines, err := outputFromCmd(testEnv.rootCmd, "help")
-	assert.NilError(t, err)
-	seenSubcommands := map[string]int{
-		"cardinal": 0,
-		"doctor":   0,
-		"help":     0,
-		"version":  0,
-	}
-
-	for _, line := range lines {
-		for subcommand := range seenSubcommands {
-			if strings.HasPrefix(line, "  "+subcommand) {
-				seenSubcommands[subcommand]++
-			}
-		}
-	}
-
-	for subcommand, count := range seenSubcommands {
-		assert.Check(t, count > 0, "subcommand %q is not listed in the help command", subcommand)
-	}
-}
-
 func TestExecuteDoctorCommand(t *testing.T) {
-	teaOut := &bytes.Buffer{}
-	_, err := outputFromCmd(getDoctorCmd(teaOut), "")
+	cmd := DoctorCmd{}
+
+	lines, err := captureOutput(cmd.Run)
 	assert.NilError(t, err)
 
 	seenDependencies := map[string]int{
@@ -117,7 +65,6 @@ func TestExecuteDoctorCommand(t *testing.T) {
 		"Docker daemon is running": 0,
 	}
 
-	lines := strings.Split(teaOut.String(), "\r\n")
 	for _, line := range lines {
 		// Remove the first three characters for the example(✓  Git)
 		resultString := ""
@@ -141,31 +88,30 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// Create Cardinal
 	gameDir := t.TempDir()
-
 	t.Chdir(gameDir)
 
-	// set tea output to variable
-	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
-
-	// checkout the repo
-	sgtDir := gameDir + "/sgt"
-	createCmd.SetArgs([]string{sgtDir})
-	err = createCmd.Execute()
+	// Create a new Kong parser with our CLI struct
+	createCmd := CreateCmd{
+		Directory: gameDir + "/sgt",
+	}
+	err = createCmd.Run()
 	assert.NilError(t, err)
 
 	// Change dir
-	t.Chdir(sgtDir)
+	t.Chdir(gameDir + "/sgt")
 
 	// Start cardinal
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "start", "--detach", "--editor=false"})
-	err = testEnv.rootCmd.Execute()
+	startCmd := cardinal.StartCmd{ // cardinal start --detach --editor=false
+		Editor: false,
+		Detach: true,
+	}
+	err = startCmd.Run()
 	assert.NilError(t, err)
 
 	defer func() {
 		// Purge cardinal
-		testEnv.rootCmd.SetArgs([]string{"cardinal", "purge"})
-		err = testEnv.rootCmd.Execute()
+		purgeCmd := cardinal.PurgeCmd{}
+		err = purgeCmd.Run()
 		assert.NilError(t, err)
 	}()
 
@@ -173,16 +119,18 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Restart cardinal
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "restart", "--detach"})
-	err = testEnv.rootCmd.Execute()
+	restartCmd := cardinal.RestartCmd{ // cardinal restart --detach
+		Detach: true,
+	}
+	err = restartCmd.Run()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal is healthy
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Stop cardinal
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "stop"})
-	err = testEnv.rootCmd.Execute()
+	stopCmd := cardinal.StopCmd{}
+	err = stopCmd.Run()
 	assert.NilError(t, err)
 
 	// Check and wait until cardinal shutdowns
@@ -196,32 +144,37 @@ func TestDev(t *testing.T) {
 	// Change working directory
 	t.Chdir(gameDir)
 
-	// set tea output to variable
-	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
-
-	// checkout the repo
-	sgtDir := gameDir + "/sgt"
-	createCmd.SetArgs([]string{sgtDir})
-	err := createCmd.Execute()
+	// Create a new Kong parser with our CLI struct
+	createCmd := CreateCmd{
+		Directory: gameDir + "/sgt",
+	}
+	err := createCmd.Run() // cardinal create {dir}/sgt
 	assert.NilError(t, err)
 
-	// Start cardinal dev
-	ctx, cancel := context.WithCancel(t.Context())
+	// Start cardinal dev with a 10-second timeout
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	testEnv.rootCmd.SetArgs([]string{"cardinal", "dev", "--editor=false"})
+	devCmd := cardinal.DevCmd{ // cardinal dev --editor=false
+		Editor:  false,
+		Context: ctx,
+	}
+
+	done := make(chan error, 1)
 	go func() {
-		err := testEnv.rootCmd.ExecuteContext(ctx)
-		assert.NilError(t, err)
+		done <- devCmd.Run()
 	}()
 
 	// Check and wait until cardinal is healthy
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
-	// Shutdown the program
-	cancel()
+	// Wait for either the process to finish or the timeout to occur
+	select {
+	case <-ctx.Done():
+		// Timeout reached, process should be killed by context cancellation
+	case err := <-done:
+		assert.NilError(t, err)
+	}
 
 	// Check and wait until cardinal shutdowns
 	assert.Assert(t, cardinalIsDown(t), "Cardinal is not successfully shutdown")
@@ -300,31 +253,34 @@ func TestEVMStart(t *testing.T) {
 	// Change to temp dir (auto-resets after test)
 	t.Chdir(gameDir)
 
-	// set tea output to variable
-	teaOut := &bytes.Buffer{}
-	createCmd := getCreateCmd(teaOut)
-	createCmd.SetArgs([]string{gameDir})
-
-	// checkout the repo
-	sgtDir := gameDir + "/sgt"
-	createCmd.SetArgs([]string{sgtDir})
-	err := createCmd.Execute()
+	createCmd := CreateCmd{
+		Directory: gameDir + "/sgt",
+	}
+	err := createCmd.Run() // evm create {dir}/sgt
 	assert.NilError(t, err)
 
-	// Start evn dev
-	ctx, cancel := context.WithCancel(t.Context())
+	// Start evm dev
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(10*time.Second))
 	defer cancel()
-	testEnv.rootCmd.SetArgs([]string{"evm", "start", "--dev"})
+
+	startCmd := evm.StartCmd{
+		UseDevDA: true,
+		Context:  ctx,
+	}
+	done := make(chan error, 1)
 	go func() {
-		err := testEnv.rootCmd.ExecuteContext(ctx)
-		assert.NilError(t, err)
+		done <- startCmd.Run() // evm start --dev
 	}()
 
 	// Check and wait until evm is up
 	assert.Assert(t, evmIsUp(t), "EVM is not running")
 
-	// Shutdown the program
-	cancel()
+	select {
+	case <-ctx.Done():
+		// Timeout reached, process should be killed by context cancellation
+	case err := <-done:
+		assert.NilError(t, err)
+	}
 
 	// Check and wait until evm is down
 	assert.Assert(t, evmIsDown(t), "EVM is not successfully shutdown")

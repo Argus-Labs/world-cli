@@ -6,13 +6,16 @@ import (
 	"runtime/debug"
 	"syscall"
 
+	"github.com/alecthomas/kong"
+	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/config"
-	_ "pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/telemetry"
 )
 
@@ -79,11 +82,29 @@ func main() {
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
 	// Initialize packages
-	evm.Init()
-	cardinal.Init()
-	forge.InitForgeCmds()
-	root.CmdInit()
-	root.Execute()
+	root.CLI.Plugins = kong.Plugins{&cardinal.CardinalCmdPlugin, &evm.EvmCmdPlugin, &forge.ForgeCmdPlugin}
+
+	ctx := kong.Parse(
+		&root.CLI,
+		kong.Name("world"),
+		kong.Description("World CLI: Your complete toolkit for World Engine development"),
+		kong.UsageOnError(),
+		kong.ConfigureHelp(kong.HelpOptions{
+			Compact: true,
+			Summary: true,
+		}),
+	)
+	err = ctx.Run()
+	if err != nil {
+		sentry.CaptureException(err)
+		if logger.VerboseMode {
+			logger.Errors(err)
+		} else {
+			printer.Errorln(err.Error())
+		}
+	}
+	// print log stack
+	logger.PrintLogs()
 }
 
 func getEnvAndVersion() (string, string) {

@@ -290,35 +290,12 @@ func printNoProjectsInOrganization() {
 	printer.Infoln("Use 'world forge project create' to create your first project!")
 }
 
-func printAuthenticationRequired() {
-	printer.NewLine(1)
-	printer.Headerln("   Authentication Required   ")
-	printer.Infoln("You are not currently logged in")
-	printer.NewLine(1)
-	printer.Infoln("Use 'world login' to authenticate")
-}
-
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
 		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return false
 		}
 	}
-	return true
-}
-
-func checkLogin() bool {
-	cred, err := GetCurrentForgeConfig()
-	if err != nil {
-		printAuthenticationRequired()
-		return false
-	}
-
-	if cred.Credential.Token == "" {
-		printAuthenticationRequired()
-		return false
-	}
-
 	return true
 }
 

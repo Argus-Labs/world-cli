@@ -6,7 +6,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -22,7 +21,7 @@ var (
 	logBuffer bytes.Buffer
 
 	// VerboseMode flag for determining verbose logging.
-	verboseMode = false
+	VerboseMode = false
 )
 
 //nolint:gochecknoinits // Common package init, should self init as it shouldn't have dependencies..
@@ -53,7 +52,7 @@ func init() {
 
 // PrintLogs print all stacked log.
 func PrintLogs() {
-	if verboseMode {
+	if VerboseMode {
 		// Extract the logs from the buffer and print them
 		logs := logBuffer.String()
 		if len(logs) > 0 {
@@ -61,12 +60,5 @@ func PrintLogs() {
 			printer.Infoln("----- Log -----")
 			printer.Infoln(logs)
 		}
-	}
-}
-
-// AddVerboseFlag set flag --log-debug.
-func AddVerboseFlag(cmd ...*cobra.Command) {
-	for _, c := range cmd {
-		c.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable World CLI debug logs")
 	}
 }

@@ -70,7 +70,7 @@ func GitCloneCmd(url, targetDir, initMsg string) error {
 		}
 		// Extract tag name from the line
 		fields := strings.Fields(line)
-		if len(fields) >= 2 { //nolint:gomnd // git output is always 2 fields commit hash and tag name
+		if len(fields) >= 2 { // git output is always 2 fields commit hash and tag name
 			latestTag = strings.TrimPrefix(fields[1], "refs/tags/")
 			break // Take the first tag (since they're already sorted)
 		}

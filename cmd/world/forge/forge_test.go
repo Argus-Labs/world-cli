@@ -16,7 +16,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/printer"
@@ -44,13 +43,10 @@ type ForgeTestSuite struct {
 	server    *httptest.Server
 	testToken string
 	ctx       context.Context
-	cmd       *cobra.Command
 }
 
 func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't care about cylomatic complexity
 	s.ctx = context.Background()
-	s.cmd = &cobra.Command{}
-	s.cmd.SetContext(s.ctx)
 
 	argusIDAuthURL = "http://localhost:8001/api/auth/service-auth-session"
 
@@ -3163,6 +3159,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 	openBrowser = func(_ string) error { return nil }
 	defer func() { openBrowser = originalOpenBrowser }()
 
+	ctx := context.Background()
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			// Save the test config
@@ -3170,7 +3167,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			s.Require().NoError(err)
 
 			// Run the test
-			state, err := SetupForgeCommandState(s.cmd, tc.loginReq, tc.orgReq, tc.projectReq)
+			state, err := SetupForgeCommandState(ctx, tc.loginReq, tc.orgReq, tc.projectReq)
 
 			// Check error
 			if tc.expectedError {
@@ -3200,7 +3197,8 @@ func (s *ForgeTestSuite) TestGetForgeCommandState() {
 	err := SaveForgeConfig(config)
 	s.Require().NoError(err)
 
-	state, err := SetupForgeCommandState(s.cmd, NeedLogin, Ignore, Ignore)
+	ctx := context.Background()
+	state, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "not logged in")
 
@@ -3408,9 +3406,8 @@ func (s *ForgeTestSuite) TestHandleNeedOrgData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{
-					Command: s.cmd,
-				},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
@@ -3531,9 +3528,8 @@ func (s *ForgeTestSuite) TestHandleNeedExistingOrgData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{
-					Command: s.cmd,
-				},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
@@ -3755,9 +3751,8 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{
-					Command: s.cmd,
-				},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
@@ -3885,9 +3880,8 @@ func (s *ForgeTestSuite) TestHandleNeedExistingProjectData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{
-					Command: s.cmd,
-				},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test

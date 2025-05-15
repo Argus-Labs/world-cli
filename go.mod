@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	connectrpc.com/connect v1.18.1
 	github.com/BurntSushi/toml v1.3.2
+	github.com/alecthomas/kong v1.10.0
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -22,7 +23,6 @@ require (
 	github.com/posthog/posthog-go v0.0.0-20240202122501-d793288ce2c9
 	github.com/rotisserie/eris v0.5.4
 	github.com/rs/zerolog v1.31.0
-	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/vbauerster/mpb/v8 v8.8.2
@@ -79,7 +79,6 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/lipgloss v0.13.0
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -89,7 +88,6 @@ require (
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.2
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/term v0.21.0

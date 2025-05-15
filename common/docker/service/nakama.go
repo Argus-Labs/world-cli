@@ -64,7 +64,7 @@ func Nakama(cfg *config.Config) Service {
 	}
 	if cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"] != "" {
 		nakamaImagePlatform := strings.Split(cfg.DockerEnv["NAKAMA_IMAGE_PLATFORM"], "/")
-		if len(nakamaImagePlatform) == 2 { //nolint:gomnd //2 is the expected length
+		if len(nakamaImagePlatform) == 2 {
 			platform = ocispec.Platform{
 				Architecture: nakamaImagePlatform[1],
 				OS:           nakamaImagePlatform[0],
@@ -78,9 +78,7 @@ func Nakama(cfg *config.Config) Service {
 	if metricsEnabled {
 		prometheusPort = 9100
 	}
-
 	exposedPorts := []int{7349, 7350, 7351}
-
 	databaseAddress := fmt.Sprintf("postgres:%s@%s:5432/nakama", dbPassword, getNakamaDBContainerName(cfg))
 
 	return Service{

@@ -16,7 +16,7 @@ var (
 /////////////////////
 
 func (flow *initFlow) handleNeedProjectData() error {
-	projects, err := getListOfProjects(flow.State.Command.Context())
+	projects, err := getListOfProjects(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
 	}
@@ -44,7 +44,7 @@ func (flow *initFlow) handleNeedProjectCaseNoProjects() error {
 
 		switch choice {
 		case "Y":
-			proj, err := createProject(flow.State.Command.Context())
+			proj, err := createProject(flow.context)
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in no-projects case")
 			}
@@ -73,7 +73,7 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 		case "n":
 			return ErrProjectSelectionCanceled
 		case "c":
-			proj, err := createProject(flow.State.Command.Context())
+			proj, err := createProject(flow.context)
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in one-project case")
 			}
@@ -87,7 +87,7 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 }
 
 func (flow *initFlow) handleNeedProjectCaseMultipleProjects() error {
-	proj, err := selectProject(flow.State.Command.Context())
+	proj, err := selectProject(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in multiple-projects case")
 	}
@@ -103,7 +103,7 @@ func (flow *initFlow) handleNeedProjectCaseMultipleProjects() error {
 ////////////////////////////////
 
 func (flow *initFlow) handleNeedExistingProjectData() error {
-	projects, err := getListOfProjects(flow.State.Command.Context())
+	projects, err := getListOfProjects(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
 	}
@@ -114,7 +114,7 @@ func (flow *initFlow) handleNeedExistingProjectData() error {
 	}
 
 	// First check if we already have a selected project
-	selectedProj, err := getSelectedProject(flow.State.Command.Context())
+	selectedProj, err := getSelectedProject(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
@@ -150,7 +150,7 @@ func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects() error {
-	proj, err := selectProject(flow.State.Command.Context())
+	proj, err := selectProject(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
 	}

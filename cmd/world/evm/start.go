@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
@@ -15,75 +14,63 @@ import (
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Launch your EVM blockchain environment",
-	Long: `Start the EVM base shard with all required services for blockchain development.
-
-This command initializes your Ethereum Virtual Machine environment, connecting it to 
-the necessary data availability layer (Celestia). Perfect for developing and testing
-smart contracts and blockchain applications.
-
-Use --da-auth-token to pass in an authentication token directly, or --use-dev-da
-to run with a local development data availability layer.`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		cfg, err := config.GetConfig()
-		if err != nil {
-			return err
-		}
-
-		// Create docker client
-		dockerClient, err := docker.NewClient(cfg)
-		if err != nil {
-			return err
-		}
-		defer dockerClient.Close()
-
-		if err = validateDALayer(cmd, cfg, dockerClient); err != nil {
-			return err
-		}
-
-		daToken, err := cmd.Flags().GetString(FlagDAAuthToken)
-		if err != nil {
-			return err
-		}
-		if daToken != "" {
-			cfg.DockerEnv[EnvDAAuthToken] = daToken
-		}
-
-		cfg.Build = true
-		cfg.Debug = false
-		cfg.Detach = false
-		cfg.Timeout = 0
-
-		err = dockerClient.Start(cmd.Context(), service.EVM)
-		if err != nil {
-			return eris.Wrapf(err, "error starting %s docker container", teacmd.DockerServiceEVM)
-		}
-
-		// Stop the DA service if it was started in dev mode
-		if cfg.DevDA {
-			// using context background because cmd.Context() is already done
-			err = dockerClient.Stop(context.Background(), service.CelestiaDevNet)
-			if err != nil {
-				return eris.Wrap(err, "Failed to stop DA service")
-			}
-		}
-		return nil
-	},
+//nolint:lll // needed to put all the help text in the same line
+type StartCmd struct {
+	DAAuthToken string          `flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
+	UseDevDA    bool            `flag:"" optional:"" name:"dev" help:"Use a locally running DA layer"`
+	Context     context.Context `kong:"-"`
 }
 
-func Init() {
-	startCmd.Flags().String(FlagDAAuthToken, "",
-		"DA Auth Token that allows the rollup to communicate with the Celestia client.")
-	startCmd.Flags().Bool(FlagUseDevDA, false, "Use a locally running DA layer")
+func (c *StartCmd) Run() error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
 
-	registerCommands()
+	// Create docker client
+	dockerClient, err := docker.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+	defer dockerClient.Close()
+
+	ctx := c.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if err = validateDALayer(ctx, c, cfg, dockerClient); err != nil {
+		return err
+	}
+
+	if c.DAAuthToken != "" {
+		cfg.DockerEnv[EnvDAAuthToken] = c.DAAuthToken
+	}
+
+	cfg.Build = true
+	cfg.Debug = false
+	cfg.Detach = false
+	cfg.Timeout = 0
+
+	err = dockerClient.Start(ctx, service.EVM)
+	if err != nil {
+		return eris.Wrapf(err, "error starting %s docker container", teacmd.DockerServiceEVM)
+	}
+
+	// Stop the DA service if it was started in dev mode
+	if cfg.DevDA {
+		// using context background because cmd.Context() is already done
+		err = dockerClient.Stop(context.Background(), service.CelestiaDevNet)
+		if err != nil {
+			return eris.Wrap(err, "Failed to stop DA service")
+		}
+	}
+	return nil
 }
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
 // variable with the token from the locally running container.
-func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *docker.Client) error {
+func validateDevDALayer(ctx context.Context, _ *StartCmd, cfg *config.Config, dockerClient *docker.Client) error {
 	cfg.Build = true
 	cfg.Debug = false
 	cfg.Detach = true
@@ -93,7 +80,6 @@ func validateDevDALayer(ctx context.Context, cfg *config.Config, dockerClient *d
 		return eris.Wrapf(err, "error starting %s docker container", daService)
 	}
 	logger.Println("started DA service...")
-
 	daToken, err := getDAToken(ctx, cfg, dockerClient)
 	if err != nil {
 		return err
@@ -135,14 +121,10 @@ func validateProdDALayer(cfg *config.Config) error {
 	return nil
 }
 
-func validateDALayer(cmd *cobra.Command, cfg *config.Config, dockerClient *docker.Client) error {
-	devDA, err := cmd.Flags().GetBool(FlagUseDevDA)
-	if err != nil {
-		return err
-	}
-	if devDA {
+func validateDALayer(ctx context.Context, cmd *StartCmd, cfg *config.Config, dockerClient *docker.Client) error {
+	if cmd.UseDevDA {
 		cfg.DevDA = true
-		return validateDevDALayer(cmd.Context(), cfg, dockerClient)
+		return validateDevDALayer(ctx, cmd, cfg, dockerClient)
 	}
 	return validateProdDALayer(cfg)
 }

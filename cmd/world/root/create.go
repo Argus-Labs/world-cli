@@ -2,14 +2,12 @@ package root
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
@@ -42,12 +40,11 @@ type WorldCreateModel struct {
 	logs             []string
 	steps            steps.Model
 	projectNameInput textinput.Model
-	args             []string
 	depStatus        []teacmd.DependencyStatus
 	depStatusErr     error
 }
 
-func NewWorldCreateModel(args []string) WorldCreateModel {
+func NewWorldCreateModel(directory string) WorldCreateModel {
 	pnInput := textinput.New()
 	pnInput.Prompt = style.DoubleRightIcon.Render()
 	pnInput.Placeholder = "starter-game"
@@ -62,15 +59,13 @@ func NewWorldCreateModel(args []string) WorldCreateModel {
 		steps.NewStep("Set up Cardinal Editor"),
 	}
 
-	// Set the project text if it was passed in as an argument
-	if len(args) == 1 {
-		pnInput.SetValue(args[0])
+	if directory != "" {
+		pnInput.SetValue(directory)
 	}
 
 	return WorldCreateModel{
 		steps:            createSteps,
 		projectNameInput: pnInput,
-		args:             args,
 	}
 }
 
@@ -225,33 +220,14 @@ func updateWorldToml(projectName string) error {
 	return nil
 }
 
-/////////////////
-// Cobra Setup //
-/////////////////
+type CreateCmd struct {
+	Directory string `arg:"" optional:"" type:"path" help:"The directory to create the project in"`
+}
 
-// Usage: `world cardinal create [directory_name]`.
-func getCreateCmd(writer io.Writer) *cobra.Command {
-	createCmd := &cobra.Command{
-		Use:   "create [directory_name]",
-		Short: "Start a new World Engine game project quickly",
-		Long: `Create a complete World Engine game shard with all necessary components.
-
-This command sets up a new game project based on the official starter template
-(https://github.com/Argus-Labs/starter-game-template), giving you a solid foundation
-to build upon. The template includes essential game structures and examples.
-
-If [directory_name] is provided, it will automatically clone the starter project into 
-that directory. Otherwise, you'll be prompted to enter a name for your new project.`,
-		GroupID: "starter",
-		Args:    cobra.MaximumNArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
-			p := forge.NewTeaProgram(NewWorldCreateModel(args), tea.WithOutput(writer))
-			if _, err := p.Run(); err != nil {
-				return err
-			}
-			return nil
-		},
+func (c *CreateCmd) Run() error {
+	p := forge.NewTeaProgram(NewWorldCreateModel(c.Directory))
+	if _, err := p.Run(); err != nil {
+		return err
 	}
-
-	return createCmd
+	return nil
 }
