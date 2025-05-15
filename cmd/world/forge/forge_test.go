@@ -3406,7 +3406,8 @@ func (s *ForgeTestSuite) TestHandleNeedOrgData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
@@ -3527,7 +3528,8 @@ func (s *ForgeTestSuite) TestHandleNeedExistingOrgData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
@@ -3749,7 +3751,8 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
@@ -3877,7 +3880,8 @@ func (s *ForgeTestSuite) TestHandleNeedExistingProjectData() {
 
 			// Create flow
 			flowState := &initFlow{
-				State: CommandState{},
+				context: s.ctx,
+				State:   CommandState{},
 			}
 
 			// Run test
