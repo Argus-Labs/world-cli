@@ -107,6 +107,8 @@ func checkLatestVersion() error {
 
 // contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or
 // when a termination signal is received.
+//
+//nolint:unused // we will want to use this in the future I think
 func contextWithSigterm(ctx context.Context) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
 	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))

@@ -45,10 +45,10 @@ type StartCmd struct {
 	Debug      bool   `flag:"" help:"Enable delve debugging"`
 	Telemetry  bool   `flag:"" help:"Enable tracing, metrics, and profiling"`
 	Editor     bool   `flag:"" help:"Run Cardinal Editor, useful for prototyping and debugging"`
-	EditorPort string `flag:"" default:"auto" help:"Port for Cardinal Editor"`
+	EditorPort string `flag:"" help:"Port for Cardinal Editor"                                  default:"auto"`
 }
 
-func (c *StartCmd) Run() error {
+func (c *StartCmd) Run() error { //nolint:gocognit // this is a naturally complex command
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return err
@@ -57,7 +57,6 @@ func (c *StartCmd) Run() error {
     cfg.Debug = c.Debug
     cfg.Detach = c.Detach
     cfg.Telemetry = c.Telemetry
-
 	if c.LogLevel != "" {
 		zeroLogLevel, err := zerolog.ParseLevel(c.LogLevel)
 		if err != nil {
@@ -84,7 +83,7 @@ func (c *StartCmd) Run() error {
 	// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
 	printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
 	var editorPort int
-	if c.Editor {
+	if c.Editor { //nolint:nestif // this is not overly complex
 		if c.EditorPort == "auto" {
 			editorPort, err = common.FindUnusedPort(cePortStart, cePortEnd)
 			if err != nil {

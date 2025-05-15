@@ -56,21 +56,22 @@ var (
 	Env = "PROD"
 )
 
+//nolint:lll // needed to put all the help text in the same line
 var ForgeCmdPlugin struct {
 	Login   *LoginCmd   `cmd:"" group:"Getting Started:" help:"Login to World Forge, creating a new account if necessary"`
 	Deploy  *DeployCmd  `cmd:"" group:"Getting Started:" help:"Deploy your World Forge project to a TEST environment in the cloud"`
 	Status  *StatusCmd  `cmd:"" group:"Getting Started:" help:"Check the status of your deployed World Forge project"`
+	Promote *PromoteCmd `cmd:"" group:"Cloud Management Commands:" help:"Deploy your game project to a LIVE environment in the cloud"`
+	Destroy *DestroyCmd `cmd:"" group:"Cloud Management Commands:" help:"Remove your game project's deployed infrastructure from the cloud"`
+	Reset   *ResetCmd   `cmd:"" group:"Cloud Management Commands:" help:"Restart your game project with a clean state"`
+	Logs    *LogsCmd    `cmd:"" group:"Cloud Management Commands:" help:"Tail logs for your game project"`
 	Forge   *ForgeCmd   `cmd:""`
 	User    *UserCmd    `cmd:""`
-	Promote *PromoteCmd `cmd:"" group:"Management Commands:" help:"Deploy your game project to a LIVE environment in the cloud"`
-	Destroy *DestroyCmd `cmd:"" group:"Management Commands:" help:"Remove your game project's deployed infrastructure from the cloud"`
-	Reset   *ResetCmd   `cmd:"" group:"Management Commands:" help:"Restart your game project with a clean state"`
-	Logs    *LogsCmd    `cmd:"" group:"Management Commands:" help:"Tail logs for your game project"`
 }
 
-type ForgeCmd struct {
-	Organization *OrganizationCmd `cmd:"" aliases:"org" group:"Organization Commands:" help:"Manage your organizations"`
-	Project      *ProjectCmd      `cmd:"" aliases:"proj" group:"Project Commands:" help:"Manage your projects"`
+type ForgeCmd struct { //nolint:revive // this is the "forge" command within the "world" command
+	Organization *OrganizationCmd `cmd:"" aliases:"org"  group:"Organization Commands:" help:"Manage your organizations"`
+	Project      *ProjectCmd      `cmd:"" aliases:"proj" group:"Project Commands:"      help:"Manage your projects"`
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -149,9 +150,10 @@ func (c *ResetCmd) Run() error {
 	return deployment(ctx, cmdState, "reset")
 }
 
+//nolint:lll // needed to put all the help text in the same line
 type LogsCmd struct {
 	Region string `arg:"" enum:"ap-southeast-1,eu-central-1,us-east-1,us-west-2" default:"us-west-2" optional:"" help:"The region to tail logs for"`
-	Env    string `arg:"" enum:"test,live" default:"test" optional:"" help:"The environment to tail logs for"`
+	Env    string `arg:"" enum:"test,live"                                       default:"test"      optional:"" help:"The environment to tail logs for"`
 }
 
 func (c *LogsCmd) Run() error {
@@ -170,7 +172,7 @@ type OrganizationCmd struct {
 type CreateOrganizationCmd struct {
 	Name      string `flag:"" help:"The name of the organization"`
 	Slug      string `flag:"" help:"The slug of the organization"`
-	AvatarURL string `flag:"" type:"url" help:"The avatar URL of the organization"`
+	AvatarURL string `flag:"" help:"The avatar URL of the organization" type:"url"`
 }
 
 func (c *CreateOrganizationCmd) Run() error {
@@ -211,7 +213,7 @@ type ProjectCmd struct {
 type CreateProjectCmd struct {
 	Name      string `flag:"" help:"The name of the project"`
 	Slug      string `flag:"" help:"The slug of the project"`
-	AvatarURL string `flag:"" type:"url" help:"The avatar URL of the project"`
+	AvatarURL string `flag:"" help:"The avatar URL of the project" type:"url"`
 }
 
 func (c *CreateProjectCmd) Run() error {
@@ -245,7 +247,7 @@ func (c *SwitchProjectCmd) Run() error {
 type UpdateProjectCmd struct {
 	Name      string `flag:"" help:"The new name of the project"`
 	Slug      string `flag:"" help:"The new slug of the project"`
-	AvatarURL string `flag:"" type:"url" help:"The new avatar URL of the project"`
+	AvatarURL string `flag:"" help:"The new avatar URL of the project" type:"url"`
 }
 
 func (c *UpdateProjectCmd) Run() error {
@@ -264,6 +266,7 @@ func (c *DeleteProjectCmd) Run() error {
 // User commands
 // ------------------------------------------------------------------------------------------------
 
+//nolint:lll // needed to put all the help text in the same line
 type UserCmd struct {
 	Invite *InviteUserToOrganizationCmd     `cmd:"" group:"User Commands:" optional:"" help:"Invite a user to an organization"`
 	Role   *ChangeUserRoleInOrganizationCmd `cmd:"" group:"User Commands:" optional:"" help:"Change a user's role in an organization"`
@@ -308,11 +311,13 @@ func InitForgeBase(env string) {
 		rpcURL = worldForgeRPCBaseURLLocal
 		argusIDBaseURL = argusIDBaseURLDev
 		Env = EnvLocal
+		printer.Notificationln("Forge Env: LOCAL")
 	case EnvDev:
 		baseURL = worldForgeBaseURLDev
 		rpcURL = worldForgeRPCBaseURLDev
 		argusIDBaseURL = argusIDBaseURLDev
 		Env = EnvDev
+		printer.Notificationln("Forge Env: DEV")
 	default:
 		rpcURL = worldForgeRPCBaseURLProd
 		baseURL = worldForgeBaseURLProd

@@ -15,6 +15,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/telemetry"
 )
 
@@ -81,7 +82,7 @@ func main() {
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
 	// Initialize packages
-	root.CLI.Plugins = kong.Plugins{&forge.ForgeCmdPlugin, &evm.EvmCmdPlugin, &cardinal.CardinalCmdPlugin}
+	root.CLI.Plugins = kong.Plugins{&cardinal.CardinalCmdPlugin, &evm.EvmCmdPlugin, &forge.ForgeCmdPlugin}
 
 	ctx := kong.Parse(
 		&root.CLI,
@@ -96,11 +97,14 @@ func main() {
 	err = ctx.Run()
 	if err != nil {
 		sentry.CaptureException(err)
-		logger.Errors(err)
+		if logger.VerboseMode {
+			logger.Errors(err)
+		} else {
+			printer.Errorln(err.Error())
+		}
 	}
 	// print log stack
 	logger.PrintLogs()
-
 }
 
 func getEnvAndVersion() (string, string) {

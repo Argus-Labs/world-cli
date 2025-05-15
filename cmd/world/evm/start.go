@@ -14,9 +14,10 @@ import (
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
+//nolint:lll // needed to put all the help text in the same line
 type StartCmd struct {
 	DAAuthToken string `flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
-	UseDevDA    bool   `flag:"" optional:"" help:"Use a locally running DA layer"`
+	UseDevDA    bool   `flag:"" optional:"" help:"Use a locally running DA layer"                                                    name:"dev"`
 }
 
 func (c *StartCmd) Run() error {
@@ -34,7 +35,7 @@ func (c *StartCmd) Run() error {
 
 	ctx := context.Background()
 
-	if err = validateDALayer(c, ctx, cfg, dockerClient); err != nil {
+	if err = validateDALayer(ctx, c, cfg, dockerClient); err != nil {
 		return err
 	}
 
@@ -65,7 +66,7 @@ func (c *StartCmd) Run() error {
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
 // variable with the token from the locally running container.
-func validateDevDALayer(cmd *StartCmd, ctx context.Context, cfg *config.Config, dockerClient *docker.Client) error {
+func validateDevDALayer(ctx context.Context, _ *StartCmd, cfg *config.Config, dockerClient *docker.Client) error {
 	cfg.Build = true
 	cfg.Debug = false
 	cfg.Detach = true
@@ -116,10 +117,10 @@ func validateProdDALayer(cfg *config.Config) error {
 	return nil
 }
 
-func validateDALayer(cmd *StartCmd, ctx context.Context, cfg *config.Config, dockerClient *docker.Client) error {
+func validateDALayer(ctx context.Context, cmd *StartCmd, cfg *config.Config, dockerClient *docker.Client) error {
 	if cmd.UseDevDA {
 		cfg.DevDA = true
-		return validateDevDALayer(cmd, ctx, cfg, dockerClient)
+		return validateDevDALayer(ctx, cmd, cfg, dockerClient)
 	}
 	return validateProdDALayer(cfg)
 }

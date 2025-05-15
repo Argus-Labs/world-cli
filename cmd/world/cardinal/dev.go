@@ -13,7 +13,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
@@ -31,107 +30,67 @@ const (
 	// Cardinal Editor Port Range.
 	cePortStart = 3000
 	cePortEnd   = 4000
-
-	// flagPrettyLog Flag that determines whether to run Cardinal with pretty logging (default: true).
-	flagPrettyLog = "pretty-log"
 )
 
 type DevCmd struct {
-	Editor bool `flag:"" help:"Enable Cardinal Editor"`
+	Editor    bool `flag:"" help:"Enable Cardinal Editor"`
+	PrettyLog bool `flag:"" help:"Run Cardinal with pretty logging" default:"true"`
 }
 
 func (c *DevCmd) Run() error {
-	_, err := config.GetConfig()
+	cfg, err := config.GetConfig()
 	if err != nil {
 		return err
 	}
+
+	// Print out header
+	printer.Infoln(style.CLIHeader("Cardinal", ""))
+
+	// Print out service addresses
+	printServiceAddress("Redis", fmt.Sprintf("localhost:%s", RedisPort))
+	printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
+	var port int
+	if c.Editor {
+		port, err = common.FindUnusedPort(cePortStart, cePortEnd)
+		if err != nil {
+			return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
+		}
+		printServiceAddress("Cardinal Editor", fmt.Sprintf("localhost:%d", port))
+	} else {
+		printServiceAddress("Cardinal Editor", "[disabled]")
+	}
+	printer.NewLine(1)
+
+	// Start redis, cardinal, and cardinal editor
+	// If any of the services terminates, the entire group will be terminated.
+	group, ctx := errgroup.WithContext(context.Background())
+	group.Go(func() error {
+		if err := startRedis(ctx, cfg); err != nil {
+			return eris.Wrap(err, "Encountered an error with Redis")
+		}
+		return eris.Wrap(ErrGracefulExit, "Redis terminated")
+	})
+	group.Go(func() error {
+		if err := startCardinalDevMode(ctx, cfg, c.PrettyLog); err != nil {
+			return eris.Wrap(err, "Encountered an error with Cardinal")
+		}
+		return eris.Wrap(ErrGracefulExit, "Cardinal terminated")
+	})
+	if c.Editor {
+		group.Go(func() error {
+			if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, port); err != nil {
+				return eris.Wrap(err, "Encountered an error with Cardinal Editor")
+			}
+			return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
+		})
+	}
+
+	// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
+	if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {
+		return err
+	}
+
 	return nil
-}
-
-// Usage: `world cardinal dev`.
-var devCmd = &cobra.Command{
-	Use:   "dev",
-	Short: "Run Cardinal in fast development mode with hot reloading",
-	Long: `Launch Cardinal in development mode for rapid iteration and testing.
-	
-This mode runs Cardinal directly from your source code, providing:
-- Faster startup times than the standard Docker deployment
-- Immediate feedback on code changes
-- Optional Cardinal Editor integration for visual development`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		editor, err := cmd.Flags().GetBool(flagEditor)
-		if err != nil {
-			return err
-		}
-
-		prettyLog, err := cmd.Flags().GetBool(flagPrettyLog)
-		if err != nil {
-			return err
-		}
-
-		cfg, err := config.GetConfig()
-		if err != nil {
-			return err
-		}
-
-		// Print out header
-		printer.Infoln(style.CLIHeader("Cardinal", ""))
-
-		// Print out service addresses
-		printServiceAddress("Redis", fmt.Sprintf("localhost:%s", RedisPort))
-		printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
-		var port int
-		if editor {
-			port, err = common.FindUnusedPort(cePortStart, cePortEnd)
-			if err != nil {
-				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
-			}
-			printServiceAddress("Cardinal Editor", fmt.Sprintf("localhost:%d", port))
-		} else {
-			printServiceAddress("Cardinal Editor", "[disabled]")
-		}
-		printer.NewLine(1)
-
-		// Start redis, cardinal, and cardinal editor
-		// If any of the services terminates, the entire group will be terminated.
-		group, ctx := errgroup.WithContext(cmd.Context())
-		group.Go(func() error {
-			if err := startRedis(ctx, cfg); err != nil {
-				return eris.Wrap(err, "Encountered an error with Redis")
-			}
-			return eris.Wrap(ErrGracefulExit, "Redis terminated")
-		})
-		group.Go(func() error {
-			if err := startCardinalDevMode(ctx, cfg, prettyLog); err != nil {
-				return eris.Wrap(err, "Encountered an error with Cardinal")
-			}
-			return eris.Wrap(ErrGracefulExit, "Cardinal terminated")
-		})
-		if editor {
-			group.Go(func() error {
-				if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, port); err != nil {
-					return eris.Wrap(err, "Encountered an error with Cardinal Editor")
-				}
-				return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
-			})
-		}
-
-		// If any of the group's goroutines is terminated non-gracefully, we want to treat it as an error.
-		if err := group.Wait(); err != nil && !eris.Is(err, ErrGracefulExit) {
-			return err
-		}
-
-		return nil
-	},
-}
-
-/////////////////
-// Cobra Setup //
-/////////////////
-
-func devCmdInit() {
-	//registerEditorFlag(devCmd, true)
-	devCmd.Flags().Bool(flagPrettyLog, true, "Run Cardinal with pretty logging")
 }
 
 //////////////////////

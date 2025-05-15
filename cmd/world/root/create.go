@@ -225,7 +225,7 @@ type CreateCmd struct {
 }
 
 func (c *CreateCmd) Run() error {
-	p := forge.NewTeaProgram(NewWorldCreateModel(c.Directory), tea.WithOutput(os.Stdout))
+	p := forge.NewTeaProgram(NewWorldCreateModel(c.Directory))
 	if _, err := p.Run(); err != nil {
 		return err
 	}

@@ -3163,6 +3163,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 	openBrowser = func(_ string) error { return nil }
 	defer func() { openBrowser = originalOpenBrowser }()
 
+	ctx := context.Background()
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			// Save the test config
@@ -3170,7 +3171,7 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 			s.Require().NoError(err)
 
 			// Run the test
-			state, err := SetupForgeCommandState(s.cmd, tc.loginReq, tc.orgReq, tc.projectReq)
+			state, err := SetupForgeCommandState(ctx, tc.loginReq, tc.orgReq, tc.projectReq)
 
 			// Check error
 			if tc.expectedError {
@@ -3200,7 +3201,8 @@ func (s *ForgeTestSuite) TestGetForgeCommandState() {
 	err := SaveForgeConfig(config)
 	s.Require().NoError(err)
 
-	state, err := SetupForgeCommandState(s.cmd, NeedLogin, Ignore, Ignore)
+	ctx := s.cmd.Context()
+	state, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "not logged in")
 

@@ -1,8 +1,6 @@
 package root
 
 import (
-	"os"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/dependency"
@@ -68,7 +66,7 @@ type DoctorCmd struct {
 }
 
 func (c *DoctorCmd) Run() error {
-	p := forge.NewTeaProgram(NewWorldDoctorModel(), tea.WithOutput(os.Stdout))
+	p := forge.NewTeaProgram(NewWorldDoctorModel())
 	_, err := p.Run()
 	if err != nil {
 		return err
