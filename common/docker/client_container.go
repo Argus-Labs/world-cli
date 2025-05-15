@@ -243,7 +243,7 @@ func (c *Client) logContainerOutput(ctx context.Context, containerID string, sty
 	reader := bufio.NewReader(out)
 	for {
 		// Read the 8-byte header
-		header := make([]byte, 8) //nolint:gomnd // 8 bytes
+		header := make([]byte, 8)
 		if _, err := io.ReadFull(reader, header); err != nil {
 			if err == io.EOF {
 				break
