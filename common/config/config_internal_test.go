@@ -113,7 +113,7 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 	// The eventual call to LoadConfig should find this config file
 	makeConfigAtPath(t, configFilePath, "alpha")
 
-	cfg, err := GetConfig(&configFilePath)
+	cfg, err := GetConfig(nil)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
