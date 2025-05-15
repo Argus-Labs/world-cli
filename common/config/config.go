@@ -8,15 +8,12 @@ import (
 
 	"github.com/pelletier/go-toml"
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"pkg.world.dev/world-cli/common/logger"
 )
 
 const (
 	WorldCLIConfigFileEnvVariable = "WORLD_CLI_CONFIG_FILE"
 	WorldCLIConfigFilename        = "world.toml"
-
-	flagForConfigFile = "config"
 )
 
 var (
@@ -38,10 +35,6 @@ type Config struct {
 	Telemetry bool
 	Timeout   int
 	DockerEnv map[string]string
-}
-
-func AddConfigFlag(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&configFile, flagForConfigFile, "c", "", "A TOML config file")
 }
 
 func GetConfig() (*Config, error) {

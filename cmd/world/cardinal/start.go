@@ -18,10 +18,6 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-/////////////////
-// Cobra Setup //
-/////////////////
-
 const (
 	flagBuild     = "build"
 	flagDebug     = "debug"

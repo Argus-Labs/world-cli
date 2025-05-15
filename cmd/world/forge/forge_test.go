@@ -16,7 +16,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/printer"
@@ -44,13 +43,10 @@ type ForgeTestSuite struct {
 	server    *httptest.Server
 	testToken string
 	ctx       context.Context
-	cmd       *cobra.Command
 }
 
 func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't care about cylomatic complexity
 	s.ctx = context.Background()
-	s.cmd = &cobra.Command{}
-	s.cmd.SetContext(s.ctx)
 
 	argusIDAuthURL = "http://localhost:8001/api/auth/service-auth-session"
 
@@ -3201,7 +3197,7 @@ func (s *ForgeTestSuite) TestGetForgeCommandState() {
 	err := SaveForgeConfig(config)
 	s.Require().NoError(err)
 
-	ctx := s.cmd.Context()
+	ctx := context.Background()
 	state, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "not logged in")

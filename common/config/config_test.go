@@ -7,25 +7,8 @@ import (
 	"testing"
 
 	"github.com/pelletier/go-toml"
-	"github.com/spf13/cobra"
 	"gotest.tools/v3/assert"
 )
-
-// cmdZero returns an empty cobra command. Since the config flag is not set, GetConfig will search
-// the local directory (and parent directories) for a config file.
-func cmdZero() *cobra.Command {
-	return &cobra.Command{}
-}
-
-// cmdWithConfig creates a command that has the --config flag set to the given filename.
-func cmdWithConfig(t *testing.T, filename string) {
-	cmd := cmdZero()
-	AddConfigFlag(cmd)
-	assert.NilError(t, cmd.Flags().Set(flagForConfigFile, filename))
-	t.Cleanup(func() {
-		assert.NilError(t, cmd.Flags().Set(flagForConfigFile, ""))
-	})
-}
 
 func getNamespace(t *testing.T, cfg *Config) string {
 	val, ok := cfg.DockerEnv["CARDINAL_NAMESPACE"]
@@ -62,8 +45,8 @@ func makeConfigAtFile(t *testing.T, file *os.File, namespace string) {
 
 func TestCanSetNamespaceWithFilename(t *testing.T) {
 	file := makeConfigAtTemp(t, "alpha")
-	cmdWithConfig(t, file)
 
+	configFile = file
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
@@ -75,6 +58,7 @@ func replaceEnvVarForTest(t *testing.T, env, value string) {
 
 func TestCanSetNamespaceWithEnvVariable(t *testing.T) {
 	file := makeConfigAtTemp(t, "alpha")
+	configFile = ""
 	replaceEnvVarForTest(t, WorldCLIConfigFileEnvVariable, file)
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
@@ -86,7 +70,7 @@ func TestConfigPreference(t *testing.T) {
 	envConfig := makeConfigAtTemp(t, "beta")
 	replaceEnvVarForTest(t, WorldCLIConfigFileEnvVariable, envConfig)
 
-	cmdWithConfig(t, fileConfig)
+	configFile = fileConfig
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
@@ -109,9 +93,10 @@ func makeTempDir(t *testing.T) string {
 func TestConfigFromLocalFile(t *testing.T) {
 	tempdir := makeTempDir(t)
 
-	configFile := path.Join(tempdir, WorldCLIConfigFilename) //nolint:govet // test
-	makeConfigAtPath(t, configFile, "alpha")
+	configPath := path.Join(tempdir, WorldCLIConfigFilename) //nolint:govet // test
+	makeConfigAtPath(t, configPath, "alpha")
 
+	configFile = ""
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
@@ -156,7 +141,7 @@ CARDINAL_NAMESPACE="alpha"
 `
 	filename := makeTempConfigWithContent(t, content)
 
-	cmdWithConfig(t, filename)
+	configFile = filename
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
@@ -172,7 +157,7 @@ ENV_BETA="beta"
 `
 	filename := makeTempConfigWithContent(t, content)
 
-	cmdWithConfig(t, filename)
+	configFile = filename
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, cfg.DockerEnv["ENV_ALPHA"], "alpha")
@@ -187,7 +172,7 @@ FOO = "bar"
 	filename := makeTempConfigWithContent(t, content)
 	// by default, the root path should match the location of the toml file.
 	wantRootDir, _ := path.Split(filename)
-	cmdWithConfig(t, filename)
+	configFile = filename
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, wantRootDir, cfg.RootDir)
@@ -201,7 +186,7 @@ FOO = "bar"
 `
 	wantRootDir = "/some/crazy/path"
 	filename = makeTempConfigWithContent(t, content)
-	cmdWithConfig(t, filename)
+	configFile = filename
 	cfg, err = GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, wantRootDir, cfg.RootDir)
@@ -220,7 +205,7 @@ SOME_INT = 100
 SOME_FLOAT = 99.9
 `
 	filename := makeTempConfigWithContent(t, content)
-	cmdWithConfig(t, filename)
+	configFile = filename
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, "100", cfg.DockerEnv["SOME_INT"])
@@ -235,7 +220,7 @@ SOME_FLOAT = 99.9
 =1000
 `
 	filename := makeTempConfigWithContent(t, invalidContent)
-	cmdWithConfig(t, filename)
+	configFile = filename
 	_, err := GetConfig()
 	assert.Check(t, err != nil)
 }
@@ -275,7 +260,7 @@ DUPLICATE = 200
 
 	for _, tc := range testCases {
 		filename := makeTempConfigWithContent(t, tc.toml)
-		cmdWithConfig(t, filename)
+		configFile = filename
 		_, err := GetConfig()
 		assert.Check(t, err != nil, "in %q", tc.name)
 	}
@@ -283,16 +268,9 @@ DUPLICATE = 200
 
 func TestCanParseExampleConfig(t *testing.T) {
 	exampleConfig := "../../example-world.toml"
-	cmdWithConfig(t, exampleConfig)
+	configFile = exampleConfig
 	cfg, err := GetConfig()
 	assert.NilError(t, err)
 	assert.Equal(t, "my-world-1", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 	assert.Equal(t, "world-engine", cfg.DockerEnv["CHAIN_ID"])
-}
-
-func TestConfigFlagCannotBeEmpty(t *testing.T) {
-	// If you set the config file, it cannot be empty
-	cmdWithConfig(t, "")
-	_, err := GetConfig()
-	assert.Check(t, err != nil)
 }
