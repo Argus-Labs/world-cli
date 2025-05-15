@@ -1,6 +1,7 @@
 package root
 
 import (
+	"context"
 	"io"
 	"net"
 	"os"
@@ -150,26 +151,30 @@ func TestDev(t *testing.T) {
 	err := createCmd.Run() // cardinal create {dir}/sgt
 	assert.NilError(t, err)
 
-	// Start cardinal dev
-	// ctx, cancel := context.WithCancel(t.Context())
-	// defer cancel()
+	// Start cardinal dev with a 10-second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	devCmd := cardinal.DevCmd{ // cardinal dev --editor=false
-		Editor: false,
+		Editor:  false,
+		Context: ctx,
 	}
-	err = devCmd.Run() // cardinal dev --editor=false
-	assert.NilError(t, err)
 
-	// go func() {
-	//	err := ctx.Run()
-	//	assert.NilError(t, err)
-	// }()
+	done := make(chan error, 1)
+	go func() {
+		done <- devCmd.Run()
+	}()
 
 	// Check and wait until cardinal is healthy
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
-	// Shutdown the program
-	// cancel()
+	// Wait for either the process to finish or the timeout to occur
+	select {
+	case <-ctx.Done():
+		// Timeout reached, process should be killed by context cancellation
+	case err := <-done:
+		assert.NilError(t, err)
+	}
 
 	// Check and wait until cardinal shutdowns
 	assert.Assert(t, cardinalIsDown(t), "Cardinal is not successfully shutdown")
@@ -255,25 +260,27 @@ func TestEVMStart(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Start evm dev
-	// ctx, cancel := context.WithCancel(t.Context())
-	// defer cancel()
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(10*time.Second))
+	defer cancel()
 
 	startCmd := evm.StartCmd{
 		UseDevDA: true,
+		Context:  ctx,
 	}
-	err = startCmd.Run() // evm start --dev
-	assert.NilError(t, err)
-
-	// go func() {
-	//	err := ctx.Run()
-	//	assert.NilError(t, err)
-	// }()
+	done := make(chan error, 1)
+	go func() {
+		done <- startCmd.Run() // evm start --dev
+	}()
 
 	// Check and wait until evm is up
 	assert.Assert(t, evmIsUp(t), "EVM is not running")
 
-	// Shutdown the program
-	// cancel()
+	select {
+	case <-ctx.Done():
+		// Timeout reached, process should be killed by context cancellation
+	case err := <-done:
+		assert.NilError(t, err)
+	}
 
 	// Check and wait until evm is down
 	assert.Assert(t, evmIsDown(t), "EVM is not successfully shutdown")

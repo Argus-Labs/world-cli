@@ -33,8 +33,9 @@ const (
 )
 
 type DevCmd struct {
-	Editor    bool `flag:"" help:"Enable Cardinal Editor"`
-	PrettyLog bool `flag:"" help:"Run Cardinal with pretty logging" default:"true"`
+	Editor    bool            `flag:"" help:"Enable Cardinal Editor"`
+	PrettyLog bool            `flag:"" help:"Run Cardinal with pretty logging" default:"true"`
+	Context   context.Context `kong:"-"`
 }
 
 func (c *DevCmd) Run() error {
@@ -63,7 +64,10 @@ func (c *DevCmd) Run() error {
 
 	// Start redis, cardinal, and cardinal editor
 	// If any of the services terminates, the entire group will be terminated.
-	group, ctx := errgroup.WithContext(context.Background())
+	if c.Context == nil {
+		c.Context = context.Background()
+	}
+	group, ctx := errgroup.WithContext(c.Context)
 	group.Go(func() error {
 		if err := startRedis(ctx, cfg); err != nil {
 			return eris.Wrap(err, "Encountered an error with Redis")

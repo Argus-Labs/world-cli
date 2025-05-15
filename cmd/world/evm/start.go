@@ -16,8 +16,9 @@ import (
 
 //nolint:lll // needed to put all the help text in the same line
 type StartCmd struct {
-	DAAuthToken string `flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
-	UseDevDA    bool   `flag:"" optional:"" help:"Use a locally running DA layer"                                                    name:"dev"`
+	DAAuthToken string          `flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
+	UseDevDA    bool            `flag:"" optional:"" name:"dev" help:"Use a locally running DA layer"`
+	Context     context.Context `kong:"-"`
 }
 
 func (c *StartCmd) Run() error {
@@ -33,7 +34,10 @@ func (c *StartCmd) Run() error {
 	}
 	defer dockerClient.Close()
 
-	ctx := context.Background()
+	ctx := c.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	if err = validateDALayer(ctx, c, cfg, dockerClient); err != nil {
 		return err
