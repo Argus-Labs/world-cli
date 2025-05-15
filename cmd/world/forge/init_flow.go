@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -122,7 +124,7 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 			return &flow.State, errors.New("not logged in, can't lookup project from git repo")
 		}
 		ctx := cmd.Context()
-		err := doRepoLookup(ctx, &config)
+		err := flow.doRepoLookup(ctx)
 		if err != nil {
 			return &flow.State, err
 		}
@@ -197,8 +199,6 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		}
 	}
 
-	// TODO: if the user selected a project, we need to add it to KnownProjects and save the config
-
 	return &flow.State, nil
 }
 
@@ -216,10 +216,10 @@ func GetForgeCommandState() *CommandState {
 // it returns nil if the project is found and the config is updated
 // if the lookup worked but there is no matching project, it will return nil
 // and the config will not be changed.
-func doRepoLookup(ctx context.Context, config *Config) error {
+func (flow *initFlow) doRepoLookup(ctx context.Context) error {
 	// needed a repo lookup, and we are logged in, so try to lookup the project
 	deployURL := fmt.Sprintf("%s/api/project/?url=%s&path=%s",
-		baseURL, url.QueryEscape(config.CurrRepoURL), url.QueryEscape(config.CurrRepoPath))
+		baseURL, url.QueryEscape(flow.config.CurrRepoURL), url.QueryEscape(flow.config.CurrRepoPath))
 	body, err := sendRequest(ctx, http.MethodGet, deployURL, nil)
 	if err != nil {
 		// we need this, so fail if we can't get it
@@ -235,64 +235,29 @@ func doRepoLookup(ctx context.Context, config *Config) error {
 	}
 	if proj != nil {
 		// add to list of known projects
-		AddKnownProject(config, proj)
+		flow.AddKnownProject(proj)
 		// save the config, but don't change the default ProjectID & OrgID
-		err := SaveForgeConfig(*config)
+		err := SaveForgeConfig(flow.config)
 		if err != nil {
 			printer.Notificationf("Warning: Failed to save config: %s", err)
+			logger.Error(eris.Wrap(err, "Init flow failed to save config"))
 			// continue on, this is not fatal
 		}
 		// now return a copy of it with the looked up ProjectID and OrganizationID set
-		config.ProjectID = proj.ID
-		config.OrganizationID = proj.OrgID
-		config.CurrProjectName = proj.Name
-		config.CurrRepoKnown = true
+		flow.config.ProjectID = proj.ID
+		flow.config.OrganizationID = proj.OrgID
+		flow.config.CurrProjectName = proj.Name
+		flow.config.CurrRepoKnown = true
 	}
 	return nil
 }
 
-func AddKnownProject(config *Config, proj *project) {
-	config.KnownProjects = append(config.KnownProjects, KnownProject{
+func (flow *initFlow) AddKnownProject(proj *project) {
+	flow.config.KnownProjects = append(flow.config.KnownProjects, KnownProject{
 		ProjectID:      proj.ID,
 		OrganizationID: proj.OrgID,
 		RepoURL:        proj.RepoURL,
 		RepoPath:       proj.RepoPath,
 		ProjectName:    proj.Name,
 	})
-}
-
-func (flow *initFlow) handleNeedOrgData() error {
-	// TODO: get the org data from the user
-	// some cases you will need to handle:
-	// - the user has no orgs, create a new one
-	// - the user has one org, use it or create a new one
-	// - the user has multiple orgs, and they need to select one or create a new one
-	return nil
-}
-
-func (flow *initFlow) handleNeedExistingOrgData() error {
-	// TODO: get the org data from the user
-	// some cases you will need to handle:
-	// - the user has no orgs, fail
-	// - the user has one org, use it
-	// - the user has multiple orgs, and they need to select one
-	return nil
-}
-
-func (flow *initFlow) handleNeedProjectData() error {
-	// TODO: get the project data
-	// some cases you will need to handle:
-	// - the user has no projects, create a new one
-	// - the user has one project, use it or create a new one
-	// - the user has multiple projects, and they need to select one or create a new one
-	return nil
-}
-
-func (flow *initFlow) handleNeedExistingProjectData() error {
-	// TODO: get the project data
-	// some cases you will need to handle:
-	// - the user has no projects, fail
-	// - the user has one project, use it
-	// - the user has multiple projects, and they need to select one
-	return nil
 }

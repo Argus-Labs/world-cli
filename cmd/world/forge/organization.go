@@ -116,7 +116,7 @@ func selectOrganization(ctx context.Context) (organization, error) {
 		return organization{}, nil
 	}
 
-	selectedOrg, err := promptForOrganization(ctx, orgs)
+	selectedOrg, err := promptForOrganization(ctx, orgs, false)
 	if err != nil {
 		return organization{}, err
 	}
@@ -129,7 +129,8 @@ func selectOrganization(ctx context.Context) (organization, error) {
 	return selectedOrg, nil
 }
 
-func promptForOrganization(ctx context.Context, orgs []organization) (organization, error) {
+//nolint:gocognit // Makes sense to keep in one function.
+func promptForOrganization(ctx context.Context, orgs []organization, createNew bool) (organization, error) {
 	// Display organizations as a numbered list
 	printer.NewLine(1)
 	printer.Headerln("   Available Organizations  ")
@@ -138,18 +139,31 @@ func promptForOrganization(ctx context.Context, orgs []organization) (organizati
 	}
 
 	// Get user input
+	var input string
 	for {
 		select {
 		case <-ctx.Done():
 			return organization{}, ctx.Err()
 		default:
 			printer.NewLine(1)
-			input := getInput("Enter organization number (or 'q' to quit)", "")
+			if createNew {
+				input = getInput("Enter organization number ('c' to create new or 'q' to quit)", "")
+			} else {
+				input = getInput("Enter organization number ('q' to quit)", "")
+			}
 
 			if input == "q" {
 				printer.NewLine(1)
 				printer.Errorln("Organization selection canceled")
-				return organization{}, eris.New("Organization selection canceled")
+				return organization{}, ErrOrganizationSelectionCanceled
+			}
+
+			if input == "c" && createNew {
+				org, err := createOrganization(ctx)
+				if err != nil {
+					return organization{}, eris.Wrap(err, "Failed to create organization")
+				}
+				return *org, nil
 			}
 
 			// Parse selection

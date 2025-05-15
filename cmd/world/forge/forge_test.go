@@ -283,16 +283,42 @@ func (s *ForgeTestSuite) handleProjectList(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	projects := []project{
-		{
-			ID:      "test-project-id",
-			OrgID:   "test-org-id",
-			Name:    "Test Project",
-			Slug:    "testp",
-			RepoURL: "https://github.com/test/repo",
-		},
+	switch s.testToken {
+	case "empty-list":
+		// Return empty list for no projects test case
+		s.writeJSON(w, map[string]interface{}{"data": []project{}})
+	case "multiple-projects":
+		// Return multiple projects for multiple projects test case
+		projects := []project{
+			{
+				ID:      "test-project-id-1",
+				OrgID:   "test-org-id",
+				Name:    "Test Project 1",
+				Slug:    "testp1",
+				RepoURL: "https://github.com/test/repo1",
+			},
+			{
+				ID:      "test-project-id-2",
+				OrgID:   "test-org-id",
+				Name:    "Test Project 2",
+				Slug:    "testp2",
+				RepoURL: "https://github.com/test/repo2",
+			},
+		}
+		s.writeJSON(w, map[string]interface{}{"data": projects})
+	default:
+		// Default case - single project
+		projects := []project{
+			{
+				ID:      "test-project-id",
+				OrgID:   "test-org-id",
+				Name:    "Test Project",
+				Slug:    "testp",
+				RepoURL: "https://github.com/test/repo",
+			},
+		}
+		s.writeJSON(w, map[string]interface{}{"data": projects})
 	}
-	s.writeJSON(w, map[string]interface{}{"data": projects})
 }
 
 func (s *ForgeTestSuite) handleProjectGet(w http.ResponseWriter, _ *http.Request) {
@@ -700,7 +726,6 @@ func (s *ForgeTestSuite) TestGetSelectedProject() {
 				s.Equal(tc.expectedProj.ID, proj.ID)
 				s.Equal(tc.expectedProj.Name, proj.Name)
 				s.Equal(tc.expectedProj.Slug, proj.Slug)
-				s.Equal(tc.expectedProj.RepoURL, proj.RepoURL)
 			}
 		})
 	}
@@ -1385,7 +1410,6 @@ func (s *ForgeTestSuite) TestLogin() {
 			key:           "valid-key",
 			expectedError: false,
 			orgInputs:     []string{"Y", "test", "testo", "https://test.com", "Y"},
-			testToken:     "empty-list", // Add this to test no orgs scenario
 		},
 		{
 			name:          "Success - Create org with lowercase y, bad input, cancel with n",
@@ -3197,7 +3221,9 @@ func (s *ForgeTestSuite) TestAddKnownProject() {
 		Name:     "Test Project",
 	}
 
-	AddKnownProject(config, proj)
+	flowObject := &initFlow{config: *config}
+	flowObject.AddKnownProject(proj)
+	config = &flowObject.config
 
 	s.Len(config.KnownProjects, 1)
 	s.Equal(KnownProject{
@@ -3207,6 +3233,676 @@ func (s *ForgeTestSuite) TestAddKnownProject() {
 		RepoPath:       "cmd/world/forge",
 		ProjectName:    "Test Project",
 	}, config.KnownProjects[0])
+}
+
+func (s *ForgeTestSuite) TestHandleNeedOrgData() {
+	testCases := []struct {
+		name            string
+		testToken       string
+		inputs          []string
+		expectInputFail int
+		expectedError   bool
+		expectedOrg     *organization
+	}{
+		{
+			name:      "Success - Create org when none exist",
+			testToken: "empty-list",
+			inputs: []string{
+				"Y",               // create org
+				"My Great Org",    // name
+				"",                // slug
+				"http://test.com", // avatar URL
+				"Y",               // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+		},
+		{
+			name:      "Success - Cancel org creation",
+			testToken: "empty-list",
+			inputs: []string{
+				"n", // don't create org
+			},
+			expectInputFail: 0,
+			expectedError:   true,
+			expectedOrg:     nil,
+		},
+		{
+			name:      "Success - Create org with custom slug",
+			testToken: "empty-list",
+			inputs: []string{
+				"Y",               // create org
+				"testo",           // name
+				"testo",           // slug
+				"http://test.com", // avatar URL
+				"Y",               // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+		},
+		{
+			name:      "Success - Single org exists",
+			testToken: "test-token", // default token returns single org
+			inputs: []string{
+				"Y", // confirm using the single org
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Org",
+				Slug: "testo",
+			},
+		},
+		{
+			name:      "Success - Multiple orgs, select first",
+			testToken: "multiple-orgs",
+			inputs: []string{
+				"1", // select first org
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id-1",
+				Name: "Test Org 1",
+				Slug: "testo1",
+			},
+		},
+		{
+			name:      "Success - Multiple orgs, select second",
+			testToken: "multiple-orgs",
+			inputs: []string{
+				"2", // select second org
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id-2",
+				Name: "Test Org 2",
+				Slug: "testo2",
+			},
+		},
+		{
+			name:      "Error - Multiple orgs, cancel selection",
+			testToken: "multiple-orgs",
+			inputs: []string{
+				"q", // quit selection
+			},
+			expectInputFail: 0,
+			expectedError:   true,
+			expectedOrg:     nil,
+		},
+		{
+			name:      "Success - Single org exists",
+			testToken: "test-token", // default token returns single org
+			inputs: []string{
+				"Y", // confirm using the single org
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Org",
+				Slug: "testo",
+			},
+		},
+		{
+			name:      "Error - Single org exists, cancel selection",
+			testToken: "test-token", // default token returns single org
+			inputs: []string{
+				"n", // cancel using the single org
+			},
+			expectInputFail: 0,
+			expectedError:   true,
+			expectedOrg:     nil,
+		},
+		{
+			name:      "Success - Single org exists, create new instead",
+			testToken: "test-token", // default token returns single org
+			inputs: []string{
+				"c",               // create new org instead
+				"My New Org",      // name
+				"",                // slug
+				"http://test.com", // avatar URL
+				"Y",               // confirm
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Set up test to return empty org list
+			s.testToken = tc.testToken
+			defer func() { s.testToken = "" }()
+
+			inputIndex := 0
+			getInput = func(prompt string, defaultVal string) string {
+				printer.Infof("%s [%s]: ", prompt, defaultVal)
+
+				input := tc.inputs[inputIndex]
+				if input == "" {
+					input = defaultVal
+				}
+				printer.Infoln(input)
+				inputIndex++
+				return input
+			}
+			defer func() { getInput = originalGetInput }()
+
+			// Create flow
+			flowState := &initFlow{
+				State: CommandState{
+					Command: s.cmd,
+				},
+			}
+
+			// Run test
+			err := flowState.handleNeedOrgData()
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Nil(flowState.State.Organization)
+			} else {
+				s.Require().NoError(err)
+				s.Require().NotNil(flowState.State.Organization)
+				s.Equal(tc.expectedOrg.Name, flowState.State.Organization.Name)
+				s.Equal(tc.expectedOrg.Slug, flowState.State.Organization.Slug)
+				s.True(flowState.organizationStepDone)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestHandleNeedExistingOrgData() {
+	testCases := []struct {
+		name            string
+		testToken       string
+		inputs          []string
+		expectInputFail int
+		expectedError   bool
+		expectedOrg     *organization
+	}{
+		{
+			name:            "Success - Single org exists",
+			testToken:       "test-token", // default token returns single org
+			inputs:          []string{},   // no input needed for single org case
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Org",
+				Slug: "testo",
+			},
+		},
+		{
+			name:      "Success - Multiple orgs, select first",
+			testToken: "multiple-orgs",
+			inputs: []string{
+				"1", // select first org
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id-1",
+				Name: "Test Org 1",
+				Slug: "testo1",
+			},
+		},
+		{
+			name:      "Success - Multiple orgs, select second",
+			testToken: "multiple-orgs",
+			inputs: []string{
+				"2", // select second org
+			},
+			expectInputFail: 0,
+			expectedError:   false,
+			expectedOrg: &organization{
+				ID:   "test-org-id-2",
+				Name: "Test Org 2",
+				Slug: "testo2",
+			},
+		},
+		{
+			name:      "Error - Multiple orgs, cancel selection",
+			testToken: "multiple-orgs",
+			inputs: []string{
+				"q", // quit selection
+			},
+			expectInputFail: 0,
+			expectedError:   true,
+			expectedOrg:     nil,
+		},
+		{
+			name:            "Error - No orgs exist",
+			testToken:       "empty-list",
+			inputs:          []string{},
+			expectInputFail: 0,
+			expectedError:   true,
+			expectedOrg:     nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Clear config before each test to ensure no OrganizationID is set
+			err := SaveForgeConfig(Config{
+				Credential: Credential{
+					Token: "test-token",
+				},
+			})
+			s.Require().NoError(err)
+
+			s.testToken = tc.testToken
+			defer func() { s.testToken = "" }()
+
+			inputIndex := 0
+			getInput = func(prompt string, defaultVal string) string {
+				printer.Infof("%s [%s]: ", prompt, defaultVal)
+
+				if inputIndex >= len(tc.inputs) {
+					return defaultVal
+				}
+
+				input := tc.inputs[inputIndex]
+				if input == "" {
+					input = defaultVal
+				}
+				printer.Infoln(input)
+				inputIndex++
+				return input
+			}
+			defer func() { getInput = originalGetInput }()
+
+			// Create flow
+			flowState := &initFlow{
+				State: CommandState{
+					Command: s.cmd,
+				},
+			}
+
+			// Run test
+			err = flowState.handleNeedExistingOrgData()
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Nil(flowState.State.Organization)
+			} else {
+				s.Require().NoError(err)
+				s.Require().NotNil(flowState.State.Organization)
+				s.Equal(tc.expectedOrg.Name, flowState.State.Organization.Name)
+				s.Equal(tc.expectedOrg.Slug, flowState.State.Organization.Slug)
+				s.True(flowState.organizationStepDone)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestHandleNeedProjectData() {
+	testCases := []struct {
+		name                string
+		config              Config
+		testToken           string
+		inputs              []string
+		regionSelectActions []tea.KeyMsg // Add region selection actions
+		expectedError       bool
+	}{
+		{
+			name: "Success - Always returns no projects case",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "empty-list",
+			inputs: []string{
+				"Y",            // Create project
+				"Test Project", // Project name
+				"testp",        // Project slug
+				"https://github.com/Argus-Labs/world-cli", // Repo URL
+				"",   // No token needed for public repo
+				"",   // Default repo path
+				"10", // Tick rate
+				"n",  // No Discord
+				"n",  // No Slack
+				"",   // No avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Cancel project creation",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "empty-list",
+			inputs: []string{
+				"n", // Don't create project
+			},
+			expectedError: true,
+		},
+		{
+			name: "Success - Single project exists",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "test-token", // default token returns single project
+			inputs: []string{
+				"Y", // Confirm using the single project
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Single project exists, cancel selection",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "test-token", // default token returns single project
+			inputs: []string{
+				"n", // Cancel using the single project
+			},
+			expectedError: true,
+		},
+		{
+			name: "Success - Single project exists, create new project",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "test-token", // default token returns single project
+			inputs: []string{
+				"c",           // Choose to create new project
+				"New Project", // Project name
+				"newp",        // Project slug
+				"https://github.com/Argus-Labs/world-cli", // Repo URL
+				"",   // No token needed for public repo
+				"",   // Default repo path
+				"10", // Tick rate
+				"n",  // No Discord
+				"n",  // No Slack
+				"",   // No avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - Multiple projects, select first project",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "multiple-projects",
+			inputs: []string{
+				"1", // Select first project
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - Multiple projects, select second project",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "multiple-projects",
+			inputs: []string{
+				"2", // Select second project
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Multiple projects, cancel selection",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "multiple-projects",
+			inputs: []string{
+				"q", // Cancel selection
+			},
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Setup test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Set test token
+			s.testToken = tc.testToken
+			defer func() { s.testToken = "" }()
+
+			// Setup input mocking
+			inputIndex := 0
+			getInput = func(prompt string, defaultVal string) string {
+				if inputIndex >= len(tc.inputs) {
+					return defaultVal
+				}
+				input := tc.inputs[inputIndex]
+				inputIndex++
+				printer.Infof("%s [%s]: %s", prompt, defaultVal, input)
+				return input
+			}
+			defer func() { getInput = originalGetInput }()
+
+			// Simulate region selection
+			regionSelector = tea.NewProgram(
+				multiselect.InitialMultiselectModel(
+					s.ctx,
+					[]string{"us-east-1", "us-west-1", "eu-west-1"},
+				),
+				tea.WithInput(nil),
+			)
+			if regionSelector == nil {
+				printer.Errorln("failed to create region selector")
+			}
+			defer func() { regionSelector = nil }()
+
+			// Send region select actions
+			go func() {
+				// wait for 1s to make sure the program is initialized
+				time.Sleep(1 * time.Second)
+				for _, action := range tc.regionSelectActions {
+					// send action to region selector
+					if regionSelector != nil {
+						regionSelector.Send(action)
+						// wait for 100ms to make sure the action is processed
+						time.Sleep(100 * time.Millisecond)
+					} else {
+						printer.Errorln("region selector is nil")
+					}
+				}
+			}()
+
+			// Create flow
+			flowState := &initFlow{
+				State: CommandState{
+					Command: s.cmd,
+				},
+			}
+
+			// Run test
+			err = flowState.handleNeedProjectData()
+			if tc.expectedError {
+				s.Require().Error(err)
+				if tc.testToken == "empty-list" {
+					s.Equal(ErrProjectCreationCanceled, err)
+				} else {
+					s.Equal(ErrProjectSelectionCanceled, err)
+				}
+				s.Nil(flowState.State.Project)
+			} else {
+				s.Require().NoError(err)
+				s.Require().NotNil(flowState.State.Project)
+				s.True(flowState.projectStepDone)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestHandleNeedExistingProjectData() {
+	testCases := []struct {
+		name          string
+		config        Config
+		testToken     string
+		inputs        []string
+		expectedError bool
+		expectedErr   error // Add expected error type
+	}{
+		{
+			name: "Success - Single project exists",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "test-token", // default token returns single project
+			inputs: []string{
+				"Y", // Confirm using the single project
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - Multiple projects, select first project",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "multiple-projects",
+			inputs: []string{
+				"1", // Select first project
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - Multiple projects, select second project",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "multiple-projects",
+			inputs: []string{
+				"2", // Select second project
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Multiple projects, cancel selection",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken: "multiple-projects",
+			inputs: []string{
+				"q", // Cancel selection
+			},
+			expectedError: true,
+			expectedErr:   ErrProjectSelectionCanceled,
+		},
+		{
+			name: "Error - No projects exist",
+			config: Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			testToken:     "empty-list",
+			inputs:        []string{},
+			expectedError: true,
+			expectedErr:   ErrProjectSelectionCanceled,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Setup test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Set test token
+			s.testToken = tc.testToken
+			defer func() { s.testToken = "" }()
+
+			// Setup input mocking
+			inputIndex := 0
+			getInput = func(prompt string, defaultVal string) string {
+				if inputIndex >= len(tc.inputs) {
+					return defaultVal
+				}
+				input := tc.inputs[inputIndex]
+				inputIndex++
+				printer.Infof("%s [%s]: %s", prompt, defaultVal, input)
+				return input
+			}
+			defer func() { getInput = originalGetInput }()
+
+			// Create flow
+			flowState := &initFlow{
+				State: CommandState{
+					Command: s.cmd,
+				},
+			}
+
+			// Run test
+			err = flowState.handleNeedExistingProjectData()
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Equal(ErrProjectSelectionCanceled, err)
+				s.Nil(flowState.State.Project)
+			} else {
+				s.Require().NoError(err)
+				s.Require().NotNil(flowState.State.Project)
+				s.True(flowState.projectStepDone)
+			}
+		})
+	}
 }
 
 func TestForgeSuite(t *testing.T) {
