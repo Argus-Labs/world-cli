@@ -221,7 +221,8 @@ func updateWorldToml(projectName string) error {
 }
 
 type CreateCmd struct {
-	Directory string `arg:"" optional:"" type:"path" help:"The directory to create the project in"`
+	Parent    *RootCmd `kong:"-"`
+	Directory string   `         arg:"" optional:"" type:"path" help:"The directory to create the project in"`
 }
 
 func (c *CreateCmd) Run() error {

@@ -3,14 +3,10 @@ package root
 import (
 	"context"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/hashicorp/go-version"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/logger"
@@ -25,14 +21,17 @@ const (
 	httpTimeout = 2 * time.Second
 )
 
-var CLI struct {
-	Create       *CreateCmd  `cmd:"" group:"Getting Started:" help:"Create a new World Engine project"`
-	Doctor       *DoctorCmd  `cmd:"" group:"Getting Started:" help:"Check your development environment"`
+//nolint:revive // this is the natural name for the root command
+type RootCmd struct {
+	Create       *CreateCmd  `cmd:"" group:"Getting Started:"     help:"Create a new World Engine project"`
+	Doctor       *DoctorCmd  `cmd:"" group:"Getting Started:"     help:"Check your development environment"`
 	kong.Plugins             // put this here so tools will be in the right place
 	Version      *VersionCmd `cmd:"" group:"Additional Commands:" help:"Show the version of the CLI"`
 	// Help    *root.HelpCmd    `cmd:"" default:"1" group:"Additional Commands:" help:"Show more detailed help"`
-	Verbose bool `flag:"" short:"v" help:"Enable World CLI Debug logs"`
+	Verbose bool `                                    help:"Enable World CLI Debug logs"        flag:"" short:"v"`
 }
+
+var CLI RootCmd
 
 type HelpCmd struct {
 }
@@ -103,29 +102,4 @@ func checkLatestVersion() error {
 		}
 	}
 	return nil
-}
-
-// contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or
-// when a termination signal is received.
-//
-//nolint:unused // we will want to use this in the future I think
-func contextWithSigterm(ctx context.Context) context.Context {
-	ctx, cancel := context.WithCancel(ctx)
-	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-
-	go func() {
-		defer cancel()
-
-		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
-
-		select {
-		case <-signalCh:
-			printer.Infoln(textStyle.Render("Interrupt signal received. Terminating..."))
-		case <-ctx.Done():
-			printer.Infoln(textStyle.Render("Cancellation signal received. Terminating..."))
-		}
-	}()
-
-	return ctx
 }

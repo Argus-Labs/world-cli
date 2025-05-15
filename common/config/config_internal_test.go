@@ -46,8 +46,7 @@ func makeConfigAtFile(t *testing.T, file *os.File, namespace string) {
 func TestCanSetNamespaceWithFilename(t *testing.T) {
 	file := makeConfigAtTemp(t, "alpha")
 
-	configFile = file
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&file)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
@@ -58,9 +57,8 @@ func replaceEnvVarForTest(t *testing.T, env, value string) {
 
 func TestCanSetNamespaceWithEnvVariable(t *testing.T) {
 	file := makeConfigAtTemp(t, "alpha")
-	configFile = ""
 	replaceEnvVarForTest(t, WorldCLIConfigFileEnvVariable, file)
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(nil)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
@@ -70,8 +68,7 @@ func TestConfigPreference(t *testing.T) {
 	envConfig := makeConfigAtTemp(t, "beta")
 	replaceEnvVarForTest(t, WorldCLIConfigFileEnvVariable, envConfig)
 
-	configFile = fileConfig
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&fileConfig)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
@@ -96,8 +93,7 @@ func TestConfigFromLocalFile(t *testing.T) {
 	configPath := path.Join(tempdir, WorldCLIConfigFilename)
 	makeConfigAtPath(t, configPath, "alpha")
 
-	configFile = ""
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(nil)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
@@ -113,11 +109,11 @@ func TestLoadConfigLooksInParentDirectories(t *testing.T) {
 
 	t.Chdir(deepPath)
 
-	configFile := path.Join(deepPath, WorldCLIConfigFilename) //nolint:govet // test
+	configFilePath := path.Join(deepPath, WorldCLIConfigFilename)
 	// The eventual call to LoadConfig should find this config file
-	makeConfigAtPath(t, configFile, "alpha")
+	makeConfigAtPath(t, configFilePath, "alpha")
 
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&configFilePath)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
@@ -141,8 +137,7 @@ CARDINAL_NAMESPACE="alpha"
 `
 	filename := makeTempConfigWithContent(t, content)
 
-	configFile = filename
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&filename)
 	assert.NilError(t, err)
 	assert.Equal(t, "alpha", getNamespace(t, cfg))
 }
@@ -157,8 +152,7 @@ ENV_BETA="beta"
 `
 	filename := makeTempConfigWithContent(t, content)
 
-	configFile = filename
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&filename)
 	assert.NilError(t, err)
 	assert.Equal(t, cfg.DockerEnv["ENV_ALPHA"], "alpha")
 	assert.Equal(t, cfg.DockerEnv["ENV_BETA"], "beta")
@@ -172,8 +166,7 @@ FOO = "bar"
 	filename := makeTempConfigWithContent(t, content)
 	// by default, the root path should match the location of the toml file.
 	wantRootDir, _ := path.Split(filename)
-	configFile = filename
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&filename)
 	assert.NilError(t, err)
 	assert.Equal(t, wantRootDir, cfg.RootDir)
 	assert.Equal(t, cfg.DockerEnv["FOO"], "bar")
@@ -186,15 +179,14 @@ FOO = "bar"
 `
 	wantRootDir = "/some/crazy/path"
 	filename = makeTempConfigWithContent(t, content)
-	configFile = filename
-	cfg, err = GetConfig()
+	cfg, err = GetConfig(&filename)
 	assert.NilError(t, err)
 	assert.Equal(t, wantRootDir, cfg.RootDir)
 	assert.Equal(t, "bar", cfg.DockerEnv["FOO"])
 }
 
 func TestErrorWhenNoConfigFileExists(t *testing.T) {
-	_, err := GetConfig()
+	_, err := GetConfig(nil)
 	assert.Check(t, err != nil)
 }
 
@@ -205,8 +197,7 @@ SOME_INT = 100
 SOME_FLOAT = 99.9
 `
 	filename := makeTempConfigWithContent(t, content)
-	configFile = filename
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&filename)
 	assert.NilError(t, err)
 	assert.Equal(t, "100", cfg.DockerEnv["SOME_INT"])
 	assert.Equal(t, "99.9", cfg.DockerEnv["SOME_FLOAT"])
@@ -220,8 +211,7 @@ SOME_FLOAT = 99.9
 =1000
 `
 	filename := makeTempConfigWithContent(t, invalidContent)
-	configFile = filename
-	_, err := GetConfig()
+	_, err := GetConfig(&filename)
 	assert.Check(t, err != nil)
 }
 
@@ -260,16 +250,14 @@ DUPLICATE = 200
 
 	for _, tc := range testCases {
 		filename := makeTempConfigWithContent(t, tc.toml)
-		configFile = filename
-		_, err := GetConfig()
+		_, err := GetConfig(&filename)
 		assert.Check(t, err != nil, "in %q", tc.name)
 	}
 }
 
 func TestCanParseExampleConfig(t *testing.T) {
 	exampleConfig := "../../example-world.toml"
-	configFile = exampleConfig
-	cfg, err := GetConfig()
+	cfg, err := GetConfig(&exampleConfig)
 	assert.NilError(t, err)
 	assert.Equal(t, "my-world-1", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 	assert.Equal(t, "world-engine", cfg.DockerEnv["CHAIN_ID"])

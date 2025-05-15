@@ -63,6 +63,7 @@ func (m WorldDoctorModel) View() string {
 }
 
 type DoctorCmd struct {
+	Parent *RootCmd `kong:"-"`
 }
 
 func (c *DoctorCmd) Run() error {

@@ -12,7 +12,7 @@ var CardinalCmdPlugin struct {
 
 //nolint:lll, revive // needed to put all the help text in the same line
 type CardinalCmd struct {
-	Config string `flag:"" help:"A TOML config file"`
+	Config string `flag:"" type:"existingfile" help:"A TOML config file"`
 
 	Start   *StartCmd   `cmd:"" group:"Cardinal Commands:" help:"Launch your Cardinal game environment"`
 	Stop    *StopCmd    `cmd:"" group:"Cardinal Commands:" help:"Gracefully shut down your Cardinal game environment"`

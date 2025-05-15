@@ -34,18 +34,20 @@ var (
 	ErrGracefulExit = eris.New("Process gracefully exited")
 )
 
+//nolint:lll // needed to put all the help text in the same line
 type StartCmd struct {
-	Build      bool   `flag:"" help:"Rebuild Docker images before starting"`
-	Detach     bool   `flag:"" help:"Run in detached mode"`
-	LogLevel   string `flag:"" help:"Set the log level for Cardinal"`
-	Debug      bool   `flag:"" help:"Enable delve debugging"`
-	Telemetry  bool   `flag:"" help:"Enable tracing, metrics, and profiling"`
-	Editor     bool   `flag:"" help:"Run Cardinal Editor, useful for prototyping and debugging"`
-	EditorPort string `flag:"" help:"Port for Cardinal Editor"                                  default:"auto"`
+	Parent     *CardinalCmd `kong:"-"`
+	Build      bool         `         flag:"" help:"Rebuild Docker images before starting"`
+	Detach     bool         `         flag:"" help:"Run in detached mode"`
+	LogLevel   string       `         flag:"" help:"Set the log level for Cardinal"`
+	Debug      bool         `         flag:"" help:"Enable delve debugging"`
+	Telemetry  bool         `         flag:"" help:"Enable tracing, metrics, and profiling"`
+	Editor     bool         `         flag:"" help:"Run Cardinal Editor, useful for prototyping and debugging"`
+	EditorPort string       `         flag:"" help:"Port for Cardinal Editor"                                  default:"auto"`
 }
 
 func (c *StartCmd) Run() error { //nolint:gocognit // this is a naturally complex command
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}

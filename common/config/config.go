@@ -37,7 +37,12 @@ type Config struct {
 	DockerEnv map[string]string
 }
 
-func GetConfig() (*Config, error) {
+// GetConfig returns a Config object. If a filename is provided, it will be used as the config file.
+// Otherwise, the config file will be searched for in the current directory and all parent directories.
+func GetConfig(filename *string) (*Config, error) {
+	if filename != nil && *filename != "" {
+		return loadConfigFromFile(*filename)
+	}
 	cfg, err := findAndLoadConfigFile()
 	if err != nil {
 		return nil, err

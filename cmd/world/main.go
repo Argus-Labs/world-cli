@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
+	"reflect"
 	"runtime/debug"
 	"syscall"
 
 	"github.com/alecthomas/kong"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
@@ -94,6 +97,11 @@ func main() {
 			Summary: true,
 		}),
 	)
+	realCtx := contextWithSigterm(context.Background())
+	SetKongParentsAndContext(realCtx, &root.CLI)
+	SetKongParentsAndContext(realCtx, &cardinal.CardinalCmdPlugin)
+	SetKongParentsAndContext(realCtx, &evm.EvmCmdPlugin)
+	SetKongParentsAndContext(realCtx, &forge.ForgeCmdPlugin)
 	err = ctx.Run()
 	if err != nil {
 		sentry.CaptureException(err)
@@ -134,4 +142,68 @@ func getEnvAndVersion() (string, string) {
 	}
 
 	return env, version
+}
+
+// SetKongParents recursively sets Parent pointers for Kong CLI structs.
+func SetKongParentsAndContext(ctx context.Context, cmd interface{}) {
+	setParentsAndContext(ctx, reflect.ValueOf(cmd), reflect.ValueOf(nil))
+}
+
+//nolint:gocognit // this does exactly what it's supposed to do
+func setParentsAndContext(ctx context.Context, v reflect.Value, parent reflect.Value) {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return
+	}
+	t := v.Type()
+	for i := range v.NumField() {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+		// Set Parent pointer if field is named "Parent" and is a pointer
+		if fieldType.Name == "Parent" && field.Kind() == reflect.Ptr && parent.IsValid() {
+			if field.IsNil() {
+				field.Set(parent)
+				continue
+			}
+		}
+		// Set Context pointer if field is named "Context" and is a pointer
+		if fieldType.Name == "Context" && field.Kind() == reflect.Interface {
+			if field.IsNil() {
+				field.Set(reflect.ValueOf(ctx))
+				continue
+			}
+		}
+		// Recurse into subcommands (fields with `cmd:""` tag)
+		if field.Kind() == reflect.Ptr && !field.IsNil() {
+			_, ok := fieldType.Tag.Lookup("cmd")
+			if ok {
+				setParentsAndContext(ctx, field, v.Addr())
+			}
+		}
+	}
+}
+
+// contextWithSigterm provides a context that automatically terminates when either the parent context is canceled or
+// when a termination signal is received.
+func contextWithSigterm(ctx context.Context) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+
+	go func() {
+		defer cancel()
+
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+
+		select {
+		case <-signalCh:
+			printer.Infoln(textStyle.Render("Interrupt signal received. Terminating..."))
+		case <-ctx.Done():
+			printer.Infoln(textStyle.Render("Cancellation signal received. Terminating..."))
+		}
+	}()
+
+	return ctx
 }

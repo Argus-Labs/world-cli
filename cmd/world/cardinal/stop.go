@@ -10,10 +10,11 @@ import (
 )
 
 type StopCmd struct {
+	Parent *CardinalCmd `kong:"-"`
 }
 
 func (c *StopCmd) Run() error {
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}
