@@ -8,7 +8,8 @@ var AppVersion string
 
 // VersionCmd is the command to show the version of the CLI.
 type VersionCmd struct {
-	Check bool `help:"Check for the latest version of the CLI"`
+	Parent *RootCmd `kong:"-"`
+	Check  bool     `help:"Check for the latest version of the CLI"`
 }
 
 func (c *VersionCmd) Run() error {

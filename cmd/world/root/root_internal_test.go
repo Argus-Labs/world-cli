@@ -92,8 +92,10 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// Create a new Kong parser with our CLI struct
 	createCmd := CreateCmd{
+		Parent:    &CLI,
 		Directory: gameDir + "/sgt",
 	}
+
 	err = createCmd.Run()
 	assert.NilError(t, err)
 
@@ -102,6 +104,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// Start cardinal
 	startCmd := cardinal.StartCmd{ // cardinal start --detach --editor=false
+		Parent: &cardinal.CardinalCmd{},
 		Editor: false,
 		Detach: true,
 	}
@@ -110,7 +113,9 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	defer func() {
 		// Purge cardinal
-		purgeCmd := cardinal.PurgeCmd{}
+		purgeCmd := cardinal.PurgeCmd{
+			Parent: &cardinal.CardinalCmd{},
+		}
 		err = purgeCmd.Run()
 		assert.NilError(t, err)
 	}()
@@ -120,6 +125,7 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 
 	// Restart cardinal
 	restartCmd := cardinal.RestartCmd{ // cardinal restart --detach
+		Parent: &cardinal.CardinalCmd{},
 		Detach: true,
 	}
 	err = restartCmd.Run()
@@ -129,7 +135,9 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 	assert.Assert(t, cardinalIsUp(t), "Cardinal is not running")
 
 	// Stop cardinal
-	stopCmd := cardinal.StopCmd{}
+	stopCmd := cardinal.StopCmd{
+		Parent: &cardinal.CardinalCmd{},
+	}
 	err = stopCmd.Run()
 	assert.NilError(t, err)
 
@@ -146,6 +154,7 @@ func TestDev(t *testing.T) {
 
 	// Create a new Kong parser with our CLI struct
 	createCmd := CreateCmd{
+		Parent:    &CLI,
 		Directory: gameDir + "/sgt",
 	}
 	err := createCmd.Run() // cardinal create {dir}/sgt
@@ -156,6 +165,7 @@ func TestDev(t *testing.T) {
 	defer cancel()
 
 	devCmd := cardinal.DevCmd{ // cardinal dev --editor=false
+		Parent:  &cardinal.CardinalCmd{},
 		Editor:  false,
 		Context: ctx,
 	}
@@ -254,6 +264,7 @@ func TestEVMStart(t *testing.T) {
 	t.Chdir(gameDir)
 
 	createCmd := CreateCmd{
+		Parent:    &CLI,
 		Directory: gameDir + "/sgt",
 	}
 	err := createCmd.Run() // evm create {dir}/sgt
@@ -264,6 +275,7 @@ func TestEVMStart(t *testing.T) {
 	defer cancel()
 
 	startCmd := evm.StartCmd{
+		Parent:   &evm.EvmCmd{},
 		UseDevDA: true,
 		Context:  ctx,
 	}

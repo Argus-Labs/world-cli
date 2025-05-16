@@ -33,13 +33,14 @@ const (
 )
 
 type DevCmd struct {
-	Editor    bool            `flag:"" help:"Enable Cardinal Editor"`
-	PrettyLog bool            `flag:"" help:"Run Cardinal with pretty logging" default:"true"`
+	Parent    *CardinalCmd    `kong:"-"`
+	Editor    bool            `         flag:"" help:"Enable Cardinal Editor"`
+	PrettyLog bool            `         flag:"" help:"Run Cardinal with pretty logging" default:"true"`
 	Context   context.Context `kong:"-"`
 }
 
 func (c *DevCmd) Run() error {
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}

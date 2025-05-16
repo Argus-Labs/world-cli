@@ -16,13 +16,14 @@ import (
 
 //nolint:lll // needed to put all the help text in the same line
 type StartCmd struct {
-	DAAuthToken string          `flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
-	UseDevDA    bool            `flag:"" optional:"" name:"dev" help:"Use a locally running DA layer"`
+	Parent      *EvmCmd         `kong:"-"`
+	DAAuthToken string          `         flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
+	UseDevDA    bool            `         flag:"" optional:"" help:"Use a locally running DA layer"                                                    name:"dev"`
 	Context     context.Context `kong:"-"`
 }
 
 func (c *StartCmd) Run() error {
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}

@@ -10,10 +10,11 @@ import (
 )
 
 type PurgeCmd struct {
+	Parent *CardinalCmd `kong:"-"`
 }
 
 func (c *PurgeCmd) Run() error {
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}

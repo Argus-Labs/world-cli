@@ -8,12 +8,13 @@ import (
 )
 
 type RestartCmd struct {
-	Detach bool `flag:"" help:"Run in detached mode"`
-	Debug  bool `flag:"" help:"Enable debugging"`
+	Parent *CardinalCmd `kong:"-"`
+	Detach bool         `         flag:"" help:"Run in detached mode"`
+	Debug  bool         `         flag:"" help:"Enable debugging"`
 }
 
 func (c *RestartCmd) Run() error {
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}

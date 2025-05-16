@@ -15,18 +15,19 @@ import (
 )
 
 type BuildCmd struct {
-	LogLevel  string `flag:"" help:"Set the log level for Cardinal"`
-	Debug     bool   `flag:"" help:"Enable debugging"`
-	Telemetry bool   `flag:"" help:"Enable tracing, metrics, and profiling"`
-	Push      string `flag:"" help:"Push your cardinal image to a given image repository"`
-	Auth      string `flag:"" help:"Auth token for the given image repository"`
-	User      string `flag:"" help:"User for the given image repository"`
-	Pass      string `flag:"" help:"Password for the given image repository"`
-	RegToken  string `flag:"" help:"Registry token for the given image repository"`
+	Parent    *CardinalCmd `kong:"-"`
+	LogLevel  string       `         flag:"" help:"Set the log level for Cardinal"`
+	Debug     bool         `         flag:"" help:"Enable debugging"`
+	Telemetry bool         `         flag:"" help:"Enable tracing, metrics, and profiling"`
+	Push      string       `         flag:"" help:"Push your cardinal image to a given image repository" hidden:"true"`
+	Auth      string       `         flag:"" help:"Auth token for the given image repository"            hidden:"true"`
+	User      string       `         flag:"" help:"User for the given image repository"                  hidden:"true"`
+	Pass      string       `         flag:"" help:"Password for the given image repository"              hidden:"true"`
+	RegToken  string       `         flag:"" help:"Registry token for the given image repository"        hidden:"true"`
 }
 
 func (c *BuildCmd) Run() error {
-	cfg, err := config.GetConfig()
+	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
 	}
