@@ -13,19 +13,20 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/rs/zerolog/log"
-
 	"github.com/rotisserie/eris"
+	"github.com/rs/zerolog/log"
 	"pkg.world.dev/world-cli/common/printer"
 	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
 const (
-	DeploymentTypeDeploy   = "deploy"
-	DeploymentTypeDestroy  = "destroy"
-	DeploymentTypeReset    = "reset"
-	DeploymentStatusFailed = "failed"
-	DeploymentStatusPassed = "passed"
+	DeploymentTypeDeploy  = "deploy"
+	DeploymentTypeDestroy = "destroy"
+	DeploymentTypeReset   = "reset"
+
+	DeployStatusFailed  DeployStatus = "failed"
+	DeployStatusPassed  DeployStatus = "passed"
+	DeployStatusRunning DeployStatus = "running"
 )
 
 type deploymentPreview struct {
@@ -37,6 +38,22 @@ type deploymentPreview struct {
 	DeploymentType string   `json:"deployment_type"`
 	TickRate       int      `json:"tick_rate"`
 	Regions        []string `json:"regions"`
+}
+
+type HealthStatus string
+
+const (
+	HealthStatusHealthy   HealthStatus = "healthy"
+	HealthStatusUnhealthy HealthStatus = "unhealthy"
+	HealthStatusOffline   HealthStatus = "offline"
+)
+
+type DeployStatus string
+
+type DeployInfo struct {
+	DeployType    string
+	DeployStatus  DeployStatus
+	DeployDisplay string
 }
 
 // Deployment a project.
@@ -109,37 +126,61 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
 
-	printer.NewLine(1)
-	printer.Successf("Your %s is being processed!\n", deployType)
-	printer.NewLine(1)
-	printer.Infof("To check the status of your %s, run:\n", deployType)
-	printer.Infoln("  $ 'world status'")
+	env := "dev"
+	if deployType == "deploy" {
+		env = "prod"
+	}
+
+	err = waitUntilDeploymentIsComplete(ctx, cmdState.Project, env)
+	if err != nil {
+		printer.NewLine(1)
+		printer.Successf("Your %s is being processed!\n", deployType)
+		printer.NewLine(1)
+		printer.Infof("To check the status of your %s, run:\n", deployType)
+		printer.Infoln("  $ 'world status'")
+	}
 
 	return nil
 }
 
-//nolint:funlen, gocognit, gocyclo, cyclop // this is actually a straightforward function with a lot of error handling
 func status(ctx context.Context, cmdState *CommandState) error {
 	if cmdState.Project == nil || cmdState.Project.ID == "" {
 		printNoSelectedProject()
 		return nil
 	}
 
-	showHealth, err := getDeploymentStatus(ctx, cmdState.Project)
+	printer.Infoln(" Deployment Status ")
+	printer.SectionDivider("-", 19)
+	printer.Infof("Project:      %s\n", cmdState.Project.Name)
+	printer.Infof("Project Slug: %s\n", cmdState.Project.Slug)
+	printer.Infof("Repository:   %s\n", cmdState.Project.RepoURL)
+	printer.NewLine(1)
+
+	deployInfo, err := getDeploymentStatus(ctx, cmdState.Project)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get deployment status")
 	}
+	showHealth := false
+	for env := range deployInfo {
+		printDeploymentStatus(deployInfo[env])
+		if shouldShowHealth(deployInfo[env]) {
+			showHealth = true
+		}
+	}
 
-	if showHealth != nil {
-		err = getAndPrintHealth(ctx, cmdState.Project, showHealth)
+	if showHealth {
+		// don't care about healthComplete return because we are only doing this once
+		_, err = getAndPrintHealth(ctx, cmdState.Project, deployInfo)
 		if err != nil {
-			return eris.Wrap(err, "Failed to get and print health")
+			return eris.Wrap(err, "Failed to get health")
 		}
 	}
 	return nil
 }
 
-func getDeploymentStatus(ctx context.Context, project *project) (map[string]bool, error) {
+// Returns a map of environment names to boolean values indicating whether the environment was
+// successfully deployed.
+func getDeploymentStatus(ctx context.Context, project *project) (map[string]DeployInfo, error) {
 	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, project.ID)
 	result, err := sendRequest(ctx, http.MethodGet, statusURL, nil)
 	if err != nil {
@@ -161,20 +202,17 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]bool
 			return nil, eris.New("Failed to unmarshal deployment data")
 		}
 	}
-	printer.Infoln(" Deployment Status ")
-	printer.SectionDivider("-", 19)
-	printer.Infof("Project:      %s\n", project.Name)
-	printer.Infof("Project Slug: %s\n", project.Slug)
-	printer.Infof("Repository:   %s\n", project.RepoURL)
 	if len(envMap) == 0 {
-		printer.NewLine(1)
 		printer.Infoln("** Project has not been deployed **")
 		return nil, nil
 	}
-	checkHealth := false
-	shouldShowHealth := map[string]bool{}
+	deployStatus := map[string]DeployInfo{}
 	for env, val := range envMap {
-		shouldShowHealth[env] = false
+		deployStatus[env] = DeployInfo{
+			DeployType:    "",
+			DeployStatus:  DeployStatusFailed,
+			DeployDisplay: "",
+		}
 		data, ok := val.(map[string]any)
 		if !ok {
 			return nil, eris.Errorf("Failed to unmarshal response for environment %s", env)
@@ -245,98 +283,123 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]bool
 			//   creating, scheduled, running, passed, failing, failed, blocked, canceling, canceled, skipped, not_run
 
 			switch buildState {
-			case DeploymentStatusPassed:
-				printer.Successf("Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
-					strings.ToUpper(env), buildNumber,
-					formattedDuration(buildDuration),
-					bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID)
-				shouldShowHealth[env] = true
-			case DeploymentStatusFailed:
-				printer.Errorf("Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
-					strings.ToUpper(env), buildNumber, formattedDuration(buildDuration),
-					bet.Format(time.RFC822), formattedDuration(time.Since(bet)))
+			case string(DeployStatusPassed):
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeDeploy,
+					DeployStatus: DeployStatusPassed,
+					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
+						strings.ToUpper(env), buildNumber,
+						formattedDuration(buildDuration),
+						bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID),
+				}
+			case string(DeployStatusFailed):
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeDeploy,
+					DeployStatus: DeployStatusFailed,
+					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
+						strings.ToUpper(env), buildNumber, formattedDuration(buildDuration),
+						bet.Format(time.RFC822), formattedDuration(time.Since(bet))),
+				}
 			default:
-				printer.Infof("🔄 Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
-					strings.ToUpper(env), buildNumber,
-					bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState)
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeDeploy,
+					DeployStatus: DeployStatusRunning,
+					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
+						strings.ToUpper(env), buildNumber,
+						bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState),
+				}
 			}
 		case DeploymentTypeDestroy:
 			switch buildState {
-			case DeploymentStatusPassed:
-				printer.Successf("Destroyed: [%s] on %s by %s\n",
-					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
-			case DeploymentStatusFailed:
-				printer.Errorf("Destroy:   [%s] failed on %s by %s\n",
-					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
-				// if destroy failed, continue on to show health
-				shouldShowHealth[env] = true
+			case string(DeployStatusPassed):
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeDestroy,
+					DeployStatus: DeployStatusPassed,
+					DeployDisplay: fmt.Sprintf("Destroyed: [%s] on %s by %s\n",
+						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+				}
+			case string(DeployStatusFailed):
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeDestroy,
+					DeployStatus: DeployStatusFailed,
+					DeployDisplay: fmt.Sprintf("Destroy:   [%s] failed on %s by %s\n",
+						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+				}
 			default:
-				printer.Infof("🔄 Destroy:   [%s] started %s (%s ago) by %s - %s\n",
-					strings.ToUpper(env), dt.Format(time.RFC822),
-					formattedDuration(time.Since(dt)), executorID, buildState)
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeDestroy,
+					DeployStatus: DeployStatusRunning,
+					DeployDisplay: fmt.Sprintf("Destroy:   [%s] started %s (%s ago) by %s - %s\n",
+						strings.ToUpper(env), dt.Format(time.RFC822),
+						formattedDuration(time.Since(dt)), executorID, buildState),
+				}
 			}
 		case DeploymentTypeReset:
 			// results can be "passed" or "failed", but either way continue to show the health
 			switch buildState {
-			case DeploymentStatusPassed:
-				printer.Successf("Reset:     [%s] on %s by %s\n",
-					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
-				shouldShowHealth[env] = true
-			case DeploymentStatusFailed:
-				printer.Errorf("Reset:     [%s] failed on %s by %s\n",
-					strings.ToUpper(env), dt.Format(time.RFC822), executorID)
-				// if destroy failed, continue on to show health
-				shouldShowHealth[env] = true
+			case string(DeployStatusPassed):
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeReset,
+					DeployStatus: DeployStatusPassed,
+					DeployDisplay: fmt.Sprintf("Reset:     [%s] on %s by %s\n",
+						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+				}
+			case string(DeployStatusFailed):
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeReset,
+					DeployStatus: DeployStatusFailed,
+					DeployDisplay: fmt.Sprintf("Reset:     [%s] failed on %s by %s\n",
+						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+				}
 			default:
-				printer.Infof("🔄 Reset:     [%s] started %s (%s ago) by %s - %s\n",
-					strings.ToUpper(env), dt.Format(time.RFC822),
-					formattedDuration(time.Since(dt)), executorID, buildState)
+				deployStatus[env] = DeployInfo{
+					DeployType:   DeploymentTypeReset,
+					DeployStatus: DeployStatusRunning,
+					DeployDisplay: fmt.Sprintf("Reset:     [%s] started %s (%s ago) by %s - %s\n",
+						strings.ToUpper(env), dt.Format(time.RFC822),
+						formattedDuration(time.Since(dt)), executorID, buildState),
+				}
 			}
 		default:
 			return nil, eris.Errorf("Unknown deployment type %s", deployType)
 		}
-		if shouldShowHealth[env] {
-			checkHealth = true
-		}
 	}
-
-	if !checkHealth {
-		return nil, nil
-	}
-	return shouldShowHealth, nil
+	return deployStatus, nil
 }
 
-func getAndPrintHealth(ctx context.Context, project *project, showHealth map[string]bool) error {
+func getAndPrintHealth(ctx context.Context, project *project, deployInfo map[string]DeployInfo) (bool, error) {
 	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, project.ID)
 	result, err := sendRequest(ctx, http.MethodGet, healthURL, nil)
 	if err != nil {
-		return eris.Wrap(err, "Failed to get health")
+		return false, eris.Wrap(err, "Failed to get health")
 	}
 	var response map[string]any
 	err = json.Unmarshal(result, &response)
 	if err != nil {
-		return eris.Wrap(err, "Failed to unmarshal health response")
+		return false, eris.Wrap(err, "Failed to unmarshal health response")
 	}
 	if response["data"] == nil {
-		return eris.New("Failed to unmarshal health data")
+		return false, eris.New("Failed to unmarshal health data")
 	}
 	envMap, ok := response["data"].(map[string]any)
 	if !ok {
-		return eris.New("Failed to unmarshal health data")
+		return false, eris.New("Failed to unmarshal health data")
 	}
 
+	healthComplete := true
 	statusFailRegEx := regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
 	for env, val := range envMap {
-		if !showHealth[env] {
+		if !shouldShowHealth(deployInfo[env]) {
+			// only show health for environments that have been deployed
 			continue
 		}
 		data, okay := val.(map[string]any)
 		if !okay {
-			return eris.Errorf("Failed to unmarshal response for environment %s", env)
+			return false, eris.Errorf("Failed to unmarshal response for environment %s", env)
 		}
 		instances, okay := data["deployed_instances"].([]any)
 		if !okay {
-			return eris.Errorf("Failed to unmarshal health data: expected array, got %T",
+			return false, eris.Errorf("Failed to unmarshal health data: expected array, got %T",
 				data["deployed_instances"])
 		}
 		// ok will be true if everything is up. offline will be true if everything is down
@@ -346,72 +409,74 @@ func getAndPrintHealth(ctx context.Context, project *project, showHealth map[str
 			printer.Successf("Health:    [%s] ", strings.ToUpper(env))
 		case data["offline"] == true:
 			printer.Errorf("Health:    [%s] ", strings.ToUpper(env))
+			healthComplete = false
 		default:
 			printer.Infof("⚠️ Health:    [%s] ", strings.ToUpper(env))
+			healthComplete = false
 		}
 		if len(instances) == 0 {
 			printer.Infoln("** No deployed instances found **")
-			return nil
+			continue
 		}
 		printer.Infof("(%d deployed instances)\n", len(instances))
 		currRegion := ""
 		for _, instance := range instances {
 			info, okayInner := instance.(map[string]any)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d info", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d info", instance)
 			}
 			region, okayInner := info["region"].(string)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d region", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d region", instance)
 			}
 			instancef, okayInner := info["instance"].(float64)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d instance number", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d instance number", instance)
 			}
 			instanceNum := int(instancef)
 			cardinalInfo, okayInner := info["cardinal"].(map[string]any)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal data", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d cardinal data", instance)
 			}
 			nakamaInfo, okayInner := info["nakama"].(map[string]any)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d nakama data", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d nakama data", instance)
 			}
 			cardinalURL, okayInner := cardinalInfo["url"].(string)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal url", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d cardinal url", instance)
 			}
 			cardinalHost := strings.Split(cardinalURL, "/")[2]
 			cardinalOK, okayInner := cardinalInfo["ok"].(bool)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal ok flag", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d cardinal ok flag", instance)
 			}
 			cardinalResultCodef, okayInner := cardinalInfo["result_code"].(float64)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_code", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_code", instance)
 			}
 			cardinalResultCode := int(cardinalResultCodef)
 			cardinalResultStr, okayInner := cardinalInfo["result_str"].(string)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_str", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d cardinal result_str", instance)
 			}
 			nakamaURL, okayInner := nakamaInfo["url"].(string)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d nakama url", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d nakama url", instance)
 			}
 			nakamaHost := strings.Split(nakamaURL, "/")[2]
 			nakamaOK, okayInner := nakamaInfo["ok"].(bool)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d nakama ok", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d nakama ok", instance)
 			}
 			nakamaResultCodef, okayInner := nakamaInfo["result_code"].(float64)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d result_code", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d result_code", instance)
 			}
 			nakamaResultCode := int(nakamaResultCodef)
 			nakamaResultStr, okayInner := nakamaInfo["result_str"].(string)
 			if !okayInner {
-				return eris.Errorf("Failed to unmarshal deployment instance %d result_str", instance)
+				return false, eris.Errorf("Failed to unmarshal deployment instance %d result_str", instance)
 			}
 			if region != currRegion {
 				currRegion = region
@@ -441,7 +506,7 @@ func getAndPrintHealth(ctx context.Context, project *project, showHealth map[str
 			}
 		}
 	}
-	return nil
+	return healthComplete, nil
 }
 
 func previewDeployment(ctx context.Context, deployType string, organizationID string, projectID string) error {
@@ -486,7 +551,7 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 	return nil
 }
 
-func waitUntilDeploymentIsComplete(ctx context.Context, projectID string) error {
+func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -507,7 +572,9 @@ func waitUntilDeploymentIsComplete(ctx context.Context, projectID string) error 
 		defer wg.Done()
 		if _, err := p.Run(); err != nil {
 			log.Error().Err(err).Msg("failed to run spinner")
-			printer.Infoln("Waiting for deployment to complete...") // If spinner doesn't start, fallback to simple print.
+			printer.Infoln(
+				"Waiting for deployment to complete...",
+			) // If spinner doesn't start, fallback to simple print.
 		}
 		spinnerExited.Store(true)
 	}()
@@ -527,34 +594,37 @@ func waitUntilDeploymentIsComplete(ctx context.Context, projectID string) error 
 	}
 
 	// Status Loop
-	attempts := 1
+	deployComplete := false
 	for {
 		select {
 		case <-ctx.Done():
 			spinnnerCompleted(false)
 			return ctx.Err()
 		case <-time.After(3 * time.Second):
-			log.Debug().Int("attempt", attempts).Msg("login attempt")
-
 			if !spinnerExited.Load() {
-				p.Send(teaspinner.LogMsg("Waiting for deployment to complete..."))
+				if !deployComplete {
+					p.Send(teaspinner.LogMsg("Waiting for deployment to complete..."))
+				} else {
+					p.Send(teaspinner.LogMsg("Waiting for servers to be healthy..."))
+				}
 			}
 
-			/*token, err := makeTokenRequest(ctx, url)
-			if err != nil {
-				attempts++
+			deploys, err := getDeploymentStatus(ctx, project)
+			if err != nil || deploys == nil {
 				continue
 			}
-
-			if err := handleTokenResponse(token, result); err != nil {
-				if errors.Is(err, errPending) {
-					attempts++
-					continue
+			if deploy, exists := deploys[env]; exists {
+				printDeploymentStatus(deploy)
+				if shouldShowHealth(deploy) {
+					// just report health for the single environment
+					healthComplete, err := getAndPrintHealth(ctx, project, map[string]DeployInfo{
+						env: deploy,
+					})
+					if err != nil || !healthComplete {
+						continue
+					}
 				}
-				spinnnerCompleted(false)
-				return err
 			}
-			*/
 
 			spinnnerCompleted(true)
 			return nil
@@ -576,4 +646,27 @@ func formattedDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%secPerMinute)
 	}
 	return fmt.Sprintf("%ds", int(d.Seconds()))
+}
+
+func printDeploymentStatus(deployInfo DeployInfo) {
+	switch deployInfo.DeployStatus {
+	case DeployStatusPassed:
+		printer.Successf("%s\n", deployInfo.DeployDisplay)
+	case DeployStatusFailed:
+		printer.Errorf("%s\n", deployInfo.DeployDisplay)
+	default:
+		printer.Infof("🔄 %s\n", deployInfo.DeployDisplay)
+	}
+}
+
+func shouldShowHealth(deployInfo DeployInfo) bool {
+	switch deployInfo.DeployType {
+	case DeploymentTypeDeploy:
+		return deployInfo.DeployStatus == DeployStatusPassed
+	case DeploymentTypeDestroy:
+		return deployInfo.DeployStatus != DeployStatusPassed
+	case DeploymentTypeReset:
+		return true
+	}
+	return false
 }

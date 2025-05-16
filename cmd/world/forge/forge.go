@@ -99,7 +99,7 @@ func (c *DeployCmd) Run() error {
 		deployType = "forceDeploy"
 	}
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -111,7 +111,7 @@ type StatusCmd struct {
 
 func (c *StatusCmd) Run() error {
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -123,7 +123,7 @@ type PromoteCmd struct {
 
 func (c *PromoteCmd) Run() error {
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -135,7 +135,7 @@ type DestroyCmd struct {
 
 func (c *DestroyCmd) Run() error {
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -147,7 +147,7 @@ type ResetCmd struct {
 
 func (c *ResetCmd) Run() error {
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -161,7 +161,12 @@ type LogsCmd struct {
 }
 
 func (c *LogsCmd) Run() error {
-	return tailLogs(context.Background(), c.Region, c.Env)
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingIDOnly)
+	if err != nil {
+		return eris.Wrap(err, "forge command setup failed")
+	}
+	return tailLogs(ctx, c.Region, c.Env)
 }
 
 // ------------------------------------------------------------------------------------------------
