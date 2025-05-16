@@ -20,7 +20,7 @@ var (
 )
 
 func Success(msg string) {
-	fmt.Print(successStyle.Render(string(logsymbols.Success) + " " + msg))
+	printNewlineSafeStyledMessage(string(logsymbols.Success)+" "+msg, successStyle)
 }
 
 func Successln(msg string) {
@@ -28,12 +28,12 @@ func Successln(msg string) {
 }
 
 func Successf(format string, args ...any) {
-	msg := successStyle.Render(string(logsymbols.Success) + " " + fmt.Sprintf(format, args...))
-	fmt.Print(msg)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(string(logsymbols.Success)+" "+msg, successStyle)
 }
 
 func Error(msg string) {
-	fmt.Print(errorStyle.Render(string(logsymbols.Error) + " " + msg))
+	printNewlineSafeStyledMessage(string(logsymbols.Error)+" "+msg, errorStyle)
 }
 
 func Errorln(msg string) {
@@ -41,8 +41,8 @@ func Errorln(msg string) {
 }
 
 func Errorf(format string, args ...any) {
-	msg := errorStyle.Render(string(logsymbols.Error) + " " + fmt.Sprintf(format, args...))
-	fmt.Print(msg)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(string(logsymbols.Error)+" "+msg, errorStyle)
 }
 
 func Info(msg string) {
@@ -72,12 +72,12 @@ func Headerf(format string, args ...any) {
 }
 
 func Notification(msg string) {
-	fmt.Print(notificationStyle.Render(msg))
+	printNewlineSafeStyledMessage(msg, notificationStyle)
 }
 
 func Notificationf(format string, args ...any) {
-	msg := notificationStyle.Render(fmt.Sprintf(format, args...))
-	fmt.Print(msg)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(msg, notificationStyle)
 }
 
 func Notificationln(msg string) {
@@ -113,4 +113,14 @@ func SectionDivider(symbol string, length int) {
 		length = 1
 	}
 	fmt.Println(strings.Repeat(symbol, length))
+}
+
+func printNewlineSafeStyledMessage(msg string, style lipgloss.Style) {
+	if strings.HasSuffix(msg, "\n") {
+		msg = strings.TrimSuffix(msg, "\n")
+		styledMsg := style.Render(msg)
+		fmt.Println(styledMsg)
+	} else {
+		fmt.Print(style.Render(msg))
+	}
 }
