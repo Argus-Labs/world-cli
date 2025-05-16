@@ -102,6 +102,13 @@ func (flow *initFlow) handleNeedExistingOrgData() error {
 
 	// If we have a selected org, use it
 	if selectedOrg.ID != "" {
+		// Show the org and project lists
+		if err := showOrganizationList(flow.context); err != nil {
+			// If we fail to show the org list, just use the selected org
+			printer.NewLine(1)
+			printer.Headerln("  Organization Information  ")
+			printer.Infof("  Organization: %s (%s)\n", selectedOrg.Name, selectedOrg.Slug)
+		}
 		flow.updateOrganization(&selectedOrg)
 		return nil
 	}
@@ -125,13 +132,17 @@ func (flow *initFlow) handleNeedExistingOrgData() error {
 func (flow *initFlow) handleNeedExistingOrganizationCaseNoOrgs() error {
 	printer.NewLine(1)
 	printer.Errorln("No organizations found.")
-	printer.Infoln("You must be a member of an organization to proceed.")
+	printer.NewLine(1)
+	printer.Headerln("   Options   ")
+	printer.Infoln("1. Use 'world forge organization create' to create an organization.")
+	printer.Infoln("2. Have a member send invite using 'world forge organization invite'.")
 	return ErrOrganizationSelectionCanceled
 }
 
 func (flow *initFlow) handleNeedExistingOrganizationCaseOneOrg(orgs []organization) error {
 	printer.NewLine(1)
-	printer.Infof("Organization: %s [%s]\n", orgs[0].Name, orgs[0].Slug)
+	printer.Headerln("  Organization Information  ")
+	printer.Infof("  %s (%s)\n", orgs[0].Name, orgs[0].Slug)
 	flow.updateOrganization(&orgs[0])
 	return nil
 }

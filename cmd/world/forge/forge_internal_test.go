@@ -2,6 +2,7 @@ package forge
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -535,8 +536,19 @@ func (s *ForgeTestSuite) handleGetToken(w http.ResponseWriter, r *http.Request) 
 	}
 	key := r.URL.Query().Get("key")
 	if key == "valid-key" {
-		token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-			"eyJ1c2VyX21ldGFkYXRhIjp7Im5hbWUiOiJUZXN0IFVzZXIiLCJzdWIiOiJ0ZXN0LXVzZXItaWQifX0.sign"
+		// Add exp claim for 1 hour from now
+		exp := time.Now().Add(1 * time.Hour).Unix()
+		claims := map[string]interface{}{
+			"user_metadata": map[string]string{
+				"name": "Test User",
+				"sub":  "test-user-id",
+			},
+			"exp": exp,
+		}
+		claimsJSON, err := json.Marshal(claims)
+		s.NoError(err)
+		claimsB64 := base64.RawURLEncoding.EncodeToString(claimsJSON)
+		token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + claimsB64 + ".sign"
 		s.writeJSON(w, map[string]string{
 			"status": "success",
 			"jwt":    token,
@@ -1383,43 +1395,57 @@ func (s *ForgeTestSuite) TestLogin() {
 		name          string
 		key           string
 		expectedError bool
-		orgInputs     []string // New field for organization creation inputs
-		testToken     string
+		config        *Config // Add config to test different states
 	}{
 		{
-			name:          "Success - Valid login flow",
+			name:          "Success - Has selected org and project",
 			key:           "valid-key",
 			expectedError: false,
+			config: &Config{
+				OrganizationID:  "test-org-id",
+				ProjectID:       "test-project-id",
+				CurrProjectName: "test-project",
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
 		},
 		{
-			name:          "Success - Known project",
+			name:          "Success - Has selected org only",
 			key:           "valid-key",
 			expectedError: false,
+			config: &Config{
+				OrganizationID: "test-org-id",
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+		},
+		{
+			name:          "Success - No proj or org selected",
+			key:           "valid-key",
+			expectedError: false,
+			config: &Config{
+
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
 		},
 		{
 			name:          "Error - Invalid key",
 			key:           "invalid-key",
 			expectedError: true,
 		},
-		{
-			name:          "Success - Create org with uppercase Y",
-			key:           "valid-key",
-			expectedError: false,
-			orgInputs:     []string{"Y", "test", "testo", "https://test.com", "Y"},
-		},
-		{
-			name:          "Success - Create org with lowercase y, bad input, cancel with n",
-			key:           "valid-key",
-			expectedError: false,
-			orgInputs:     []string{"y", "asdas", "n"},
-			testToken:     "empty-list", // Add this to test no orgs scenario
-		},
 	}
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			// Set the test token for this case
-			s.testToken = tc.testToken
+			s.testToken = tc.key
 			defer func() { s.testToken = "" }()
 
 			// Mock key generation
@@ -1430,19 +1456,10 @@ func (s *ForgeTestSuite) TestLogin() {
 			openBrowser = func(_ string) error { return nil }
 			defer func() { openBrowser = originalOpenBrowser }()
 
-			// Mock organization creation inputs if provided
-			if len(tc.orgInputs) > 0 {
-				inputIndex := 0
-				originalGetInput := getInput //nolint:govet // test
-				getInput = func(prompt string, defaultVal string) string {
-					if inputIndex >= len(tc.orgInputs) {
-						return defaultVal
-					}
-					input := tc.orgInputs[inputIndex]
-					inputIndex++
-					return input
-				}
-				defer func() { getInput = originalGetInput }()
+			// Set test config if provided
+			if tc.config != nil {
+				err := SaveForgeConfig(*tc.config)
+				s.Require().NoError(err)
 			}
 
 			err := login(s.ctx)

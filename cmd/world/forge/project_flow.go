@@ -21,11 +21,6 @@ func (flow *initFlow) handleNeedProjectData() error {
 		return eris.Wrap(err, "Failed to get projects")
 	}
 
-	found := flow.getProjectByID(projects)
-	if found {
-		return nil
-	}
-
 	switch len(projects) {
 	case 0: // No projects found
 		return flow.handleNeedProjectCaseNoProjects()
@@ -103,16 +98,6 @@ func (flow *initFlow) handleNeedProjectCaseMultipleProjects() error {
 ////////////////////////////////
 
 func (flow *initFlow) handleNeedExistingProjectData() error {
-	projects, err := getListOfProjects(flow.context)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get projects")
-	}
-
-	found := flow.getProjectByID(projects)
-	if found {
-		return nil
-	}
-
 	// First check if we already have a selected project
 	selectedProj, err := getSelectedProject(flow.context)
 	if err != nil {
@@ -121,8 +106,19 @@ func (flow *initFlow) handleNeedExistingProjectData() error {
 
 	// If we have a selected project, use it
 	if selectedProj.ID != "" {
+		if err := showProjectList(flow.context); err != nil {
+			// If we fail to show the project list, just use the selected project
+			printer.NewLine(1)
+			printer.Headerln("   Project Information   ")
+			printer.Infof("  Project: %s (%s)\n", selectedProj.Name, selectedProj.Slug)
+		}
 		flow.updateProject(&selectedProj)
 		return nil
+	}
+
+	projects, err := getListOfProjects(flow.context)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get projects")
 	}
 
 	switch len(projects) {
@@ -136,15 +132,14 @@ func (flow *initFlow) handleNeedExistingProjectData() error {
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseNoProjects() error {
-	printer.NewLine(1)
-	printer.Errorln("No projects found.")
-	printer.Infoln("You must have at least one project to proceed.")
+	printNoProjectsInOrganization()
 	return ErrProjectSelectionCanceled
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project) error {
 	printer.NewLine(1)
-	printer.Infof("Project: %s [%s]\n", projects[0].Name, projects[0].ID)
+	printer.Headerln("   Project Information   ")
+	printer.Infof("  Project: %s (%s)\n", projects[0].Name, projects[0].Slug)
 	flow.updateProject(&projects[0])
 	return nil
 }
@@ -164,22 +159,6 @@ func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects() error {
 ////////////////////////////////
 // Helper Functions           //
 ////////////////////////////////
-
-// getProjectByID checks if a project with the ID from config exists in the provided list.
-// If found, it sets the project in the flow state and returns true.
-func (flow *initFlow) getProjectByID(projects []project) bool {
-	if flow.config.ProjectID == "" {
-		return false
-	}
-
-	for _, project := range projects {
-		if flow.config.ProjectID == project.ID {
-			flow.updateProject(&project)
-			return true
-		}
-	}
-	return false
-}
 
 // updateProject updates the project in the flow state and saves the config.
 func (flow *initFlow) updateProject(project *project) {

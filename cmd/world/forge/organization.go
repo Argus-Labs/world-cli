@@ -43,14 +43,10 @@ func showOrganizationList(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Headerln("  Organization Information  ")
 	if selectedOrg.Name == "" {
-		printer.NewLine(1)
 		printer.Errorln("No organization selected")
 		printer.NewLine(1)
 		printer.Infoln("Use 'world forge organization switch' to choose an organization")
 	} else {
-		printer.NewLine(1)
-		printer.Infoln(" Available Organizations: ")
-		printer.SectionDivider("-", 26)
 		for _, org := range organizations {
 			if org.ID == selectedOrg.ID {
 				printer.Infof("• %s (%s) [SELECTED]\n", org.Name, org.Slug)
@@ -440,66 +436,4 @@ func getRoleInput(allowNone bool) string {
 		printer.NewLine(1)
 		printer.Errorf("Error: Role must be one of %s\n", opts)
 	}
-}
-
-// handleOrganizationSelection manages the organization selection logic.
-func handleOrganizationSelection(ctx context.Context, orgID string) (string, error) {
-	orgs, err := getListOfOrganizations(ctx)
-	if err != nil {
-		return "", eris.Wrap(err, "Failed to get orgs")
-	}
-
-	switch numOrgs := len(orgs); {
-	case numOrgs == 1:
-		return orgs[0].ID, nil
-	case numOrgs > 1:
-		return handleMultipleOrgs(ctx, orgID, orgs)
-	default:
-		return handleNoOrgs(ctx)
-	}
-}
-
-// handleMultipleOrgs handles the case when there are multiple organizations.
-func handleMultipleOrgs(ctx context.Context, orgID string, orgs []organization) (string, error) {
-	for _, org := range orgs {
-		if org.ID == orgID {
-			return orgID, nil
-		}
-	}
-
-	org, err := selectOrganization(ctx)
-	if err != nil {
-		return "", eris.Wrap(err, "Failed to select organization")
-	}
-	return org.ID, nil
-}
-
-// handleNoOrgs handles the case when there are no organizations.
-func handleNoOrgs(ctx context.Context) (string, error) {
-	for redo := true; redo; {
-		// Confirmation prompt
-		printer.NewLine(1)
-		confirmation := getInput("You don't have any organizations. Create a new one now? (Y/n)", "n")
-
-		switch confirmation {
-		case "Y":
-			redo = false
-		case "y":
-			printer.NewLine(1)
-			printer.Errorln("You need to enter Y (uppercase) to confirm creation")
-		case "n":
-			printer.NewLine(1)
-			printer.Errorln("Organization creation canceled")
-			return "", nil
-		default:
-			printer.NewLine(1)
-			printer.Errorln("Invalid input")
-		}
-	}
-
-	org, err := createOrganization(ctx)
-	if err != nil {
-		return "", eris.Wrap(err, "Failed to create organization")
-	}
-	return org.ID, nil
 }

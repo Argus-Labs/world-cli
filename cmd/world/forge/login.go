@@ -46,8 +46,9 @@ func login(ctx context.Context) error {
 	}
 
 	// Handle post-login configuration
-	if err := handlePostLoginConfig(ctx, &config); err != nil {
-		return err
+	_, err = SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
+	if err != nil {
+		return eris.Wrap(err, "forge command setup failed")
 	}
 
 	// Display login success message
@@ -87,66 +88,9 @@ func handleArgusIDPostLogin(ctx context.Context, config *Config) error {
 	return SaveForgeConfig(*config)
 }
 
-func handlePostLoginConfig(ctx context.Context, config *Config) error {
-	if config.CurrRepoKnown {
-		return handleKnownRepoConfig(ctx, config)
-	}
-	return handleNewRepoConfig(ctx, config)
-}
-
-func handleKnownRepoConfig(ctx context.Context, config *Config) error {
-	proj, err := getSelectedProject(ctx)
-	if err != nil {
-		printer.Infof("⚠️ Warning: Failed to get project %s: %s", config.ProjectID, err.Error())
-	}
-	org, err := getSelectedOrganization(ctx)
-	if err != nil {
-		printer.Infof("⚠️ Warning: Failed to get organization %s: %s", config.OrganizationID, err.Error())
-	}
-	if proj.Name != "" && org.Name != "" {
-		printer.Infof("Auto-selected project %s (%s) in organization %s (%s)\n",
-			proj.Name, proj.Slug,
-			org.Name, org.Slug)
-	}
-	return nil
-}
-
-func handleNewRepoConfig(ctx context.Context, config *Config) error {
-	// Handle organization selection
-	orgID, err := handleOrganizationSelection(ctx, config.OrganizationID)
-	if err != nil {
-		orgID = ""
-	}
-
-	// Save orgID to config
-	config.OrganizationID = orgID
-	if err := SaveForgeConfig(*config); err != nil {
-		return eris.Wrap(err, "Failed to save organization information")
-	}
-
-	// Handle project selection
-	projectID, err := handleProjectSelection(ctx, config.ProjectID)
-	if err != nil {
-		projectID = ""
-	}
-
-	// Save projectID to config
-	config.ProjectID = projectID
-	if err := SaveForgeConfig(*config); err != nil {
-		return eris.Wrap(err, "Failed to save project information")
-	}
-
-	// Show the org and project lists
-	if err := showOrganizationList(ctx); err != nil {
-		return eris.Wrap(err, "Failed to show organization list")
-	}
-	return showProjectList(ctx)
-}
-
 func displayLoginSuccess(config Config) {
 	printer.NewLine(1)
 	printer.Headerln("   Login successful!  ")
-	printer.NewLine(1)
 	printer.Infof("Welcome, %s!\n", config.Credential.Name)
 	printer.Infof("Your ID is: %s\n", config.Credential.ID)
 	printer.NewLine(1)
@@ -156,7 +100,7 @@ func displayLoginSuccess(config Config) {
 // GetToken will get the token from the config file.
 //
 //nolint:gocognit // This is a long function, but it's not too complex, better to keep it in one place.
-func getToken(ctx context.Context, url string, result interface{}) error {
+func getToken(ctx context.Context, url string, result any) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

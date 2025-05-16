@@ -87,14 +87,10 @@ func showProjectList(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Headerln("   Project Information   ")
 	if selectedProject.Name == "" {
-		printer.NewLine(1)
 		printer.Errorln("No project selected")
 		printer.NewLine(1)
 		printer.Infoln("Use 'world forge project switch' to choose a project")
 	} else {
-		printer.NewLine(1)
-		printer.Infoln("  Available Projects:")
-		printer.SectionDivider("-", 23)
 		for _, prj := range projects {
 			if prj.ID == selectedProject.ID {
 				printer.Infof("• %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
