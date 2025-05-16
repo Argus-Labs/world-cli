@@ -7,10 +7,17 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/rs/zerolog/log"
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/printer"
+	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
 const (
@@ -117,22 +124,31 @@ func status(ctx context.Context, cmdState *CommandState) error {
 		printNoSelectedProject()
 		return nil
 	}
-	projectID := cmdState.Project.ID
-	// Get project details
-	prj, err := getSelectedProject(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get project details")
-	}
 
-	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, projectID)
-	result, err := sendRequest(ctx, http.MethodGet, statusURL, nil)
+	showHealth, err := getDeploymentStatus(ctx, cmdState.Project)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get deployment status")
+	}
+
+	if showHealth != nil {
+		err = getAndPrintHealth(ctx, cmdState.Project, showHealth)
+		if err != nil {
+			return eris.Wrap(err, "Failed to get and print health")
+		}
+	}
+	return nil
+}
+
+func getDeploymentStatus(ctx context.Context, project *project) (map[string]bool, error) {
+	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, project.ID)
+	result, err := sendRequest(ctx, http.MethodGet, statusURL, nil)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get deployment status")
 	}
 	var response map[string]any
 	err = json.Unmarshal(result, &response)
 	if err != nil {
-		return eris.Wrap(err, "Failed to unmarshal deployment response")
+		return nil, eris.Wrap(err, "Failed to unmarshal deployment response")
 	}
 	var envMap map[string]any
 	if response["data"] != nil {
@@ -142,18 +158,18 @@ func status(ctx context.Context, cmdState *CommandState) error {
 		var ok bool
 		envMap, ok = response["data"].(map[string]any)
 		if !ok {
-			return eris.New("Failed to unmarshal deployment data")
+			return nil, eris.New("Failed to unmarshal deployment data")
 		}
 	}
 	printer.Infoln(" Deployment Status ")
 	printer.SectionDivider("-", 19)
-	printer.Infof("Project:      %s\n", prj.Name)
-	printer.Infof("Project Slug: %s\n", prj.Slug)
-	printer.Infof("Repository:   %s\n", prj.RepoURL)
+	printer.Infof("Project:      %s\n", project.Name)
+	printer.Infof("Project Slug: %s\n", project.Slug)
+	printer.Infof("Repository:   %s\n", project.RepoURL)
 	if len(envMap) == 0 {
 		printer.NewLine(1)
 		printer.Infoln("** Project has not been deployed **")
-		return nil
+		return nil, nil
 	}
 	checkHealth := false
 	shouldShowHealth := map[string]bool{}
@@ -161,23 +177,23 @@ func status(ctx context.Context, cmdState *CommandState) error {
 		shouldShowHealth[env] = false
 		data, ok := val.(map[string]any)
 		if !ok {
-			return eris.Errorf("Failed to unmarshal response for environment %s", env)
+			return nil, eris.Errorf("Failed to unmarshal response for environment %s", env)
 		}
-		if data["project_id"] != projectID {
-			return eris.Errorf("Deployment status does not match project id %s", projectID)
+		if data["project_id"] != project.ID {
+			return nil, eris.Errorf("Deployment status does not match project id %s", project.ID)
 		}
 		deployType, ok := data["type"].(string)
 		if !ok {
-			return eris.New("Failed to unmarshal deployment type")
+			return nil, eris.New("Failed to unmarshal deployment type")
 		}
 		if deployType != DeploymentTypeDeploy &&
 			deployType != DeploymentTypeDestroy &&
 			deployType != DeploymentTypeReset {
-			return eris.Errorf("Unknown deployment type %s", deployType)
+			return nil, eris.Errorf("Unknown deployment type %s", deployType)
 		}
 		executorID, ok := data["executor_id"].(string)
 		if !ok {
-			return eris.New("Failed to unmarshal deployment executor_id")
+			return nil, eris.New("Failed to unmarshal deployment executor_id")
 		}
 		executorName, ok := data["executor_name"].(string)
 		if ok {
@@ -185,30 +201,30 @@ func status(ctx context.Context, cmdState *CommandState) error {
 		}
 		executionTimeStr, ok := data["execution_time"].(string)
 		if !ok {
-			return eris.New("Failed to unmarshal deployment execution_time")
+			return nil, eris.New("Failed to unmarshal deployment execution_time")
 		}
 		dt, dte := time.Parse(time.RFC3339, executionTimeStr)
 		if dte != nil {
-			return eris.Wrapf(dte, "Failed to parse deployment execution_time %s", executionTimeStr)
+			return nil, eris.Wrapf(dte, "Failed to parse deployment execution_time %s", executionTimeStr)
 		}
 		buildState, ok := data["build_state"].(string)
 		if !ok {
-			return eris.New("Failed to unmarshal deployment build_state")
+			return nil, eris.New("Failed to unmarshal deployment build_state")
 		}
 		switch deployType {
 		case DeploymentTypeDeploy:
 			bnf, okInner := data["build_number"].(float64)
 			if !okInner {
-				return eris.New("Failed to unmarshal deployment build_number")
+				return nil, eris.New("Failed to unmarshal deployment build_number")
 			}
 			buildNumber := int(bnf)
 			buildStartTimeStr, okInner := data["build_start_time"].(string)
 			if !okInner {
-				return eris.New("Failed to unmarshal deployment build_start_time")
+				return nil, eris.New("Failed to unmarshal deployment build_start_time")
 			}
 			bst, bte := time.Parse(time.RFC3339, buildStartTimeStr)
 			if bte != nil {
-				return eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
+				return nil, eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
 			}
 			if bst.Before(dt) {
 				bst = dt // we don't have a real build start time yet because build kite hasn't run yet
@@ -219,7 +235,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 			}
 			bet, bte := time.Parse(time.RFC3339, buildEndTimeStr)
 			if bte != nil {
-				return eris.Wrapf(bte, "Failed to parse deployment build_end_time %s", buildEndTimeStr)
+				return nil, eris.Wrapf(bte, "Failed to parse deployment build_end_time %s", buildEndTimeStr)
 			}
 			if bet.Before(bst) {
 				bet = bst // we don't know how long this took
@@ -277,7 +293,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 					formattedDuration(time.Since(dt)), executorID, buildState)
 			}
 		default:
-			return eris.Errorf("Unknown deployment type %s", deployType)
+			return nil, eris.Errorf("Unknown deployment type %s", deployType)
 		}
 		if shouldShowHealth[env] {
 			checkHealth = true
@@ -285,14 +301,18 @@ func status(ctx context.Context, cmdState *CommandState) error {
 	}
 
 	if !checkHealth {
-		return nil
+		return nil, nil
 	}
+	return shouldShowHealth, nil
+}
 
-	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, projectID)
-	result, err = sendRequest(ctx, http.MethodGet, healthURL, nil)
+func getAndPrintHealth(ctx context.Context, project *project, showHealth map[string]bool) error {
+	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, project.ID)
+	result, err := sendRequest(ctx, http.MethodGet, healthURL, nil)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get health")
 	}
+	var response map[string]any
 	err = json.Unmarshal(result, &response)
 	if err != nil {
 		return eris.Wrap(err, "Failed to unmarshal health response")
@@ -307,7 +327,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 
 	statusFailRegEx := regexp.MustCompile(`[^a-zA-Z0-9\. ]+`)
 	for env, val := range envMap {
-		if !shouldShowHealth[env] {
+		if !showHealth[env] {
 			continue
 		}
 		data, okay := val.(map[string]any)
@@ -464,6 +484,82 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 	printer.Infof("%s\n", strings.Join(response.Data.Regions, ", "))
 
 	return nil
+}
+
+func waitUntilDeploymentIsComplete(ctx context.Context, projectID string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Spinner Setup
+	spinnerExited := atomic.Bool{}
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	spin := teaspinner.Spinner{
+		Spinner: spinner.New(spinner.WithSpinner(spinner.Dot)),
+		Cancel:  cancel,
+	}
+	spin.SetText("Waiting for deployment to complete...")
+	p := tea.NewProgram(&spin)
+
+	// Run the spinner in a goroutine
+	go func() {
+		defer wg.Done()
+		if _, err := p.Run(); err != nil {
+			log.Error().Err(err).Msg("failed to run spinner")
+			printer.Infoln("Waiting for deployment to complete...") // If spinner doesn't start, fallback to simple print.
+		}
+		spinnerExited.Store(true)
+	}()
+
+	// spinnnerCompleted will send a message to the spinner to stop and quit.
+	spinnnerCompleted := func(didComplete bool) {
+		if !spinnerExited.Load() {
+			p.Send(teaspinner.LogMsg("spin: completed"))
+			p.Send(tea.Quit())
+			wg.Wait()
+		}
+		if didComplete {
+			printer.Successln("Deployment completed!")
+		} else {
+			printer.Errorln("Deployment failed!")
+		}
+	}
+
+	// Status Loop
+	attempts := 1
+	for {
+		select {
+		case <-ctx.Done():
+			spinnnerCompleted(false)
+			return ctx.Err()
+		case <-time.After(3 * time.Second):
+			log.Debug().Int("attempt", attempts).Msg("login attempt")
+
+			if !spinnerExited.Load() {
+				p.Send(teaspinner.LogMsg("Waiting for deployment to complete..."))
+			}
+
+			/*token, err := makeTokenRequest(ctx, url)
+			if err != nil {
+				attempts++
+				continue
+			}
+
+			if err := handleTokenResponse(token, result); err != nil {
+				if errors.Is(err, errPending) {
+					attempts++
+					continue
+				}
+				spinnnerCompleted(false)
+				return err
+			}
+			*/
+
+			spinnnerCompleted(true)
+			return nil
+		}
+	}
 }
 
 func formattedDuration(d time.Duration) string {
