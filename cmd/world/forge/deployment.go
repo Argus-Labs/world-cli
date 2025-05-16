@@ -397,7 +397,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 				currRegion = region
 				printer.Infof("• %s\n", currRegion)
 			}
-			printer.Infof("  %d)", instanceNum)
+			printer.Infof("  %d) ", instanceNum)
 			switch {
 			case cardinalOK:
 				printer.Successf("Cardinal: %s - OK\n", cardinalHost)
@@ -408,6 +408,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 				printer.Errorf("Cardinal: %s - FAIL %d %s\n", cardinalHost, cardinalResultCode,
 					statusFailRegEx.ReplaceAllString(cardinalResultStr, ""))
 			}
+			printer.Info("     ")
 			switch {
 			case nakamaOK:
 				printer.Successf("Nakama:   %s - OK\n", nakamaHost)
