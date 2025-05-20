@@ -41,7 +41,7 @@ func (flow *initFlow) handleNeedProjectCaseNoProjects() error {
 
 		switch choice {
 		case "Y":
-			proj, err := createProject(flow.context)
+			proj, err := createProject(flow.context, "", "", "")
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in no-projects case")
 			}
@@ -70,7 +70,7 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 		case "n":
 			return ErrProjectSelectionCanceled
 		case "c":
-			proj, err := createProject(flow.context)
+			proj, err := createProject(flow.context, "", "", "")
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in one-project case")
 			}
@@ -84,7 +84,7 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 }
 
 func (flow *initFlow) handleNeedProjectCaseMultipleProjects() error {
-	proj, err := selectProject(flow.context)
+	proj, err := selectProject(flow.context, "")
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in multiple-projects case")
 	}
@@ -147,7 +147,7 @@ func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects() error {
-	proj, err := selectProject(flow.context)
+	proj, err := selectProject(flow.context, "")
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
 	}

@@ -215,14 +215,17 @@ func getListOfAvailableRegionsForProject(ctx context.Context) ([]string, error) 
 	return getListRegions(ctx, selectedProj.OrgID, selectedProj.ID)
 }
 
-func createProject(ctx context.Context) (*project, error) {
+func createProject(ctx context.Context, name, slug, avatarURL string) (*project, error) {
 	regions, err := getListOfAvailableRegionsForNewProject(ctx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get available regions")
 	}
 
 	p := project{
-		update: false,
+		Name:      name,
+		Slug:      slug,
+		AvatarURL: avatarURL,
+		update:    false,
 	}
 	err = p.projectInput(ctx, regions)
 	if err != nil {
@@ -308,20 +311,25 @@ func (p *project) inputProjectName(ctx context.Context) error {
 			return err
 		}
 
-		// Get project name from world.toml if it exists, fails silently
-		err := p.getForgeProjectNameFromWorldToml()
-		if err != nil {
-			p.Name = ""
+		// If name is not set, get it from world.toml
+		if p.Name == "" {
+			// Get project name from world.toml if it exists, fails silently
+			err := p.getForgeProjectNameFromWorldToml()
+			if err != nil {
+				p.Name = ""
+			}
 		}
 
 		name := p.promptForName()
 
-		err = p.validateAndSetName(name)
+		err := p.validateAndSetName(name)
 		if err == nil {
 			printer.NewLine(1)
 			printer.Successf("Project name \"%s\" accepted!\n", name)
 			return nil
 		}
+		// If validation fails, clear the name to attemt from toml
+		p.Name = ""
 	}
 }
 
@@ -396,6 +404,8 @@ func (p *project) inputProjectSlug(ctx context.Context) error {
 			maxLength := 25
 			if p.Slug == "" {
 				p.Slug = CreateSlugFromName(p.Name, minLength, maxLength)
+			} else {
+				p.Slug = CreateSlugFromName(p.Slug, minLength, maxLength)
 			}
 
 			slug := getInput("\nSlug", p.Slug)
@@ -534,7 +544,25 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	}
 }
 
-func selectProject(ctx context.Context) (*project, error) {
+func selectProjectBySlug(ctx context.Context, projects []project, slug string, config *Config) (*project, error) {
+	for _, project := range projects {
+		if project.Slug == slug {
+			config.ProjectID = project.ID
+			err := SaveForgeConfig(*config)
+			if err != nil {
+				return nil, eris.Wrap(err, "Failed to save project")
+			}
+			showProjectList(ctx)
+			return &project, nil
+		}
+	}
+	showProjectList(ctx)
+	printer.NewLine(1)
+	printer.Errorln("Project not found in organization under the slug: " + slug)
+	return nil, ErrProjectSelectionCanceled
+}
+
+func selectProject(ctx context.Context, slug string) (*project, error) {
 	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Could not get config")
@@ -556,12 +584,14 @@ func selectProject(ctx context.Context) (*project, error) {
 		return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
 	}
 
+	// If slug is provided, select the project by slug
+	if slug != "" {
+		return selectProjectBySlug(ctx, projects, slug, &config)
+	}
+
 	// Display projects as a numbered list
 	printer.NewLine(1)
 	printer.Headerln("   Available Projects   ")
-	printer.NewLine(1)
-	printer.Infoln(" Project List:")
-	printer.SectionDivider("-", 15)
 	for i, proj := range projects {
 		printer.Infof("  %d. %s\n     └─ Slug: %s\n", i+1, proj.Name, proj.Slug)
 	}
@@ -603,7 +633,6 @@ func deleteProject(ctx context.Context) error {
 	// Print project details with fancy formatting
 	printer.NewLine(1)
 	printer.Headerln("   Project Deletion   ")
-	printer.NewLine(1)
 	printer.Infoln("Project Details:")
 	printer.Infof("• Name: %s\n", selectedProject.Name)
 	printer.Infof("• Slug: %s\n", selectedProject.Slug)
@@ -618,7 +647,7 @@ func deleteProject(ctx context.Context) error {
 	printer.NewLine(1)
 
 	// Confirmation prompt with fancy formatting
-	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s': ", selectedProject.Name)
+	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s'", selectedProject.Name)
 	confirmation := getInput(deletePrompt, "")
 
 	if confirmation != "Yes" {
@@ -663,7 +692,7 @@ func deleteProject(ctx context.Context) error {
 	return nil
 }
 
-func updateProject(ctx context.Context) error {
+func updateProject(ctx context.Context, name, slug, avatarURL string) error {
 	// get selected project
 	p, err := getSelectedProject(ctx)
 	if err != nil {
@@ -677,6 +706,9 @@ func updateProject(ctx context.Context) error {
 
 	// set update to true
 	p.update = true
+	p.Name = name
+	p.Slug = slug
+	p.AvatarURL = avatarURL
 
 	printer.NewLine(1)
 	printer.Infoln("  Project Update  ")
@@ -1051,7 +1083,7 @@ func handleMultipleProjects(ctx context.Context, projectID string, projects []pr
 		}
 	}
 
-	project, err := selectProject(ctx)
+	project, err := selectProject(ctx, "")
 	if err != nil {
 		return "", eris.Wrap(err, "Failed to select project")
 	}
@@ -1073,7 +1105,7 @@ func handleNoProjects(ctx context.Context) (string, error) {
 		return "", nil
 	}
 
-	project, err := createProject(ctx)
+	project, err := createProject(ctx, "", "", "")
 	if err != nil {
 		return "", eris.Wrap(err, "Failed to create project")
 	}
@@ -1101,6 +1133,7 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 			if !isValidURL(avatarURL) {
 				printer.NewLine(1)
 				printer.Errorln("Invalid URL")
+				p.AvatarURL = ""
 				continue
 			}
 

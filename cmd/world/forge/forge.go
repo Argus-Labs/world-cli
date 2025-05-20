@@ -272,11 +272,22 @@ type CreateProjectCmd struct {
 }
 
 func (c *CreateProjectCmd) Run() error {
-	// TODO: pass in name, slug, and avatarURL if provided
-	project, err := createProject(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	if err != nil {
+		if loginErrorCheck(err) ||
+			isDefinedProjectError(err) ||
+			isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	project, err := createProject(ctx, c.Name, c.Slug, c.AvatarURL)
 	if err != nil {
 		return eris.Wrap(err, "Failed to create project")
 	}
+	printer.NewLine(1)
 	printer.Successf("Created project: %s\n", project.Name)
 	return nil
 }
@@ -286,15 +297,31 @@ type SwitchProjectCmd struct {
 }
 
 func (c *SwitchProjectCmd) Run() error {
-	// TODO: pass in slug if provided
-	project, err := selectProject(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
 	if err != nil {
+		if loginErrorCheck(err) ||
+			isDefinedProjectError(err) ||
+			isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	project, err := selectProject(ctx, c.Slug)
+	if err != nil {
+		if loginErrorCheck(err) ||
+			isDefinedProjectError(err) ||
+			isDefinedOrganizationError(err) {
+			return nil
+		}
 		return eris.Wrap(err, "Failed to select project")
 	}
 	if project == nil {
 		printer.Infoln("No project selected.")
 		return nil
 	}
+	printer.NewLine(1)
 	printer.Successf("Switched to project: %s\n", project.Name)
 	return nil
 }
@@ -306,15 +333,35 @@ type UpdateProjectCmd struct {
 }
 
 func (c *UpdateProjectCmd) Run() error {
-	// TODO: pass in name, slug, and avatarURL if provided
-	return updateProject(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
+	if err != nil {
+		if loginErrorCheck(err) ||
+			isDefinedProjectError(err) ||
+			isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	return updateProject(ctx, c.Name, c.Slug, c.AvatarURL)
 }
 
 type DeleteProjectCmd struct {
 }
 
 func (c *DeleteProjectCmd) Run() error {
-	return deleteProject(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
+	if err != nil {
+		if loginErrorCheck(err) ||
+			isDefinedProjectError(err) ||
+			isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+	return deleteProject(ctx)
 }
 
 // ------------------------------------------------------------------------------------------------

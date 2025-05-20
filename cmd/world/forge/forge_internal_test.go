@@ -2007,7 +2007,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			inputs: []string{
 				"Test Project", // name
 				"",             // take default
-				"https://github.com/argus-labs/starter-game-template", // repoURL
+				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",                // repoToken (empty for public repo)
 				"",                // repoPath (empty for default root path of repo)
 				"10",              // tick rate
@@ -2287,12 +2287,13 @@ PROJECT_NAME = "test-project-from-toml"
 			var prj *project
 			if tc.expectInputFail > 0 { //nolint: nestif // it's a test
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					prj, err = createProject(s.ctx)
+					prj, err = createProject(s.ctx, "", "", "")
 				})
 			} else {
-				prj, err = createProject(s.ctx)
+				prj, err = createProject(s.ctx, "", "", "")
 				if tc.expectedError {
-					s.Error(err)
+					s.Require().Error(err)
+					s.Nil(prj)
 				} else {
 					s.Require().NoError(err)
 					s.Require().NotNil(prj)
@@ -2394,7 +2395,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			proj, err := selectProject(s.ctx)
+			proj, err := selectProject(s.ctx, "")
 			if tc.expectedError {
 				s.Require().Error(err)
 				s.Empty(proj)
@@ -4149,6 +4150,462 @@ func (s *ForgeTestSuite) TestSwitchOrganizationCmd() {
 				s.Require().Error(err)
 			} else {
 				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestCreateProjectCmd() {
+	testCases := []struct {
+		name                string
+		config              Config
+		cmd                 *CreateProjectCmd
+		inputs              []string     // For confirmations and prompts
+		regionSelectActions []tea.KeyMsg // Simulate region selection
+		expectedPrompt      []string
+		expectInputFail     int
+		expectedError       bool
+		expectedProj        *project
+	}{
+		{
+			name: "Success - Create project with all fields",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+			},
+			cmd: &CreateProjectCmd{
+				Name:      "Test Project",
+				Slug:      "Test",
+				AvatarURL: "http://test.com",
+			},
+			inputs: []string{
+				"", // name
+				"", // take default
+				"https://github.com/argus-labs/starter-game-template", // Repository URL
+				"",           // repoToken (empty for public repo)
+				"",           // repoPath (empty for default root path of repo)
+				"10",         // tick rate
+				"Y",          // enable discord notifications  NOTE: these won't show up in the console
+				"test-token", // discord token                       because results are mocked
+				"1234567890", // discord channel ID
+				"Y",          // enable slack notifications
+				"test-token", // slack token
+				"1234567890", // slack channel ID
+				"",           // avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeySpace}, // select region
+				{Type: tea.KeyEnter}, // confirm
+			},
+			expectedError: false,
+			expectedProj: &project{
+				ID:   "test-project-id",
+				Name: "Test Project",
+				Slug: "test-project",
+			},
+		},
+		{
+			name: "Abort - user presses q in region selector",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+			},
+			cmd: &CreateProjectCmd{
+				Name:      "Test Project",
+				Slug:      "Test",
+				AvatarURL: "http://test.com",
+			},
+			inputs: []string{
+				"", // name
+				"", // take default
+				"https://github.com/argus-labs/starter-game-template", // Repository URL
+				"",           // repoToken (empty for public repo)
+				"",           // repoPath (empty for default root path of repo)
+				"10",         // tick rate
+				"Y",          // enable discord notifications
+				"test-token", // discord token
+				"1234567890", // discord channel ID
+				"Y",          // enable slack notifications
+				"test-token", // slack token
+				"1234567890", // slack channel ID
+				"",           // avatar URL
+			},
+			regionSelectActions: []tea.KeyMsg{
+				{Type: tea.KeyRunes, Runes: []rune{'q'}}, // abort region selection
+			},
+			expectedError: true,
+			expectedProj:  nil,
+		},
+		{
+			name: "Error - Need login but expired token",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
+				},
+			},
+			cmd: &CreateProjectCmd{
+				Name:      "Test Project",
+				Slug:      "Test",
+				AvatarURL: "http://test.com",
+			},
+			expectedError: false,
+			expectedProj:  nil,
+		},
+	}
+
+	// Mock browser opening
+	openBrowser = func(_ string) error { return nil }
+	defer func() { openBrowser = originalOpenBrowser }()
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Save the test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Setup input mocking
+
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func(prompt string, defaultVal string) string {
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
+
+					input := tc.inputs[inputIndex]
+					if input == "" {
+						input = defaultVal
+					}
+					printer.Infoln(input)
+					inputIndex++
+					return input
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+
+			// Simulate region selection
+			regionSelector = tea.NewProgram(
+				multiselect.InitialMultiselectModel(
+					s.ctx,
+					[]string{"us-east-1", "us-west-1", "eu-west-1"},
+				),
+				tea.WithInput(nil),
+			)
+			if regionSelector == nil {
+				printer.Errorln("failed to create region selector")
+			}
+			defer func() { regionSelector = nil }()
+
+			// Send region select actions
+			go func() {
+				// wait for 1s to make sure the program is initialized
+				time.Sleep(1 * time.Second)
+				for _, action := range tc.regionSelectActions {
+					// send action to region selector
+					if regionSelector != nil {
+						regionSelector.Send(action)
+						// wait for 100ms to make sure the action is processed
+						time.Sleep(100 * time.Millisecond)
+					} else {
+						printer.Errorln("region selector is nil")
+					}
+				}
+			}()
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			if tc.expectedError {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err)
+				if tc.expectedProj != nil {
+					// Verify the project was created by checking the config
+					config, err := GetForgeConfig()
+					s.Require().NoError(err)
+					s.Equal(tc.expectedProj.ID, config.ProjectID)
+				}
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestSwitchProjectCmd() {
+	testCases := []struct {
+		name           string
+		config         Config
+		cmd            *SwitchProjectCmd
+		inputs         []string // For interactive project selection
+		expectedError  bool
+		expectedProj   *project
+		expectedOutput string
+	}{
+		{
+			name: "Success - Switch project by slug",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+			},
+			cmd: &SwitchProjectCmd{
+				Slug: "testp",
+			},
+			expectedError: false,
+			expectedProj: &project{
+				ID:   "test-project-id",
+				Name: "Test Project",
+				Slug: "testp",
+			},
+			expectedOutput: "Switched to project: Test Project",
+		},
+		{
+			name: "Success - Switch project interactively",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+			},
+			cmd: &SwitchProjectCmd{},
+			inputs: []string{
+				"1", // Select first project
+			},
+			expectedError: false,
+			expectedProj: &project{
+				ID:   "test-project-id",
+				Name: "Test Project",
+				Slug: "testp",
+			},
+			expectedOutput: "Switched to project: Test Project",
+		},
+		{
+			name: "Error - Not logged in",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
+				},
+			},
+			cmd: &SwitchProjectCmd{
+				Slug: "test-project",
+			},
+			expectedError: false,
+			expectedProj:  nil,
+		},
+		{
+			name: "Error - No organization selected",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+			cmd: &SwitchProjectCmd{
+				Slug: "test-project",
+			},
+			expectedError: false,
+			expectedProj:  nil,
+		},
+		{
+			name: "Error - No projects exist",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "empty-org-id",
+			},
+			cmd: &SwitchProjectCmd{
+				Slug: "test-project",
+			},
+			expectedError: false,
+			expectedProj:  nil,
+		},
+		{
+			name: "Error - Project selection aborted",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+			},
+			cmd: &SwitchProjectCmd{},
+			inputs: []string{
+				"q", // Abort selection
+			},
+			expectedError:  false,
+			expectedProj:   nil,
+			expectedOutput: "No project selected.",
+		},
+		{
+			name: "Error - failed to select project",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				CurrRepoKnown: false,
+				CurrRepoURL:   "https://github.com/test/repo",
+				CurrRepoPath:  "/",
+			},
+			cmd: &SwitchProjectCmd{
+				Slug: "testp",
+			},
+			expectedError: false,
+			expectedProj:  nil,
+		},
+	}
+
+	// Mock browser opening
+	openBrowser = func(_ string) error { return nil }
+	defer func() { openBrowser = originalOpenBrowser }()
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Save the test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Setup input mocking
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func(prompt string, defaultVal string) string {
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
+
+					input := tc.inputs[inputIndex]
+					if input == "" {
+						input = defaultVal
+					}
+					printer.Infoln(input)
+					inputIndex++
+					return input
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			if tc.expectedError {
+				s.Require().Error(err)
+				switch tc.name {
+				case "Error - SetupForgeCommandState fails":
+					s.Contains(err.Error(), "forge command setup failed")
+				case "Error - Project selection fails":
+					s.Contains(err.Error(), "Failed to select project")
+				}
+			} else {
+				s.Require().NoError(err)
+				if tc.expectedProj != nil {
+					// Verify the project was selected by checking the config
+					config, err := GetForgeConfig()
+					s.Require().NoError(err)
+					s.Equal(tc.expectedProj.ID, config.ProjectID)
+				}
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestDeleteProjectCmd() {
+	tests := []struct {
+		name          string
+		config        Config
+		cmd           *DeleteProjectCmd
+		expectedError bool
+		expectedProj  *project
+		inputs        []string
+	}{
+		{
+			name: "Success - Delete project",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd:           &DeleteProjectCmd{},
+			expectedError: false,
+			expectedProj:  nil,
+			inputs:        []string{"Yes"},
+		},
+		{
+			name: "Error - SetupForgeCommandState fails",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour), // Expired token to trigger login error
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd:           &DeleteProjectCmd{},
+			expectedError: false,
+			expectedProj:  nil,
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			// Set up test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Set up input mocking
+			if len(tc.inputs) > 0 {
+				originalGetInput = getInput
+				defer func() { getInput = originalGetInput }()
+				inputIndex := 0
+				getInput = func(prompt string, defaultStr string) string {
+					if inputIndex < len(tc.inputs) {
+						input := tc.inputs[inputIndex]
+						inputIndex++
+						return input
+					}
+					return defaultStr
+				}
+			}
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			// Check error
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Contains(err.Error(), "forge command setup failed")
+			} else {
+				s.Require().NoError(err)
+			}
+
+			// Only check project state if we didn't get a login error
+			if !tc.config.Credential.TokenExpiresAt.Before(time.Now()) {
+				// Get the current config after command runs
+				currentConfig, err := GetForgeConfig()
+				s.Require().NoError(err)
+
+				// Check project state
+				if tc.expectedProj == nil {
+					s.Empty(currentConfig.ProjectID)
+				} else {
+					s.Equal(tc.expectedProj.ID, currentConfig.ProjectID)
+				}
 			}
 		})
 	}
