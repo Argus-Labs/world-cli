@@ -261,9 +261,10 @@ func parseResponse[T any](body []byte) (*T, error) {
 func printNoOrganizations() {
 	printer.NewLine(1)
 	printer.Headerln("   No Organizations Found   ")
-	printer.Infoln("You don't have any organizations yet.")
 	printer.NewLine(1)
-	printer.Infoln("Use 'world forge organization create' to create one.")
+	printer.Headerln("   Options   ")
+	printer.Infoln("1. Use 'world forge organization create' to create an organization.")
+	printer.Infoln("2. Have a member send invite using 'world forge organization invite'.")
 }
 
 func printNoSelectedOrganization() {

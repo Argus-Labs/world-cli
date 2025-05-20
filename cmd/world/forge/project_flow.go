@@ -1,6 +1,8 @@
 package forge
 
 import (
+	"strings"
+
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
@@ -176,4 +178,11 @@ func (flow *initFlow) updateProject(project *project) {
 		logger.Error(eris.Wrap(err, "Project flow failed to save config"))
 		// continue on, this is not fatal
 	}
+}
+
+// isDefinedProjectError is used to prevent printed errors from reprinting
+// when being passed to the error handler.
+func isDefinedProjectError(err error) bool {
+	return strings.Contains(err.Error(), ErrProjectSelectionCanceled.Error()) ||
+		strings.Contains(err.Error(), ErrProjectCreationCanceled.Error())
 }

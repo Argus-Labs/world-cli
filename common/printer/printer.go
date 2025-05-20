@@ -28,8 +28,10 @@ func Successln(msg string) {
 }
 
 func Successf(format string, args ...any) {
-	msg := successStyle.Render(string(logsymbols.Success) + " " + fmt.Sprintf(format, args...))
+	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
+	msg := successStyle.Render(string(logsymbols.Success) + " " + fmt.Sprintf(newFormat, args...))
 	fmt.Print(msg)
+	NewLine(linesRemoved)
 }
 
 func Error(msg string) {
@@ -41,8 +43,10 @@ func Errorln(msg string) {
 }
 
 func Errorf(format string, args ...any) {
-	msg := errorStyle.Render(string(logsymbols.Error) + " " + fmt.Sprintf(format, args...))
+	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
+	msg := errorStyle.Render(string(logsymbols.Error) + " " + fmt.Sprintf(newFormat, args...))
 	fmt.Print(msg)
+	NewLine(linesRemoved)
 }
 
 func Info(msg string) {
@@ -67,8 +71,10 @@ func Headerln(msg string) {
 }
 
 func Headerf(format string, args ...any) {
-	msg := headerStyle.Render(fmt.Sprintf(format, args...))
+	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
+	msg := headerStyle.Render(fmt.Sprintf(newFormat, args...))
 	fmt.Print(msg)
+	NewLine(linesRemoved)
 }
 
 func Notification(msg string) {
@@ -76,8 +82,10 @@ func Notification(msg string) {
 }
 
 func Notificationf(format string, args ...any) {
-	msg := notificationStyle.Render(fmt.Sprintf(format, args...))
+	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
+	msg := notificationStyle.Render(fmt.Sprintf(newFormat, args...))
 	fmt.Print(msg)
+	NewLine(linesRemoved)
 }
 
 func Notificationln(msg string) {
@@ -86,7 +94,7 @@ func Notificationln(msg string) {
 
 func NewLine(numberOfLines int) {
 	if numberOfLines <= 0 {
-		numberOfLines = 1
+		return
 	}
 	fmt.Print(strings.Repeat("\n", numberOfLines))
 }
@@ -113,4 +121,20 @@ func SectionDivider(symbol string, length int) {
 		length = 1
 	}
 	fmt.Println(strings.Repeat(symbol, length))
+}
+
+// trimAndCountTrailingNewlines trims trailing newlines from a string and returns the count.
+// Used for sylized output to ensure the cursor is reset properly.
+func trimAndCountTrailingNewlines(s string) (string, int) {
+	if s == "" {
+		return "", 0
+	}
+
+	count := 0
+	i := len(s)
+	for i > 0 && s[i-1] == '\n' {
+		i--
+		count++
+	}
+	return s[:i], count
 }

@@ -82,7 +82,14 @@ type LoginCmd struct {
 }
 
 func (c *LoginCmd) Run() error {
-	return login(context.Background())
+	err := login(context.Background())
+	if err != nil {
+		if isDefinedOrganizationError(err) || isDefinedProjectError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "Login Failed: ")
+	}
+	return nil
 }
 
 type DeployCmd struct {
@@ -97,6 +104,9 @@ func (c *DeployCmd) Run() error {
 	ctx := context.Background()
 	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
 	if err != nil {
+		if loginErrorCheck(err) {
+			return nil
+		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 	return deployment(ctx, cmdState, deployType)
@@ -109,6 +119,9 @@ func (c *StatusCmd) Run() error {
 	ctx := context.Background()
 	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
 	if err != nil {
+		if loginErrorCheck(err) {
+			return nil
+		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 	return status(ctx, cmdState)
@@ -121,6 +134,9 @@ func (c *PromoteCmd) Run() error {
 	ctx := context.Background()
 	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
 	if err != nil {
+		if loginErrorCheck(err) {
+			return nil
+		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 	return deployment(ctx, cmdState, "promote")
@@ -133,6 +149,9 @@ func (c *DestroyCmd) Run() error {
 	ctx := context.Background()
 	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
 	if err != nil {
+		if loginErrorCheck(err) {
+			return nil
+		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 	return deployment(ctx, cmdState, "destroy")
@@ -145,6 +164,9 @@ func (c *ResetCmd) Run() error {
 	ctx := context.Background()
 	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedIDOnly)
 	if err != nil {
+		if loginErrorCheck(err) {
+			return nil
+		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 	return deployment(ctx, cmdState, "reset")
@@ -176,8 +198,16 @@ type CreateOrganizationCmd struct {
 }
 
 func (c *CreateOrganizationCmd) Run() error {
-	// TODO: pass in name, slug, and avatarURL if provided
-	org, err := createOrganization(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
+	if err != nil {
+		if loginErrorCheck(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	org, err := createOrganization(ctx, c.Name, c.Slug, c.AvatarURL)
 	if err != nil {
 		return eris.Wrap(err, "Failed to create organization")
 	}
@@ -190,12 +220,37 @@ type SwitchOrganizationCmd struct {
 }
 
 func (c *SwitchOrganizationCmd) Run() error {
-	// TODO: pass in slug if provided
-	org, err := selectOrganization(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
 	if err != nil {
-		return eris.Wrap(err, "Failed to switch organization")
+		if loginErrorCheck(err) || isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
 	}
-	printer.Successf("Switched to organization: %s\n", org.Name)
+
+	if c.Slug != "" {
+		org, err := selectOrganizationFromSlug(ctx, c.Slug)
+		if err == nil && org == (organization{}) {
+			return eris.New("organization not found with slug: " + c.Slug)
+		}
+		if err != nil {
+			if isDefinedOrganizationError(err) {
+				return nil
+			}
+			return eris.Wrap(err, "Failed command select organization")
+		}
+		return nil // Organization found and selected
+	}
+
+	_, err = selectOrganization(ctx)
+	if err != nil {
+		if isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "Failed command select organization")
+	}
+
 	return nil
 }
 

@@ -1529,9 +1529,10 @@ func (s *ForgeTestSuite) TestGetListOfProjects() {
 func (s *ForgeTestSuite) TestOrganizationOperations() {
 	testCases := []struct {
 		name          string
-		operation     string // "list", "get", "select"
+		operation     string // "list", "get", "select", "selectFromSlug"
 		config        Config
 		input         string // for select operation
+		slug          string // for selectFromSlug operation
 		expectedError bool
 		expectedOrgs  int // for list operation
 	}{
@@ -1579,17 +1580,6 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 			},
 			expectedError: true,
 		},
-		/* { // disabled because it loops forever right now
-			name:      "Error - Select invalid option",
-			operation: "select",
-			config: ForgeConfig{
-				Credential: Credential{
-					Token: "test-token",
-				},
-			},
-			input:         "99",
-			expectedError: true,
-		}, */
 		{
 			name:      "Error - Select cancelled",
 			operation: "select",
@@ -1600,6 +1590,29 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 			},
 			input:         "q",
 			expectedError: true,
+		},
+		// New test cases for selectOrganizationFromSlug
+		{
+			name:      "Success - Select organization from valid slug",
+			operation: "selectFromSlug",
+			config: Config{
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			slug:          "testo",
+			expectedError: false,
+		},
+		{
+			name:      "Success - Select organization from non-existent slug",
+			operation: "selectFromSlug",
+			config: Config{
+				Credential: Credential{
+					Token: "test-token",
+				},
+			},
+			slug:          "non-existent",
+			expectedError: false,
 		},
 	}
 
@@ -1632,7 +1645,8 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 
 			case "select":
 				getInput = func(prompt string, defaultVal string) string {
-					printer.Infof("%s [%s]: %s", prompt, defaultVal, tc.input)
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
+					printer.Infoln(tc.input)
 					return tc.input
 				}
 				defer func() { getInput = originalGetInput }()
@@ -1646,6 +1660,22 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 					s.Equal("test-org-id", org.ID)
 					s.Equal("Test Org", org.Name)
 					s.Equal("testo", org.Slug)
+				}
+
+			case "selectFromSlug":
+				org, err := selectOrganizationFromSlug(s.ctx, tc.slug)
+				if tc.expectedError {
+					s.Require().Error(err)
+					s.Empty(org)
+				} else {
+					s.Require().NoError(err)
+					if tc.slug == "testo" {
+						s.Equal("test-org-id", org.ID)
+						s.Equal("Test Org", org.Name)
+						s.Equal("testo", org.Slug)
+					} else {
+						s.Empty(org)
+					}
 				}
 			}
 		})
@@ -1679,7 +1709,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			expectedPrompt: []string{
 				"Enter organization name",
 				"Enter organization slug",
-				"Enter organization avatar URL [none]",
+				"Enter organization avatar URL",
 				"Create organization with these details? (Y/n)",
 			},
 		},
@@ -1701,7 +1731,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			expectedPrompt: []string{
 				"Enter organization name",
 				"Enter organization slug",
-				"Enter organization avatar URL [none]",
+				"Enter organization avatar URL",
 				"Create organization with these details? (Y/n)",
 			},
 		},
@@ -1718,7 +1748,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"Enter organization name",
 				"Enter organization slug",
 				"Enter organization slug",
-				"Enter organization avatar URL [none]",
+				"Enter organization avatar URL",
 				"Create organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
@@ -1742,7 +1772,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 				"Enter organization name",
 				"Enter organization name",
 				"Enter organization slug",
-				"Enter organization avatar URL [none]",
+				"Enter organization avatar URL",
 				"Create organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
@@ -1768,11 +1798,11 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			expectedPrompt: []string{
 				"Enter organization name",
 				"Enter organization slug",
-				"Enter organization avatar URL [none]",
+				"Enter organization avatar URL",
 				"Create organization with these details? (Y/n)",
 				"Enter organization name",
 				"Enter organization slug",
-				"Enter organization avatar URL [none]",
+				"Enter organization avatar URL",
 				"Create organization with these details? (Y/n)",
 			},
 			expectInputFail: 0,
@@ -1812,7 +1842,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			org, err := createOrganization(s.ctx)
+			org, err := createOrganization(s.ctx, "", "", "")
 			if tc.expectedError {
 				s.Require().Error(err)
 				s.Nil(org)
@@ -3200,6 +3230,9 @@ func (s *ForgeTestSuite) TestSetupForgeCommandState() {
 }
 
 func (s *ForgeTestSuite) TestGetForgeCommandState() {
+	// Reset the flow state before testing
+	flow = nil
+
 	// Test that GetForgeCommandState panics when flow is nil
 	s.Panics(func() {
 		GetForgeCommandState()
@@ -3221,6 +3254,9 @@ func (s *ForgeTestSuite) TestGetForgeCommandState() {
 
 	retrievedState := GetForgeCommandState()
 	s.Equal(state, retrievedState)
+
+	// Clean up after test
+	flow = nil
 }
 
 func (s *ForgeTestSuite) TestAddKnownProject() {
@@ -3911,6 +3947,208 @@ func (s *ForgeTestSuite) TestHandleNeedExistingProjectData() {
 				s.Require().NoError(err)
 				s.Require().NotNil(flowState.State.Project)
 				s.True(flowState.projectStepDone)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestCreateOrganizationCmd() {
+	testCases := []struct {
+		name            string
+		config          Config
+		cmd             *CreateOrganizationCmd
+		inputs          []string // For confirmations and prompts
+		expectedPrompt  []string
+		expectInputFail int
+		expectedError   bool
+		expectedOrg     *organization
+	}{
+		{
+			name: "Success - Create organization with all fields",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+			cmd: &CreateOrganizationCmd{
+				Name:      "My Great Org",
+				Slug:      "",
+				AvatarURL: "http://test.com",
+			},
+			inputs: []string{
+				"",  // use default
+				"",  // use default
+				"",  // use default
+				"Y", // Confirm
+			},
+			expectedPrompt: []string{
+				"Enter organization name",
+				"Enter organization slug",
+				"Enter organization avatar URL",
+				"Create organization with these details? (Y/n)",
+			},
+			expectedError: false,
+			expectedOrg: &organization{
+				ID:   "test-org-id",
+				Name: "Test Organization",
+				Slug: "testo",
+			},
+		},
+	}
+
+	// Mock browser opening
+	openBrowser = func(_ string) error { return nil }
+	defer func() { openBrowser = originalOpenBrowser }()
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Save the test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Setup input mocking
+			//nolint:nestif // Test file is ok
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func(prompt string, defaultVal string) string {
+					printer.Infof("%s [%s]: ", prompt, defaultVal)
+
+					// Validate against expected prompts if defined
+					if len(tc.expectedPrompt) > 0 {
+						if inputIndex >= len(tc.expectedPrompt) {
+							panic(eris.Errorf("More prompts than expected. Got: %s", prompt))
+						}
+						if prompt != tc.expectedPrompt[inputIndex] {
+							panic(eris.Errorf("Unexpected prompt at index %d. Expected: %s, Got: %s",
+								inputIndex, tc.expectedPrompt[inputIndex], prompt))
+						}
+					}
+
+					input := tc.inputs[inputIndex]
+					if input == "" {
+						input = defaultVal
+					}
+					printer.Infoln(input)
+					inputIndex++
+					return input
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			if tc.expectedError {
+				s.Require().Error(err)
+				if tc.config.Credential.Token == "" {
+					s.Contains(err.Error(), "not logged in")
+				}
+			} else {
+				s.Require().NoError(err)
+				// Verify the organization was created by checking the config
+				config, err := GetForgeConfig()
+				s.Require().NoError(err)
+				s.Equal(tc.expectedOrg.ID, config.OrganizationID)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestSwitchOrganizationCmd() {
+	testCases := []struct {
+		name          string
+		config        Config
+		cmd           *SwitchOrganizationCmd
+		inputs        []string
+		expectedError bool
+	}{
+		{
+			name: "Success - Switch by slug",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+			cmd: &SwitchOrganizationCmd{
+				Slug: "testo",
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Invalid slug",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+			cmd: &SwitchOrganizationCmd{
+				Slug: "invalid-slug",
+			},
+			expectedError: true,
+		},
+		{
+			name: "Success - Interactive selection",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+			cmd: &SwitchOrganizationCmd{},
+			inputs: []string{
+				"1", // Select first organization
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - Not logged in",
+			config: Config{
+				Credential: Credential{
+					Token: "",
+				},
+			},
+			cmd: &SwitchOrganizationCmd{
+				Slug: "testo",
+			},
+			expectedError: false, // Should return nil as per the code
+		},
+	}
+
+	// Mock browser opening
+	openBrowser = func(_ string) error { return nil }
+	defer func() { openBrowser = originalOpenBrowser }()
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Save the test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Setup input mocking
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func(prompt string, defaultVal string) string {
+					if inputIndex >= len(tc.inputs) {
+						return defaultVal
+					}
+					input := tc.inputs[inputIndex]
+					inputIndex++
+					printer.Infof("%s [%s]: %s", prompt, defaultVal, input)
+					return input
+				}
+				defer func() { getInput = originalGetInput }()
+			}
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			if tc.expectedError {
+				s.Require().Error(err)
+			} else {
+				s.Require().NoError(err)
 			}
 		})
 	}

@@ -125,6 +125,30 @@ func selectOrganization(ctx context.Context) (organization, error) {
 	return selectedOrg, nil
 }
 
+func selectOrganizationFromSlug(ctx context.Context, slug string) (organization, error) {
+	orgs, err := getListOfOrganizations(ctx)
+	if err != nil {
+		return organization{}, eris.Wrap(err, "Failed to get organizations")
+	}
+
+	for _, org := range orgs {
+		if org.Slug == slug {
+			err = saveOrganizationToConfig(&org)
+			if err != nil {
+				return organization{}, eris.Wrap(err, "Failed to save organization")
+			}
+
+			err = handleProjectConfig(ctx)
+			if err != nil {
+				return organization{}, err
+			}
+			return org, nil
+		}
+	}
+	// If no organization is found, return no error or organiztion
+	return organization{}, nil
+}
+
 //nolint:gocognit // Makes sense to keep in one function.
 func promptForOrganization(ctx context.Context, orgs []organization, createNew bool) (organization, error) {
 	// Display organizations as a numbered list
@@ -155,7 +179,7 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 			}
 
 			if input == "c" && createNew {
-				org, err := createOrganization(ctx)
+				org, err := createOrganization(ctx, "", "", "")
 				if err != nil {
 					return organization{}, eris.Wrap(err, "Failed to create organization")
 				}
@@ -172,22 +196,29 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 
 			selectedOrg := orgs[num-1]
 
-			// Save organization to config file
-			config, err := GetCurrentForgeConfig()
-			if err != nil {
-				return organization{}, eris.Wrap(err, "Failed to get config")
-			}
-			config.OrganizationID = selectedOrg.ID
-			err = SaveForgeConfig(config)
+			err = saveOrganizationToConfig(&selectedOrg)
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
 
-			printer.NewLine(1)
-			printer.Successf("Selected organization: %s\n", selectedOrg.Name)
 			return selectedOrg, nil
 		}
 	}
+}
+
+func saveOrganizationToConfig(org *organization) error {
+	config, err := GetCurrentForgeConfig()
+	if err != nil {
+		return eris.Wrap(err, "Failed to get config")
+	}
+	config.OrganizationID = org.ID
+	err = SaveForgeConfig(config)
+	if err != nil {
+		return eris.Wrap(err, "Failed to save organization")
+	}
+	printer.NewLine(1)
+	printer.Successf("Selected organization: %s\n", org.Name)
+	return nil
 }
 
 func handleProjectConfig(ctx context.Context) error {
@@ -216,7 +247,7 @@ func handleProjectConfig(ctx context.Context) error {
 }
 
 //nolint:gocognit,funlen // Makes sense to keep in one function.
-func createOrganization(ctx context.Context) (*organization, error) {
+func createOrganization(ctx context.Context, name, slug, avatarURL string) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 
 	for {
@@ -224,7 +255,7 @@ func createOrganization(ctx context.Context) (*organization, error) {
 		printer.NewLine(1)
 		printer.Headerln("  Create New Organization  ")
 		for {
-			orgName = getInput("Enter organization name", "")
+			orgName = getInput("Enter organization name", name)
 			if orgName == "" {
 				printer.NewLine(1)
 				printer.Errorln("Organization name is required")
@@ -233,11 +264,17 @@ func createOrganization(ctx context.Context) (*organization, error) {
 			break
 		}
 
+		// Used to create slug from name
+		orgSlug = orgName
+		if slug != "" {
+			orgSlug = slug
+		}
+
 		// Get and validate organization slug
 		for {
 			minLength := 3
 			maxLength := 15
-			orgSlug = CreateSlugFromName(orgName, minLength, maxLength)
+			orgSlug = CreateSlugFromName(orgSlug, minLength, maxLength)
 			orgSlug = getInput("Enter organization slug", orgSlug)
 
 			// Validate slug
@@ -253,7 +290,7 @@ func createOrganization(ctx context.Context) (*organization, error) {
 
 		// Get and validate organization avatar URL
 		for {
-			orgAvatarURL = getInput("Enter organization avatar URL [none]", "")
+			orgAvatarURL = getInput("Enter organization avatar URL", avatarURL)
 
 			if orgAvatarURL == "" {
 				printer.NewLine(1)

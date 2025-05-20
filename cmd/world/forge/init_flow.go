@@ -13,6 +13,10 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
+var (
+	ErrLogin = eris.New("not logged in")
+)
+
 // initFlow represents the initialization flow for the forge system.
 type initFlow struct {
 	context              context.Context
@@ -104,7 +108,8 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 
 	// if we need to login and we are not logged in, return an error
 	if flow.requiredLogin == NeedLogin && !loggedIn {
-		return &flow.State, errors.New("not logged in")
+		printer.Errorln("Login required, please run `world login`")
+		return &flow.State, ErrLogin
 	}
 
 	// if we need the login step, always get the user info
@@ -259,4 +264,10 @@ func (flow *initFlow) AddKnownProject(proj *project) {
 		RepoPath:       proj.RepoPath,
 		ProjectName:    proj.Name,
 	})
+}
+
+// loginErrorCheck is used to check if the error is a login error.
+// Used to prevent reprinting the error which was already printed in a user friendly manner.
+func loginErrorCheck(err error) bool {
+	return eris.Is(err, ErrLogin)
 }
