@@ -99,7 +99,7 @@ func (c *DeployCmd) Run() error {
 		deployType = "forceDeploy"
 	}
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedIDOnly, NeedData)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
