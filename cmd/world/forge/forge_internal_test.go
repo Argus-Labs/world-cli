@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -114,11 +115,11 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 				case "/api/deployment/reset-project-id":
 					s.handleStatusReset(w, r)
 				case "/api/health/test-project-id":
-					s.handleHealth(w, r)
+					s.handleHealth(w, r, "test-project-id")
 				case "/api/health/reset-project-id":
-					s.handleHealth(w, r)
+					s.handleHealth(w, r, "reset-project-id")
 				case "/api/health/destroyed-project-id":
-					s.handleHealth(w, r)
+					s.handleHealth(w, r, "destroyed-project-id")
 				case "/api/project/":
 					s.handleProjectLookup(w, r)
 				case "/api/auth/service-auth-session":
@@ -427,26 +428,45 @@ func (s *ForgeTestSuite) handleStatusReset(w http.ResponseWriter, r *http.Reques
 	}}}`)
 }
 
-func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
+func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request, projectID string) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	s.writeJSONString(w, `{"data":{"dev":{"ok":false,"offline":false,"deployed_instances":[
-	{
-		"region":"ap-southeast-1",
-		"instance":1,
+	resultCodeStr := ""
+	resultStr := ""
+	ok := false
+	switch projectID {
+	case "test-project-id":
+		resultCodeStr = "200"
+		resultStr = "{}"
+		ok = true
+	case "reset-project-id":
+		resultCodeStr = "200"
+		resultStr = "{}"
+		ok = true
+	case "destroyed-project-id":
+		resultCodeStr = "502"
+		resultStr = "Bad Gateway"
+		ok = false
+	}
+	s.writeJSONString(w, `{"data":{"dev":{"ok":`+strconv.FormatBool(ok)+`,
+		"offline":`+strconv.FormatBool(!ok)+`,
+		"deployed_instances":[
+		{
+			"region":"ap-southeast-1",
+			"instance":1,
 		"cardinal":{
 			"url":"https://cardinal.apse-1.test.com/health",
-			"ok":true,
-            "result_code":200,
-			"result_str":"{}"
+			"ok":`+strconv.FormatBool(ok)+`,
+            "result_code":`+resultCodeStr+`,
+			"result_str":"`+resultStr+`"
 		},
 		"nakama":{
 			"url":"https://nakama.apse-1.test.com/healthcheck",
-			"ok":true,
-            "result_code":200,
-			"result_str":"{}"
+			"ok":`+strconv.FormatBool(ok)+`,
+            "result_code":`+resultCodeStr+`,
+			"result_str":"`+resultStr+`"
 		}
     },
     {
@@ -454,15 +474,15 @@ func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"instance":1,
 		"cardinal":{
 			"url":"https://cardinal01.use-1.test.com/health",
-			"ok":false,
-            "result_code":404,
-			"result_str":"Not Found"
+			"ok":`+strconv.FormatBool(ok)+`,
+            "result_code":`+resultCodeStr+`,
+			"result_str":"`+resultStr+`"
 		},
 		"nakama":{
 			"url":"https://nakama01.use-1.test.com/healthcheck",
-			"ok":false,
-            "result_code":0,
-			"result_str":""
+			"ok":`+strconv.FormatBool(ok)+`,
+            "result_code":`+resultCodeStr+`,
+			"result_str":"`+resultStr+`"
 		}
     },
     {
@@ -470,15 +490,15 @@ func (s *ForgeTestSuite) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"instance":2,
 		"cardinal":{
 			"url":"https://cardinal02.use-1.test.com/health",
-			"ok":false,
-            "result_code":0,
-			"result_str":""
+			"ok":`+strconv.FormatBool(ok)+`,
+            "result_code":`+resultCodeStr+`,
+			"result_str":"`+resultStr+`"
 		},
 		"nakama":{
 			"url":"https://nakama02.use1-1.test.com/healthcheck",
-			"ok":false,
-            "result_code":502,
-			"result_str":"Bad Gateway"
+			"ok":`+strconv.FormatBool(ok)+`,
+            "result_code":`+resultCodeStr+`,
+			"result_str":"`+resultStr+`"
 		}
     }
 	]}}}`)

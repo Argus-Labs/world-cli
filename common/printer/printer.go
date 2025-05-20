@@ -67,10 +67,8 @@ func Headerln(msg string) {
 }
 
 func Headerf(format string, args ...any) {
-	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
-	msg := headerStyle.Render(fmt.Sprintf(newFormat, args...))
-	fmt.Print(msg)
-	NewLine(linesRemoved)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(msg, headerStyle)
 }
 
 func Notification(msg string) {

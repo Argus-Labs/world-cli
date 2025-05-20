@@ -126,16 +126,15 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
 
-	env := "dev"
-	if deployType == "deploy" {
-		env = "prod"
+	env := "dev" //nolint:goconst // not used in other places
+	if deployType == "promote" {
+		env = "prod" //nolint:goconst // not used in other places
 	}
 
-	err = waitUntilDeploymentIsComplete(ctx, cmdState.Project, env)
+	err = waitUntilDeploymentIsComplete(ctx, cmdState.Project, env, deployType)
 	if err != nil {
 		printer.NewLine(1)
-		printer.Successf("Your %s is being processed!\n", deployType)
-		printer.NewLine(1)
+		printer.Successf("Your %s is being processed!\n\n", deployType)
 		printer.Infof("To check the status of your %s, run:\n", deployType)
 		printer.Infoln("  $ 'world status'")
 	}
@@ -180,6 +179,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 
 // Returns a map of environment names to boolean values indicating whether the environment was
 // successfully deployed.
+// nolint: gocognit, gocyclo, cyclop, funlen // this is a complex function but it does what it needs to do
 func getDeploymentStatus(ctx context.Context, project *project) (map[string]DeployInfo, error) {
 	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, project.ID)
 	result, err := sendRequest(ctx, http.MethodGet, statusURL, nil)
@@ -204,7 +204,7 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 	}
 	if len(envMap) == 0 {
 		printer.Infoln("** Project has not been deployed **")
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil is a valid return value
 	}
 	deployStatus := map[string]DeployInfo{}
 	for env, val := range envMap {
@@ -288,7 +288,7 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 					DeployType:   DeploymentTypeDeploy,
 					DeployStatus: DeployStatusPassed,
 					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
-						strings.ToUpper(env), buildNumber,
+						envDisplayName(env), buildNumber,
 						formattedDuration(buildDuration),
 						bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID),
 				}
@@ -297,7 +297,7 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 					DeployType:   DeploymentTypeDeploy,
 					DeployStatus: DeployStatusFailed,
 					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
-						strings.ToUpper(env), buildNumber, formattedDuration(buildDuration),
+						envDisplayName(env), buildNumber, formattedDuration(buildDuration),
 						bet.Format(time.RFC822), formattedDuration(time.Since(bet))),
 				}
 			default:
@@ -305,7 +305,7 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 					DeployType:   DeploymentTypeDeploy,
 					DeployStatus: DeployStatusRunning,
 					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
-						strings.ToUpper(env), buildNumber,
+						envDisplayName(env), buildNumber,
 						bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState),
 				}
 			}
@@ -316,21 +316,21 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 					DeployType:   DeploymentTypeDestroy,
 					DeployStatus: DeployStatusPassed,
 					DeployDisplay: fmt.Sprintf("Destroyed: [%s] on %s by %s\n",
-						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+						envDisplayName(env), dt.Format(time.RFC822), executorID),
 				}
 			case string(DeployStatusFailed):
 				deployStatus[env] = DeployInfo{
 					DeployType:   DeploymentTypeDestroy,
 					DeployStatus: DeployStatusFailed,
 					DeployDisplay: fmt.Sprintf("Destroy:   [%s] failed on %s by %s\n",
-						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+						envDisplayName(env), dt.Format(time.RFC822), executorID),
 				}
 			default:
 				deployStatus[env] = DeployInfo{
 					DeployType:   DeploymentTypeDestroy,
 					DeployStatus: DeployStatusRunning,
 					DeployDisplay: fmt.Sprintf("Destroy:   [%s] started %s (%s ago) by %s - %s\n",
-						strings.ToUpper(env), dt.Format(time.RFC822),
+						envDisplayName(env), dt.Format(time.RFC822),
 						formattedDuration(time.Since(dt)), executorID, buildState),
 				}
 			}
@@ -342,21 +342,21 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 					DeployType:   DeploymentTypeReset,
 					DeployStatus: DeployStatusPassed,
 					DeployDisplay: fmt.Sprintf("Reset:     [%s] on %s by %s\n",
-						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+						envDisplayName(env), dt.Format(time.RFC822), executorID),
 				}
 			case string(DeployStatusFailed):
 				deployStatus[env] = DeployInfo{
 					DeployType:   DeploymentTypeReset,
 					DeployStatus: DeployStatusFailed,
 					DeployDisplay: fmt.Sprintf("Reset:     [%s] failed on %s by %s\n",
-						strings.ToUpper(env), dt.Format(time.RFC822), executorID),
+						envDisplayName(env), dt.Format(time.RFC822), executorID),
 				}
 			default:
 				deployStatus[env] = DeployInfo{
 					DeployType:   DeploymentTypeReset,
 					DeployStatus: DeployStatusRunning,
 					DeployDisplay: fmt.Sprintf("Reset:     [%s] started %s (%s ago) by %s - %s\n",
-						strings.ToUpper(env), dt.Format(time.RFC822),
+						envDisplayName(env), dt.Format(time.RFC822),
 						formattedDuration(time.Since(dt)), executorID, buildState),
 				}
 			}
@@ -367,6 +367,7 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 	return deployStatus, nil
 }
 
+// nolint: gocognit, gocyclo, cyclop, funlen // this is a complex function but it does what it needs to do
 func getAndPrintHealth(ctx context.Context, project *project, deployInfo map[string]DeployInfo) (bool, error) {
 	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, project.ID)
 	result, err := sendRequest(ctx, http.MethodGet, healthURL, nil)
@@ -406,12 +407,12 @@ func getAndPrintHealth(ctx context.Context, project *project, deployInfo map[str
 		// neither will be set if status is mixed
 		switch {
 		case data["ok"] == true:
-			printer.Successf("Health:    [%s] ", strings.ToUpper(env))
+			printer.Successf("Health:    [%s] ", envDisplayName(env))
 		case data["offline"] == true:
-			printer.Errorf("Health:    [%s] ", strings.ToUpper(env))
+			printer.Errorf("Health:    [%s] ", envDisplayName(env))
 			healthComplete = false
 		default:
-			printer.Infof("⚠️ Health:    [%s] ", strings.ToUpper(env))
+			printer.Infof("⚠️ Health:    [%s] ", envDisplayName(env))
 			healthComplete = false
 		}
 		if len(instances) == 0 {
@@ -551,7 +552,8 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 	return nil
 }
 
-func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env string) error {
+// nolint: gocognit // this is a complex function but it does what it needs to do
+func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env string, deployType string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -564,7 +566,7 @@ func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env st
 		Spinner: spinner.New(spinner.WithSpinner(spinner.Dot)),
 		Cancel:  cancel,
 	}
-	spin.SetText("Waiting for deployment to complete...")
+	spin.SetText(fmt.Sprintf("Waiting for %s to complete...", deployType))
 	p := tea.NewProgram(&spin)
 
 	// Run the spinner in a goroutine
@@ -602,9 +604,12 @@ func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env st
 			return ctx.Err()
 		case <-time.After(3 * time.Second):
 			if !spinnerExited.Load() {
-				if !deployComplete {
-					p.Send(teaspinner.LogMsg("Waiting for deployment to complete..."))
-				} else {
+				switch {
+				case !deployComplete:
+					p.Send(teaspinner.LogMsg(fmt.Sprintf("Waiting for %s to complete...", deployType)))
+				case deployType == "destroy":
+					p.Send(teaspinner.LogMsg("Waiting for servers to be destroyed..."))
+				default:
 					p.Send(teaspinner.LogMsg("Waiting for servers to be healthy..."))
 				}
 			}
@@ -649,7 +654,7 @@ func formattedDuration(d time.Duration) string {
 }
 
 func printDeploymentStatus(deployInfo DeployInfo) {
-	switch deployInfo.DeployStatus {
+	switch deployInfo.DeployStatus { //nolint:exhaustive // only success and failure have special messages
 	case DeployStatusPassed:
 		printer.Successf("%s\n", deployInfo.DeployDisplay)
 	case DeployStatusFailed:
@@ -669,4 +674,15 @@ func shouldShowHealth(deployInfo DeployInfo) bool {
 		return true
 	}
 	return false
+}
+
+func envDisplayName(env string) string {
+	switch env {
+	case "dev":
+		return "PREVIEW"
+	case "prod":
+		return "LIVE"
+	default:
+		return env
+	}
 }
