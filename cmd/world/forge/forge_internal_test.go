@@ -2494,7 +2494,7 @@ func (s *ForgeTestSuite) TestGetRoleInput() {
 			os.Stdin = tmpfile //nolint:reassign // Might cause issues with parallel tests
 
 			// Test getInput
-			result := getRoleInput(tc.allowNone)
+			result := getRoleInput(tc.allowNone, "")
 			s.Equal(tc.expectedInput, result)
 		})
 	}
@@ -2685,10 +2685,10 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 
 			if tc.expectInputFail > 0 {
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					err = inviteUserToOrganization(s.ctx)
+					err = inviteUserToOrganization(s.ctx, "", "")
 				})
 			} else {
-				err = inviteUserToOrganization(s.ctx)
+				err = inviteUserToOrganization(s.ctx, "", "")
 				if tc.expectedError {
 					s.Error(err)
 				} else {
@@ -2836,10 +2836,10 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 
 			if tc.expectInputFail > 0 {
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					err = updateUserRoleInOrganization(s.ctx)
+					err = updateUserRoleInOrganization(s.ctx, "", "")
 				})
 			} else {
-				err = updateUserRoleInOrganization(s.ctx)
+				err = updateUserRoleInOrganization(s.ctx, "", "")
 				if tc.expectedError {
 					s.Error(err)
 				} else {
@@ -4606,6 +4606,220 @@ func (s *ForgeTestSuite) TestDeleteProjectCmd() {
 				} else {
 					s.Equal(tc.expectedProj.ID, currentConfig.ProjectID)
 				}
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestInviteUserToOrganizationCmd() {
+	tests := []struct {
+		name          string
+		config        Config
+		cmd           *InviteUserToOrganizationCmd
+		expectedError bool
+	}{
+		{
+			name: "Success - Invite user",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd: &InviteUserToOrganizationCmd{
+				ID:   "test-user-id",
+				Role: "member",
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - SetupForgeCommandState fails",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd: &InviteUserToOrganizationCmd{
+				ID:   "test-user-id",
+				Role: "member",
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			// Set up test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			// Check error
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Contains(err.Error(), "forge command setup failed")
+			} else {
+				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestChangeUserRoleInOrganizationCmd() {
+	tests := []struct {
+		name          string
+		config        Config
+		cmd           *ChangeUserRoleInOrganizationCmd
+		expectedError bool
+	}{
+		{
+			name: "Success - Change user role",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd: &ChangeUserRoleInOrganizationCmd{
+				ID:   "test-user-id",
+				Role: "admin",
+			},
+			expectedError: false,
+		},
+		{
+			name: "Error - SetupForgeCommandState fails",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd: &ChangeUserRoleInOrganizationCmd{
+				ID:   "test-user-id",
+				Role: "admin",
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			// Set up test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			// Check error
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Contains(err.Error(), "forge command setup failed")
+			} else {
+				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestUpdateUserCmd() {
+	tests := []struct {
+		name          string
+		config        Config
+		cmd           *UpdateUserCmd
+		expectedError bool
+	}{
+		{
+			name: "Success - Update user with flags",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd: &UpdateUserCmd{
+				Email:     "test@example.com",
+				Name:      "admin",
+				AvatarURL: "https://github.com/test/avatar.png",
+			},
+			expectedError: false,
+		},
+		{
+			name: "Success - Update user without flags",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			cmd:           &UpdateUserCmd{},
+			expectedError: false,
+		},
+		{
+			name: "Error - SetupForgeCommandState fails",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
+				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			// Set up test config
+			err := SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Run the command
+			err = tc.cmd.Run()
+
+			// Check error
+			if tc.expectedError {
+				s.Require().Error(err)
+				s.Contains(err.Error(), "forge command setup failed")
+			} else {
+				s.Require().NoError(err)
 			}
 		})
 	}

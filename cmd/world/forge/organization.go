@@ -368,19 +368,20 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 	return org, nil
 }
 
-func inviteUserToOrganization(ctx context.Context) error {
+func inviteUserToOrganization(ctx context.Context, id, role string) error {
 	printer.NewLine(1)
 	printer.Headerln("   Invite User to Organization   ")
-	userID := getInput("Enter user ID to invite", "")
+
+	userID := getInput("Enter user ID to invite", id)
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
 
-	role := getRoleInput(false)
+	userRole := getRoleInput(false, role)
 
 	payload := map[string]string{
 		"invited_user_id": userID,
-		"role":            role,
+		"role":            userRole,
 	}
 
 	org, err := getSelectedOrganization(ctx)
@@ -401,24 +402,24 @@ func inviteUserToOrganization(ctx context.Context) error {
 
 	printer.NewLine(1)
 	printer.Successf("Successfully invited user %s to organization!\n", userID)
-	printer.Infof("Assigned role: %s\n", role)
+	printer.Infof("Assigned role: %s\n", userRole)
 	return nil
 }
 
-func updateUserRoleInOrganization(ctx context.Context) error {
+func updateUserRoleInOrganization(ctx context.Context, id, role string) error {
 	printer.NewLine(1)
 	printer.Headerln("  Update User Role in Organization  ")
-	userID := getInput("Enter user ID to update", "")
+	userID := getInput("Enter user ID to update", id)
 
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
 
-	role := getRoleInput(true)
+	userRole := getRoleInput(true, role)
 
 	payload := map[string]string{
 		"target_user_id": userID,
-		"role":           role,
+		"role":           userRole,
 	}
 
 	org, err := getSelectedOrganization(ctx)
@@ -439,13 +440,19 @@ func updateUserRoleInOrganization(ctx context.Context) error {
 
 	printer.NewLine(1)
 	printer.Successf("Successfully updated role for user %s!\n", userID)
-	printer.Infof("New role: %s\n", role)
+	printer.Infof("New role: %s\n", userRole)
 	return nil
 }
 
-func getRoleInput(allowNone bool) string {
+func getRoleInput(allowNone bool, role string) string {
+	const memberRole = "member"
 	// Get and validate role
-	var opts string
+	var opts, defaultRole string
+	defaultRole = role
+	if defaultRole == "" {
+		defaultRole = memberRole
+	}
+
 	if allowNone {
 		opts = "owner, admin, member, or none"
 	} else {
@@ -455,8 +462,8 @@ func getRoleInput(allowNone bool) string {
 		printer.NewLine(1)
 		printer.Headerln(" Role Assignment  ")
 		printer.Infof("Available Roles: %s\n", opts)
-		role := getInput("Enter organization role", "member")
-		if allowNone && role == "none" {
+		userRole := getInput("Enter organization role", defaultRole)
+		if allowNone && userRole == "none" {
 			printer.NewLine(1)
 			printer.Infoln("Warning: Role \"none\" removes user from this organization")
 			answer := getInput("Confirm removal? (Yes/no)", "no")
@@ -465,11 +472,12 @@ func getRoleInput(allowNone bool) string {
 				printer.Errorln("User not removed")
 				continue // let them try again
 			}
-			return role
+			return userRole
 		}
-		if role == "admin" || role == "owner" || role == "member" {
-			return role
+		if userRole == "admin" || userRole == "owner" || userRole == memberRole {
+			return userRole
 		}
+		defaultRole = memberRole
 		printer.NewLine(1)
 		printer.Errorf("Error: Role must be one of %s\n", opts)
 	}

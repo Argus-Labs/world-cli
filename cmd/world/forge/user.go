@@ -33,38 +33,45 @@ func getUser(ctx context.Context) (User, error) {
 	return *user, nil
 }
 
-func updateUser(ctx context.Context) error {
+func updateUser(ctx context.Context, email, name, avatarURL string) error {
 	// get the current user
 	currentUser, err := getUser(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get current user")
 	}
 
-	payload := User{}
-
 	// prompt update name
-	name, err := inputUserName(ctx, currentUser.Name)
+	if name == "" {
+		name = currentUser.Name
+	}
+	name, err = inputUserName(ctx, name)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user name")
 	}
 
-	payload.Name = name
-
 	// prompt update email
-	email, err := inputUserEmail(ctx, currentUser.Email)
+	if email == "" {
+		email = currentUser.Email
+	}
+	email, err = inputUserEmail(ctx, email)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user email")
 	}
 
-	payload.Email = email
-
 	// prompt for avatar url
-	avatarURL, err := inputUserAvatarURL(ctx, currentUser.AvatarURL)
+	if avatarURL == "" {
+		avatarURL = currentUser.AvatarURL
+	}
+	avatarURL, err = inputUserAvatarURL(ctx, avatarURL)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user avatar URL")
 	}
 
-	payload.AvatarURL = avatarURL
+	payload := User{
+		Name:      name,
+		Email:     email,
+		AvatarURL: avatarURL,
+	}
 
 	_, err = sendRequest(ctx, http.MethodPut, userURL, payload)
 	if err != nil {

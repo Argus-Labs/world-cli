@@ -376,33 +376,57 @@ type UserCmd struct {
 }
 
 type InviteUserToOrganizationCmd struct {
-	Email string `flag:"" help:"The email of the user to invite"`
-	Role  string `flag:"" help:"The role of the user to invite"`
+	ID   string `flag:"" help:"The ID of the user to invite"`
+	Role string `flag:"" help:"The role of the user to invite"`
 }
 
 func (c *InviteUserToOrganizationCmd) Run() error {
-	// TODO: pass in email, role if provided
-	return inviteUserToOrganization(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	if err != nil {
+		if loginErrorCheck(err) || isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	return inviteUserToOrganization(ctx, c.ID, c.Role)
 }
 
 type ChangeUserRoleInOrganizationCmd struct {
-	Email string `flag:"" help:"The email of the user to change the role of"`
-	Role  string `flag:"" help:"The new role of the user"`
+	ID   string `flag:"" help:"The ID of the user to change the role of"`
+	Role string `flag:"" help:"The new role of the user"`
 }
 
 func (c *ChangeUserRoleInOrganizationCmd) Run() error {
-	// TODO: pass in email, role if provided
-	return updateUserRoleInOrganization(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	if err != nil {
+		if loginErrorCheck(err) || isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	return updateUserRoleInOrganization(ctx, c.ID, c.Role)
 }
 
 type UpdateUserCmd struct {
-	Email string `flag:"" help:"The email of the user to update"`
-	Role  string `flag:"" help:"The new role of the user"`
+	Email     string `flag:"" help:"The email of the user to update"`
+	Name      string `flag:"" help:"The new name of the user"`
+	AvatarURL string `flag:"" help:"The new avatar URL of the user"  type:"url"`
 }
 
 func (c *UpdateUserCmd) Run() error {
-	// TODO: pass in email, role if provided
-	return updateUser(context.Background())
+	ctx := context.Background()
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	if err != nil {
+		if loginErrorCheck(err) || isDefinedOrganizationError(err) {
+			return nil
+		}
+		return eris.Wrap(err, "forge command setup failed")
+	}
+	return updateUser(ctx, c.Email, c.Name, c.AvatarURL)
 }
 
 func InitForgeBase(env string) {
