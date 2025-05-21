@@ -203,16 +203,12 @@ func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, erro
 }
 
 // Get list of projects in selected organization.
-func getListOfAvailableRegionsForProject(ctx context.Context) ([]string, error) {
-	selectedProj, err := getSelectedProject(ctx)
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get project")
-	}
-	if selectedProj.ID == "" {
+func (p *project) getListOfAvailableRegions(ctx context.Context) ([]string, error) {
+	if p.ID == "" || p.OrgID == "" {
 		printNoSelectedProject()
 		return nil, nil
 	}
-	return getListRegions(ctx, selectedProj.OrgID, selectedProj.ID)
+	return getListRegions(ctx, p.OrgID, p.ID)
 }
 
 func createProject(ctx context.Context, name, slug, avatarURL string) (*project, error) {
@@ -227,7 +223,7 @@ func createProject(ctx context.Context, name, slug, avatarURL string) (*project,
 		AvatarURL: avatarURL,
 		update:    false,
 	}
-	err = p.projectInput(ctx, regions)
+	err = p.getSetupInput(ctx, regions)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get project input")
 	}
@@ -302,7 +298,7 @@ func createProject(ctx context.Context, name, slug, avatarURL string) (*project,
 	return prj, nil
 }
 
-func (p *project) inputProjectName(ctx context.Context) error {
+func (p *project) inputName(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Headerln("   Project Name Configuration   ")
 
@@ -390,7 +386,7 @@ func (p *project) validateAndSetName(name string) error {
 	return nil
 }
 
-func (p *project) inputProjectSlug(ctx context.Context) error {
+func (p *project) inputSlug(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -624,18 +620,13 @@ func selectProject(ctx context.Context, slug string) (*project, error) {
 	}
 }
 
-func deleteProject(ctx context.Context) error {
-	selectedProject, err := getSelectedProject(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get project")
-	}
-
+func (p *project) delete(ctx context.Context) error {
 	// Print project details with fancy formatting
 	printer.NewLine(1)
 	printer.Headerln("   Project Deletion   ")
 	printer.Infoln("Project Details:")
-	printer.Infof("• Name: %s\n", selectedProject.Name)
-	printer.Infof("• Slug: %s\n", selectedProject.Slug)
+	printer.Infof("• Name: %s\n", p.Name)
+	printer.Infof("• Slug: %s\n", p.Slug)
 
 	// Warning message with fancy formatting
 	printer.NewLine(1)
@@ -647,7 +638,7 @@ func deleteProject(ctx context.Context) error {
 	printer.NewLine(1)
 
 	// Confirmation prompt with fancy formatting
-	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s'", selectedProject.Name)
+	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s'", p.Name)
 	confirmation := getInput(deletePrompt, "")
 
 	if confirmation != "Yes" {
@@ -661,7 +652,7 @@ func deleteProject(ctx context.Context) error {
 	}
 
 	// Send request
-	url := fmt.Sprintf(projectURLPattern, baseURL, selectedProject.OrgID) + "/" + selectedProject.ID
+	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID) + "/" + p.ID
 	body, err := sendRequest(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return eris.Wrap(err, "Failed to delete project")
@@ -676,7 +667,7 @@ func deleteProject(ctx context.Context) error {
 	printer.NewLine(1)
 	printer.Infoln("  Success!  ")
 	printer.SectionDivider("-", 12)
-	printer.Successf("Project deleted: %s (%s)\n", selectedProject.Name, selectedProject.Slug)
+	printer.Successf("Project deleted: %s (%s)\n", p.Name, p.Slug)
 
 	// Remove project from config
 	config, err := GetCurrentForgeConfig()
@@ -692,14 +683,8 @@ func deleteProject(ctx context.Context) error {
 	return nil
 }
 
-func updateProject(ctx context.Context, name, slug, avatarURL string) error {
-	// get selected project
-	p, err := getSelectedProject(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get selected project")
-	}
-
-	regions, err := getListOfAvailableRegionsForProject(ctx)
+func (p *project) updateProject(ctx context.Context, name, slug, avatarURL string) error {
+	regions, err := p.getListOfAvailableRegions(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
 	}
@@ -715,7 +700,7 @@ func updateProject(ctx context.Context, name, slug, avatarURL string) error {
 	printer.SectionDivider("-", 18)
 
 	// get project input
-	err = p.projectInput(ctx, regions)
+	err = p.getSetupInput(ctx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
@@ -776,7 +761,7 @@ func updateProject(ctx context.Context, name, slug, avatarURL string) error {
 	return nil
 }
 
-func (p *project) projectInput(ctx context.Context, regions []string) error {
+func (p *project) getSetupInput(ctx context.Context, regions []string) error {
 	// Get organization
 	org, err := getSelectedOrganization(ctx)
 	if err != nil {
@@ -789,12 +774,12 @@ func (p *project) projectInput(ctx context.Context, regions []string) error {
 		return nil
 	}
 
-	err = p.inputProjectName(ctx)
+	err = p.inputName(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project name")
 	}
 
-	err = p.inputProjectSlug(ctx)
+	err = p.inputSlug(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project slug")
 	}

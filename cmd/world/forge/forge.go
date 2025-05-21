@@ -334,7 +334,7 @@ type UpdateProjectCmd struct {
 
 func (c *UpdateProjectCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
 	if err != nil {
 		if loginErrorCheck(err) ||
 			isDefinedProjectError(err) ||
@@ -343,8 +343,10 @@ func (c *UpdateProjectCmd) Run() error {
 		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
-
-	return updateProject(ctx, c.Name, c.Slug, c.AvatarURL)
+	if cmdState.Project == nil {
+		return eris.New("Forge setup failed, no project selected")
+	}
+	return cmdState.Project.updateProject(ctx, c.Name, c.Slug, c.AvatarURL)
 }
 
 type DeleteProjectCmd struct {
@@ -352,7 +354,7 @@ type DeleteProjectCmd struct {
 
 func (c *DeleteProjectCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
 	if err != nil {
 		if loginErrorCheck(err) ||
 			isDefinedProjectError(err) ||
@@ -361,7 +363,10 @@ func (c *DeleteProjectCmd) Run() error {
 		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
-	return deleteProject(ctx)
+	if cmdState.Project == nil {
+		return eris.New("Forge setup failed, no project selected")
+	}
+	return cmdState.Project.delete(ctx)
 }
 
 // ------------------------------------------------------------------------------------------------
