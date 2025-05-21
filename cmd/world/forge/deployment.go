@@ -27,6 +27,9 @@ const (
 	DeployStatusFailed  DeployStatus = "failed"
 	DeployStatusPassed  DeployStatus = "passed"
 	DeployStatusRunning DeployStatus = "running"
+
+	DeployEnvPreview = "dev"
+	DeployEnvLive    = "prod"
 )
 
 type deploymentPreview struct {
@@ -126,9 +129,9 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
 
-	env := "dev" //nolint:goconst // not used in other places
+	env := DeployEnvPreview
 	if deployType == "promote" {
-		env = "prod" //nolint:goconst // not used in other places
+		env = DeployEnvLive
 	}
 
 	err = waitUntilDeploymentIsComplete(ctx, cmdState.Project, env, deployType)

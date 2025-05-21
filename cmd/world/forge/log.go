@@ -95,8 +95,8 @@ func selectEnvironment(availableEnvs []string) (string, error) {
 	// If there are multiple environments, print them and let the user choose
 	printer.NewLine(1)
 	printer.Infoln("Available environments:")
-	printer.Infof("%d. %s\n", 1, "dev")
-	printer.Infof("%d. %s\n", 2, "prod")
+	printer.Infof("%d. %s\n", 1, "PREVIEW")
+	printer.Infof("%d. %s\n", 2, "LIVE")
 
 	inputStr := getInput("Choose an environment", "1")
 	inputInt, err := strconv.Atoi(inputStr)
@@ -108,9 +108,9 @@ func selectEnvironment(availableEnvs []string) (string, error) {
 	}
 
 	if inputInt == 2 {
-		return "prod", nil
+		return DeployEnvLive, nil
 	}
-	return "dev", nil
+	return DeployEnvPreview, nil
 }
 
 func getListOfEnvironments(ctx context.Context, project project) ([]string, error) {
