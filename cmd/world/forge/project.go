@@ -211,16 +211,16 @@ func (p *project) getListOfAvailableRegions(ctx context.Context) ([]string, erro
 	return getListRegions(ctx, p.OrgID, p.ID)
 }
 
-func createProject(ctx context.Context, name, slug, avatarURL string) (*project, error) {
+func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, error) {
 	regions, err := getListOfAvailableRegionsForNewProject(ctx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get available regions")
 	}
 
 	p := project{
-		Name:      name,
-		Slug:      slug,
-		AvatarURL: avatarURL,
+		Name:      flags.Name,
+		Slug:      flags.Slug,
+		AvatarURL: flags.AvatarURL,
 		update:    false,
 	}
 	err = p.getSetupInput(ctx, regions)
@@ -558,7 +558,7 @@ func selectProjectBySlug(ctx context.Context, projects []project, slug string, c
 	return nil, ErrProjectSelectionCanceled
 }
 
-func selectProject(ctx context.Context, slug string) (*project, error) {
+func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, error) {
 	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Could not get config")
@@ -581,8 +581,8 @@ func selectProject(ctx context.Context, slug string) (*project, error) {
 	}
 
 	// If slug is provided, select the project by slug
-	if slug != "" {
-		return selectProjectBySlug(ctx, projects, slug, &config)
+	if flags.Slug != "" {
+		return selectProjectBySlug(ctx, projects, flags.Slug, &config)
 	}
 
 	// Display projects as a numbered list
@@ -683,7 +683,7 @@ func (p *project) delete(ctx context.Context) error {
 	return nil
 }
 
-func (p *project) updateProject(ctx context.Context, name, slug, avatarURL string) error {
+func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd) error {
 	regions, err := p.getListOfAvailableRegions(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
@@ -691,9 +691,9 @@ func (p *project) updateProject(ctx context.Context, name, slug, avatarURL strin
 
 	// set update to true
 	p.update = true
-	p.Name = name
-	p.Slug = slug
-	p.AvatarURL = avatarURL
+	p.Name = flags.Name
+	p.Slug = flags.Slug
+	p.AvatarURL = flags.AvatarURL
 
 	printer.NewLine(1)
 	printer.Infoln("  Project Update  ")
@@ -1068,9 +1068,12 @@ func handleMultipleProjects(ctx context.Context, projectID string, projects []pr
 		}
 	}
 
-	project, err := selectProject(ctx, "")
+	project, err := selectProject(ctx, &SwitchProjectCmd{})
 	if err != nil {
 		return "", eris.Wrap(err, "Failed to select project")
+	}
+	if project == nil {
+		return "", nil
 	}
 	return project.ID, nil
 }
@@ -1090,7 +1093,7 @@ func handleNoProjects(ctx context.Context) (string, error) {
 		return "", nil
 	}
 
-	project, err := createProject(ctx, "", "", "")
+	project, err := createProject(ctx, &CreateProjectCmd{})
 	if err != nil {
 		return "", eris.Wrap(err, "Failed to create project")
 	}

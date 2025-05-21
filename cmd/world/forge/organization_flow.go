@@ -1,8 +1,6 @@
 package forge
 
 import (
-	"strings"
-
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
@@ -41,7 +39,7 @@ func (flow *initFlow) handleNeedOrganizationCaseNoOrgs() error {
 
 		switch choice {
 		case "Y":
-			org, err := createOrganization(flow.context, "", "", "")
+			org, err := createOrganization(flow.context, &CreateOrganizationCmd{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in no-orgs case")
 			}
@@ -70,7 +68,7 @@ func (flow *initFlow) handleNeedOrganizationCaseOneOrg(orgs []organization) erro
 		case "n":
 			return ErrOrganizationSelectionCanceled
 		case "c":
-			org, err := createOrganization(flow.context, "", "", "")
+			org, err := createOrganization(flow.context, &CreateOrganizationCmd{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in one-org case")
 			}
@@ -170,14 +168,4 @@ func (flow *initFlow) updateOrganization(org *organization) {
 		logger.Error(eris.Wrap(err, "Organization flow failed to save config"))
 		// continue on, this is not fatal
 	}
-}
-
-// isDefinedOrganizationError is used to prevent printed errors from reprinting
-// when being passed to the error handler.
-func isDefinedOrganizationError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), ErrOrganizationSelectionCanceled.Error()) ||
-		strings.Contains(err.Error(), ErrOrganizationCreationCanceled.Error())
 }

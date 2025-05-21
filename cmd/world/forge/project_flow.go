@@ -1,8 +1,6 @@
 package forge
 
 import (
-	"strings"
-
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
@@ -41,7 +39,8 @@ func (flow *initFlow) handleNeedProjectCaseNoProjects() error {
 
 		switch choice {
 		case "Y":
-			proj, err := createProject(flow.context, "", "", "")
+			cmd := &CreateProjectCmd{}
+			proj, err := createProject(flow.context, cmd)
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in no-projects case")
 			}
@@ -70,7 +69,8 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 		case "n":
 			return ErrProjectSelectionCanceled
 		case "c":
-			proj, err := createProject(flow.context, "", "", "")
+			cmd := &CreateProjectCmd{}
+			proj, err := createProject(flow.context, cmd)
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in one-project case")
 			}
@@ -84,7 +84,7 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 }
 
 func (flow *initFlow) handleNeedProjectCaseMultipleProjects() error {
-	proj, err := selectProject(flow.context, "")
+	proj, err := selectProject(flow.context, &SwitchProjectCmd{})
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in multiple-projects case")
 	}
@@ -147,7 +147,7 @@ func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects() error {
-	proj, err := selectProject(flow.context, "")
+	proj, err := selectProject(flow.context, &SwitchProjectCmd{})
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
 	}
@@ -178,14 +178,4 @@ func (flow *initFlow) updateProject(project *project) {
 		logger.Error(eris.Wrap(err, "Project flow failed to save config"))
 		// continue on, this is not fatal
 	}
-}
-
-// isDefinedProjectError is used to prevent printed errors from reprinting
-// when being passed to the error handler.
-func isDefinedProjectError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), ErrProjectSelectionCanceled.Error()) ||
-		strings.Contains(err.Error(), ErrProjectCreationCanceled.Error())
 }

@@ -1607,7 +1607,7 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 				}
 
 			case "selectFromSlug":
-				org, err := selectOrganizationFromSlug(s.ctx, tc.slug)
+				org, err := selectOrganizationFromSlug(s.ctx, &SwitchOrganizationCmd{Slug: tc.slug})
 				if tc.expectedError {
 					s.Require().Error(err)
 					s.Empty(org)
@@ -1786,7 +1786,7 @@ func (s *ForgeTestSuite) TestCreateOrganization() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			org, err := createOrganization(s.ctx, "", "", "")
+			org, err := createOrganization(s.ctx, &CreateOrganizationCmd{})
 			if tc.expectedError {
 				s.Require().Error(err)
 				s.Nil(org)
@@ -2231,10 +2231,10 @@ PROJECT_NAME = "test-project-from-toml"
 			var prj *project
 			if tc.expectInputFail > 0 { //nolint: nestif // it's a test
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					prj, err = createProject(s.ctx, "", "", "")
+					prj, err = createProject(s.ctx, &CreateProjectCmd{})
 				})
 			} else {
-				prj, err = createProject(s.ctx, "", "", "")
+				prj, err = createProject(s.ctx, &CreateProjectCmd{})
 				if tc.expectedError {
 					s.Require().Error(err)
 					s.Nil(prj)
@@ -2339,7 +2339,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			proj, err := selectProject(s.ctx, "")
+			proj, err := selectProject(s.ctx, &SwitchProjectCmd{})
 			if tc.expectedError {
 				s.Require().Error(err)
 				s.Empty(proj)
@@ -2630,10 +2630,10 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 			org := organization{ID: tc.config.OrganizationID}
 			if tc.expectInputFail > 0 {
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					err = org.inviteUser(s.ctx, "", "")
+					err = org.inviteUser(s.ctx, &InviteUserToOrganizationCmd{})
 				})
 			} else {
-				err = org.inviteUser(s.ctx, "", "")
+				err = org.inviteUser(s.ctx, &InviteUserToOrganizationCmd{})
 				if tc.expectedError {
 					s.Error(err)
 				} else {
@@ -2782,10 +2782,10 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 			org := organization{ID: tc.config.OrganizationID}
 			if tc.expectInputFail > 0 {
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					err = org.updateUserRole(s.ctx, "", "")
+					err = org.updateUserRole(s.ctx, &ChangeUserRoleInOrganizationCmd{})
 				})
 			} else {
-				err = org.updateUserRole(s.ctx, "", "")
+				err = org.updateUserRole(s.ctx, &ChangeUserRoleInOrganizationCmd{})
 				if tc.expectedError {
 					s.Error(err)
 				} else {
@@ -4060,7 +4060,7 @@ func (s *ForgeTestSuite) TestSwitchOrganizationCmd() {
 			cmd: &SwitchOrganizationCmd{
 				Slug: "testo",
 			},
-			expectedError: false, // Should return nil as per the code
+			expectedError: true,
 		},
 	}
 
@@ -4201,7 +4201,7 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				Slug:      "Test",
 				AvatarURL: "http://test.com",
 			},
-			expectedError: false,
+			expectedError: true,
 			expectedProj:  nil,
 		},
 	}
@@ -4343,7 +4343,7 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 			cmd: &SwitchProjectCmd{
 				Slug: "test-project",
 			},
-			expectedError: false,
+			expectedError: true,
 			expectedProj:  nil,
 		},
 		{
@@ -4357,7 +4357,7 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 			cmd: &SwitchProjectCmd{
 				Slug: "test-project",
 			},
-			expectedError: false,
+			expectedError: true,
 			expectedProj:  nil,
 		},
 		{
@@ -4494,7 +4494,7 @@ func (s *ForgeTestSuite) TestDeleteProjectCmd() {
 			config: Config{
 				Credential: Credential{
 					Token:          "test-token",
-					TokenExpiresAt: time.Now().Add(-1 * time.Hour), // Expired token to trigger login error
+					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
 				},
 				OrganizationID: "test-org-id",
 				ProjectID:      "test-project-id",
@@ -4503,7 +4503,7 @@ func (s *ForgeTestSuite) TestDeleteProjectCmd() {
 				CurrRepoPath:   "/",
 			},
 			cmd:           &DeleteProjectCmd{},
-			expectedError: false,
+			expectedError: true,
 			expectedProj:  nil,
 		},
 	}
@@ -4600,7 +4600,7 @@ func (s *ForgeTestSuite) TestInviteUserToOrganizationCmd() {
 				ID:   "test-user-id",
 				Role: "member",
 			},
-			expectedError: false,
+			expectedError: true,
 		},
 	}
 
@@ -4667,7 +4667,7 @@ func (s *ForgeTestSuite) TestChangeUserRoleInOrganizationCmd() {
 				ID:   "test-user-id",
 				Role: "admin",
 			},
-			expectedError: false,
+			expectedError: true,
 		},
 	}
 
@@ -4747,7 +4747,7 @@ func (s *ForgeTestSuite) TestUpdateUserCmd() {
 				CurrRepoURL:    "https://github.com/test/repo",
 				CurrRepoPath:   "/",
 			},
-			expectedError: false,
+			expectedError: true,
 		},
 	}
 

@@ -125,14 +125,14 @@ func selectOrganization(ctx context.Context) (organization, error) {
 	return selectedOrg, nil
 }
 
-func selectOrganizationFromSlug(ctx context.Context, slug string) (organization, error) {
+func selectOrganizationFromSlug(ctx context.Context, flags *SwitchOrganizationCmd) (organization, error) {
 	orgs, err := getListOfOrganizations(ctx)
 	if err != nil {
 		return organization{}, eris.Wrap(err, "Failed to get organizations")
 	}
 
 	for _, org := range orgs {
-		if org.Slug == slug {
+		if org.Slug == flags.Slug {
 			err = org.saveToConfig()
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to save organization")
@@ -182,7 +182,7 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 			}
 
 			if input == "c" && createNew {
-				org, err := createOrganization(ctx, "", "", "")
+				org, err := createOrganization(ctx, &CreateOrganizationCmd{})
 				if err != nil {
 					return organization{}, eris.Wrap(err, "Failed to create organization")
 				}
@@ -250,7 +250,7 @@ func handleProjectConfig(ctx context.Context) error {
 }
 
 //nolint:gocognit,funlen // Makes sense to keep in one function.
-func createOrganization(ctx context.Context, name, slug, avatarURL string) (*organization, error) {
+func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 
 	for {
@@ -258,7 +258,7 @@ func createOrganization(ctx context.Context, name, slug, avatarURL string) (*org
 		printer.NewLine(1)
 		printer.Headerln("  Create New Organization  ")
 		for {
-			orgName = getInput("Enter organization name", name)
+			orgName = getInput("Enter organization name", flags.Name)
 			if orgName == "" {
 				printer.NewLine(1)
 				printer.Errorln("Organization name is required")
@@ -269,8 +269,8 @@ func createOrganization(ctx context.Context, name, slug, avatarURL string) (*org
 
 		// Used to create slug from name
 		orgSlug = orgName
-		if slug != "" {
-			orgSlug = slug
+		if flags.Slug != "" {
+			orgSlug = flags.Slug
 		}
 
 		// Get and validate organization slug
@@ -293,7 +293,7 @@ func createOrganization(ctx context.Context, name, slug, avatarURL string) (*org
 
 		// Get and validate organization avatar URL
 		for {
-			orgAvatarURL = getInput("Enter organization avatar URL", avatarURL)
+			orgAvatarURL = getInput("Enter organization avatar URL", flags.AvatarURL)
 
 			if orgAvatarURL == "" {
 				printer.NewLine(1)
@@ -366,16 +366,16 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 	return org, nil
 }
 
-func (o *organization) inviteUser(ctx context.Context, id, role string) error {
+func (o *organization) inviteUser(ctx context.Context, flags *InviteUserToOrganizationCmd) error {
 	printer.NewLine(1)
 	printer.Headerln("   Invite User to Organization   ")
 
-	userID := getInput("Enter user ID to invite", id)
+	userID := getInput("Enter user ID to invite", flags.ID)
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
 
-	userRole := getRoleInput(false, role)
+	userRole := getRoleInput(false, flags.Role)
 
 	payload := map[string]string{
 		"invited_user_id": userID,
@@ -394,16 +394,16 @@ func (o *organization) inviteUser(ctx context.Context, id, role string) error {
 	return nil
 }
 
-func (o *organization) updateUserRole(ctx context.Context, id, role string) error {
+func (o *organization) updateUserRole(ctx context.Context, flags *ChangeUserRoleInOrganizationCmd) error {
 	printer.NewLine(1)
 	printer.Headerln("  Update User Role in Organization  ")
-	userID := getInput("Enter user ID to update", id)
+	userID := getInput("Enter user ID to update", flags.ID)
 
 	if userID == "" {
 		return eris.New("User ID cannot be empty")
 	}
 
-	userRole := getRoleInput(true, role)
+	userRole := getRoleInput(true, flags.Role)
 
 	payload := map[string]string{
 		"target_user_id": userID,

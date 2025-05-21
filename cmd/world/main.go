@@ -107,8 +107,6 @@ func main() {
 		sentry.CaptureException(err)
 		if logger.VerboseMode {
 			logger.Errors(err)
-		} else {
-			printer.Errorln(err.Error())
 		}
 	}
 	// print log stack

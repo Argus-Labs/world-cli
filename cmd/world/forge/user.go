@@ -33,7 +33,7 @@ func getUser(ctx context.Context) (User, error) {
 	return *user, nil
 }
 
-func updateUser(ctx context.Context, email, name, avatarURL string) error {
+func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
 	// get the current user
 	currentUser, err := getUser(ctx)
 	if err != nil {
@@ -41,36 +41,36 @@ func updateUser(ctx context.Context, email, name, avatarURL string) error {
 	}
 
 	// prompt update name
-	if name == "" {
-		name = currentUser.Name
+	if flags.Name == "" {
+		flags.Name = currentUser.Name
 	}
-	name, err = inputUserName(ctx, name)
+	flags.Name, err = inputUserName(ctx, flags.Name)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user name")
 	}
 
 	// prompt update email
-	if email == "" {
-		email = currentUser.Email
+	if flags.Email == "" {
+		flags.Email = currentUser.Email
 	}
-	email, err = inputUserEmail(ctx, email)
+	flags.Email, err = inputUserEmail(ctx, flags.Email)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user email")
 	}
 
 	// prompt for avatar url
-	if avatarURL == "" {
-		avatarURL = currentUser.AvatarURL
+	if flags.AvatarURL == "" {
+		flags.AvatarURL = currentUser.AvatarURL
 	}
-	avatarURL, err = inputUserAvatarURL(ctx, avatarURL)
+	flags.AvatarURL, err = inputUserAvatarURL(ctx, flags.AvatarURL)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user avatar URL")
 	}
 
 	payload := User{
-		Name:      name,
-		Email:     email,
-		AvatarURL: avatarURL,
+		Name:      flags.Name,
+		Email:     flags.Email,
+		AvatarURL: flags.AvatarURL,
 	}
 
 	_, err = sendRequest(ctx, http.MethodPut, userURL, payload)

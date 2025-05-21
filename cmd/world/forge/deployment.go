@@ -54,7 +54,7 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 
 		printer.Infof("Deploy requires a project created in World Forge: %s\n", org.Name)
 
-		pID, err := createProject(ctx, "", "", "")
+		pID, err := createProject(ctx, &CreateProjectCmd{})
 		if err != nil {
 			return eris.Wrap(err, "Failed on deployment to create project")
 		}

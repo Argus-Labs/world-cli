@@ -265,9 +265,3 @@ func (flow *initFlow) AddKnownProject(proj *project) {
 		ProjectName:    proj.Name,
 	})
 }
-
-// loginErrorCheck is used to check if the error is a login error.
-// Used to prevent reprinting the error which was already printed in a user friendly manner.
-func loginErrorCheck(err error) bool {
-	return eris.Is(err, ErrLogin)
-}
