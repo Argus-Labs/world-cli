@@ -183,6 +183,9 @@ func (flow *initFlow) updateProject(project *project) {
 // isDefinedProjectError is used to prevent printed errors from reprinting
 // when being passed to the error handler.
 func isDefinedProjectError(err error) bool {
+	if err == nil {
+		return false
+	}
 	return strings.Contains(err.Error(), ErrProjectSelectionCanceled.Error()) ||
 		strings.Contains(err.Error(), ErrProjectCreationCanceled.Error())
 }

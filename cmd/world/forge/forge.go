@@ -382,15 +382,17 @@ type InviteUserToOrganizationCmd struct {
 
 func (c *InviteUserToOrganizationCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
 	if err != nil {
 		if loginErrorCheck(err) || isDefinedOrganizationError(err) {
 			return nil
 		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
-
-	return inviteUserToOrganization(ctx, c.ID, c.Role)
+	if cmdState.Organization.ID == "" {
+		return eris.New("Forge setup failed, no organization selected")
+	}
+	return cmdState.Organization.inviteUser(ctx, c.ID, c.Role)
 }
 
 type ChangeUserRoleInOrganizationCmd struct {
@@ -400,15 +402,17 @@ type ChangeUserRoleInOrganizationCmd struct {
 
 func (c *ChangeUserRoleInOrganizationCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
 	if err != nil {
 		if loginErrorCheck(err) || isDefinedOrganizationError(err) {
 			return nil
 		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
-
-	return updateUserRoleInOrganization(ctx, c.ID, c.Role)
+	if cmdState.Organization.ID == "" {
+		return eris.New("Forge setup failed, no organization selected")
+	}
+	return cmdState.Organization.updateUserRole(ctx, c.ID, c.Role)
 }
 
 type UpdateUserCmd struct {

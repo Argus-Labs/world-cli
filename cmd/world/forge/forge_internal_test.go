@@ -2683,12 +2683,13 @@ func (s *ForgeTestSuite) TestInviteUserToOrganization() {
 			}
 			defer func() { regionSelector = nil }()
 
+			org := organization{ID: tc.config.OrganizationID}
 			if tc.expectInputFail > 0 {
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					err = inviteUserToOrganization(s.ctx, "", "")
+					err = org.inviteUser(s.ctx, "", "")
 				})
 			} else {
-				err = inviteUserToOrganization(s.ctx, "", "")
+				err = org.inviteUser(s.ctx, "", "")
 				if tc.expectedError {
 					s.Error(err)
 				} else {
@@ -2834,12 +2835,13 @@ func (s *ForgeTestSuite) TestUpdateRoleInOrganization() {
 			}
 			defer func() { regionSelector = nil }()
 
+			org := organization{ID: tc.config.OrganizationID}
 			if tc.expectInputFail > 0 {
 				s.PanicsWithError(fmt.Sprintf("Input %d Failed", tc.expectInputFail), func() {
-					err = updateUserRoleInOrganization(s.ctx, "", "")
+					err = org.updateUserRole(s.ctx, "", "")
 				})
 			} else {
-				err = updateUserRoleInOrganization(s.ctx, "", "")
+				err = org.updateUserRole(s.ctx, "", "")
 				if tc.expectedError {
 					s.Error(err)
 				} else {

@@ -133,10 +133,13 @@ func selectOrganizationFromSlug(ctx context.Context, slug string) (organization,
 
 	for _, org := range orgs {
 		if org.Slug == slug {
-			err = saveOrganizationToConfig(&org)
+			err = org.saveToConfig()
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
+
+			printer.NewLine(1)
+			printer.Successf("Selected organization: %s\n", org.Name)
 
 			err = handleProjectConfig(ctx)
 			if err != nil {
@@ -196,28 +199,28 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 
 			selectedOrg := orgs[num-1]
 
-			err = saveOrganizationToConfig(&selectedOrg)
+			err = selectedOrg.saveToConfig()
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
 
+			printer.NewLine(1)
+			printer.Successf("Selected organization: %s\n", selectedOrg.Name)
 			return selectedOrg, nil
 		}
 	}
 }
 
-func saveOrganizationToConfig(org *organization) error {
+func (o *organization) saveToConfig() error {
 	config, err := GetCurrentForgeConfig()
 	if err != nil {
 		return eris.Wrap(err, "Failed to get config")
 	}
-	config.OrganizationID = org.ID
+	config.OrganizationID = o.ID
 	err = SaveForgeConfig(config)
 	if err != nil {
 		return eris.Wrap(err, "Failed to save organization")
 	}
-	printer.NewLine(1)
-	printer.Successf("Selected organization: %s\n", org.Name)
 	return nil
 }
 
@@ -352,13 +355,8 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 		return nil, eris.Wrap(err, "Failed to parse response")
 	}
 
-	// Select organization to config file
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get config")
-	}
-	config.OrganizationID = org.ID
-	err = SaveForgeConfig(config)
+	// Save organization to config file
+	err = org.saveToConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to save organization in config")
 	}
@@ -368,7 +366,7 @@ func createOrgRequestAndSave(ctx context.Context, name, slug, avatarURL string) 
 	return org, nil
 }
 
-func inviteUserToOrganization(ctx context.Context, id, role string) error {
+func (o *organization) inviteUser(ctx context.Context, id, role string) error {
 	printer.NewLine(1)
 	printer.Headerln("   Invite User to Organization   ")
 
@@ -384,18 +382,8 @@ func inviteUserToOrganization(ctx context.Context, id, role string) error {
 		"role":            userRole,
 	}
 
-	org, err := getSelectedOrganization(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get organization")
-	}
-
-	if org.ID == "" {
-		printNoSelectedOrganization()
-		return nil
-	}
-
 	// Send request
-	_, err = sendRequest(ctx, http.MethodPost, fmt.Sprintf("%s/%s/invite", organizationURL, org.ID), payload)
+	_, err := sendRequest(ctx, http.MethodPost, fmt.Sprintf("%s/%s/invite", organizationURL, o.ID), payload)
 	if err != nil {
 		return eris.Wrap(err, "Failed to invite user to organization")
 	}
@@ -406,7 +394,7 @@ func inviteUserToOrganization(ctx context.Context, id, role string) error {
 	return nil
 }
 
-func updateUserRoleInOrganization(ctx context.Context, id, role string) error {
+func (o *organization) updateUserRole(ctx context.Context, id, role string) error {
 	printer.NewLine(1)
 	printer.Headerln("  Update User Role in Organization  ")
 	userID := getInput("Enter user ID to update", id)
@@ -422,18 +410,8 @@ func updateUserRoleInOrganization(ctx context.Context, id, role string) error {
 		"role":           userRole,
 	}
 
-	org, err := getSelectedOrganization(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get organization")
-	}
-
-	if org.ID == "" {
-		printNoSelectedOrganization()
-		return nil
-	}
-
 	// Send request
-	_, err = sendRequest(ctx, http.MethodPost, fmt.Sprintf("%s/%s/role", organizationURL, org.ID), payload)
+	_, err := sendRequest(ctx, http.MethodPost, fmt.Sprintf("%s/%s/role", organizationURL, o.ID), payload)
 	if err != nil {
 		return eris.Wrap(err, "Failed to set user role in organization")
 	}
