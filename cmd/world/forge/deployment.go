@@ -624,6 +624,7 @@ func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env st
 			if deploy, exists := deploys[env]; exists {
 				printDeploymentStatus(deploy)
 				if shouldShowHealth(deploy) {
+					deployComplete = true // this changes the status message for the spinner
 					// just report health for the single environment
 					healthComplete, err := getAndPrintHealth(ctx, project, map[string]DeployInfo{
 						env: deploy,
