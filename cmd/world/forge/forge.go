@@ -191,12 +191,8 @@ func (c *CreateOrganizationCmd) Run() error {
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
-	org, err := createOrganization(ctx, c)
-	if err != nil {
-		return eris.Wrap(err, "Failed to create organization")
-	}
-	printer.Successf("Created organization: %s\n", org.Name)
-	return nil
+	_, err = createOrganization(ctx, c)
+	return err
 }
 
 type SwitchOrganizationCmd struct {
@@ -210,23 +206,8 @@ func (c *SwitchOrganizationCmd) Run() error {
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
-	if c.Slug != "" {
-		org, err := selectOrganizationFromSlug(ctx, c)
-		if err == nil && org == (organization{}) {
-			return eris.New("organization not found with slug: " + c.Slug)
-		}
-		if err != nil {
-			return eris.Wrap(err, "Failed command select organization")
-		}
-		return nil // Organization found and selected
-	}
-
-	_, err = selectOrganization(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed command select organization")
-	}
-
-	return nil
+	_, err = selectOrganization(ctx, c)
+	return err
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -253,13 +234,8 @@ func (c *CreateProjectCmd) Run() error {
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
-	project, err := createProject(ctx, c)
-	if err != nil {
-		return eris.Wrap(err, "Failed to create project")
-	}
-	printer.NewLine(1)
-	printer.Successf("Created project: %s\n", project.Name)
-	return nil
+	_, err = createProject(ctx, c)
+	return err
 }
 
 type SwitchProjectCmd struct {
@@ -273,17 +249,8 @@ func (c *SwitchProjectCmd) Run() error {
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
-	project, err := selectProject(ctx, c)
-	if err != nil {
-		return eris.Wrap(err, "Failed to select project")
-	}
-	if project == nil {
-		printer.Infoln("No project selected.")
-		return nil
-	}
-	printer.NewLine(1)
-	printer.Successf("Switched to project: %s\n", project.Name)
-	return nil
+	_, err = selectProject(ctx, c)
+	return err
 }
 
 type UpdateProjectCmd struct {

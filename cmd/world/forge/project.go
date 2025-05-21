@@ -295,6 +295,8 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 	printer.Infof("    %s\n", prj.DeploySecret)
 	printer.Infoln("Note: Deploy Secret will not be shown again. Save it now in a secure location.")
 
+	printer.NewLine(1)
+	printer.Successf("Created project: %s\n", prj.Name)
 	return prj, nil
 }
 
@@ -616,6 +618,8 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 			return nil, eris.Wrap(err, "Failed to save project")
 		}
 
+		printer.NewLine(1)
+		printer.Successf("Switched to project: %s\n", selectedProject.Name)
 		return &selectedProject, nil
 	}
 }

@@ -39,8 +39,7 @@ func (flow *initFlow) handleNeedProjectCaseNoProjects() error {
 
 		switch choice {
 		case "Y":
-			cmd := &CreateProjectCmd{}
-			proj, err := createProject(flow.context, cmd)
+			proj, err := createProject(flow.context, &CreateProjectCmd{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in no-projects case")
 			}
@@ -69,8 +68,7 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(projects []project) error 
 		case "n":
 			return ErrProjectSelectionCanceled
 		case "c":
-			cmd := &CreateProjectCmd{}
-			proj, err := createProject(flow.context, cmd)
+			proj, err := createProject(flow.context, &CreateProjectCmd{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in one-project case")
 			}

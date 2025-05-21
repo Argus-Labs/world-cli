@@ -1558,24 +1558,13 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 		// New test cases for selectOrganizationFromSlug
 		{
 			name:      "Success - Select organization from valid slug",
-			operation: "selectFromSlug",
+			operation: "select",
 			config: Config{
 				Credential: Credential{
 					Token: "test-token",
 				},
 			},
 			slug:          "testo",
-			expectedError: false,
-		},
-		{
-			name:      "Success - Select organization from non-existent slug",
-			operation: "selectFromSlug",
-			config: Config{
-				Credential: Credential{
-					Token: "test-token",
-				},
-			},
-			slug:          "non-existent",
 			expectedError: false,
 		},
 	}
@@ -1615,7 +1604,7 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 				}
 				defer func() { getInput = originalGetInput }()
 
-				org, err := selectOrganization(s.ctx)
+				org, err := selectOrganization(s.ctx, &SwitchOrganizationCmd{Slug: tc.slug})
 				if tc.expectedError {
 					s.Require().Error(err)
 					s.Empty(org)
@@ -1624,22 +1613,6 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 					s.Equal("test-org-id", org.ID)
 					s.Equal("Test Org", org.Name)
 					s.Equal("testo", org.Slug)
-				}
-
-			case "selectFromSlug":
-				org, err := selectOrganizationFromSlug(s.ctx, &SwitchOrganizationCmd{Slug: tc.slug})
-				if tc.expectedError {
-					s.Require().Error(err)
-					s.Empty(org)
-				} else {
-					s.Require().NoError(err)
-					if tc.slug == "testo" {
-						s.Equal("test-org-id", org.ID)
-						s.Equal("Test Org", org.Name)
-						s.Equal("testo", org.Slug)
-					} else {
-						s.Empty(org)
-					}
 				}
 			}
 		})

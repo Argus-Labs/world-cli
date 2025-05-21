@@ -101,7 +101,16 @@ func getListOfOrganizations(ctx context.Context) ([]organization, error) {
 	return *orgs, nil
 }
 
-func selectOrganization(ctx context.Context) (organization, error) {
+func selectOrganization(ctx context.Context, flags *SwitchOrganizationCmd) (organization, error) {
+	// If slug is provided, select organization from slug
+	if flags.Slug != "" {
+		org, err := selectOrganizationFromSlug(ctx, flags.Slug)
+		if err != nil {
+			return organization{}, eris.Wrap(err, "Failed command select organization from slug")
+		}
+		return org, nil
+	}
+
 	orgs, err := getListOfOrganizations(ctx)
 	if err != nil {
 		return organization{}, eris.Wrap(err, "Failed to get organizations")
@@ -125,14 +134,14 @@ func selectOrganization(ctx context.Context) (organization, error) {
 	return selectedOrg, nil
 }
 
-func selectOrganizationFromSlug(ctx context.Context, flags *SwitchOrganizationCmd) (organization, error) {
+func selectOrganizationFromSlug(ctx context.Context, slug string) (organization, error) {
 	orgs, err := getListOfOrganizations(ctx)
 	if err != nil {
 		return organization{}, eris.Wrap(err, "Failed to get organizations")
 	}
 
 	for _, org := range orgs {
-		if org.Slug == flags.Slug {
+		if org.Slug == slug {
 			err = org.saveToConfig()
 			if err != nil {
 				return organization{}, eris.Wrap(err, "Failed to save organization")
@@ -148,8 +157,10 @@ func selectOrganizationFromSlug(ctx context.Context, flags *SwitchOrganizationCm
 			return org, nil
 		}
 	}
-	// If no organization is found, return no error or organiztion
-	return organization{}, nil
+
+	printer.NewLine(1)
+	printer.Errorln("Organization not found with slug: " + slug)
+	return organization{}, eris.New("Organization not found with slug: " + slug)
 }
 
 //nolint:gocognit // Makes sense to keep in one function.
@@ -327,7 +338,12 @@ func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*org
 			confirm := getInput("Create organization with these details? (Y/n)", "n")
 			switch confirm {
 			case "Y":
-				return createOrgRequestAndSave(ctx, orgName, orgSlug, orgAvatarURL)
+				org, err := createOrgRequestAndSave(ctx, orgName, orgSlug, orgAvatarURL)
+				if err != nil {
+					return nil, eris.Wrap(err, "Failed to create organization")
+				}
+				printer.Successf("Created organization: %s\n", org.Name)
+				return org, nil
 			case "n":
 				redo = false
 			default:
