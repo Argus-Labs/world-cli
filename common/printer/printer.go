@@ -20,7 +20,7 @@ var (
 )
 
 func Success(msg string) {
-	fmt.Print(successStyle.Render(string(logsymbols.Success) + " " + msg))
+	printNewlineSafeStyledMessage(string(logsymbols.Success)+" "+msg, successStyle)
 }
 
 func Successln(msg string) {
@@ -28,14 +28,12 @@ func Successln(msg string) {
 }
 
 func Successf(format string, args ...any) {
-	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
-	msg := successStyle.Render(string(logsymbols.Success) + " " + fmt.Sprintf(newFormat, args...))
-	fmt.Print(msg)
-	NewLine(linesRemoved)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(string(logsymbols.Success)+" "+msg, successStyle)
 }
 
 func Error(msg string) {
-	fmt.Print(errorStyle.Render(string(logsymbols.Error) + " " + msg))
+	printNewlineSafeStyledMessage(string(logsymbols.Error)+" "+msg, errorStyle)
 }
 
 func Errorln(msg string) {
@@ -43,10 +41,8 @@ func Errorln(msg string) {
 }
 
 func Errorf(format string, args ...any) {
-	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
-	msg := errorStyle.Render(string(logsymbols.Error) + " " + fmt.Sprintf(newFormat, args...))
-	fmt.Print(msg)
-	NewLine(linesRemoved)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(string(logsymbols.Error)+" "+msg, errorStyle)
 }
 
 func Info(msg string) {
@@ -71,21 +67,17 @@ func Headerln(msg string) {
 }
 
 func Headerf(format string, args ...any) {
-	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
-	msg := headerStyle.Render(fmt.Sprintf(newFormat, args...))
-	fmt.Print(msg)
-	NewLine(linesRemoved)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(msg, headerStyle)
 }
 
 func Notification(msg string) {
-	fmt.Print(notificationStyle.Render(msg))
+	printNewlineSafeStyledMessage(msg, notificationStyle)
 }
 
 func Notificationf(format string, args ...any) {
-	newFormat, linesRemoved := trimAndCountTrailingNewlines(format)
-	msg := notificationStyle.Render(fmt.Sprintf(newFormat, args...))
-	fmt.Print(msg)
-	NewLine(linesRemoved)
+	msg := fmt.Sprintf(format, args...)
+	printNewlineSafeStyledMessage(msg, notificationStyle)
 }
 
 func Notificationln(msg string) {
@@ -123,18 +115,12 @@ func SectionDivider(symbol string, length int) {
 	fmt.Println(strings.Repeat(symbol, length))
 }
 
-// trimAndCountTrailingNewlines trims trailing newlines from a string and returns the count.
-// Used for sylized output to ensure the cursor is reset properly.
-func trimAndCountTrailingNewlines(s string) (string, int) {
-	if s == "" {
-		return "", 0
+func printNewlineSafeStyledMessage(msg string, style lipgloss.Style) {
+	if strings.HasSuffix(msg, "\n") {
+		msg = strings.TrimSuffix(msg, "\n")
+		styledMsg := style.Render(msg)
+		fmt.Println(styledMsg)
+	} else {
+		fmt.Print(style.Render(msg))
 	}
-
-	count := 0
-	i := len(s)
-	for i > 0 && s[i-1] == '\n' {
-		i--
-		count++
-	}
-	return s[:i], count
 }
