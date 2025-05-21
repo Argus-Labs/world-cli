@@ -88,7 +88,7 @@ var getInput = func(prompt, defaultStr string) string {
 }
 
 // sendRequest sends an HTTP request with auth token and returns the response body.
-func sendRequest(ctx context.Context, method, url string, body interface{}) ([]byte, error) {
+func sendRequest(ctx context.Context, method, url string, body any) ([]byte, error) {
 	// Prepare request body and headers
 	req, err := prepareRequest(ctx, method, url, body)
 	if err != nil {
@@ -99,7 +99,7 @@ func sendRequest(ctx context.Context, method, url string, body interface{}) ([]b
 	return makeRequestWithRetries(ctx, req)
 }
 
-func prepareRequest(ctx context.Context, method, url string, body interface{}) (*http.Request, error) {
+func prepareRequest(ctx context.Context, method, url string, body any) (*http.Request, error) {
 	var bodyReader io.Reader
 
 	if body != nil {
@@ -289,15 +289,6 @@ func printNoProjectsInOrganization() {
 	printer.Infoln("You don't have any projects in this organization yet.")
 	printer.NewLine(1)
 	printer.Infoln("Use 'world forge project create' to create your first project!")
-}
-
-func isAlphanumeric(s string) bool {
-	for _, r := range s {
-		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
-			return false
-		}
-	}
-	return true
 }
 
 // slugToSaneCheck checks that slug is valid, and returns a sanitized version.

@@ -739,62 +739,6 @@ func (s *ForgeTestSuite) TestGetSelectedProject() {
 	}
 }
 
-func (s *ForgeTestSuite) TestIsAlphanumeric() {
-	testCases := []struct {
-		name     string
-		input    string
-		expected bool
-	}{
-		{
-			name:     "Success - Lowercase alphanumeric",
-			input:    "abc123",
-			expected: true,
-		},
-		{
-			name:     "Success - Uppercase alphanumeric",
-			input:    "ABC123",
-			expected: true,
-		},
-		{
-			name:     "Success - Mixed case alphanumeric",
-			input:    "aBc123",
-			expected: true,
-		},
-		{
-			name:     "Error - Contains hyphen",
-			input:    "abc-123",
-			expected: false,
-		},
-		{
-			name:     "Error - Contains underscore",
-			input:    "abc_123",
-			expected: false,
-		},
-		{
-			name:     "Error - Contains space",
-			input:    "abc 123",
-			expected: false,
-		},
-		{
-			name:     "Error - Contains special character",
-			input:    "abc@123",
-			expected: false,
-		},
-		{
-			name:     "Error - Empty string",
-			input:    "",
-			expected: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		s.Run(tc.name, func() {
-			result := isAlphanumeric(tc.input)
-			s.Equal(tc.expected, result)
-		})
-	}
-}
-
 func (s *ForgeTestSuite) TestDeploy() {
 	testCases := []struct {
 		name                string
