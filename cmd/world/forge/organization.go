@@ -126,7 +126,7 @@ func selectOrganization(ctx context.Context, flags *SwitchOrganizationCmd) (orga
 		return organization{}, err
 	}
 
-	err = handleProjectConfig(ctx)
+	err = handleProjectSelection(ctx)
 	if err != nil {
 		return organization{}, err
 	}
@@ -147,10 +147,12 @@ func selectOrganizationFromSlug(ctx context.Context, slug string) (organization,
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
 
-			printer.NewLine(1)
-			printer.Successf("Selected organization: %s\n", org.Name)
+			err = showOrganizationList(ctx)
+			if err != nil {
+				return organization{}, err
+			}
 
-			err = handleProjectConfig(ctx)
+			err = handleProjectSelection(ctx)
 			if err != nil {
 				return organization{}, err
 			}
@@ -187,8 +189,6 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 			}
 
 			if input == "q" {
-				printer.NewLine(1)
-				printer.Errorln("Organization selection canceled")
 				return organization{}, ErrOrganizationSelectionCanceled
 			}
 
@@ -203,7 +203,6 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 			// Parse selection
 			num, err := strconv.Atoi(input)
 			if err != nil || num < 1 || num > len(orgs) {
-				printer.NewLine(1)
 				printer.Errorf("Invalid selection. Please enter a number between 1 and %d\n", len(orgs))
 				continue
 			}
@@ -215,7 +214,6 @@ func promptForOrganization(ctx context.Context, orgs []organization, createNew b
 				return organization{}, eris.Wrap(err, "Failed to save organization")
 			}
 
-			printer.NewLine(1)
 			printer.Successf("Selected organization: %s\n", selectedOrg.Name)
 			return selectedOrg, nil
 		}
@@ -233,31 +231,6 @@ func (o *organization) saveToConfig() error {
 		return eris.Wrap(err, "Failed to save organization")
 	}
 	return nil
-}
-
-func handleProjectConfig(ctx context.Context) error {
-	// Get projectID from config
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return eris.Wrap(err, "Failed to get config")
-	}
-	projectID := config.ProjectID
-
-	// Handle project selection
-	projectID, err = handleProjectSelection(ctx, projectID)
-	if err != nil {
-		return eris.Wrap(err, "Failed to select project")
-	}
-
-	// Save projectID to config
-	config.ProjectID = projectID
-	err = SaveForgeConfig(config)
-	if err != nil {
-		return eris.Wrap(err, "Failed to save project")
-	}
-
-	// Show project list
-	return showProjectList(ctx)
 }
 
 //nolint:gocognit,funlen // Makes sense to keep in one function.
@@ -295,8 +268,8 @@ func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*org
 			var err error
 			orgSlug, err = slugToSaneCheck(orgSlug, minLength, maxLength)
 			if err != nil {
+				printer.Errorf("%s\n", err)
 				printer.NewLine(1)
-				printer.Errorf("Error: %s\n", err)
 				continue
 			}
 			break
@@ -313,8 +286,8 @@ func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*org
 			}
 
 			if !isValidURL(orgAvatarURL) {
-				printer.NewLine(1)
 				printer.Errorln("Invalid URL, leave empty to skip")
+				printer.NewLine(1)
 				continue
 			}
 
@@ -342,7 +315,6 @@ func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*org
 				if err != nil {
 					return nil, eris.Wrap(err, "Failed to create organization")
 				}
-				printer.Successf("Created organization: %s\n", org.Name)
 				return org, nil
 			case "n":
 				redo = false

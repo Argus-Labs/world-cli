@@ -1055,61 +1055,87 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) (bool
 	return false, nil
 }
 
+func (p *project) saveToConfig() error {
+	config, err := GetCurrentForgeConfig()
+	if err != nil {
+		return eris.Wrap(err, "Failed to get config")
+	}
+	config.ProjectID = p.ID
+	err = SaveForgeConfig(config)
+	if err != nil {
+		return eris.Wrap(err, "Failed to save project configuration")
+	}
+	return nil
+}
+
 // handleProjectSelection manages the project selection logic.
-func handleProjectSelection(ctx context.Context, projectID string) (string, error) {
+func handleProjectSelection(ctx context.Context) error {
 	projects, err := getListOfProjects(ctx)
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to get projects")
+		return eris.Wrap(err, "Failed to get projects")
 	}
 
 	switch numProjects := len(projects); {
 	case numProjects == 1:
-		return projects[0].ID, nil
+		return projects[0].handleSingleProject(ctx)
 	case numProjects > 1:
-		return handleMultipleProjects(ctx, projectID, projects)
+		return handleMultipleProjects(ctx, projects)
 	default:
 		return handleNoProjects(ctx)
 	}
 }
 
+func (p *project) handleSingleProject(ctx context.Context) error {
+	p.saveToConfig()
+	showProjectList(ctx)
+	return nil
+}
+
 // handleMultipleProjects handles the case when there are multiple projects.
-func handleMultipleProjects(ctx context.Context, projectID string, projects []project) (string, error) {
+func handleMultipleProjects(ctx context.Context, projects []project) error {
+	config, err := GetCurrentForgeConfig()
+	if err != nil {
+		return eris.Wrap(err, "Failed to get config")
+	}
+
 	for _, project := range projects {
-		if project.ID == projectID {
-			return projectID, nil
+		if project.ID == config.ProjectID {
+			showProjectList(ctx)
+			return nil
 		}
 	}
 
 	project, err := selectProject(ctx, &SwitchProjectCmd{})
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to select project")
+		return eris.Wrap(err, "Failed to select project")
 	}
 	if project == nil {
-		return "", nil
+		return nil
 	}
-	return project.ID, nil
+
+	project.saveToConfig()
+	return nil
 }
 
 // handleNoProjects handles the case when there are no projects.
-func handleNoProjects(ctx context.Context) (string, error) {
+func handleNoProjects(ctx context.Context) error {
 	// Confirmation prompt
 	printer.NewLine(1)
-	confirmation := getInput(
-		"You don't have any projects in this organization. Do you want to create a new project now? (y/n)",
-		"y",
-	)
+	printer.Headerln("   No Projects Found   ")
+	confirmation := getInput("Do you want to create a new project now? (y/n)", "y")
 
 	if strings.ToLower(confirmation) != "y" {
-		printer.NewLine(1)
 		printer.Errorln("Project creation canceled")
-		return "", nil
+		return nil
 	}
 
 	project, err := createProject(ctx, &CreateProjectCmd{})
 	if err != nil {
-		return "", eris.Wrap(err, "Failed to create project")
+		return eris.Wrap(err, "Failed to create project")
 	}
-	return project.ID, nil
+
+	project.saveToConfig()
+	return nil
 }
 
 func (p *project) inputAvatarURL(ctx context.Context) error {

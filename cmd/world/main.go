@@ -111,6 +111,7 @@ func main() {
 	}
 	// print log stack
 	logger.PrintLogs()
+	printer.NewLine(1)
 }
 
 func getEnvAndVersion() (string, string) {
