@@ -40,6 +40,9 @@ func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
 		return eris.Wrap(err, "Failed to get current user")
 	}
 
+	printer.NewLine(1)
+	printer.Headerln("   Update User   ")
+
 	// prompt update name
 	if flags.Name == "" {
 		flags.Name = currentUser.Name
@@ -90,20 +93,13 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			printer.NewLine(1)
-			printer.Header("   Update User Name   ")
-
-			printer.NewLine(1)
 			name := getInput("Enter name", currentUserName)
 
 			if name == "" {
+				printer.Errorf("Name cannot be empty\n")
 				printer.NewLine(1)
-				printer.Errorf("Error: Name cannot be empty\n")
 				continue
 			}
-
-			printer.NewLine(1)
-			printer.Successf("Name updated to: %s\n", name)
 			return name, nil
 		}
 	}
@@ -115,19 +111,12 @@ func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			printer.NewLine(1)
-			printer.Header("   Update User Email   ")
-
-			printer.NewLine(1)
 			email := getInput("Enter email", currentUserEmail)
 			if !isValidEmail(email) {
+				printer.Errorf("Invalid email format\n")
 				printer.NewLine(1)
-				printer.Errorf("Error: Invalid email format\n")
 				continue
 			}
-
-			printer.NewLine(1)
-			printer.Successf("Email updated to: %s\n", email)
 			return email, nil
 		}
 	}
@@ -140,19 +129,12 @@ func inputUserAvatarURL(ctx context.Context, // TODO: refactor
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			printer.NewLine(1)
-			printer.Header("   Update User Avatar URL   ")
-
-			printer.NewLine(1)
 			avatarURL := getInput("Enter avatar URL", currentUserAvatarURL)
-			if !isValidURL(avatarURL) {
+			if !isValidURL(avatarURL) && avatarURL != "" {
+				printer.Errorf("Invalid URL format\n")
 				printer.NewLine(1)
-				printer.Errorf("Error: Invalid URL format\n")
 				continue
 			}
-
-			printer.NewLine(1)
-			printer.Successf("Avatar URL updated to: %s\n", avatarURL)
 			return avatarURL, nil
 		}
 	}

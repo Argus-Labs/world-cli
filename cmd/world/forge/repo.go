@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/printer"
 )
 
 const minimumURLParts = 2
@@ -96,7 +95,6 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		printer.Successln("GitHub repository and token validation successful!")
 		return nil
 	}
 	return fmt.Errorf("GitHub validation failed: %s", resp.Status)
@@ -133,7 +131,6 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		printer.Successln("GitLab repository and token are valid!")
 		return nil
 	}
 	return fmt.Errorf("GitLab validation failed: %s", resp.Status)
@@ -171,7 +168,6 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		printer.Successln("Bitbucket repository and token are valid!")
 		return nil
 	}
 	return fmt.Errorf("bitbucket validation failed: %s", resp.Status)

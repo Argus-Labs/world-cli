@@ -69,7 +69,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the current state of the region selection menu.
 func (m Model) View() string {
-	s := "\nChoose regions (space to select/unselect, enter when done):\n\n"
+	s := "\nChoose regions (space to select/unselect, enter when done):\n"
 
 	for i, item := range m.Items {
 		cursor := " "
@@ -85,7 +85,7 @@ func (m Model) View() string {
 		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, item)
 	}
 
-	s += "\n(press q to quit)\n"
+	s += "(press q to quit)\n"
 
 	return s
 }

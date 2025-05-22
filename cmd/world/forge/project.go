@@ -128,8 +128,6 @@ func getSelectedProject(ctx context.Context) (project, error) {
 		}
 		if len(projects) == 0 {
 			printNoProjectsInOrganization()
-		} else {
-			printNoSelectedProject()
 		}
 		return project{}, nil
 	}
@@ -225,6 +223,9 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 		return nil, eris.Wrap(err, "Failed to get available regions")
 	}
 
+	printer.NewLine(1)
+	printer.Headerln("   Project Creation   ")
+
 	p := project{
 		Name:      flags.Name,
 		Slug:      flags.Slug,
@@ -258,66 +259,57 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 	}
 
 	// Select project
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get config")
-	}
-	config.ProjectID = prj.ID
+	prj.saveToConfig()
 
-	err = SaveForgeConfig(config)
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to select project")
-	}
+	prj.displayProjectDetails()
+	printer.Infof("• Deploy Secret (for deploy via CI/CD pipeline tools): ")
+	printer.Infof("%s\n", prj.DeploySecret)
+	printer.Notificationln("Note: Deploy Secret will not be shown again. Save it now in a secure location.")
 
 	printer.NewLine(1)
-	printer.Successf("Project '%s' created successfully!\n", prj.Name)
+	printer.Successf("Created project: %s [%s]\n", prj.Name, prj.Slug)
+	return prj, nil
+}
+
+func (p *project) displayProjectDetails() {
+	printer.NewLine(1)
 	printer.Infoln("Project Details:")
-	printer.Infof("• Name: %s\n", prj.Name)
-	printer.Infof("• Slug: %s\n", prj.Slug)
-	printer.Infof("• ID: %s\n", prj.ID)
-	printer.Infof("• Repository URL: %s\n", prj.RepoURL)
-	printer.Infof("• Repository Path: %s\n", prj.RepoPath)
-	printer.Infof("• Tick Rate: %d\n", prj.Config.TickRate)
+	printer.Infof("• Name: %s\n", p.Name)
+	printer.Infof("• Slug: %s\n", p.Slug)
+	printer.Infof("• ID: %s\n", p.ID)
+	printer.Infof("• Repository URL: %s\n", p.RepoURL)
+	printer.Infof("• Repository Path: %s\n", p.RepoPath)
+	printer.Infof("• Tick Rate: %d\n", p.Config.TickRate)
 	printer.Infoln("• Regions:")
-	for _, region := range prj.Config.Region {
+	for _, region := range p.Config.Region {
 		printer.Infof("    - %s\n", region)
 	}
 	printer.Infoln("• Discord Configuration:")
-	if prj.Config.Discord.Enabled {
+	if p.Config.Discord.Enabled {
 		printer.Infoln("  - Enabled: Yes")
-		printer.Infof("  - Channel ID: %s\n", prj.Config.Discord.Channel)
-		printer.Infof("  - Bot Token: %s\n", prj.Config.Discord.Token)
+		printer.Infof("  - Channel ID: %s\n", p.Config.Discord.Channel)
+		printer.Infof("  - Bot Token: %s\n", p.Config.Discord.Token)
 	} else {
 		printer.Infoln("  - Enabled: No")
 	}
 	printer.Infoln("• Slack Configuration:")
-	if prj.Config.Slack.Enabled {
+	if p.Config.Slack.Enabled {
 		printer.Infoln("  - Enabled: Yes")
-		printer.Infof("  - Channel ID: %s\n", prj.Config.Slack.Channel)
-		printer.Infof("  - Token: %s\n", prj.Config.Slack.Token)
+		printer.Infof("  - Channel ID: %s\n", p.Config.Slack.Channel)
+		printer.Infof("  - Token: %s\n", p.Config.Slack.Token)
 	} else {
 		printer.Infoln("  - Enabled: No")
 	}
-	printer.Infof("• Avatar URL: %s\n", prj.AvatarURL)
-	printer.Infoln("• Deploy Secret (for deploy via CI/CD pipeline tools):")
-	printer.Infof("    %s\n", prj.DeploySecret)
-	printer.Infoln("Note: Deploy Secret will not be shown again. Save it now in a secure location.")
-
-	printer.NewLine(1)
-	printer.Successf("Created project: %s\n", prj.Name)
-	return prj, nil
+	printer.Infof("• Avatar URL: %s\n", p.AvatarURL)
 }
 
 func (p *project) inputName(ctx context.Context) error {
-	printer.NewLine(1)
-	printer.Headerln("   Project Name Configuration   ")
-
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 
-		// If name is not set, get it from world.toml
+		// If name is not set from cmd flags, get it from world.toml
 		if p.Name == "" {
 			// Get project name from world.toml if it exists, fails silently
 			err := p.getForgeProjectNameFromWorldToml()
@@ -326,22 +318,15 @@ func (p *project) inputName(ctx context.Context) error {
 			}
 		}
 
-		name := p.promptForName()
+		name := getInput("Enter project name", p.Name)
 
 		err := p.validateAndSetName(name)
 		if err == nil {
-			printer.NewLine(1)
-			printer.Successf("Project name \"%s\" accepted!\n", name)
 			return nil
 		}
-		// If validation fails, clear the name to attemt from toml
+		// If validation fails, clear the name to attempt from toml
 		p.Name = ""
 	}
-}
-
-func (p *project) promptForName() string {
-	name := getInput("\nEnter project name", p.Name)
-	return name
 }
 
 func (p *project) getForgeProjectNameFromWorldToml() error {
@@ -374,21 +359,21 @@ func (p *project) getForgeProjectNameFromWorldToml() error {
 
 func (p *project) validateAndSetName(name string) error {
 	if name == "" {
-		printer.NewLine(1)
 		printer.Errorln("Error: Project name cannot be empty")
+		printer.NewLine(1)
 		return eris.New("empty name")
 	}
 
 	if len(name) > MaxProjectNameLen {
-		printer.NewLine(1)
 		printer.Errorf("Error: Project name cannot be longer than %d characters\n", MaxProjectNameLen)
+		printer.NewLine(1)
 		return eris.New("name too long")
 	}
 
 	if strings.ContainsAny(name, "<>:\"/\\|?*") {
-		printer.NewLine(1)
 		printer.Errorln("Error: Project name contains invalid characters" +
 			"   Invalid characters: < > : \" / \\ | ? *")
+		printer.NewLine(1)
 		return eris.New("invalid characters")
 	}
 
@@ -402,9 +387,6 @@ func (p *project) inputSlug(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			printer.NewLine(1)
-			printer.Headerln("   Project Slug Configuration   ")
-
 			// if no slug exists, create a default one from the name
 			minLength := 3
 			maxLength := 25
@@ -414,14 +396,14 @@ func (p *project) inputSlug(ctx context.Context) error {
 				p.Slug = CreateSlugFromName(p.Slug, minLength, maxLength)
 			}
 
-			slug := getInput("\nSlug", p.Slug)
+			slug := getInput("Slug", p.Slug)
 
 			// Validate slug
 			var err error
 			slug, err = slugToSaneCheck(slug, minLength, maxLength)
 			if err != nil {
+				printer.Errorf("%s\n", err)
 				printer.NewLine(1)
-				printer.Errorf("Error: %s\n", err)
 				continue
 			}
 
@@ -437,7 +419,7 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			repoURL := p.promptForRepoURL()
+			repoURL := getInput("Enter Repository URL", p.RepoURL)
 
 			// if repoURL prefix is not http or https, add https:// to the repoURL
 			if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
@@ -456,8 +438,8 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 				repoToken = p.processRepoToken(repoToken)
 
 				if err := validateRepoToken(ctx, repoURL, repoToken); err != nil {
+					printer.Errorf("%v\n", err)
 					printer.NewLine(1)
-					printer.Errorf("Error: %v\n", err)
 					continue
 				}
 			}
@@ -469,20 +451,10 @@ func (p *project) inputRepoURLAndToken(ctx context.Context) error {
 	}
 }
 
-func (p *project) promptForRepoURL() string {
-	printer.NewLine(1)
-	printer.Headerln("  Repository URL Configuration   ")
-
-	printer.NewLine(1)
-	repoURL := getInput("Enter Repository URL", p.RepoURL)
-
-	return repoURL
-}
-
 func (p *project) validateRepoURL(repoURL string) error {
 	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
 		printer.NewLine(1)
-		printer.Errorln("Error: Invalid Repository URL Format")
+		printer.Errorln("Invalid Repository URL Format")
 		printer.Infoln("The URL must start with:")
 		printer.Infoln("• http://")
 		printer.Infoln("• https://")
@@ -521,16 +493,6 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	// Get repository Path
 	var repoPath string
 	for {
-		// Get repository URL
-		if p.update {
-			printer.NewLine(1)
-			printer.Headerln("  Change Repository Cardinal Path   ")
-		} else {
-			printer.NewLine(1)
-			printer.Headerln("  Set Repository Cardinal Path   ")
-		}
-
-		printer.NewLine(1)
 		repoPath = getInput("Enter Repository Cardinal Path", p.RepoPath)
 
 		// strip off any leading slash
@@ -539,8 +501,8 @@ func (p *project) inputRepoPath(ctx context.Context) {
 		// Validate the path exists using the new validateRepoPath function
 		if len(repoPath) > 0 {
 			if err := validateRepoPath(ctx, p.RepoURL, p.RepoToken, repoPath); err != nil {
+				printer.Errorf("%v\n", err)
 				printer.NewLine(1)
-				printer.Errorf("Error: %v\n", err)
 				continue
 			}
 		}
@@ -649,17 +611,15 @@ func (p *project) delete(ctx context.Context) error {
 	printer.Infoln("• All associated resources")
 	printer.NewLine(1)
 
-	// Confirmation prompt with fancy formatting
-	deletePrompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s'", p.Name)
-	confirmation := getInput(deletePrompt, "")
+	printer.Info("Type 'Yes' to confirm deletion of project ")
+	printer.Notificationf("'%s'", p.Name)
+	confirmation := getInput("", "")
 
 	if confirmation != "Yes" {
 		if confirmation == "yes" {
-			printer.NewLine(1)
-			printer.Errorln("Error: You must type 'Yes' with uppercase Y to confirm deletion")
+			printer.Errorln("You must type 'Yes' with uppercase Y to confirm deletion")
 		}
-		printer.NewLine(1)
-		printer.Infoln("Project deletion canceled")
+		printer.Errorln("Project deletion canceled")
 		return nil
 	}
 
@@ -676,21 +636,10 @@ func (p *project) delete(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
-	printer.NewLine(1)
-	printer.Infoln("  Success!  ")
-	printer.SectionDivider("-", 12)
 	printer.Successf("Project deleted: %s (%s)\n", p.Name, p.Slug)
 
 	// Remove project from config
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return eris.Wrap(err, "Failed to get config")
-	}
-	config.ProjectID = ""
-	err = SaveForgeConfig(config)
-	if err != nil {
-		return eris.Wrap(err, "Failed to save config")
-	}
+	(&project{ID: ""}).saveToConfig()
 
 	return nil
 }
@@ -740,36 +689,9 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd) er
 		return eris.Wrap(err, "Failed to parse response")
 	}
 
+	p.displayProjectDetails()
 	printer.NewLine(1)
-	printer.Successf("Project '%s' updated successfully!\n", p.Name)
-	printer.Infoln("Project Details:")
-	printer.Infof("• Name: %s\n", p.Name)
-	printer.Infof("• Slug: %s\n", p.Slug)
-	printer.Infof("• ID: %s\n", p.ID)
-	printer.Infof("• Repository URL: %s\n", p.RepoURL)
-	printer.Infof("• Repository Path: %s\n", p.RepoPath)
-	printer.Infof("• Tick Rate: %d\n", p.Config.TickRate)
-	printer.Infoln("• Regions:")
-	for _, region := range p.Config.Region {
-		printer.Infof("    - %s\n", region)
-	}
-	printer.Infoln("• Discord Configuration:")
-	if p.Config.Discord.Enabled {
-		printer.Infoln("  - Enabled: Yes")
-		printer.Infof("  - Channel ID: %s\n", p.Config.Discord.Channel)
-		printer.Infof("  - Bot Token: %s\n", p.Config.Discord.Token)
-	} else {
-		printer.Infoln("  - Enabled: No")
-	}
-	printer.Infoln("• Slack Configuration:")
-	if p.Config.Slack.Enabled {
-		printer.Infoln("  - Enabled: Yes")
-		printer.Infof("  - Channel ID: %s\n", p.Config.Slack.Channel)
-		printer.Infof("  - Token: %s\n", p.Config.Slack.Token)
-	} else {
-		printer.Infoln("  - Enabled: No")
-	}
-	printer.Infof("• Avatar URL: %s\n", p.AvatarURL)
+	printer.Successf("Project '%s [%s]' updated successfully!\n", p.Name, p.Slug)
 	return nil
 }
 
@@ -779,12 +701,13 @@ func (p *project) getSetupInput(ctx context.Context, regions []string) error {
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organization")
 	}
-	p.OrgID = org.ID
 
 	if org.ID == "" {
 		printNoSelectedOrganization()
 		return nil
 	}
+
+	p.OrgID = org.ID
 
 	err = p.inputName(ctx)
 	if err != nil {
@@ -843,27 +766,25 @@ func (p *project) inputTickRate(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			printer.NewLine(1)
-			printer.Headerln("  Tick Rate Configuration  ")
 			var defaultValStr string
 			if p.Config.TickRate != 0 {
 				printer.Infof("Current tick rate: %d\n", p.Config.TickRate)
 				defaultValStr = strconv.Itoa(p.Config.TickRate)
 			} else {
-				printer.Infoln("Enter tick rate for your project:")
+				printer.Infoln("Enter tick rate for your project")
 				defaultValStr = "1"
 			}
 
 			tickRateStr := getInput("  └─ Examples: 10, 20, 30", defaultValStr)
 
-			p.Config.TickRate, _ = strconv.Atoi(tickRateStr)
-			if p.Config.TickRate <= 0 {
-				printer.NewLine(1)
+			newTickRate, err := strconv.Atoi(tickRateStr)
+			p.Config.TickRate = newTickRate
+			if p.Config.TickRate <= 0 || err != nil {
 				printer.Errorln("Invalid input. Please enter a non-zero positive number")
+				printer.NewLine(1)
 				continue
 			}
-			printer.NewLine(1)
-			printer.Successf("Tick rate set to: %d\n", p.Config.TickRate)
+
 			return nil
 		}
 	}
@@ -888,11 +809,6 @@ func (p *project) configureNotifications(ctx context.Context, config notificatio
 	if err != nil {
 		return false, "", "", err
 	}
-
-	if err := p.showSuccessMessage(ctx, config.name); err != nil {
-		return false, "", "", err
-	}
-
 	return true, token, channelID, nil
 }
 
@@ -901,19 +817,21 @@ func (p *project) promptEnableNotifications(ctx context.Context, serviceName str
 	case <-ctx.Done():
 		return false, ctx.Err()
 	default:
-		printer.NewLine(1)
-		printer.Headerf("  %s Notification Configuration\n", serviceName)
-		prompt := fmt.Sprintf("Do you want to set up %s notifications? (y/n)", serviceName)
+		for {
+			prompt := fmt.Sprintf("Do you want to set up %s notifications? (y/n)", serviceName)
 
-		confirmation := getInput(prompt, "y")
+			confirmation := getInput(prompt, "n")
 
-		if strings.ToLower(confirmation) != "y" {
-			printer.NewLine(1)
-			printer.Successf("Skipping %s configuration\n", serviceName)
-			return false, nil
+			switch strings.ToLower(confirmation) {
+			case "y":
+				return true, nil
+			case "n":
+				return false, nil
+			default:
+				printer.Errorf("Invalid input. Please enter 'y' or 'n'")
+				printer.NewLine(1)
+			}
 		}
-
-		return true, nil
 	}
 }
 
@@ -922,7 +840,6 @@ func (p *project) promptForToken(ctx context.Context, config notificationConfig)
 	case <-ctx.Done():
 		return "", ctx.Err()
 	default:
-		printer.NewLine(1)
 		prompt := fmt.Sprintf("Enter %s %s", config.name, config.tokenName)
 		token := getInput(prompt, "")
 		return token, nil
@@ -937,17 +854,6 @@ func (p *project) promptForChannelID(ctx context.Context, serviceName string) (s
 		prompt := fmt.Sprintf("Enter %s channel ID", serviceName)
 		channelID := getInput(prompt, "")
 		return channelID, nil
-	}
-}
-
-func (p *project) showSuccessMessage(ctx context.Context, serviceName string) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		printer.NewLine(1)
-		printer.Successf("%s notifications configured successfully\n", serviceName)
-		return nil
 	}
 }
 
@@ -995,14 +901,12 @@ func (p *project) chooseRegion(ctx context.Context, regions []string) error {
 			return ctx.Err()
 		default:
 			aborted, err := p.runRegionSelector(ctx, regions)
-			if aborted {
-				printer.NewLine(1)
-				printer.Errorln(err.Error())
-				return err
-			}
 			if err != nil {
+				printer.Errorln(err.Error())
 				printer.NewLine(1)
-				printer.Errorf("Error: %v\n", err)
+				if aborted {
+					return err
+				}
 				continue
 			}
 			if len(p.Config.Region) > 0 {
@@ -1139,15 +1043,11 @@ func handleNoProjects(ctx context.Context) error {
 }
 
 func (p *project) inputAvatarURL(ctx context.Context) error {
-	printer.NewLine(1)
-	printer.Headerln("  Avatar URL Configuration  ")
-
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			printer.NewLine(1)
 			avatarURL := getInput("Enter avatar URL", p.AvatarURL)
 
 			if avatarURL == "" {
@@ -1157,8 +1057,8 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 			}
 
 			if !isValidURL(avatarURL) {
-				printer.NewLine(1)
 				printer.Errorln("Invalid URL")
+				printer.NewLine(1)
 				p.AvatarURL = ""
 				continue
 			}

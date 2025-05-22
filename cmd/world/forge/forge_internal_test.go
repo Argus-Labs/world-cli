@@ -1627,7 +1627,7 @@ func (s *ForgeTestSuite) TestOrganizationOperations() {
 				defer func() { getInput = originalGetInput }()
 
 				org, err := selectOrganization(s.ctx, &SwitchOrganizationCmd{Slug: tc.slug})
-				if tc.expectedError { //nolint:nestif // test
+				if tc.expectedError {
 					s.Require().Error(err)
 					s.Empty(org)
 				} else {
@@ -4411,7 +4411,7 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 			cmd: &SwitchProjectCmd{
 				Slug: "test-project",
 			},
-			expectedError: false,
+			expectedError: true,
 			expectedProj:  nil,
 		},
 		{

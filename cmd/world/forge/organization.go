@@ -444,7 +444,6 @@ func getRoleInput(allowNone bool, role string) string {
 			return userRole
 		}
 		defaultRole = memberRole
-		printer.NewLine(1)
-		printer.Errorf("Error: Role must be one of %s\n", opts)
+		printer.Errorf("Role must be one of %s\n", opts)
 	}
 }

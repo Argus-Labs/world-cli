@@ -339,7 +339,7 @@ type UpdateUserCmd struct {
 
 func (c *UpdateUserCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	_, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
