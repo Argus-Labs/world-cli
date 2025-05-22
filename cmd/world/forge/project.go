@@ -122,7 +122,15 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	}
 
 	if config.ProjectID == "" {
-		printNoSelectedProject()
+		projects, err := getListOfProjects(ctx)
+		if err != nil {
+			return project{}, eris.Wrap(err, "Failed to get projects")
+		}
+		if len(projects) == 0 {
+			printNoProjectsInOrganization()
+		} else {
+			printNoSelectedProject()
+		}
 		return project{}, nil
 	}
 

@@ -123,17 +123,12 @@ func (flow *initFlow) handleNeedExistingProjectData() error {
 
 	switch len(projects) {
 	case 0: // No projects found
-		return flow.handleNeedExistingProjectCaseNoProjects()
+		return ErrProjectSelectionCanceled
 	case 1: // One project found
 		return flow.handleNeedExistingProjectCaseOneProject(projects)
 	default: // Multiple projects found
 		return flow.handleNeedExistingProjectCaseMultipleProjects()
 	}
-}
-
-func (flow *initFlow) handleNeedExistingProjectCaseNoProjects() error {
-	printNoProjectsInOrganization()
-	return ErrProjectSelectionCanceled
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project) error {

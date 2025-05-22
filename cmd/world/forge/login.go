@@ -48,6 +48,10 @@ func login(ctx context.Context) error {
 	// Handle post-login configuration
 	_, err = SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
 	if err != nil {
+		if !loginErrorCheck(err) {
+			// Even we have an error, if it's not a login error, we can display the login success message.
+			displayLoginSuccess(config)
+		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
@@ -217,8 +221,6 @@ func handleTokenResponse(response []byte, result interface{}) error {
 	case "pending":
 		return errPending
 	case "success":
-		printer.NewLine(1)
-		printer.Successln("Login token received successfully!")
 		return nil
 	default:
 		return eris.New(fmt.Sprintf("Status: %s", tokenStruct.Status))

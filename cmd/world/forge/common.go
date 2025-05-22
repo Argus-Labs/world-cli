@@ -261,34 +261,39 @@ func parseResponse[T any](body []byte) (*T, error) {
 func printNoOrganizations() {
 	printer.NewLine(1)
 	printer.Headerln("   No Organizations Found   ")
-	printer.NewLine(1)
-	printer.Headerln("   Options   ")
-	printer.Infoln("1. Use 'world forge organization create' to create an organization.")
-	printer.Infoln("2. Have a member send invite using 'world forge organization invite'.")
+	printer.Info("1. Use ")
+	printer.Notification("'world forge organization create'")
+	printer.Infoln(" to create an organization.")
+	printer.Info("2. Have a member send invite using ")
+	printer.Notification("'world forge organization invite'")
+	printer.Infoln(".")
 }
 
 func printNoSelectedOrganization() {
 	printer.NewLine(1)
 	printer.Headerln("   No Organization Selected   ")
 	printer.Infoln("You don't have any organization selected.")
-	printer.NewLine(1)
-	printer.Infoln("Use 'world forge organization switch' to select one")
+	printer.Info("Use ")
+	printer.Notification("'world forge organization switch'")
+	printer.Infoln(" to select one!")
 }
 
 func printNoSelectedProject() {
 	printer.NewLine(1)
 	printer.Headerln("   No Project Selected   ")
 	printer.Infoln("You don't have any project selected.")
-	printer.NewLine(1)
-	printer.Infoln("Use 'world forge project switch' to select one")
+	printer.Info("Use ")
+	printer.Notification("'world forge project switch'")
+	printer.Infoln(" to select one!")
 }
 
 func printNoProjectsInOrganization() {
 	printer.NewLine(1)
 	printer.Headerln("   No Projects Found   ")
 	printer.Infoln("You don't have any projects in this organization yet.")
-	printer.NewLine(1)
-	printer.Infoln("Use 'world forge project create' to create your first project!")
+	printer.Info("Use ")
+	printer.Notification("'world forge project create'")
+	printer.Infoln(" to start your first project!")
 }
 
 // slugToSaneCheck checks that slug is valid, and returns a sanitized version.
