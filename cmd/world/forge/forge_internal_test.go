@@ -921,6 +921,11 @@ func (s *ForgeTestSuite) TestStatus() {
 				Project: &project{
 					ID: "test-project-id",
 				},
+				Organization: &organization{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
+				},
 				User: &User{
 					ID: "test-user-id",
 				},
@@ -932,6 +937,11 @@ func (s *ForgeTestSuite) TestStatus() {
 			state: &CommandState{
 				Project: &project{
 					ID: "undeployed-project-id",
+				},
+				Organization: &organization{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
 				},
 				User: &User{
 					ID: "test-user-id",
@@ -945,6 +955,11 @@ func (s *ForgeTestSuite) TestStatus() {
 				Project: &project{
 					ID: "failedbuild-project-id",
 				},
+				Organization: &organization{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
+				},
 				User: &User{
 					ID: "test-user-id",
 				},
@@ -956,6 +971,11 @@ func (s *ForgeTestSuite) TestStatus() {
 			state: &CommandState{
 				Project: &project{
 					ID: "destroyed-project-id",
+				},
+				Organization: &organization{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
 				},
 				User: &User{
 					ID: "test-user-id",
@@ -969,6 +989,11 @@ func (s *ForgeTestSuite) TestStatus() {
 				Project: &project{
 					ID: "reset-project-id",
 				},
+				Organization: &organization{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
+				},
 				User: &User{
 					ID: "test-user-id",
 				},
@@ -980,6 +1005,11 @@ func (s *ForgeTestSuite) TestStatus() {
 			state: &CommandState{
 				Project: &project{
 					ID: "invalid-project-id",
+				},
+				Organization: &organization{
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
 				},
 				User: &User{
 					ID: "test-user-id",
@@ -1003,7 +1033,9 @@ func (s *ForgeTestSuite) TestStatus() {
 			name: "Error - No project selected",
 			state: &CommandState{
 				Organization: &organization{
-					ID: "test-org-id",
+					ID:   "test-org-id",
+					Name: "Test Org",
+					Slug: "test-org",
 				},
 				User: &User{
 					ID: "test-user-id",
