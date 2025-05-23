@@ -58,20 +58,16 @@ var (
 
 //nolint:lll // needed to put all the help text in the same line
 var ForgeCmdPlugin struct {
-	Login   *LoginCmd   `cmd:"" group:"Getting Started:" help:"Login to World Forge, creating a new account if necessary"`
-	Deploy  *DeployCmd  `cmd:"" group:"Getting Started:" help:"Deploy your World Forge project to a TEST environment in the cloud"`
-	Status  *StatusCmd  `cmd:"" group:"Getting Started:" help:"Check the status of your deployed World Forge project"`
-	Promote *PromoteCmd `cmd:"" group:"Cloud Management Commands:" help:"Deploy your game project to a LIVE environment in the cloud"`
-	Destroy *DestroyCmd `cmd:"" group:"Cloud Management Commands:" help:"Remove your game project's deployed infrastructure from the cloud"`
-	Reset   *ResetCmd   `cmd:"" group:"Cloud Management Commands:" help:"Restart your game project with a clean state"`
-	Logs    *LogsCmd    `cmd:"" group:"Cloud Management Commands:" help:"Tail logs for your game project"`
-	Forge   *ForgeCmd   `cmd:""`
-	User    *UserCmd    `cmd:""`
-}
-
-type ForgeCmd struct { //nolint:revive // this is the "forge" command within the "world" command
+	Login        *LoginCmd        `cmd:"" group:"Getting Started:" help:"Login to World Forge, creating a new account if necessary"`
+	Deploy       *DeployCmd       `cmd:"" group:"Getting Started:" help:"Deploy your World Forge project to a TEST environment in the cloud"`
+	Status       *StatusCmd       `cmd:"" group:"Getting Started:" help:"Check the status of your deployed World Forge project"`
+	Promote      *PromoteCmd      `cmd:"" group:"Cloud Management Commands:" help:"Deploy your game project to a LIVE environment in the cloud"`
+	Destroy      *DestroyCmd      `cmd:"" group:"Cloud Management Commands:" help:"Remove your game project's deployed infrastructure from the cloud"`
+	Reset        *ResetCmd        `cmd:"" group:"Cloud Management Commands:" help:"Restart your game project with a clean state"`
+	Logs         *LogsCmd         `cmd:"" group:"Cloud Management Commands:" help:"Tail logs for your game project"`
 	Organization *OrganizationCmd `cmd:"" aliases:"org"  group:"Organization Commands:" help:"Manage your organizations"`
 	Project      *ProjectCmd      `cmd:"" aliases:"proj" group:"Project Commands:"      help:"Manage your projects"`
+	User         *UserCmd         `cmd:""`
 }
 
 // ------------------------------------------------------------------------------------------------
