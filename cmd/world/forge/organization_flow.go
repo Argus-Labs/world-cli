@@ -127,7 +127,7 @@ func (flow *initFlow) handleNeedExistingOrganizationCaseOneOrg(orgs []organizati
 func (flow *initFlow) handleNeedExistingOrganizationCaseMultipleOrgs(orgs []organization) error {
 	// First check if we already have a selected organization
 	selectedOrg, err := getSelectedOrganization(flow.context)
-	if selectedOrg.ID != "" && err == nil {
+	if err == nil && selectedOrg.ID != "" {
 		// Show the org and project lists
 		if err := showOrganizationList(flow.context); err != nil {
 			// If we fail to show the org list, just use the selected org
