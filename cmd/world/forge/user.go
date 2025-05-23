@@ -129,9 +129,12 @@ func inputUserAvatarURL(ctx context.Context, // TODO: refactor
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			avatarURL := getInput("Enter avatar URL", currentUserAvatarURL)
-			if !isValidURL(avatarURL) && avatarURL != "" {
-				printer.Errorf("Invalid URL format\n")
+			avatarURL := getInput("Enter avatar URL (Empty Valid)", currentUserAvatarURL)
+			if avatarURL == "" {
+				return avatarURL, nil
+			}
+			if !isValidURL(avatarURL) {
+				printer.Errorln("Invalid URL format")
 				printer.NewLine(1)
 				continue
 			}
