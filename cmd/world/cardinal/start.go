@@ -37,7 +37,6 @@ var (
 //nolint:lll // needed to put all the help text in the same line
 type StartCmd struct {
 	Parent     *CardinalCmd `kong:"-"`
-	Build      bool         `         flag:"" help:"Rebuild Docker images before starting"`
 	Detach     bool         `         flag:"" help:"Run in detached mode"`
 	LogLevel   string       `         flag:"" help:"Set the log level for Cardinal"`
 	Debug      bool         `         flag:"" help:"Enable delve debugging"`
@@ -51,7 +50,7 @@ func (c *StartCmd) Run() error { //nolint:gocognit // this is a naturally comple
 	if err != nil {
 		return err
 	}
-	cfg.Build = c.Build
+	cfg.Build = true
 	cfg.Debug = c.Debug
 	cfg.Detach = c.Detach
 	cfg.Telemetry = c.Telemetry
