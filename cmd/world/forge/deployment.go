@@ -151,7 +151,8 @@ func status(ctx context.Context, cmdState *CommandState) error {
 		return nil
 	}
 
-	printer.Headerln("   Deployment Status ")
+	printer.NewLine(1)
+	printer.Headerln("   Deployment Status   ")
 	printer.Infof("Project:      %s\n", cmdState.Project.Name)
 	printer.Infof("Project Slug: %s\n", cmdState.Project.Slug)
 	printer.Infof("Repository:   %s\n", cmdState.Project.RepoURL)
