@@ -90,9 +90,9 @@ type DeployCmd struct {
 }
 
 func (c *DeployCmd) Run() error {
-	deployType := "deploy"
+	deployType := DeploymentTypeDeploy
 	if c.Force {
-		deployType = "forceDeploy"
+		deployType = DeploymentTypeForceDeploy
 	}
 	ctx := context.Background()
 	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
@@ -107,7 +107,7 @@ type StatusCmd struct {
 
 func (c *StatusCmd) Run() error {
 	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -123,7 +123,7 @@ func (c *PromoteCmd) Run() error {
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
-	return deployment(ctx, cmdState, "promote")
+	return deployment(ctx, cmdState, DeploymentTypePromote)
 }
 
 type DestroyCmd struct {
