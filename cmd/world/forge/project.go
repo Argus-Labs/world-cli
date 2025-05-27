@@ -493,7 +493,7 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	// Get repository Path
 	var repoPath string
 	for {
-		repoPath = getInput("Enter Repository Cardinal Path", p.RepoPath)
+		repoPath = getInput("Enter path to Cardinal within Repo (Empty Valid)", p.RepoPath)
 
 		// strip off any leading slash
 		repoPath = strings.TrimPrefix(repoPath, "/")
