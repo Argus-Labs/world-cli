@@ -146,7 +146,7 @@ func confirmLogParams(params *logParams) error {
 	printer.NewLine(1)
 	printer.Infof("Showing logs for '%s-%s-cardinal' in '%s-%s'\n",
 		params.organization.Slug, params.project.Slug, params.env, params.region)
-	printer.Infoln("(Press Enter to continue | Ctrl+C to cancel/exit)")
+	printer.Info("(Press Enter to continue | Ctrl+C to cancel/exit)")
 	inputStr := getInput("", "")
 	if inputStr != "" {
 		return eris.New("Operation cancelled by user")

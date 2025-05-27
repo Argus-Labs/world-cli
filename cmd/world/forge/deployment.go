@@ -20,9 +20,11 @@ import (
 )
 
 const (
-	DeploymentTypeDeploy  = "deploy"
-	DeploymentTypeDestroy = "destroy"
-	DeploymentTypeReset   = "reset"
+	DeploymentTypeDeploy      = "deploy"
+	DeploymentTypeForceDeploy = "forceDeploy"
+	DeploymentTypeDestroy     = "destroy"
+	DeploymentTypeReset       = "reset"
+	DeploymentTypePromote     = "promote"
 
 	DeployStatusFailed  DeployStatus = "failed"
 	DeployStatusPassed  DeployStatus = "passed"
@@ -95,32 +97,32 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 	}
 
 	processTitle := map[string]string{
-		DeploymentTypeDeploy:  "Deploying",
-		DeploymentTypeDestroy: "Destroying",
-		DeploymentTypeReset:   "Resetting",
+		DeploymentTypeDeploy:      "Deploying",
+		DeploymentTypeForceDeploy: "Force Deploying",
+		DeploymentTypeDestroy:     "Destroying",
+		DeploymentTypeReset:       "Resetting",
+		DeploymentTypePromote:     "Promoting",
 	}
 
 	// prompt user to confirm deployment
 	printer.NewLine(1)
-	printer.Headerln("   Confirm Deployment")
-	printer.Infoln("Review the deployment details above.")
-	prompt := fmt.Sprintf("\nDo you want to proceed with the %s? (Y/n): ", processTitle[deployType])
+	prompt := fmt.Sprintf("Do you want to proceed with the %s? (Y/n)", processTitle[deployType])
 
 	confirmation := getInput(prompt, "n")
 
 	if confirmation != "Y" {
 		if confirmation == "y" {
 			printer.Infoln("You need to put Y (uppercase) to confirm deployment")
-			printer.NewLine(1)
 			printer.Errorln("Deployment cancelled")
+			printer.NewLine(1)
 			return nil
 		}
-		printer.NewLine(1)
 		printer.Errorln("Deployment cancelled")
+		printer.NewLine(1)
 		return nil
 	}
 
-	if deployType == "forceDeploy" {
+	if deployType == DeploymentTypeForceDeploy {
 		deployType = "deploy?force=true"
 	}
 	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL, organizationID, projectID, deployType)
@@ -130,7 +132,7 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 	}
 
 	env := DeployEnvPreview
-	if deployType == "promote" {
+	if deployType == DeploymentTypePromote {
 		env = DeployEnvLive
 	}
 
@@ -149,10 +151,15 @@ func status(ctx context.Context, cmdState *CommandState) error {
 	if cmdState.Project == nil || cmdState.Project.ID == "" {
 		printNoSelectedProject()
 		return nil
+	} else if cmdState.Organization == nil || cmdState.Organization.ID == "" {
+		printNoSelectedOrganization()
+		return nil
 	}
 
 	printer.NewLine(1)
 	printer.Headerln("   Deployment Status   ")
+	printer.Infof("Organization: %s\n", cmdState.Organization.Name)
+	printer.Infof("Org Slug:     %s\n", cmdState.Organization.Slug)
 	printer.Infof("Project:      %s\n", cmdState.Project.Name)
 	printer.Infof("Project Slug: %s\n", cmdState.Project.Slug)
 	printer.Infof("Repository:   %s\n", cmdState.Project.RepoURL)
@@ -206,7 +213,7 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 		}
 	}
 	if len(envMap) == 0 {
-		printer.Infoln("** Project has not been deployed **")
+		printer.Notificationln("** Project has not been deployed **")
 		return nil, nil //nolint:nilnil // nil is a valid return value
 	}
 	deployStatus := map[string]DeployInfo{}
@@ -529,12 +536,9 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 	if err != nil {
 		return eris.Wrap(err, "Failed to unmarshal deployment preview")
 	}
-	printer.NewLine(1)
-	printer.Headerln("   Deployment Preview")
 
 	printer.NewLine(1)
 	printer.Headerln("   Basic Information   ")
-	printer.SectionDivider("-", 23)
 	printer.Infof("Organization:    %s\n", response.Data.OrgName)
 	printer.Infof("Org Slug:        %s\n", response.Data.OrgSlug)
 	printer.Infof("Project:         %s\n", response.Data.ProjectName)
@@ -542,14 +546,12 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 
 	printer.NewLine(1)
 	printer.Headerln("     Configuration     ")
-	printer.SectionDivider("-", 23)
 	printer.Infof("Executor:        %s\n", response.Data.ExecutorName)
 	printer.Infof("Deployment Type: %s\n", response.Data.DeploymentType)
 	printer.Infof("Tick Rate:       %d\n", response.Data.TickRate)
 
 	printer.NewLine(1)
 	printer.Headerln("  Deployment Regions  ")
-	printer.SectionDivider("-", 23)
 	printer.Infof("%s\n", strings.Join(response.Data.Regions, ", "))
 
 	return nil
