@@ -98,24 +98,6 @@ func (flow *initFlow) handleNeedProjectCaseMultipleProjects() error {
 ////////////////////////////////
 
 func (flow *initFlow) handleNeedExistingProjectData() error {
-	// First check if we already have a selected project
-	selectedProj, err := getSelectedProject(flow.context)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get selected project")
-	}
-
-	// If we have a selected project, use it
-	if selectedProj.ID != "" {
-		if err := showProjectList(flow.context); err != nil {
-			// If we fail to show the project list, just use the selected project
-			printer.NewLine(1)
-			printer.Headerln("   Project Information   ")
-			printer.Infof("  Project: %s (%s)\n", selectedProj.Name, selectedProj.Slug)
-		}
-		flow.updateProject(&selectedProj)
-		return nil
-	}
-
 	projects, err := getListOfProjects(flow.context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
@@ -123,6 +105,7 @@ func (flow *initFlow) handleNeedExistingProjectData() error {
 
 	switch len(projects) {
 	case 0: // No projects found
+		printNoProjectsInOrganization()
 		return ErrProjectSelectionCanceled
 	case 1: // One project found
 		return flow.handleNeedExistingProjectCaseOneProject(projects)
@@ -140,6 +123,18 @@ func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects() error {
+	// First check if we already have a selected project
+	selectedProj, err := getSelectedProject(flow.context)
+	if err == nil && selectedProj.ID != "" {
+		if err := showProjectList(flow.context); err != nil {
+			// If we fail to show the project list, just use the selected project
+			printer.NewLine(1)
+			printer.Headerln("   Project Information   ")
+			printer.Infof("  Project: %s (%s)\n", selectedProj.Name, selectedProj.Slug)
+		}
+		flow.updateProject(&selectedProj)
+		return nil
+	}
 	proj, err := selectProject(flow.context, &SwitchProjectCmd{})
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
