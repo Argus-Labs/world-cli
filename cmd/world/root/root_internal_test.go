@@ -2,10 +2,13 @@ package root
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +16,20 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 )
+
+var testCounter uint64
+
+func getUniquePort(t *testing.T, basePort int) string {
+	t.Helper()
+	port := basePort + int(atomic.AddUint64(&testCounter, 1))
+	return strconv.Itoa(port)
+}
+
+func getUniqueNamespace(t *testing.T) string {
+	t.Helper()
+	id := atomic.AddUint64(&testCounter, 1)
+	return fmt.Sprintf("test-%d", id)
+}
 
 // TestMain runs before all tests and handles setup/teardown.
 func TestMain(m *testing.M) {
@@ -86,6 +103,12 @@ func TestExecuteDoctorCommand(t *testing.T) {
 func TestCreateStartStopRestartPurge(t *testing.T) {
 	var err error
 
+	// Unique namespace and port
+	namespace := getUniqueNamespace(t)
+	port := getUniquePort(t, 4040)
+	t.Setenv("CARDINAL_NAMESPACE", namespace)
+	t.Setenv("CARDINAL_PORT", port)
+
 	// Create Cardinal
 	gameDir := t.TempDir()
 	t.Chdir(gameDir)
@@ -146,6 +169,12 @@ func TestCreateStartStopRestartPurge(t *testing.T) {
 }
 
 func TestDev(t *testing.T) {
+	// Unique namespace and port
+	namespace := getUniqueNamespace(t)
+	port := getUniquePort(t, 4040)
+	t.Setenv("CARDINAL_NAMESPACE", namespace)
+	t.Setenv("CARDINAL_PORT", port)
+
 	// Use t.TempDir(), which also auto-cleans the dir
 	gameDir := t.TempDir()
 
@@ -257,6 +286,12 @@ func ServiceIsDown(name, address string, t *testing.T) bool {
 }
 
 func TestEVMStart(t *testing.T) {
+	// Unique namespace and port
+	namespace := getUniqueNamespace(t)
+	port := getUniquePort(t, 9601)
+	t.Setenv("CARDINAL_NAMESPACE", namespace)
+	t.Setenv("EVM_PORT", port)
+
 	// Create temp working dir (auto-cleans up)
 	gameDir := t.TempDir()
 

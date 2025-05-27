@@ -14,12 +14,12 @@ import (
 const templateURLTest = "https://github.com/Argus-Labs/starter-game-template.git"
 
 func TestGitCloneCmd(t *testing.T) {
+	t.Parallel()
 	type param struct {
 		url       string
 		targetDir string
 		initMsg   string
 	}
-
 	test := []struct {
 		name     string
 		wantErr  bool
@@ -49,6 +49,7 @@ func TestGitCloneCmd(t *testing.T) {
 
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// clean up before test
 			cleanUpDir(tt.param.targetDir)
 
@@ -58,13 +59,11 @@ func TestGitCloneCmd(t *testing.T) {
 			} else {
 				assert.NilError(t, err)
 			}
-
 			// clean up after test
 			cleanUpDir(tt.param.targetDir)
 		})
 	}
 }
-
 func cleanUpDir(targetDir string) {
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 		err := os.RemoveAll(targetDir)
@@ -75,27 +74,17 @@ func cleanUpDir(targetDir string) {
 }
 
 func TestAppendToToml(t *testing.T) {
-	// Create a temporary TOML file for testing
-	tempFile, err := os.CreateTemp(t.TempDir(), "test.toml")
-	if err != nil {
-		t.Fatalf("failed to create temporary file: %v", err)
-	}
-	t.Cleanup(func() {
-		os.Remove(tempFile.Name())
-	})
-
+	t.Parallel()
 	// Define test cases
 	tests := []struct {
 		name          string
-		filePath      string
 		section       string
 		fields        map[string]any
 		expectedError error
 	}{
 		{
-			name:     "append first section and fields",
-			filePath: tempFile.Name(),
-			section:  "example_section",
+			name:    "append first section and fields",
+			section: "example_section",
 			fields: map[string]any{
 				"field1": "example_value",
 				"field2": 123,
@@ -103,9 +92,8 @@ func TestAppendToToml(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:     "append fields to existing section",
-			filePath: tempFile.Name(),
-			section:  "example_section",
+			name:    "append fields to existing section",
+			section: "example_section",
 			fields: map[string]any{
 				"field1": "replaced_value",
 				"field2": 321,
@@ -113,9 +101,8 @@ func TestAppendToToml(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:     "create new section and append fields",
-			filePath: tempFile.Name(),
-			section:  "new_section",
+			name:    "create new section and append fields",
+			section: "new_section",
 			fields: map[string]any{
 				"field3": true,
 				"field4": 3.14,
@@ -127,8 +114,30 @@ func TestAppendToToml(t *testing.T) {
 
 	// Run test cases
 	for _, tt := range tests {
+		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
-			err := appendToToml(tt.filePath, tt.section, tt.fields)
+			t.Parallel()
+			// Create a temporary file for this subtest
+			tempFile, err := os.CreateTemp(t.TempDir(), "test.toml")
+			if err != nil {
+				t.Fatalf("failed to create temporary file: %v", err)
+			}
+			t.Cleanup(func() {
+				os.Remove(tempFile.Name())
+			})
+
+			// For tests that need to append to existing content, create the initial content
+			if tt.name == "append fields to existing section" {
+				initialContent := `[example_section]
+field1 = "old_value"
+field2 = 0
+`
+				if err := os.WriteFile(tempFile.Name(), []byte(initialContent), 0644); err != nil {
+					t.Fatalf("failed to write initial content: %v", err)
+				}
+			}
+
+			err = appendToToml(tempFile.Name(), tt.section, tt.fields)
 			if !errors.Is(err, tt.expectedError) {
 				t.Errorf("unexpected error: got %v, want %v", err, tt.expectedError)
 			}
@@ -137,6 +146,7 @@ func TestAppendToToml(t *testing.T) {
 }
 
 func TestGenerateRandomHexString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		length int
@@ -157,11 +167,11 @@ func TestGenerateRandomHexString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := generateRandomHexString(tt.length)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
-
 			if len(got) != tt.length*2 {
 				t.Errorf("unexpected length of generated hex string: got %d, want %d", len(got), tt.length*2)
 			}

@@ -4,53 +4,59 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/stretchr/testify/suite"
 )
 
-type TOMLTestSuite struct {
-	suite.Suite
-	tempDir string
-}
-
-func (s *TOMLTestSuite) SetupTest() {
-	s.tempDir = s.T().TempDir()
-}
-
 // createTestFile is a helper function that creates a temporary TOML file with given content.
-func (s *TOMLTestSuite) createTestFile(content string) string {
-	tmpFile := filepath.Join(s.tempDir, "test.toml")
+func createTestFile(t *testing.T, content string) string {
+	tempDir := t.TempDir()
+	tmpFile := filepath.Join(tempDir, "test.toml")
 	err := os.WriteFile(tmpFile, []byte(content), 0644)
-	s.Require().NoError(err, "Failed to create test file")
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
 	return tmpFile
 }
 
-func (s *TOMLTestSuite) TestReadTOML() {
+func TestReadTOML(t *testing.T) {
+	t.Parallel()
 	// Create a temporary test file
 	content := `
 [test]
 key = "value"
 number = 42
-
 [nested]
 string = "nested value"
 `
-	tmpFile := s.createTestFile(content)
+	tmpFile := createTestFile(t, content)
 
 	// Test successful read
 	var config map[string]any
 	err := ReadTOML(tmpFile, &config)
-	s.Require().NoError(err)
-	s.Equal("value", config["test"].(map[string]any)["key"])
-	s.Equal(int64(42), config["test"].(map[string]any)["number"])
+	if err != nil {
+		t.Errorf("ReadTOML failed: %v", err)
+	}
+	testSection, ok := config["test"].(map[string]any)
+	if !ok {
+		t.Fatal("test section should exist and be a map")
+	}
+	if testSection["key"] != "value" {
+		t.Error("Expected key to be 'value'")
+	}
+	if testSection["number"] != int64(42) {
+		t.Error("Expected number to be 42")
+	}
 
 	// Test reading non-existent file
 	err = ReadTOML("nonexistent.toml", &config)
-	s.Error(err)
+	if err == nil {
+		t.Error("Expected error when reading non-existent file")
+	}
 }
 
-func (s *TOMLTestSuite) TestWriteTOML() {
-	tmpFile := filepath.Join(s.tempDir, "write_test.toml")
+func TestWriteTOML(t *testing.T) {
+	t.Parallel()
+	tempDir := t.TempDir()
+	tmpFile := filepath.Join(tempDir, "write_test.toml")
 
 	// Test writing new file
 	config := map[string]any{
@@ -61,30 +67,45 @@ func (s *TOMLTestSuite) TestWriteTOML() {
 	}
 
 	err := WriteTOML(tmpFile, config)
-	s.Require().NoError(err)
+	if err != nil {
+		t.Errorf("WriteTOML failed: %v", err)
+	}
 
 	// Verify written content
 	var readConfig map[string]any
 	err = ReadTOML(tmpFile, &readConfig)
-	s.Require().NoError(err)
-	s.Equal(config, readConfig)
+	if err != nil {
+		t.Errorf("ReadTOML failed: %v", err)
+	}
+	section, ok := readConfig["section"].(map[string]any)
+	if !ok {
+		t.Fatal("section should exist and be a map")
+	}
+	if section["key"] != "value" {
+		t.Error("Expected key to be 'value'")
+	}
+	if section["number"] != int64(42) {
+		t.Error("Expected number to be 42")
+	}
 
 	// Test writing to invalid path
 	err = WriteTOML("/invalid/path/test.toml", config)
-	s.Error(err)
+	if err == nil {
+		t.Error("Expected error when writing to invalid path")
+	}
 }
 
-func (s *TOMLTestSuite) TestUpdateTOMLSection() {
+func TestUpdateTOMLSection(t *testing.T) {
+	t.Parallel()
 	// Create initial test file
 	initialContent := `
 [existing]
 key = "value"
-
 [update]
 keep = "kept"
 change = "old"
 `
-	tmpFile := s.createTestFile(initialContent)
+	tmpFile := createTestFile(t, initialContent)
 
 	// Test updating existing section
 	updates := map[string]any{
@@ -92,59 +113,96 @@ change = "old"
 		"add":    "added",
 	}
 	err := UpdateTOMLSection(tmpFile, "update", updates)
-	s.Require().NoError(err)
+	if err != nil {
+		t.Errorf("UpdateTOMLSection failed: %v", err)
+	}
 
 	// Verify updates
 	var config map[string]any
 	err = ReadTOML(tmpFile, &config)
-	s.Require().NoError(err)
+	if err != nil {
+		t.Errorf("ReadTOML failed: %v", err)
+	}
 
-	updateSection := config["update"].(map[string]any)
-	s.Equal("kept", updateSection["keep"])
-	s.Equal("new", updateSection["change"])
-	s.Equal("added", updateSection["add"])
+	updateSection, ok := config["update"].(map[string]any)
+	if !ok {
+		t.Fatal("update section should exist and be a map")
+	}
+	if updateSection["keep"] != "kept" {
+		t.Error("Expected keep to be 'kept'")
+	}
+	if updateSection["change"] != "new" {
+		t.Error("Expected change to be 'new'")
+	}
+	if updateSection["add"] != "added" {
+		t.Error("Expected add to be 'added'")
+	}
 
 	// Test creating new section
 	newUpdates := map[string]any{
 		"new": "value",
 	}
 	err = UpdateTOMLSection(tmpFile, "newsection", newUpdates)
-	s.Require().NoError(err)
+	if err != nil {
+		t.Errorf("UpdateTOMLSection failed: %v", err)
+	}
 
 	err = ReadTOML(tmpFile, &config)
-	s.Require().NoError(err)
-	s.Equal("value", config["newsection"].(map[string]any)["new"])
+	if err != nil {
+		t.Errorf("ReadTOML failed: %v", err)
+	}
+	newSection, ok := config["newsection"].(map[string]any)
+	if !ok {
+		t.Fatal("newsection should exist and be a map")
+	}
+	if newSection["new"] != "value" {
+		t.Error("Expected new to be 'value'")
+	}
 }
 
-func (s *TOMLTestSuite) TestGetTOMLSection() {
+func TestGetTOMLSection(t *testing.T) {
+	t.Parallel()
 	// Create test file
 	content := `
 [section]
 key = "value"
 number = 42
-
 [empty]
 `
-	tmpFile := s.createTestFile(content)
+	tmpFile := createTestFile(t, content)
 
 	// Test getting existing section
 	section, err := GetTOMLSection(tmpFile, "section")
-	s.Require().NoError(err)
-	s.Equal("value", section["key"])
-	s.Equal(int64(42), section["number"])
+	if err != nil {
+		t.Errorf("GetTOMLSection failed: %v", err)
+	}
+	if section["key"] != "value" {
+		t.Error("Expected key to be 'value'")
+	}
+	if section["number"] != int64(42) {
+		t.Error("Expected number to be 42")
+	}
 
 	// Test getting non-existent section
 	_, err = GetTOMLSection(tmpFile, "nonexistent")
-	s.Require().Error(err)
+	if err == nil {
+		t.Error("Expected error when getting non-existent section")
+	}
 
 	// Test getting empty section
 	emptySection, err := GetTOMLSection(tmpFile, "empty")
-	s.Require().NoError(err)
-	s.Empty(emptySection)
+	if err != nil {
+		t.Errorf("GetTOMLSection failed: %v", err)
+	}
+	if len(emptySection) != 0 {
+		t.Error("Expected empty section to be empty")
+	}
 }
 
-func (s *TOMLTestSuite) TestCreateTOMLFile() {
-	tmpFile := filepath.Join(s.tempDir, "nested", "create_test.toml")
+func TestCreateTOMLFile(t *testing.T) {
+	t.Parallel()
+	tempDir := t.TempDir()
+	tmpFile := filepath.Join(tempDir, "nested", "create_test.toml")
 
 	// Test creating new file with sections
 	sections := map[string]map[string]any{
@@ -157,29 +215,38 @@ func (s *TOMLTestSuite) TestCreateTOMLFile() {
 	}
 
 	err := CreateTOMLFile(tmpFile, sections)
-	s.Require().NoError(err)
+	if err != nil {
+		t.Errorf("CreateTOMLFile failed: %v", err)
+	}
 
 	// Verify file was created with correct content
 	var config map[string]any
 	err = ReadTOML(tmpFile, &config)
-	s.Require().NoError(err)
-	s.Equal("value", config["section1"].(map[string]any)["key"])
-	s.Equal(int64(42), config["section2"].(map[string]any)["number"])
+	if err != nil {
+		t.Errorf("ReadTOML failed: %v", err)
+	}
+	if config["section1"].(map[string]any)["key"] != "value" {
+		t.Error("Expected key to be 'value'")
+	}
+	if config["section2"].(map[string]any)["number"] != int64(42) {
+		t.Error("Expected number to be 42")
+	}
 
 	// Test creating file that already exists (should do nothing)
 	newSections := map[string]map[string]any{
 		"different": {"key": "value"},
 	}
 	err = CreateTOMLFile(tmpFile, newSections)
-	s.Require().NoError(err)
+	if err != nil {
+		t.Errorf("CreateTOMLFile failed: %v", err)
+	}
 
 	// Verify original content wasn't changed
 	err = ReadTOML(tmpFile, &config)
-	s.Require().NoError(err)
-	s.Equal("value", config["section1"].(map[string]any)["key"])
-}
-
-// TestTOMLSuite runs the test suite.
-func TestTOMLSuite(t *testing.T) {
-	suite.Run(t, new(TOMLTestSuite))
+	if err != nil {
+		t.Errorf("ReadTOML failed: %v", err)
+	}
+	if config["section1"].(map[string]any)["key"] != "value" {
+		t.Error("Expected key to be 'value'")
+	}
 }
