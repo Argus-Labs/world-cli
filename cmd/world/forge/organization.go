@@ -102,6 +102,16 @@ func getListOfOrganizations(ctx context.Context) ([]organization, error) {
 }
 
 func selectOrganization(ctx context.Context, flags *SwitchOrganizationCmd) (organization, error) {
+	config, err := GetCurrentForgeConfig()
+	if err != nil {
+		return organization{}, eris.Wrap(err, "Could not get config")
+	}
+	if config.CurrRepoKnown {
+		printer.Errorf("Current git working directory belongs to project %s. Cannot switch.\n",
+			config.CurrProjectName)
+		return organization{}, nil
+	}
+
 	// If slug is provided, select organization from slug
 	if flags.Slug != "" {
 		org, err := selectOrganizationFromSlug(ctx, flags.Slug)
@@ -132,6 +142,24 @@ func selectOrganization(ctx context.Context, flags *SwitchOrganizationCmd) (orga
 	}
 
 	return selectedOrg, nil
+}
+
+func getOrganizationDataByID(ctx context.Context, id string) (organization, error) {
+	orgs, err := getListOfOrganizations(ctx)
+	if err != nil {
+		return organization{}, eris.Wrap(err, "Failed to get organizations")
+	}
+
+	if len(orgs) == 0 {
+		return organization{}, eris.New("No organizations found")
+	}
+
+	for _, org := range orgs {
+		if org.ID == id {
+			return org, nil
+		}
+	}
+	return organization{}, eris.New("Organization not found with ID: " + id)
 }
 
 func selectOrganizationFromSlug(ctx context.Context, slug string) (organization, error) {

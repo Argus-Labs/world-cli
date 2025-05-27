@@ -149,10 +149,8 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 
 func status(ctx context.Context, cmdState *CommandState) error {
 	if cmdState.Project == nil || cmdState.Project.ID == "" {
-		printNoSelectedProject()
 		return nil
 	} else if cmdState.Organization == nil || cmdState.Organization.ID == "" {
-		printNoSelectedOrganization()
 		return nil
 	}
 

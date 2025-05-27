@@ -1436,6 +1436,23 @@ func (s *ForgeTestSuite) TestLogin() {
 			key:           "invalid-key",
 			expectedError: true,
 		},
+		{
+			name:          "Success - Test inKnownRepo",
+			key:           "valid-key",
+			expectedError: false,
+			config: &Config{
+				OrganizationID:  "test-org-id",
+				ProjectID:       "test-project-id",
+				CurrProjectName: "test-project",
+				CurrRepoURL:     "https://github.com/test/repo",
+				CurrRepoPath:    "cmd/world/forge",
+				CurrRepoKnown:   true,
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1456,6 +1473,24 @@ func (s *ForgeTestSuite) TestLogin() {
 			if tc.config != nil {
 				err := SaveForgeConfig(*tc.config)
 				s.Require().NoError(err)
+
+				// If this is the inKnownRepo test, run that test
+				if tc.name == "Success - Test inKnownRepo" {
+					flowTest := &initFlow{
+						context: s.ctx,
+						config:  *tc.config,
+						State:   CommandState{},
+					}
+
+					result := flowTest.inKnownRepo()
+					s.True(result)
+					s.True(flowTest.State.CurrRepoKnown)
+					s.NotNil(flowTest.State.Organization)
+					s.Equal("test-org-id", flowTest.State.Organization.ID)
+					s.NotNil(flowTest.State.Project)
+					s.Equal("test-project-id", flowTest.State.Project.ID)
+					return
+				}
 			}
 
 			err := login(s.ctx)

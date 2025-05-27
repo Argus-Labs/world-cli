@@ -46,7 +46,7 @@ func login(ctx context.Context) error {
 	}
 
 	// Handle post-login configuration
-	_, err = SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
+	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedData, NeedData)
 	if err != nil {
 		if !loginErrorCheck(err) {
 			// Even we have an error, if it's not a login error, we can display the login success message.
@@ -55,6 +55,16 @@ func login(ctx context.Context) error {
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
+	if cmdState.CurrRepoKnown {
+		printer.NewLine(1)
+		printer.Headerln("   Known Project Details   ")
+		printer.Infof("Organization: %s\n", cmdState.Organization.Name)
+		printer.Infof("Org Slug:     %s\n", cmdState.Organization.Slug)
+		printer.Infof("Project:      %s\n", cmdState.Project.Name)
+		printer.Infof("Project Slug: %s\n", cmdState.Project.Slug)
+		printer.Infof("Repository:   %s\n", cmdState.Project.RepoURL)
+		printer.NewLine(1)
+	}
 	// Display login success message
 	displayLoginSuccess(config)
 

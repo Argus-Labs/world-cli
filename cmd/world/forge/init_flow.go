@@ -92,10 +92,11 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		organizationStepDone: false,
 		projectStepDone:      false,
 		State: CommandState{
-			LoggedIn:     false,
-			User:         nil,
-			Organization: nil,
-			Project:      nil,
+			LoggedIn:      false,
+			CurrRepoKnown: false,
+			User:          nil,
+			Organization:  nil,
+			Project:       nil,
 		},
 	}
 
@@ -166,6 +167,10 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		flow.organizationStepDone = true
 		flow.projectStepDone = true
 		return &flow.State, nil // we have the ids we need
+	}
+
+	if flow.inKnownRepo() {
+		return &flow.State, nil // we have the data we need
 	}
 
 	// FIXME: handle the errors coming back from the handleX() functions
@@ -264,6 +269,24 @@ func (flow *initFlow) AddKnownProject(proj *project) {
 		RepoPath:       proj.RepoPath,
 		ProjectName:    proj.Name,
 	})
+}
+
+func (flow *initFlow) inKnownRepo() bool {
+	if flow.config.CurrRepoKnown {
+		org, err := getOrganizationDataByID(flow.context, flow.config.OrganizationID)
+		if err != nil {
+			return false
+		}
+		proj, err := getProjectDataByID(flow.context, flow.config.ProjectID)
+		if err != nil {
+			return false
+		}
+		flow.updateProject(&proj)
+		flow.updateOrganization(&org)
+		flow.State.CurrRepoKnown = true
+		return true
+	}
+	return false
 }
 
 // loginErrorCheck is used to check if the error is a login error.

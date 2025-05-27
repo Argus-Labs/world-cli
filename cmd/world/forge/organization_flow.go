@@ -117,9 +117,6 @@ func (flow *initFlow) handleNeedExistingOrganizationCaseNoOrgs() error {
 }
 
 func (flow *initFlow) handleNeedExistingOrganizationCaseOneOrg(orgs []organization) error {
-	printer.NewLine(1)
-	printer.Headerln("  Organization Information  ")
-	printer.Infof("  %s (%s)\n", orgs[0].Name, orgs[0].Slug)
 	flow.updateOrganization(&orgs[0])
 	return nil
 }
@@ -128,13 +125,6 @@ func (flow *initFlow) handleNeedExistingOrganizationCaseMultipleOrgs(orgs []orga
 	// First check if we already have a selected organization
 	selectedOrg, err := getSelectedOrganization(flow.context)
 	if err == nil && selectedOrg.ID != "" {
-		// Show the org and project lists
-		if err := showOrganizationList(flow.context); err != nil {
-			// If we fail to show the org list, just use the selected org
-			printer.NewLine(1)
-			printer.Headerln("  Organization Information  ")
-			printer.Infof("  Organization: %s (%s)\n", selectedOrg.Name, selectedOrg.Slug)
-		}
 		flow.updateOrganization(&selectedOrg)
 		return nil
 	}

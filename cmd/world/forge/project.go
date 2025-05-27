@@ -575,7 +575,6 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 		// Parse selection
 		num, err := strconv.Atoi(input)
 		if err != nil || num < 1 || num > len(projects) {
-			printer.NewLine(1)
 			printer.Errorf("Please enter a number between 1 and %d\n", len(projects))
 			continue
 		}
@@ -592,6 +591,24 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 		printer.Successf("Switched to project: %s\n", selectedProject.Name)
 		return &selectedProject, nil
 	}
+}
+
+func getProjectDataByID(ctx context.Context, id string) (project, error) {
+	projects, err := getListOfProjects(ctx)
+	if err != nil {
+		return project{}, eris.Wrap(err, "Failed to get projects")
+	}
+
+	if len(projects) == 0 {
+		return project{}, eris.New("No projects found")
+	}
+
+	for _, project := range projects {
+		if project.ID == id {
+			return project, nil
+		}
+	}
+	return project{}, eris.New("Project not found with ID: " + id)
 }
 
 func (p *project) delete(ctx context.Context) error {

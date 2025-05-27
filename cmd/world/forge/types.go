@@ -12,10 +12,11 @@ type Credential struct {
 }
 
 type CommandState struct {
-	LoggedIn     bool
-	User         *User
-	Organization *organization
-	Project      *project
+	LoggedIn      bool
+	CurrRepoKnown bool
+	User          *User
+	Organization  *organization
+	Project       *project
 }
 
 type KnownProject struct {
