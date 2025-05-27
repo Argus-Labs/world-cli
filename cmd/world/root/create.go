@@ -84,7 +84,7 @@ func (m WorldCreateModel) Init() tea.Cmd {
 
 // Update handles incoming events and updates the model accordingly.
 //
-//nolint:funlen // Long function, but it's ok because it's structured
+//nolint:funlen,gocognit // Long function, but it's ok because it's structured
 func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teacmd.CheckDependenciesMsg:
@@ -100,6 +100,11 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			if m.projectNameInput.Value() == "" {
 				m.projectNameInput.SetValue("starter-game")
+			}
+			// Validate project name doesn't contain spaces
+			if strings.Contains(m.projectNameInput.Value(), " ") {
+				m.logs = append(m.logs, style.CrossIcon.Render()+"Project name cannot contain spaces")
+				return m, tea.Quit
 			}
 			m.projectNameInput.Blur()
 			return m, m.steps.CompleteStepCmd(nil)
