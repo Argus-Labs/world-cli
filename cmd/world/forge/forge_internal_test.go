@@ -2046,7 +2046,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 		setupWorldToml      bool // New field to indicate if we should create world.toml
 	}{
 		{
-			name: "Success - Public repo default slug",
+			name: "Success - Public repo default slug + avatar URL validation",
 			config: Config{
 				OrganizationID: "test-org-id",
 				Credential: Credential{
@@ -2058,16 +2058,20 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"",             // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
-				"",                // repoToken (empty for public repo)
-				"",                // repoPath (empty for default root path of repo)
-				"10",              // tick rate
-				"Y",               // enable discord notifications  NOTE: these won't show up in the console
-				"test-token",      // discord token                       because results are mocked
-				"1234567890",      // discord channel ID
-				"Y",               // enable slack notifications
-				"test-token",      // slack token
-				"1234567890",      // slack channel ID
-				"http://test.com", // avatar URL
+				"",                 // repoToken (empty for public repo)
+				"",                 // repoPath (empty for default root path of repo)
+				"10",               // tick rate
+				"Y",                // enable discord notifications  NOTE: these won't show up in the console
+				"test-token",       // discord token                       because results are mocked
+				"1234567890",       // discord channel ID
+				"Y",                // enable slack notifications
+				"test-token",       // slack token
+				"1234567890",       // slack channel ID
+				"test.com",         // no http
+				"http://test",      // no tld
+				"http://.co.uk",    // invalid domain
+				"http://localhost", // localhost invalid
+				"http://test.com",  // avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
 				{Type: tea.KeySpace}, // select region

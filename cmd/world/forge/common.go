@@ -380,9 +380,27 @@ func isValidEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
-func isValidURL(urlStr string) bool {
-	_, err := url.ParseRequestURI(urlStr)
-	return err == nil
+func isValidURL(urlStr string) error {
+	parsedURL, err := url.ParseRequestURI(urlStr)
+	if err != nil {
+		return eris.New("Invalid URL: Must start with http:// or https://")
+	}
+
+	// Check if hostname has a TLD (at least one dot with characters after it)
+	hostname := parsedURL.Hostname()
+	parts := strings.Split(hostname, ".")
+	if len(parts) < 2 || parts[len(parts)-1] == "" {
+		return eris.New("Invalid URL: Must have a TLD")
+	}
+
+	// Skip DNS lookup for localhost
+	if hostname == "localhost" {
+		return eris.New("Invalid URL: Cannot use localhost")
+	}
+
+	// Perform DNS lookup to verify domain exists
+	_, err = net.LookupHost(hostname)
+	return eris.Wrap(err, "Invalid URL")
 }
 
 func replaceLast(x, y, z string) string {

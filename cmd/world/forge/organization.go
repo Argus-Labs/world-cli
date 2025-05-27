@@ -311,8 +311,8 @@ func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*org
 				break
 			}
 
-			if !isValidURL(orgAvatarURL) {
-				printer.Errorln("Invalid URL, leave empty to skip")
+			if err := isValidURL(orgAvatarURL); err != nil {
+				printer.Errorln(err.Error())
 				printer.NewLine(1)
 				continue
 			}

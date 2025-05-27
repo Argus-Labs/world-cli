@@ -674,8 +674,7 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd) er
 	p.AvatarURL = flags.AvatarURL
 
 	printer.NewLine(1)
-	printer.Infoln("  Project Update  ")
-	printer.SectionDivider("-", 18)
+	printer.Headerln("  Project Update  ")
 
 	// get project input
 	err = p.getSetupInput(ctx, regions)
@@ -1073,8 +1072,8 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 				return nil
 			}
 
-			if !isValidURL(avatarURL) {
-				printer.Errorln("Invalid URL")
+			if err := isValidURL(avatarURL); err != nil {
+				printer.Errorln(err.Error())
 				printer.NewLine(1)
 				p.AvatarURL = ""
 				continue

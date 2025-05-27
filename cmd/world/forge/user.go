@@ -133,8 +133,8 @@ func inputUserAvatarURL(ctx context.Context, // TODO: refactor
 			if avatarURL == "" {
 				return avatarURL, nil
 			}
-			if !isValidURL(avatarURL) {
-				printer.Errorln("Invalid URL format")
+			if err := isValidURL(avatarURL); err != nil {
+				printer.Errorln(err.Error())
 				printer.NewLine(1)
 				continue
 			}
