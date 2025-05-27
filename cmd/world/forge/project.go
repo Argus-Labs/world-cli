@@ -1048,7 +1048,7 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			avatarURL := getInput("Enter avatar URL", p.AvatarURL)
+			avatarURL := getInput("Enter avatar URL (Empty Valid)", p.AvatarURL)
 
 			if avatarURL == "" {
 				// No avatar URL provided

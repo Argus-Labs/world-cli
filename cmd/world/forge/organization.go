@@ -277,11 +277,9 @@ func createOrganization(ctx context.Context, flags *CreateOrganizationCmd) (*org
 
 		// Get and validate organization avatar URL
 		for {
-			orgAvatarURL = getInput("Enter organization avatar URL", flags.AvatarURL)
+			orgAvatarURL = getInput("Enter organization avatar URL (Empty Valid)", flags.AvatarURL)
 
 			if orgAvatarURL == "" {
-				printer.NewLine(1)
-				printer.Infoln("Skipped. No avatar URL will be used.")
 				break
 			}
 
