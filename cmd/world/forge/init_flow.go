@@ -100,6 +100,18 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 		},
 	}
 
+	// NOTE: just for testing functionality, remove this later
+	root, err := findGitRepoRoot(".")
+	if err != nil {
+		fmt.Println("❌ Not inside a Git repo:", err)
+	} else {
+		url, err := getPrimaryRemoteURL(root)
+		if err != nil {
+			fmt.Println("❌", err)
+		}
+		fmt.Println("✅ Remote URL:", url)
+	}
+
 	// if we have an unexpired token, we are logged in
 	loggedIn := config.Credential.Token != ""
 	tokenExpiresAt := config.Credential.TokenExpiresAt

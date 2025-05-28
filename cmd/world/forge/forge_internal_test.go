@@ -17,6 +17,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	git "github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/rotisserie/eris"
 	"github.com/stretchr/testify/suite"
 	"pkg.world.dev/world-cli/common/config"
@@ -4876,6 +4878,191 @@ func (s *ForgeTestSuite) TestUpdateUserCmd() {
 				s.Contains(err.Error(), "forge command setup failed")
 			} else {
 				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestFindGitRepoRoot() {
+	testCases := []struct {
+		name          string
+		setup         func() string
+		expectedRoot  string
+		expectedError string
+	}{
+		{
+			name: "Success - Find git repo root",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				gitDir := filepath.Join(tempDirectory, ".git")
+				err := os.Mkdir(gitDir, 0755)
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedRoot:  "", // Will be set in test
+			expectedError: "",
+		},
+		{
+			name: "Success - Find git repo root with gitdir pointer",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				gitDir := filepath.Join(tempDirectory, ".git")
+				// Create a gitdir pointer file directly
+				gitdirContent := "gitdir: /path/to/actual/git/dir"
+				err := os.WriteFile(gitDir, []byte(gitdirContent), 0644)
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedRoot:  "", // Will be set in test
+			expectedError: "",
+		},
+		{
+			name: "Error - No git repository found",
+			setup: func() string {
+				return s.T().TempDir()
+			},
+			expectedRoot:  "",
+			expectedError: "no git repository found",
+		},
+	}
+
+	for _, tc := range testCases {
+		// capture range variable
+		s.Run(tc.name, func() {
+			s.T().Parallel()
+			startDir := tc.setup()
+			if tc.expectedRoot == "" && tc.expectedError == "" {
+				tc.expectedRoot = startDir
+			}
+
+			root, err := findGitRepoRoot(startDir)
+			if tc.expectedError != "" {
+				s.Require().Error(err)
+				s.Equal(tc.expectedError, eris.ToString(err, false))
+			} else {
+				s.Require().NoError(err)
+				s.Equal(tc.expectedRoot, root)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestGetPrimaryRemoteURL() {
+	testCases := []struct {
+		name          string
+		setup         func() string
+		expectedURL   string
+		expectedError string
+	}{
+		{
+			name: "Error - Not a git repository",
+			setup: func() string {
+				return s.T().TempDir() // Just return a regular directory, not a git repo
+			},
+			expectedURL:   "",
+			expectedError: "not a git repository",
+		},
+		{
+			name: "Error - Failed to get remotes",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				_, err := git.PlainInit(tempDirectory, false)
+				s.Require().NoError(err)
+				// Create a corrupted .git/config file to cause remote fetch to fail
+				configPath := filepath.Join(tempDirectory, ".git", "config")
+				err = os.WriteFile(configPath, []byte("invalid config content"), 0644)
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedURL:   "",
+			expectedError: "failed to get remotes",
+		},
+		{
+			name: "Error - No remote URLs found",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				repo, err := git.PlainInit(tempDirectory, false)
+				s.Require().NoError(err)
+				// Create a remote with a valid URL first
+				_, err = repo.CreateRemote(&gitconfig.RemoteConfig{
+					Name: "origin",
+					URLs: []string{"https://example.com/test.git"},
+				})
+				s.Require().NoError(err)
+				// Then manually modify the config to remove the URL
+				gitDir := filepath.Join(tempDirectory, ".git")
+				configPath := filepath.Join(gitDir, "config")
+				configContent := `[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+`
+				err = os.WriteFile(configPath, []byte(configContent), 0644)
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedURL:   "",
+			expectedError: "no remote URLs found",
+		},
+		{
+			name: "Error - No remotes found",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				_, err := git.PlainInit(tempDirectory, false)
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedURL:   "",
+			expectedError: "no git remotes found",
+		},
+		{
+			name: "Success - Origin remote found",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				repo, err := git.PlainInit(tempDirectory, false)
+				s.Require().NoError(err)
+				_, err = repo.CreateRemote(&gitconfig.RemoteConfig{
+					Name: "origin",
+					URLs: []string{"https://example.com/test.git"},
+				})
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedURL:   "https://example.com/test.git",
+			expectedError: "",
+		},
+		{
+			name: "Success - Fallback to non-origin remote",
+			setup: func() string {
+				tempDirectory := s.T().TempDir()
+				repo, err := git.PlainInit(tempDirectory, false)
+				s.Require().NoError(err)
+				_, err = repo.CreateRemote(&gitconfig.RemoteConfig{
+					Name: "backup",
+					URLs: []string{"https://backup.com/repo.git"},
+				})
+				s.Require().NoError(err)
+				return tempDirectory
+			},
+			expectedURL:   "https://backup.com/repo.git",
+			expectedError: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		// capture range variable
+		s.Run(tc.name, func() {
+			s.T().Parallel()
+			repoPath := tc.setup()
+			url, err := getPrimaryRemoteURL(repoPath)
+			if tc.expectedError != "" {
+				s.Require().Error(err)
+				s.Contains(err.Error(), tc.expectedError)
+			} else {
+				s.Require().NoError(err)
+				s.Equal(tc.expectedURL, url)
 			}
 		})
 	}

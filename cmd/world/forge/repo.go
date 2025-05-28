@@ -2,11 +2,15 @@ package forge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
+	git "github.com/go-git/go-git/v5"
 	"github.com/rotisserie/eris"
 )
 
@@ -171,4 +175,67 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 		return nil
 	}
 	return fmt.Errorf("bitbucket validation failed: %s", resp.Status)
+}
+
+func findGitRepoRoot(start string) (string, error) {
+	dir, err := filepath.Abs(start)
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		gitPath := filepath.Join(dir, ".git")
+
+		if stat, err := os.Stat(gitPath); err == nil {
+			if stat.IsDir() {
+				return dir, nil // Found .git directory
+			}
+			// It's a file — could be a gitdir pointer
+			data, readErr := os.ReadFile(gitPath)
+			if readErr == nil && strings.HasPrefix(string(data), "gitdir:") {
+				return dir, nil
+			}
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break // Reached root
+		}
+		dir = parent
+	}
+
+	return "", eris.New("no git repository found")
+}
+
+// getPrimaryRemoteURL returns the URL of the first remote (usually "origin").
+func getPrimaryRemoteURL(repoPath string) (string, error) {
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("not a git repository: %w", err)
+	}
+
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return "", fmt.Errorf("failed to get remotes: %w", err)
+	}
+
+	if len(remotes) == 0 {
+		return "", errors.New("no git remotes found")
+	}
+
+	// Prefer the remote named "origin" if it exists
+	for _, remote := range remotes {
+		if remote.Config().Name == "origin" && len(remote.Config().URLs) > 0 {
+			return remote.Config().URLs[0], nil
+		}
+	}
+
+	// Fallback to the first remote if "origin" not found
+	for _, remote := range remotes {
+		if len(remote.Config().URLs) > 0 {
+			return remote.Config().URLs[0], nil
+		}
+	}
+
+	return "", errors.New("no remote URLs found")
 }
