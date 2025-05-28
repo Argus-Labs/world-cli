@@ -146,7 +146,6 @@ func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects() error {
 func (flow *initFlow) updateProject(project *project) {
 	flow.State.Project = project
 	flow.projectStepDone = true
-	flow.AddKnownProject(project)
 
 	flow.config.ProjectID = project.ID
 	flow.config.CurrProjectName = project.Name

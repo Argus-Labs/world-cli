@@ -182,7 +182,7 @@ type CreateOrganizationCmd struct {
 
 func (c *CreateOrganizationCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedRepoLookup, NeedRepoLookup)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -197,7 +197,7 @@ type SwitchOrganizationCmd struct {
 
 func (c *SwitchOrganizationCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedRepoLookup, NeedRepoLookup)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -225,7 +225,7 @@ type CreateProjectCmd struct {
 
 func (c *CreateProjectCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedRepoLookup)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}
@@ -240,7 +240,7 @@ type SwitchProjectCmd struct {
 
 func (c *SwitchProjectCmd) Run() error {
 	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
+	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedRepoLookup)
 	if err != nil {
 		return eris.Wrap(err, "forge command setup failed")
 	}

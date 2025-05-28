@@ -107,7 +107,7 @@ func selectOrganization(ctx context.Context, flags *SwitchOrganizationCmd) (orga
 		return organization{}, eris.Wrap(err, "Could not get config")
 	}
 	if config.CurrRepoKnown {
-		printer.Errorf("Current git working directory belongs to project %s. Cannot switch.\n",
+		printer.Errorf("Current git working directory belongs to project %s.\n  Cannot switch Organization.\n",
 			config.CurrProjectName)
 		return organization{}, nil
 	}

@@ -536,7 +536,7 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 		return nil, eris.Wrap(err, "Could not get config")
 	}
 	if config.CurrRepoKnown {
-		printer.Errorf("Current git working directory belongs to project %s. Cannot switch.\n",
+		printer.Errorf("Current git working directory belongs to project %s.\n  Cannot switch Project.\n",
 			config.CurrProjectName)
 		return nil, nil //nolint: nilnil // See: https://www.dolthub.com/blog/2024-05-31-benchmarking-go-error-handling/
 	}

@@ -98,11 +98,28 @@ func GetCurrentForgeConfig() (Config, error) {
 }
 
 func FindGitPathAndURL() (string, string, error) {
+	// Try to get the 'origin' remote URL first
 	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
-	if err != nil {
-		return "", "", err
+	if err != nil || strings.TrimSpace(string(urlData)) == "" {
+		// Fallback: get the first available remote URL
+		remoteList, fallbackErr := exec.Command("git", "remote", "-v").Output()
+		if fallbackErr != nil {
+			return "", "", eris.Wrap(fallbackErr, "failed to get remote list")
+		}
+		lines := strings.Split(string(remoteList), "\n")
+		for _, line := range lines {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				urlData = []byte(parts[1])
+				break
+			}
+		}
 	}
+
 	url := strings.TrimSpace(string(urlData))
+	if url == "" {
+		return "", "", eris.New("no git remote URL found")
+	}
 	url = replaceLast(url, ".git", "")
 	workingDir, err := os.Getwd()
 	if err != nil {

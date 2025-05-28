@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -3065,11 +3066,114 @@ func (s *ForgeTestSuite) TestSlugCreateFromName() {
 }
 
 func (s *ForgeTestSuite) TestFindGitPathAndURL() {
-	path, url, err := FindGitPathAndURL()
+	// Get the actual repo URL for the first test case
+	actualPath, actualURL, err := FindGitPathAndURL()
 	s.Require().NoError(err)
-	s.Contains(path, "cmd")
-	s.Contains(url, "https://github")
-	s.NotContains(url, ".git")
+
+	testCases := []struct {
+		name           string
+		setupGit       func(string) error
+		expectedPath   string
+		expectedURL    string
+		expectedError  bool
+		changeToSubdir bool
+	}{
+		{
+			name: "Success - Normal path with origin remote",
+			setupGit: func(dir string) error {
+				// No setup needed - uses existing git repo
+				return nil
+			},
+			expectedPath:   actualPath,
+			expectedURL:    actualURL,
+			expectedError:  false,
+			changeToSubdir: false,
+		},
+		{
+			name: "Success - Fallback to non-origin remote",
+			setupGit: func(dir string) error {
+				// Initialize git repo
+				gitInit := exec.Command("git", "init")
+				gitInit.Dir = dir
+				if err := gitInit.Run(); err != nil {
+					return err
+				}
+
+				// Add upstream remote
+				gitRemote := exec.Command("git", "remote", "add", "upstream", "https://github.com/test/fallback.git")
+				gitRemote.Dir = dir
+				if err := gitRemote.Run(); err != nil {
+					return err
+				}
+
+				// Create subdirectory
+				subDir := filepath.Join(dir, "subdir")
+				if err := os.Mkdir(subDir, 0755); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			expectedPath:   "subdir",
+			expectedURL:    "https://github.com/test/fallback",
+			expectedError:  false,
+			changeToSubdir: true,
+		},
+		{
+			name: "Error - No git repository",
+			setupGit: func(dir string) error {
+				// No setup - empty directory
+				return nil
+			},
+			expectedPath:   "",
+			expectedURL:    "",
+			expectedError:  true,
+			changeToSubdir: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Create temporary directory
+			tmpDir, err := os.MkdirTemp("", "git-test-*")
+			s.Require().NoError(err)
+			defer os.RemoveAll(tmpDir)
+
+			// Setup git repository if needed
+			if tc.setupGit != nil {
+				err = tc.setupGit(tmpDir)
+				s.Require().NoError(err)
+			}
+
+			// Change to the test directory
+			originalDir, err := os.Getwd()
+			s.Require().NoError(err)
+			defer os.Chdir(originalDir)
+
+			// Change to subdir if needed, and check existence
+			if tc.changeToSubdir {
+				subdirPath := filepath.Join(tmpDir, "subdir")
+				info, err := os.Stat(subdirPath)
+				s.Require().NoError(err, "subdir should exist")
+				s.Require().True(info.IsDir(), "subdir should be a directory")
+				err = os.Chdir(subdirPath)
+				s.Require().NoError(err)
+			} else if tc.name != "Success - Normal path with origin remote" {
+				err = os.Chdir(tmpDir)
+				s.Require().NoError(err)
+			}
+
+			// Run the test
+			path, url, err := FindGitPathAndURL()
+			if tc.expectedError {
+				s.Error(err)
+			} else {
+				s.Require().NoError(err)
+				s.Equal(tc.expectedPath, path)
+				s.Equal(tc.expectedURL, url)
+			}
+		})
+	}
 }
 
 func (s *ForgeTestSuite) TestSetupForgeCommandState() {

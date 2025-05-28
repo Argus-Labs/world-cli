@@ -43,6 +43,7 @@ type StepRequirement int
 
 const (
 	Ignore             StepRequirement = iota
+	NeedRepoLookup                     // we need to lookup the project from the git repo
 	NeedIDOnly                         // we only need the id (not sure if we will use this or not)
 	NeedExistingIDOnly                 // need id but can't create new one (not sure if we will use this or not)
 	NeedData                           // we need all the data, can create new one
@@ -79,8 +80,15 @@ func SetupForgeCommandState( //nolint:gocognit,gocyclo,cyclop,funlen // logic si
 	if err != nil {
 		return nil, err
 	}
-	// if the repo wan't recognized from the config, and we need project or org, then we need to to do a backend lookup
-	needRepoLookup := !config.CurrRepoKnown && projectReq != Ignore && orgReq != Ignore && config.CurrRepoURL != ""
+
+	// Check if we have a valid repo to look up
+	hasValidRepo := !config.CurrRepoKnown && config.CurrRepoURL != ""
+	// Check if either requirement explicitly needs repo lookup
+	needsExplicitRepoLookup := projectReq == NeedRepoLookup || orgReq == NeedRepoLookup
+	// Check if project needs data (not Ignore) but isn't explicitly NeedRepoLookup
+	// We only care about project requirements since repo lookup is project-focused
+	needsDataLookup := projectReq != Ignore && projectReq != NeedRepoLookup
+	needRepoLookup := hasValidRepo && (needsExplicitRepoLookup || needsDataLookup)
 
 	flow = &initFlow{
 		context:              ctx,
