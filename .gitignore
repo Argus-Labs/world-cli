@@ -73,3 +73,5 @@ Thumbs.db
 *.pb.go
 *.pb.gw.go
 *.gen.go
+
+*/**junit.xml
