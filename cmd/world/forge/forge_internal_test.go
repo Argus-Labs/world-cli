@@ -767,6 +767,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 		inputs              []string     // For name, slug, repoURL, repoToken
 		regionSelectActions []tea.KeyMsg // Simulate region selection
 		expectedError       bool
+		createProject       bool
 	}{
 		{
 			name: "Success - Valid deployment",
@@ -829,7 +830,8 @@ func (s *ForgeTestSuite) TestDeploy() {
 			expectedError: false,
 		},
 		{
-			name: "Success - No project selected (creates new project)",
+			name:          "Success - No project selected (creates new project)",
+			createProject: true,
 			state: &CommandState{
 				Organization: &organization{
 					ID: "test-org-id",
@@ -859,6 +861,53 @@ func (s *ForgeTestSuite) TestDeploy() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
+			if tc.createProject {
+				// Create a temp directory for this test case
+				tmpDir, err := os.MkdirTemp("", "forge-Deploy-create-test")
+				s.Require().NoError(err)
+				defer os.RemoveAll(tmpDir)
+
+				// Save original working directory
+				oldDir, err := os.Getwd()
+				s.Require().NoError(err)
+				defer os.Chdir(oldDir)
+
+				// Change to temp directory
+				err = os.Chdir(tmpDir)
+				s.Require().NoError(err)
+
+				// Create minimal World project structure
+				worldDir := filepath.Join(tmpDir, ".world")
+				err = os.MkdirAll(worldDir, 0755)
+				s.Require().NoError(err)
+
+				// Create cardinal directory
+				cardinalDir := filepath.Join(tmpDir, "cardinal")
+				err = os.MkdirAll(cardinalDir, 0755)
+				s.Require().NoError(err)
+
+				// Initialize git repository
+				cmd := exec.Command("git", "init")
+				err = cmd.Run()
+				s.Require().NoError(err)
+
+				// Add a remote for the repository - use the same URL as in the test inputs
+				cmd = exec.Command(
+					"git",
+					"remote",
+					"add",
+					"origin",
+					"https://github.com/argus-labs/starter-game-template",
+				)
+				err = cmd.Run()
+				s.Require().NoError(err)
+
+				// Create empty world.toml
+				worldTomlPath := filepath.Join(tmpDir, "world.toml")
+				err = os.WriteFile(worldTomlPath, []byte(""), 0644)
+				s.Require().NoError(err)
+			}
+
 			inputIndex := 0
 			getInput = func(prompt string, defaultVal string) string {
 				if inputIndex >= len(tc.inputs) {
@@ -2262,29 +2311,56 @@ func (s *ForgeTestSuite) TestCreateProject() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			// Setup test config
-			err := SaveForgeConfig(tc.config)
+			// Create a temp directory for this test case
+			tmpDir, err := os.MkdirTemp("", "forge-create-test")
+			s.Require().NoError(err)
+			defer os.RemoveAll(tmpDir)
+
+			// Save original working directory
+			oldDir, err := os.Getwd()
+			s.Require().NoError(err)
+			defer os.Chdir(oldDir)
+
+			// Change to temp directory
+			err = os.Chdir(tmpDir)
 			s.Require().NoError(err)
 
-			// Create temporary directory for world.toml if needed
-			if tc.setupWorldToml {
-				tmpDir, err := os.MkdirTemp("", "world-cli-test")
-				s.Require().NoError(err)
-				defer os.RemoveAll(tmpDir)
+			// Create minimal World project structure
+			worldDir := filepath.Join(tmpDir, ".world")
+			err = os.MkdirAll(worldDir, 0755)
+			s.Require().NoError(err)
 
-				// Create world.toml with forge section
+			// Create cardinal directory
+			cardinalDir := filepath.Join(tmpDir, "cardinal")
+			err = os.MkdirAll(cardinalDir, 0755)
+			s.Require().NoError(err)
+
+			// Initialize git repository
+			cmd := exec.Command("git", "init")
+			err = cmd.Run()
+			s.Require().NoError(err)
+
+			// Add a remote for the repository
+			cmd = exec.Command("git", "remote", "add", "origin", "https://github.com/Argus-Labs/starter-game-template")
+			err = cmd.Run()
+			s.Require().NoError(err)
+
+			// Setup test config
+			err = SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
+
+			// Create world.toml if needed
+			if tc.setupWorldToml {
 				worldTomlPath := filepath.Join(tmpDir, "world.toml")
 				worldTomlContent := `[forge]
 PROJECT_NAME = "test-project-from-toml"
 `
 				err = os.WriteFile(worldTomlPath, []byte(worldTomlContent), 0644)
 				s.Require().NoError(err)
-
-				// Change to the temporary directory
-				oldDir, err := os.Getwd()
-				s.Require().NoError(err)
-				defer os.Chdir(oldDir)
-				err = os.Chdir(tmpDir)
+			} else {
+				// Create empty world.toml for all test cases
+				worldTomlPath := filepath.Join(tmpDir, "world.toml")
+				err = os.WriteFile(worldTomlPath, []byte(""), 0644)
 				s.Require().NoError(err)
 			}
 
@@ -3770,9 +3846,11 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 		inputs              []string
 		regionSelectActions []tea.KeyMsg // Add region selection actions
 		expectedError       bool
+		createProject       bool
 	}{
 		{
-			name: "Success - Always returns no projects case",
+			name:          "Success - Always returns no projects case",
+			createProject: true,
 			config: Config{
 				OrganizationID: "test-org-id",
 				Credential: Credential{
@@ -3781,16 +3859,16 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 			},
 			testToken: "empty-list",
 			inputs: []string{
-				"Y",            // Create project
-				"Test Project", // Project name
-				"testp",        // Project slug
-				"https://github.com/Argus-Labs/world-cli", // Repo URL
-				"",   // No token needed for public repo
-				"",   // Default repo path
-				"10", // Tick rate
-				"n",  // No Discord
-				"n",  // No Slack
-				"",   // No avatar URL
+				"Y",                            // Create project
+				"Test Project",                 // Project name
+				"testp",                        // Project slug
+				"https://github.com/test/repo", // Repo URL
+				"",                             // No token needed for public repo
+				"",                             // Default repo path
+				"10",                           // Tick rate
+				"n",                            // No Discord
+				"n",                            // No Slack
+				"",                             // No avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
 				{Type: tea.KeySpace}, // select region
@@ -3841,7 +3919,8 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 			expectedError: true,
 		},
 		{
-			name: "Success - Single project exists, create new project",
+			name:          "Success - Single project exists, create new project",
+			createProject: true,
 			config: Config{
 				OrganizationID: "test-org-id",
 				Credential: Credential{
@@ -3853,7 +3932,7 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 				"c",           // Choose to create new project
 				"New Project", // Project name
 				"newp",        // Project slug
-				"https://github.com/Argus-Labs/world-cli", // Repo URL
+				"https://github.com/argus-labs/starter-game-template", // Repo URL
 				"",   // No token needed for public repo
 				"",   // Default repo path
 				"10", // Tick rate
@@ -3913,6 +3992,53 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
+			if tc.createProject {
+				// Create a temp directory for this test case
+				tmpDir, err := os.MkdirTemp("", "forge-create-test")
+				s.Require().NoError(err)
+				defer os.RemoveAll(tmpDir)
+
+				// Save original working directory
+				oldDir, err := os.Getwd()
+				s.Require().NoError(err)
+				defer os.Chdir(oldDir)
+
+				// Change to temp directory
+				err = os.Chdir(tmpDir)
+				s.Require().NoError(err)
+
+				// Create minimal World project structure
+				worldDir := filepath.Join(tmpDir, ".world")
+				err = os.MkdirAll(worldDir, 0755)
+				s.Require().NoError(err)
+
+				// Create cardinal directory
+				cardinalDir := filepath.Join(tmpDir, "cardinal")
+				err = os.MkdirAll(cardinalDir, 0755)
+				s.Require().NoError(err)
+
+				// Initialize git repository
+				cmd := exec.Command("git", "init")
+				err = cmd.Run()
+				s.Require().NoError(err)
+
+				// Add a remote for the repository - use the same URL as in the test inputs
+				cmd = exec.Command(
+					"git",
+					"remote",
+					"add",
+					"origin",
+					"https://github.com/argus-labs/starter-game-template",
+				)
+				err = cmd.Run()
+				s.Require().NoError(err)
+
+				// Create empty world.toml
+				worldTomlPath := filepath.Join(tmpDir, "world.toml")
+				err = os.WriteFile(worldTomlPath, []byte(""), 0644)
+				s.Require().NoError(err)
+			}
+
 			// Setup test config
 			err := SaveForgeConfig(tc.config)
 			s.Require().NoError(err)
@@ -3922,17 +4048,19 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 			defer func() { s.testToken = "" }()
 
 			// Setup input mocking
-			inputIndex := 0
-			getInput = func(prompt string, defaultVal string) string {
-				if inputIndex >= len(tc.inputs) {
-					return defaultVal
+			if len(tc.inputs) > 0 {
+				inputIndex := 0
+				getInput = func(prompt string, defaultVal string) string {
+					if inputIndex >= len(tc.inputs) {
+						return defaultVal
+					}
+					input := tc.inputs[inputIndex]
+					inputIndex++
+					printer.Infof("%s [%s]: %s\n", prompt, defaultVal, input)
+					return input
 				}
-				input := tc.inputs[inputIndex]
-				inputIndex++
-				printer.Infof("%s [%s]: %s", prompt, defaultVal, input)
-				return input
+				defer func() { getInput = originalGetInput }()
 			}
-			defer func() { getInput = originalGetInput }()
 
 			// Simulate region selection
 			regionSelector = tea.NewProgram(
@@ -4426,29 +4554,76 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			// Save the test config
-			err := SaveForgeConfig(tc.config)
+			// --- TEST ISOLATION START ---
+			originalDir, err := os.Getwd()
+			s.Require().NoError(err)
+			tmpDir, err := os.MkdirTemp("", "forge-create-cmd-test")
+			s.Require().NoError(err)
+			err = os.Chdir(tmpDir)
+			s.Require().NoError(err)
+			defer func() {
+				os.Chdir(originalDir)
+				os.RemoveAll(tmpDir)
+			}()
+
+			// Create minimal World project structure
+			worldDir := filepath.Join(tmpDir, ".world")
+			err = os.MkdirAll(worldDir, 0755)
 			s.Require().NoError(err)
 
-			// Setup input mocking
+			// Create cardinal directory
+			cardinalDir := filepath.Join(tmpDir, "cardinal")
+			err = os.MkdirAll(cardinalDir, 0755)
+			s.Require().NoError(err)
+
+			// Initialize git repository
+			cmd := exec.Command("git", "init")
+			err = cmd.Run()
+			s.Require().NoError(err)
+
+			// Add a remote for the repository - use the same URL as in the test inputs
+			cmd = exec.Command(
+				"git",
+				"remote",
+				"add",
+				"origin",
+				"https://github.com/argus-labs/starter-game-template",
+			)
+			err = cmd.Run()
+			s.Require().NoError(err)
+
+			// Create empty world.toml
+			worldTomlPath := filepath.Join(tmpDir, "world.toml")
+			err = os.WriteFile(worldTomlPath, []byte(""), 0644)
+			s.Require().NoError(err)
+
+			defer func() { getInput = originalGetInput }()
+			defer func() { openBrowser = originalOpenBrowser }()
+			defer func() { regionSelector = nil }()
+			defer func() { s.testToken = "" }()
+			// --- TEST ISOLATION END ---
+
+			// Setup test config in temp dir
+			err = SaveForgeConfig(tc.config)
+			s.Require().NoError(err)
 
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
 				getInput = func(prompt string, defaultVal string) string {
 					printer.Infof("%s [%s]: ", prompt, defaultVal)
-
+					if inputIndex >= len(tc.inputs) {
+						panic(fmt.Errorf("Input %d Failed: prompt was %q", inputIndex, prompt))
+					}
 					input := tc.inputs[inputIndex]
+					inputIndex++
 					if input == "" {
 						input = defaultVal
 					}
 					printer.Infoln(input)
-					inputIndex++
 					return input
 				}
-				defer func() { getInput = originalGetInput }()
 			}
 
-			// Simulate region selection
 			regionSelector = tea.NewProgram(
 				multiselect.InitialMultiselectModel(
 					s.ctx,
@@ -4459,17 +4634,12 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 			if regionSelector == nil {
 				printer.Errorln("failed to create region selector")
 			}
-			defer func() { regionSelector = nil }()
 
-			// Send region select actions
 			go func() {
-				// wait for 1s to make sure the program is initialized
 				time.Sleep(1 * time.Second)
 				for _, action := range tc.regionSelectActions {
-					// send action to region selector
 					if regionSelector != nil {
 						regionSelector.Send(action)
-						// wait for 100ms to make sure the action is processed
 						time.Sleep(100 * time.Millisecond)
 					} else {
 						printer.Errorln("region selector is nil")
@@ -4477,7 +4647,6 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				}
 			}()
 
-			// Run the command
 			err = tc.cmd.Run()
 
 			if tc.expectedError {
@@ -4485,7 +4654,6 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 			} else {
 				s.Require().NoError(err)
 				if tc.expectedProj != nil {
-					// Verify the project was created by checking the config
 					config, err := GetForgeConfig()
 					s.Require().NoError(err)
 					s.Equal(tc.expectedProj.ID, config.ProjectID)

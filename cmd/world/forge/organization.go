@@ -102,14 +102,13 @@ func getListOfOrganizations(ctx context.Context) ([]organization, error) {
 }
 
 func selectOrganization(ctx context.Context, flags *SwitchOrganizationCmd) (organization, error) {
-	config, err := GetCurrentForgeConfig()
+	isKnown, err := isKnownRepo()
 	if err != nil {
-		return organization{}, eris.Wrap(err, "Could not get config")
+		return organization{}, eris.Wrap(err, "selectOrganization")
 	}
-	if config.CurrRepoKnown {
-		printer.Errorf("Current git working directory belongs to project %s.\n  Cannot switch Organization.\n",
-			config.CurrProjectName)
-		return organization{}, nil
+	if isKnown {
+		printer.Infoln(": Cannot switch Organization.")
+		return organization{}, eris.New("Cannot switch Organization, directory belongs to another project.")
 	}
 
 	// If slug is provided, select organization from slug

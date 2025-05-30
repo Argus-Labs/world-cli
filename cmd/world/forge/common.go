@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -262,10 +263,10 @@ func printNoOrganizations() {
 	printer.NewLine(1)
 	printer.Headerln("   No Organizations Found   ")
 	printer.Info("1. Use ")
-	printer.Notification("'world forge organization create'")
+	printer.Notification("'world organization create'")
 	printer.Infoln(" to create an organization.")
 	printer.Info("2. Have a member send invite using ")
-	printer.Notification("'world forge organization invite'")
+	printer.Notification("'world organization invite'")
 	printer.Infoln(".")
 }
 
@@ -274,7 +275,7 @@ func printNoSelectedOrganization() {
 	printer.Headerln("   No Organization Selected   ")
 	printer.Infoln("You don't have any organization selected.")
 	printer.Info("Use ")
-	printer.Notification("'world forge organization switch'")
+	printer.Notification("'world organization switch'")
 	printer.Infoln(" to select one!")
 }
 
@@ -283,7 +284,7 @@ func printNoSelectedProject() {
 	printer.Headerln("   No Project Selected   ")
 	printer.Infoln("You don't have any project selected.")
 	printer.Info("Use ")
-	printer.Notification("'world forge project switch'")
+	printer.Notification("'world project switch'")
 	printer.Infoln(" to select one!")
 }
 
@@ -291,9 +292,17 @@ func printNoProjectsInOrganization() {
 	printer.NewLine(1)
 	printer.Headerln("   No Projects Found   ")
 	printer.Infoln("You don't have any projects in this organization yet.")
-	printer.Info("Use ")
-	printer.Notification("'world forge project create'")
-	printer.Infoln(" to start your first project!")
+	printRequiredStepsToCreateProject()
+}
+
+func printRequiredStepsToCreateProject() {
+	printer.NewLine(1)
+	printer.Headerln(" To create a new project follow these steps ")
+	printer.Infoln("1. Move to the root of your World project.")
+	printer.Infoln("   This is the directory that contains world.toml and the cardinal directory")
+	printer.Infoln("2. Must be within a git repository")
+	printer.Info("3. Use command ")
+	printer.Notificationln("'world project create'")
 }
 
 // slugToSaneCheck checks that slug is valid, and returns a sanitized version.
@@ -409,4 +418,27 @@ func replaceLast(x, y, z string) string {
 		return x
 	}
 	return x[:i] + z + x[i+len(y):]
+}
+
+// isInWorldCadinalRoot checks if the current working directory is a World project.
+// It checks for the presence of world.toml and cardinal directory.
+func isInWorldCadinalRoot() (bool, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, eris.Wrap(err, "failed to get working directory")
+	}
+
+	worldTomlPath := filepath.Join(cwd, "world.toml")
+	cardinalDirPath := filepath.Join(cwd, "cardinal")
+
+	tomlInfo, err := os.Stat(worldTomlPath)
+	if err != nil || tomlInfo.IsDir() {
+		return false, nil //nolint:nilerr // false return gives all the information we need
+	}
+
+	cardinalInfo, err := os.Stat(cardinalDirPath)
+	if err != nil || !cardinalInfo.IsDir() {
+		return false, nil //nolint:nilerr // false return gives all the information we need
+	}
+	return true, nil
 }

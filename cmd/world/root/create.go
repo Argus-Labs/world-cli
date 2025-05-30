@@ -60,7 +60,9 @@ func NewWorldCreateModel(directory string) WorldCreateModel {
 	}
 
 	if directory != "" {
-		pnInput.SetValue(directory)
+		// Extract just the directory name from the path
+		dirName := filepath.Base(directory)
+		pnInput.SetValue(dirName)
 	}
 
 	return WorldCreateModel{

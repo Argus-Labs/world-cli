@@ -264,7 +264,7 @@ func (c *UpdateProjectCmd) Run() error {
 	if cmdState.Project == nil {
 		return eris.New("Forge setup failed, no project selected")
 	}
-	return cmdState.Project.updateProject(ctx, c)
+	return cmdState.Project.updateProject(ctx, c, cmdState)
 }
 
 type DeleteProjectCmd struct {

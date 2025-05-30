@@ -217,7 +217,43 @@ func (p *project) getListOfAvailableRegions(ctx context.Context) ([]string, erro
 	return getListRegions(ctx, p.OrgID, p.ID)
 }
 
+// projectPreCreateUpdateValidation returns the repo path and URL, and an error.
+func projectPreCreateUpdateValidation() (string, string, error) {
+	repoPath, repoURL, err := FindGitPathAndURL()
+	if err != nil && !strings.Contains(err.Error(), ErrNotInGitRepository.Error()) {
+		return repoPath, repoURL, eris.Wrap(err, "Failed to find git path and URL")
+	} else if repoURL == "" { // Path is ok as empty, This means it's in repo root.
+		printer.Errorln(" Not in a git repository")
+		return repoPath, repoURL, ErrNotInGitRepository
+	}
+
+	inRoot, err := isInWorldCadinalRoot()
+	if err != nil {
+		return repoPath, repoURL, eris.Wrap(err, "Failed to check if in World project root")
+	} else if !inRoot {
+		printer.Errorln(" Not in a World project root")
+		return repoPath, repoURL, eris.New("Not in a World project root")
+	}
+
+	return repoPath, repoURL, nil
+}
+
 func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, error) {
+	isKnown, err := isKnownRepo()
+	if err != nil {
+		return nil, eris.Wrap(err, "createProject")
+	}
+	if isKnown {
+		printer.Infoln(", Cannot create Project.")
+		return nil, eris.New("Cannot create Project, directory belongs to another project.")
+	}
+
+	repoPath, repoURL, err := projectPreCreateUpdateValidation()
+	if err != nil {
+		printRequiredStepsToCreateProject()
+		return nil, eris.Wrap(err, "Failed to validate project creation")
+	}
+
 	regions, err := getListOfAvailableRegionsForNewProject(ctx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get available regions")
@@ -230,6 +266,8 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 		Name:      flags.Name,
 		Slug:      flags.Slug,
 		AvatarURL: flags.AvatarURL,
+		RepoPath:  repoPath,
+		RepoURL:   repoURL,
 		update:    false,
 	}
 	err = p.getSetupInput(ctx, regions)
@@ -512,13 +550,12 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	}
 }
 
-func selectProjectBySlug(ctx context.Context, projects []project, slug string, config *Config) (*project, error) {
+func selectProjectBySlug(ctx context.Context, projects []project, slug string) (*project, error) {
 	for _, project := range projects {
 		if project.Slug == slug {
-			config.ProjectID = project.ID
-			err := SaveForgeConfig(*config)
+			err := project.saveToConfig()
 			if err != nil {
-				return nil, eris.Wrap(err, "Failed to save project")
+				return nil, eris.Wrap(err, "selectProjectBySlug")
 			}
 			showProjectList(ctx)
 			return &project, nil
@@ -531,14 +568,13 @@ func selectProjectBySlug(ctx context.Context, projects []project, slug string, c
 }
 
 func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, error) {
-	config, err := GetCurrentForgeConfig()
+	isKnown, err := isKnownRepo()
 	if err != nil {
-		return nil, eris.Wrap(err, "Could not get config")
+		return nil, eris.Wrap(err, "selectProject")
 	}
-	if config.CurrRepoKnown {
-		printer.Errorf("Current git working directory belongs to project %s.\n  Cannot switch Project.\n",
-			config.CurrProjectName)
-		return nil, nil //nolint: nilnil // See: https://www.dolthub.com/blog/2024-05-31-benchmarking-go-error-handling/
+	if isKnown {
+		printer.Infoln(", Cannot switch Project.")
+		return nil, eris.New("Cannot switch project, directory belongs to another project.")
 	}
 
 	// Get projects from selected organization
@@ -554,7 +590,7 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 
 	// If slug is provided, select the project by slug
 	if flags.Slug != "" {
-		return selectProjectBySlug(ctx, projects, flags.Slug, &config)
+		return selectProjectBySlug(ctx, projects, flags.Slug)
 	}
 
 	// Display projects as a numbered list
@@ -581,10 +617,9 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 
 		selectedProject := projects[num-1]
 
-		config.ProjectID = selectedProject.ID
-		err = SaveForgeConfig(config)
+		err = selectedProject.saveToConfig()
 		if err != nil {
-			return nil, eris.Wrap(err, "Failed to save project")
+			return nil, eris.Wrap(err, "selectProject")
 		}
 
 		printer.NewLine(1)
@@ -661,7 +696,18 @@ func (p *project) delete(ctx context.Context) error {
 	return nil
 }
 
-func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd) error {
+func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cmdState *CommandState) error {
+	if cmdState.Project == nil || cmdState.Project.Name == "" || cmdState.Project.Slug == "" {
+		return eris.New("Forge setup failed, no project selected")
+	}
+	printer.Infof("Updating Project: %s [%s]\n", cmdState.Project.Name, cmdState.Project.Slug)
+
+	repoPath, repoURL, err := projectPreCreateUpdateValidation()
+	if err != nil {
+		printRequiredStepsToCreateProject()
+		return eris.Wrap(err, "Failed to validate project update")
+	}
+
 	regions, err := p.getListOfAvailableRegions(ctx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
@@ -672,6 +718,8 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd) er
 	p.Name = flags.Name
 	p.Slug = flags.Slug
 	p.AvatarURL = flags.AvatarURL
+	p.RepoPath = repoPath
+	p.RepoURL = repoURL
 
 	printer.NewLine(1)
 	printer.Headerln("  Project Update  ")
@@ -1040,8 +1088,8 @@ func handleMultipleProjects(ctx context.Context, projects []project) error {
 // handleNoProjects handles the case when there are no projects.
 func handleNoProjects(ctx context.Context) error {
 	// Confirmation prompt
+	printNoProjectsInOrganization()
 	printer.NewLine(1)
-	printer.Headerln("   No Projects Found   ")
 	confirmation := getInput("Do you want to create a new project now? (y/n)", "y")
 
 	if strings.ToLower(confirmation) != "y" {

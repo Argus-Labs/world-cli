@@ -33,9 +33,9 @@ func (flow *initFlow) handleNeedProjectData() error {
 
 func (flow *initFlow) handleNeedProjectCaseNoProjects() error {
 	for {
+		printNoProjectsInOrganization()
 		printer.NewLine(1)
-		printer.Infoln("No projects found.")
-		choice := getInput("Would you like to create one? (Y/n)", "Y")
+		choice := getInput("If conditions are met, would you like to create a new project? (Y/n)", "Y")
 
 		switch choice {
 		case "Y":
@@ -105,13 +105,17 @@ func (flow *initFlow) handleNeedExistingProjectData() error {
 
 	switch len(projects) {
 	case 0: // No projects found
-		printNoProjectsInOrganization()
-		return ErrProjectSelectionCanceled
+		return flow.handleNeedExistingProjectCaseNoProjects()
 	case 1: // One project found
 		return flow.handleNeedExistingProjectCaseOneProject(projects)
 	default: // Multiple projects found
 		return flow.handleNeedExistingProjectCaseMultipleProjects()
 	}
+}
+
+func (flow *initFlow) handleNeedExistingProjectCaseNoProjects() error {
+	printNoProjectsInOrganization()
+	return ErrProjectSelectionCanceled
 }
 
 func (flow *initFlow) handleNeedExistingProjectCaseOneProject(projects []project) error {

@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 const minimumURLParts = 2
+
+var ErrNotInGitRepository = eris.New("Not in a git repository")
 
 // identifyProvider determines the Git provider based on the URL's host.
 func identifyProvider(repoURL string) (string, string, error) {
@@ -171,4 +176,60 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 		return nil
 	}
 	return fmt.Errorf("bitbucket validation failed: %s", resp.Status)
+}
+
+func FindGitPathAndURL() (string, string, error) {
+	// Try to get the 'origin' remote URL first
+	urlData, err := exec.Command("git", "config", "--get", "remote.origin.url").Output()
+	if err != nil || strings.TrimSpace(string(urlData)) == "" {
+		// Fallback: get the first available remote URL
+		remoteList, fallbackErr := exec.Command("git", "remote", "-v").Output()
+		if fallbackErr != nil {
+			return "", "", eris.Wrap(
+				fallbackErr,
+				fmt.Sprintf("%s: %s", ErrNotInGitRepository, "failed to get remote list"),
+			)
+		}
+		lines := strings.Split(string(remoteList), "\n")
+		for _, line := range lines {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				urlData = []byte(parts[1])
+				break
+			}
+		}
+	}
+
+	url := strings.TrimSpace(string(urlData))
+	if url == "" {
+		return "", "", ErrNotInGitRepository
+	}
+	url = replaceLast(url, ".git", "")
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return "", url, err
+	}
+	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", url, err
+	}
+	rootPath := strings.TrimSpace(string(root))
+	path := strings.Replace(workingDir, rootPath, "", 1)
+	if len(path) > 0 && path[0] == '/' {
+		path = path[1:]
+	}
+	return path, url, nil
+}
+
+func isKnownRepo() (bool, error) {
+	config, err := GetCurrentForgeConfig()
+	if err != nil {
+		return false, eris.Wrap(err, "Could not get config")
+	}
+	if config.CurrRepoKnown {
+		printer.Errorf("Current git working directory belongs to project: %s",
+			config.CurrProjectName)
+		return true, nil
+	}
+	return false, nil
 }
