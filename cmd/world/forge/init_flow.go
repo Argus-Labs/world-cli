@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -252,14 +251,7 @@ func (flow *initFlow) doRepoLookup(ctx context.Context) error {
 	}
 	if proj != nil {
 		// add to list of known projects
-		flow.AddKnownProject(proj)
-		// save the config, but don't change the default ProjectID & OrgID
-		err := SaveForgeConfig(flow.config)
-		if err != nil {
-			printer.Notificationf("Warning: Failed to save config: %s", err)
-			logger.Error(eris.Wrap(err, "Init flow failed to save config"))
-			// continue on, this is not fatal
-		}
+		proj.AddKnownProject(&flow.config)
 		// now return a copy of it with the looked up ProjectID and OrganizationID set
 		flow.config.ProjectID = proj.ID
 		flow.config.OrganizationID = proj.OrgID
@@ -267,16 +259,6 @@ func (flow *initFlow) doRepoLookup(ctx context.Context) error {
 		flow.config.CurrRepoKnown = true
 	}
 	return nil
-}
-
-func (flow *initFlow) AddKnownProject(proj *project) {
-	flow.config.KnownProjects = append(flow.config.KnownProjects, KnownProject{
-		ProjectID:      proj.ID,
-		OrganizationID: proj.OrgID,
-		RepoURL:        proj.RepoURL,
-		RepoPath:       proj.RepoPath,
-		ProjectName:    proj.Name,
-	})
 }
 
 func (flow *initFlow) inKnownRepo() bool {

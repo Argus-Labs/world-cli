@@ -13,6 +13,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/tomlutil"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
@@ -682,6 +683,15 @@ func (p *project) delete(ctx context.Context) error {
 		return eris.Wrap(err, "Failed to delete project")
 	}
 
+	cfg, err := GetForgeConfig()
+	if err != nil {
+		// TODO: if this happens, what do we do? Chache messed up need to reset it?
+		printer.Notificationf("Warning: delete Project failed to update config: %s", err)
+		logger.Error(eris.Wrap(err, "Failed to get config after removing known project"))
+	} else {
+		p.RemoveKnownProject(&cfg)
+	}
+
 	// Parse response
 	_, err = parseResponse[any](body)
 	if err != nil {
@@ -746,6 +756,15 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cm
 	})
 	if err != nil {
 		return eris.Wrap(err, "Failed to update project")
+	}
+
+	cfg, err := GetForgeConfig()
+	if err != nil {
+		// TODO: if this happens, what do we do? Chache messed up need to reset it?
+		printer.Notificationf("Warning: updateProject failed to update config: %s", err)
+		logger.Error(eris.Wrap(err, "Failed to get config after removing known project"))
+	} else {
+		p.RemoveKnownProject(&cfg)
 	}
 
 	_, err = parseResponse[any](body)
@@ -1129,6 +1148,53 @@ func (p *project) inputAvatarURL(ctx context.Context) error {
 
 			p.AvatarURL = avatarURL
 			return nil
+		}
+	}
+}
+
+func (p *project) AddKnownProject(config *Config) {
+	config.KnownProjects = append(config.KnownProjects, KnownProject{
+		ProjectID:      p.ID,
+		OrganizationID: p.OrgID,
+		RepoURL:        p.RepoURL,
+		RepoPath:       p.RepoPath,
+		ProjectName:    p.Name,
+	})
+
+	err := SaveForgeConfig(*config)
+	if err != nil {
+		printer.Notificationf("Warning: Failed to save config: %s", err)
+		logger.Error(eris.Wrap(err, "AddKnownProject failed to save config"))
+		// continue on, this is not fatal
+	}
+}
+
+func (p *project) RemoveKnownProject(config *Config) {
+	newKnownProjects := make([]KnownProject, 0)
+
+	for _, knownProj := range config.KnownProjects {
+		if knownProj.OrganizationID != p.OrgID || knownProj.ProjectID != p.ID {
+			newKnownProjects = append(newKnownProjects, knownProj)
+		}
+	}
+
+	config.KnownProjects = newKnownProjects
+
+	err := SaveForgeConfig(*config)
+	if err != nil {
+		// if the save fails, we need to try with a fresh config again.
+		cfg, err := GetForgeConfig()
+		if err != nil {
+			// TODO: if this happens, what do we do? Chache messed up need to reset it?
+			printer.Notificationf("Warning: RemoveKnownProject failed to update config: %s", err)
+			logger.Error(eris.Wrap(err, "Failed to get config after removing known project"))
+		}
+		cfg.KnownProjects = newKnownProjects
+		err = SaveForgeConfig(cfg)
+		if err != nil {
+			// TODO: if this happens, what do we do? Chache messed up need to reset it?
+			printer.Notificationf("Warning: RemoveKnownProject failed to save config: %s", err)
+			logger.Error(eris.Wrap(err, "Failed to save config after removing known project"))
 		}
 	}
 }

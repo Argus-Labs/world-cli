@@ -3510,7 +3510,7 @@ func (s *ForgeTestSuite) TestAddKnownProject() {
 	}
 
 	flowObject := &initFlow{config: *config}
-	flowObject.AddKnownProject(proj)
+	proj.AddKnownProject(&flowObject.config)
 	config = &flowObject.config
 
 	s.Len(config.KnownProjects, 1)
@@ -3521,6 +3521,110 @@ func (s *ForgeTestSuite) TestAddKnownProject() {
 		RepoPath:       "cmd/world/forge",
 		ProjectName:    "Test Project",
 	}, config.KnownProjects[0])
+}
+
+func (s *ForgeTestSuite) TestRemoveKnownProject() {
+	testCases := []struct {
+		name             string
+		initialConfig    *Config
+		projectToRemove  *project
+		expectedProjects []KnownProject
+	}{
+		{
+			name: "successfully remove project",
+			initialConfig: &Config{
+				KnownProjects: []KnownProject{
+					{
+						ProjectID:      "test-project-id",
+						OrganizationID: "test-org-id",
+						RepoURL:        "https://github.com/test/repo",
+						RepoPath:       "cmd/world/forge",
+						ProjectName:    "Test Project",
+					},
+					{
+						ProjectID:      "other-project-id",
+						OrganizationID: "other-org-id",
+						RepoURL:        "https://github.com/other/repo",
+						RepoPath:       "other/path",
+						ProjectName:    "Other Project",
+					},
+				},
+			},
+			projectToRemove: &project{
+				ID:       "test-project-id",
+				OrgID:    "test-org-id",
+				RepoURL:  "https://github.com/test/repo",
+				RepoPath: "cmd/world/forge",
+				Name:     "Test Project",
+			},
+			expectedProjects: []KnownProject{
+				{
+					ProjectID:      "other-project-id",
+					OrganizationID: "other-org-id",
+					RepoURL:        "https://github.com/other/repo",
+					RepoPath:       "other/path",
+					ProjectName:    "Other Project",
+				},
+			},
+		},
+		{
+			name: "remove project with empty config",
+			initialConfig: &Config{
+				KnownProjects: make([]KnownProject, 0),
+			},
+			projectToRemove: &project{
+				ID:       "test-project-id",
+				OrgID:    "test-org-id",
+				RepoURL:  "https://github.com/test/repo",
+				RepoPath: "cmd/world/forge",
+				Name:     "Test Project",
+			},
+			expectedProjects: make([]KnownProject, 0),
+		},
+		{
+			name: "remove non-existent project",
+			initialConfig: &Config{
+				KnownProjects: []KnownProject{
+					{
+						ProjectID:      "other-project-id",
+						OrganizationID: "other-org-id",
+						RepoURL:        "https://github.com/other/repo",
+						RepoPath:       "other/path",
+						ProjectName:    "Other Project",
+					},
+				},
+			},
+			projectToRemove: &project{
+				ID:       "test-project-id",
+				OrgID:    "test-org-id",
+				RepoURL:  "https://github.com/test/repo",
+				RepoPath: "cmd/world/forge",
+				Name:     "Test Project",
+			},
+			expectedProjects: []KnownProject{
+				{
+					ProjectID:      "other-project-id",
+					OrganizationID: "other-org-id",
+					RepoURL:        "https://github.com/other/repo",
+					RepoPath:       "other/path",
+					ProjectName:    "Other Project",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Setup
+			flowObject := &initFlow{config: *tc.initialConfig}
+
+			// Execute
+			tc.projectToRemove.RemoveKnownProject(&flowObject.config)
+
+			// Verify
+			s.Equal(tc.expectedProjects, flowObject.config.KnownProjects)
+		})
+	}
 }
 
 func (s *ForgeTestSuite) TestHandleNeedOrgData() {
