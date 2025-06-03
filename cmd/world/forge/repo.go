@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/printer"
 )
 
 const minimumURLParts = 2
@@ -219,17 +218,4 @@ func FindGitPathAndURL() (string, string, error) {
 		path = path[1:]
 	}
 	return path, url, nil
-}
-
-func isKnownRepo() (bool, error) {
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return false, eris.Wrap(err, "Could not get config")
-	}
-	if config.CurrRepoKnown {
-		printer.Errorf("Current git working directory belongs to project: %s",
-			config.CurrProjectName)
-		return true, nil
-	}
-	return false, nil
 }

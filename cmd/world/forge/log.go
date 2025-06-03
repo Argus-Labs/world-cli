@@ -21,13 +21,13 @@ type logParams struct {
 	env          string
 }
 
-func getLogParams(ctx context.Context, region string, env string) (*logParams, error) {
-	organization, err := getSelectedOrganization(ctx)
+func getLogParams(fCtx ForgeContext, region string, env string) (*logParams, error) {
+	organization, err := getSelectedOrganization(fCtx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get selected organization")
 	}
 
-	project, err := getSelectedProject(ctx)
+	project, err := getSelectedProject(fCtx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get selected project")
 	}
@@ -40,7 +40,7 @@ func getLogParams(ctx context.Context, region string, env string) (*logParams, e
 	}
 
 	if env == "" {
-		envs, err := getListOfEnvironments(ctx, project)
+		envs, err := getListOfEnvironments(fCtx, project)
 		if err != nil {
 			return nil, err
 		}
@@ -113,10 +113,10 @@ func selectEnvironment(availableEnvs []string) (string, error) {
 	return DeployEnvPreview, nil
 }
 
-func getListOfEnvironments(ctx context.Context, project project) ([]string, error) {
+func getListOfEnvironments(fCtx ForgeContext, project project) ([]string, error) {
 	// Get the list of environments from the health check endpoint
 	statusURL := fmt.Sprintf("%s/api/health/%s", baseURL, project.ID)
-	result, err := sendRequest(ctx, http.MethodGet, statusURL, nil)
+	result, err := sendRequest(fCtx, http.MethodGet, statusURL, nil)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get deployment status")
 	}
@@ -154,10 +154,9 @@ func confirmLogParams(params *logParams) error {
 	return nil
 }
 
-func createLogsClient(params *logParams) (
+func createLogsClient(fCtx ForgeContext, params *logParams) (
 	logsv1connect.LogsServiceClient,
 	*connect.Request[logsv1.GetLogsRequest],
-	error,
 ) {
 	client := logsv1connect.NewLogsServiceClient(
 		http.DefaultClient,
@@ -171,15 +170,10 @@ func createLogsClient(params *logParams) (
 		Region:           params.region,
 	})
 
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return nil, nil, eris.Wrap(err, "Failed to get global config")
-	}
-
-	token := config.Credential.Token
+	token := fCtx.Config.Credential.Token
 	req.Header().Set("Authorization", token)
 
-	return client, req, nil
+	return client, req
 }
 
 func streamLogs(ctx context.Context,
@@ -213,8 +207,8 @@ func streamLogs(ctx context.Context,
 	}
 }
 
-func tailLogs(ctx context.Context, region string, env string) error {
-	params, err := getLogParams(ctx, region, env)
+func tailLogs(fCtx ForgeContext, region string, env string) error {
+	params, err := getLogParams(fCtx, region, env)
 	if err != nil {
 		return err
 	}
@@ -223,10 +217,6 @@ func tailLogs(ctx context.Context, region string, env string) error {
 		return err
 	}
 
-	client, req, err := createLogsClient(params)
-	if err != nil {
-		return err
-	}
-
-	return streamLogs(ctx, client, req)
+	client, req := createLogsClient(fCtx, params)
+	return streamLogs(fCtx.Context, client, req)
 }

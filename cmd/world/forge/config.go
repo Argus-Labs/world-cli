@@ -19,6 +19,8 @@ const (
 	EnvProd  = "PROD"
 )
 
+var ErrCannotSaveConfig = eris.New("Critical config update error could not save")
+
 type Config struct {
 	OrganizationID string         `json:"organization_id"`
 	ProjectID      string         `json:"project_id"`
@@ -96,13 +98,13 @@ func GetCurrentForgeConfig() (Config, error) {
 	return currConfig, err
 }
 
-func SaveForgeConfig(globalConfig Config) error {
+func (c Config) Save() error {
 	configFile, err := getConfigFileName()
 	if err != nil {
 		return eris.Wrap(err, "failed get config file name")
 	}
 
-	configJSON, err := json.Marshal(globalConfig)
+	configJSON, err := json.Marshal(c)
 	if err != nil {
 		return eris.Wrap(err, "failed to marshal config")
 	}

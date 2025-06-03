@@ -69,8 +69,8 @@ type notificationConfig struct {
 }
 
 // Show list of projects in selected organization.
-func showProjectList(ctx context.Context) error {
-	projects, err := getListOfProjects(ctx)
+func showProjectList(fCtx ForgeContext) error {
+	projects, err := getListOfProjects(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
 	}
@@ -80,7 +80,7 @@ func showProjectList(ctx context.Context) error {
 		return nil
 	}
 
-	selectedProject, err := getSelectedProject(ctx)
+	selectedProject, err := getSelectedProject(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get selected project")
 	}
@@ -105,8 +105,8 @@ func showProjectList(ctx context.Context) error {
 }
 
 // Get selected project.
-func getSelectedProject(ctx context.Context) (project, error) {
-	selectedOrg, err := getSelectedOrganization(ctx)
+func getSelectedProject(fCtx ForgeContext) (project, error) {
+	selectedOrg, err := getSelectedOrganization(fCtx)
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get organization")
 	}
@@ -116,14 +116,8 @@ func getSelectedProject(ctx context.Context) (project, error) {
 		return project{}, nil
 	}
 
-	// Get config
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return project{}, eris.Wrap(err, "Failed to get config")
-	}
-
-	if config.ProjectID == "" {
-		projects, err := getListOfProjects(ctx)
+	if fCtx.Config.ProjectID == "" {
+		projects, err := getListOfProjects(fCtx)
 		if err != nil {
 			return project{}, eris.Wrap(err, "Failed to get projects")
 		}
@@ -134,8 +128,8 @@ func getSelectedProject(ctx context.Context) (project, error) {
 	}
 
 	// Send request
-	projectURL := fmt.Sprintf(projectURLPattern, baseURL, selectedOrg.ID) + "/" + config.ProjectID
-	body, err := sendRequest(ctx, http.MethodGet, projectURL, nil)
+	projectURL := fmt.Sprintf(projectURLPattern, baseURL, selectedOrg.ID) + "/" + fCtx.Config.ProjectID
+	body, err := sendRequest(fCtx, http.MethodGet, projectURL, nil)
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get project")
 	}
@@ -150,8 +144,8 @@ func getSelectedProject(ctx context.Context) (project, error) {
 }
 
 // Get list of projects in selected organization.
-func getListOfProjects(ctx context.Context) ([]project, error) {
-	selectedOrg, err := getSelectedOrganization(ctx)
+func getListOfProjects(fCtx ForgeContext) ([]project, error) {
+	selectedOrg, err := getSelectedOrganization(fCtx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get organization")
 	}
@@ -162,7 +156,7 @@ func getListOfProjects(ctx context.Context) ([]project, error) {
 	}
 
 	url := fmt.Sprintf(projectURLPattern, baseURL, selectedOrg.ID)
-	body, err := sendRequest(ctx, http.MethodGet, url, nil)
+	body, err := sendRequest(fCtx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get projects")
 	}
@@ -175,9 +169,9 @@ func getListOfProjects(ctx context.Context) ([]project, error) {
 	return *projects, nil
 }
 
-func getListRegions(ctx context.Context, orgID, projID string) ([]string, error) {
+func getListRegions(fCtx ForgeContext, orgID, projID string) ([]string, error) {
 	url := fmt.Sprintf(projectURLPattern+"/%s/regions", baseURL, orgID, projID)
-	body, err := sendRequest(ctx, http.MethodGet, url, nil)
+	body, err := sendRequest(fCtx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get regions")
 	}
@@ -197,8 +191,8 @@ func getListRegions(ctx context.Context, orgID, projID string) ([]string, error)
 }
 
 // Get list of projects in selected organization.
-func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, error) {
-	selectedOrg, err := getSelectedOrganization(ctx)
+func getListOfAvailableRegionsForNewProject(fCtx ForgeContext) ([]string, error) {
+	selectedOrg, err := getSelectedOrganization(fCtx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get organization")
 	}
@@ -206,16 +200,16 @@ func getListOfAvailableRegionsForNewProject(ctx context.Context) ([]string, erro
 		printNoSelectedOrganization()
 		return nil, nil
 	}
-	return getListRegions(ctx, selectedOrg.ID, "00000000-0000-0000-0000-000000000000")
+	return getListRegions(fCtx, selectedOrg.ID, "00000000-0000-0000-0000-000000000000")
 }
 
 // Get list of projects in selected organization.
-func (p *project) getListOfAvailableRegions(ctx context.Context) ([]string, error) {
+func (p *project) getListOfAvailableRegions(fCtx ForgeContext) ([]string, error) {
 	if p.ID == "" || p.OrgID == "" {
 		printNoSelectedProject()
 		return nil, nil
 	}
-	return getListRegions(ctx, p.OrgID, p.ID)
+	return getListRegions(fCtx, p.OrgID, p.ID)
 }
 
 // projectPreCreateUpdateValidation returns the repo path and URL, and an error.
@@ -239,13 +233,10 @@ func projectPreCreateUpdateValidation() (string, string, error) {
 	return repoPath, repoURL, nil
 }
 
-func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, error) {
-	isKnown, err := isKnownRepo()
-	if err != nil {
-		return nil, eris.Wrap(err, "createProject")
-	}
-	if isKnown {
-		printer.Infoln(", Cannot create Project.")
+func createProject(fCtx ForgeContext, flags *CreateProjectCmd) (*project, error) {
+	if fCtx.Config.CurrRepoKnown {
+		printer.Errorf("Cannot create Project, current git working directory belongs to project: %s.",
+			fCtx.Config.CurrProjectName)
 		return nil, eris.New("Cannot create Project, directory belongs to another project.")
 	}
 
@@ -255,7 +246,7 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 		return nil, eris.Wrap(err, "Failed to validate project creation")
 	}
 
-	regions, err := getListOfAvailableRegionsForNewProject(ctx)
+	regions, err := getListOfAvailableRegionsForNewProject(fCtx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get available regions")
 	}
@@ -271,14 +262,14 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 		RepoURL:   repoURL,
 		update:    false,
 	}
-	err = p.getSetupInput(ctx, regions)
+	err = p.getSetupInput(fCtx, regions)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get project input")
 	}
 
 	// Send request
 	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID)
-	body, err := sendRequest(ctx, http.MethodPost, url, map[string]interface{}{
+	body, err := sendRequest(fCtx, http.MethodPost, url, map[string]interface{}{
 		"name":       p.Name,
 		"slug":       p.Slug,
 		"repo_url":   p.RepoURL,
@@ -298,7 +289,7 @@ func createProject(ctx context.Context, flags *CreateProjectCmd) (*project, erro
 	}
 
 	// Select project
-	prj.saveToConfig()
+	prj.saveToConfig(fCtx)
 
 	prj.displayProjectDetails()
 	printer.Infof("• Deploy Secret (for deploy via CI/CD pipeline tools): ")
@@ -551,35 +542,32 @@ func (p *project) inputRepoPath(ctx context.Context) {
 	}
 }
 
-func selectProjectBySlug(ctx context.Context, projects []project, slug string) (*project, error) {
+func selectProjectBySlug(fCtx ForgeContext, projects []project, slug string) (*project, error) {
 	for _, project := range projects {
 		if project.Slug == slug {
-			err := project.saveToConfig()
+			err := project.saveToConfig(fCtx)
 			if err != nil {
 				return nil, eris.Wrap(err, "selectProjectBySlug")
 			}
-			showProjectList(ctx)
+			showProjectList(fCtx)
 			return &project, nil
 		}
 	}
-	showProjectList(ctx)
+	showProjectList(fCtx)
 	printer.NewLine(1)
 	printer.Errorln("Project not found in organization under the slug: " + slug)
 	return nil, ErrProjectSelectionCanceled
 }
 
-func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, error) {
-	isKnown, err := isKnownRepo()
-	if err != nil {
-		return nil, eris.Wrap(err, "selectProject")
-	}
-	if isKnown {
-		printer.Infoln(", Cannot switch Project.")
-		return nil, eris.New("Cannot switch project, directory belongs to another project.")
+func selectProject(fCtx ForgeContext, flags *SwitchProjectCmd) (*project, error) {
+	if fCtx.Config.CurrRepoKnown {
+		printer.Errorf("Cannot switch Project, current git working directory belongs to project: %s.",
+			fCtx.Config.CurrProjectName)
+		return nil, eris.New("Cannot switch Project, directory belongs to another project.")
 	}
 
 	// Get projects from selected organization
-	projects, err := getListOfProjects(ctx)
+	projects, err := getListOfProjects(fCtx)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get projects")
 	}
@@ -591,7 +579,7 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 
 	// If slug is provided, select the project by slug
 	if flags.Slug != "" {
-		return selectProjectBySlug(ctx, projects, flags.Slug)
+		return selectProjectBySlug(fCtx, projects, flags.Slug)
 	}
 
 	// Display projects as a numbered list
@@ -618,7 +606,7 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 
 		selectedProject := projects[num-1]
 
-		err = selectedProject.saveToConfig()
+		err = selectedProject.saveToConfig(fCtx)
 		if err != nil {
 			return nil, eris.Wrap(err, "selectProject")
 		}
@@ -629,8 +617,8 @@ func selectProject(ctx context.Context, flags *SwitchProjectCmd) (*project, erro
 	}
 }
 
-func getProjectDataByID(ctx context.Context, id string) (project, error) {
-	projects, err := getListOfProjects(ctx)
+func getProjectDataByID(fCtx ForgeContext, id string) (project, error) {
+	projects, err := getListOfProjects(fCtx)
 	if err != nil {
 		return project{}, eris.Wrap(err, "Failed to get projects")
 	}
@@ -647,7 +635,7 @@ func getProjectDataByID(ctx context.Context, id string) (project, error) {
 	return project{}, eris.New("Project not found with ID: " + id)
 }
 
-func (p *project) delete(ctx context.Context) error {
+func (p *project) delete(fCtx ForgeContext) error {
 	// Print project details with fancy formatting
 	printer.NewLine(1)
 	printer.Headerln("   Project Deletion   ")
@@ -678,19 +666,12 @@ func (p *project) delete(ctx context.Context) error {
 
 	// Send request
 	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID) + "/" + p.ID
-	body, err := sendRequest(ctx, http.MethodDelete, url, nil)
+	body, err := sendRequest(fCtx, http.MethodDelete, url, nil)
 	if err != nil {
 		return eris.Wrap(err, "Failed to delete project")
 	}
 
-	cfg, err := GetForgeConfig()
-	if err != nil {
-		// TODO: if this happens, what do we do? Chache messed up need to reset it?
-		printer.Notificationf("Warning: delete Project failed to update config: %s", err)
-		logger.Error(eris.Wrap(err, "Failed to get config after removing known project"))
-	} else {
-		p.RemoveKnownProject(&cfg)
-	}
+	p.RemoveKnownProject(fCtx.Config)
 
 	// Parse response
 	_, err = parseResponse[any](body)
@@ -701,16 +682,16 @@ func (p *project) delete(ctx context.Context) error {
 	printer.Successf("Project deleted: %s (%s)\n", p.Name, p.Slug)
 
 	// Remove project from config
-	(&project{ID: ""}).saveToConfig()
+	(&project{ID: "", Name: ""}).saveToConfig(fCtx)
 
 	return nil
 }
 
-func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cmdState *CommandState) error {
-	if cmdState.Project == nil || cmdState.Project.Name == "" || cmdState.Project.Slug == "" {
+func (p *project) updateProject(fCtx ForgeContext, flags *UpdateProjectCmd) error {
+	if fCtx.State.Project.Name == "" || fCtx.State.Project.Slug == "" {
 		return eris.New("Forge setup failed, no project selected")
 	}
-	printer.Infof("Updating Project: %s [%s]\n", cmdState.Project.Name, cmdState.Project.Slug)
+	printer.Infof("Updating Project: %s [%s]\n", fCtx.State.Project.Name, fCtx.State.Project.Slug)
 
 	repoPath, repoURL, err := projectPreCreateUpdateValidation()
 	if err != nil {
@@ -718,7 +699,7 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cm
 		return eris.Wrap(err, "Failed to validate project update")
 	}
 
-	regions, err := p.getListOfAvailableRegions(ctx)
+	regions, err := p.getListOfAvailableRegions(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get available regions")
 	}
@@ -735,7 +716,7 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cm
 	printer.Headerln("  Project Update  ")
 
 	// get project input
-	err = p.getSetupInput(ctx, regions)
+	err = p.getSetupInput(fCtx, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project input")
 	}
@@ -745,7 +726,7 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cm
 
 	// Send request
 	url := fmt.Sprintf(projectURLPattern, baseURL, p.OrgID) + "/" + p.ID
-	body, err := sendRequest(ctx, http.MethodPut, url, map[string]interface{}{
+	body, err := sendRequest(fCtx, http.MethodPut, url, map[string]interface{}{
 		"name":       p.Name,
 		"slug":       p.Slug,
 		"repo_url":   p.RepoURL,
@@ -758,14 +739,7 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cm
 		return eris.Wrap(err, "Failed to update project")
 	}
 
-	cfg, err := GetForgeConfig()
-	if err != nil {
-		// TODO: if this happens, what do we do? Chache messed up need to reset it?
-		printer.Notificationf("Warning: updateProject failed to update config: %s", err)
-		logger.Error(eris.Wrap(err, "Failed to get config after removing known project"))
-	} else {
-		p.RemoveKnownProject(&cfg)
-	}
+	p.RemoveKnownProject(fCtx.Config)
 
 	_, err = parseResponse[any](body)
 	if err != nil {
@@ -778,9 +752,9 @@ func (p *project) updateProject(ctx context.Context, flags *UpdateProjectCmd, cm
 	return nil
 }
 
-func (p *project) getSetupInput(ctx context.Context, regions []string) error {
+func (p *project) getSetupInput(fCtx ForgeContext, regions []string) error {
 	// Get organization
-	org, err := getSelectedOrganization(ctx)
+	org, err := getSelectedOrganization(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organization")
 	}
@@ -792,48 +766,48 @@ func (p *project) getSetupInput(ctx context.Context, regions []string) error {
 
 	p.OrgID = org.ID
 
-	err = p.inputName(ctx)
+	err = p.inputName(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project name")
 	}
 
-	err = p.inputSlug(ctx)
+	err = p.inputSlug(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project slug")
 	}
 
-	err = p.inputRepoURLAndToken(ctx)
+	err = p.inputRepoURLAndToken(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get repository URL and token")
 	}
 
-	p.inputRepoPath(ctx)
+	p.inputRepoPath(fCtx.Context)
 
 	// Tick Rate
-	err = p.inputTickRate(ctx)
+	err = p.inputTickRate(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get environment name")
 	}
 
 	// Regions
-	err = p.chooseRegion(ctx, regions)
+	err = p.chooseRegion(fCtx.Context, regions)
 	if err != nil {
 		return eris.Wrap(err, "Failed to choose region")
 	}
 
 	// Discord
-	err = p.inputDiscord(ctx)
+	err = p.inputDiscord(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input discord")
 	}
 
 	// Slack
-	err = p.inputSlack(ctx)
+	err = p.inputSlack(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input slack")
 	}
 
-	err = p.inputAvatarURL(ctx)
+	err = p.inputAvatarURL(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input avatar URL")
 	}
@@ -1042,13 +1016,9 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) (bool
 	return false, nil
 }
 
-func (p *project) saveToConfig() error {
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return eris.Wrap(err, "Failed to get config")
-	}
-	config.ProjectID = p.ID
-	err = SaveForgeConfig(config)
+func (p *project) saveToConfig(fCtx ForgeContext) error {
+	fCtx.Config.ProjectID = p.ID
+	err := fCtx.Config.Save()
 	if err != nil {
 		return eris.Wrap(err, "Failed to save project configuration")
 	}
@@ -1056,43 +1026,38 @@ func (p *project) saveToConfig() error {
 }
 
 // handleProjectSelection manages the project selection logic.
-func handleProjectSelection(ctx context.Context) error {
-	projects, err := getListOfProjects(ctx)
+func handleProjectSelection(fCtx ForgeContext) error {
+	projects, err := getListOfProjects(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
 	}
 
 	switch numProjects := len(projects); {
 	case numProjects == 1:
-		return projects[0].handleSingleProject(ctx)
+		return projects[0].handleSingleProject(fCtx)
 	case numProjects > 1:
-		return handleMultipleProjects(ctx, projects)
+		return handleMultipleProjects(fCtx, projects)
 	default:
-		return handleNoProjects(ctx)
+		return handleNoProjects(fCtx)
 	}
 }
 
-func (p *project) handleSingleProject(ctx context.Context) error {
-	p.saveToConfig()
-	showProjectList(ctx)
+func (p *project) handleSingleProject(fCtx ForgeContext) error {
+	p.saveToConfig(fCtx)
+	showProjectList(fCtx)
 	return nil
 }
 
 // handleMultipleProjects handles the case when there are multiple projects.
-func handleMultipleProjects(ctx context.Context, projects []project) error {
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return eris.Wrap(err, "Failed to get config")
-	}
-
+func handleMultipleProjects(fCtx ForgeContext, projects []project) error {
 	for _, project := range projects {
-		if project.ID == config.ProjectID {
-			showProjectList(ctx)
+		if project.ID == fCtx.Config.ProjectID {
+			showProjectList(fCtx)
 			return nil
 		}
 	}
 
-	project, err := selectProject(ctx, &SwitchProjectCmd{})
+	project, err := selectProject(fCtx, &SwitchProjectCmd{})
 	if err != nil {
 		return eris.Wrap(err, "Failed to select project")
 	}
@@ -1100,12 +1065,12 @@ func handleMultipleProjects(ctx context.Context, projects []project) error {
 		return nil
 	}
 
-	project.saveToConfig()
+	project.saveToConfig(fCtx)
 	return nil
 }
 
 // handleNoProjects handles the case when there are no projects.
-func handleNoProjects(ctx context.Context) error {
+func handleNoProjects(fCtx ForgeContext) error {
 	// Confirmation prompt
 	printNoProjectsInOrganization()
 	printer.NewLine(1)
@@ -1116,12 +1081,12 @@ func handleNoProjects(ctx context.Context) error {
 		return nil
 	}
 
-	project, err := createProject(ctx, &CreateProjectCmd{})
+	project, err := createProject(fCtx, &CreateProjectCmd{})
 	if err != nil {
 		return eris.Wrap(err, "Failed to create project")
 	}
 
-	project.saveToConfig()
+	project.saveToConfig(fCtx)
 	return nil
 }
 
@@ -1161,7 +1126,7 @@ func (p *project) AddKnownProject(config *Config) {
 		ProjectName:    p.Name,
 	})
 
-	err := SaveForgeConfig(*config)
+	err := config.Save()
 	if err != nil {
 		printer.Notificationf("Warning: Failed to save config: %s", err)
 		logger.Error(eris.Wrap(err, "AddKnownProject failed to save config"))
@@ -1169,7 +1134,7 @@ func (p *project) AddKnownProject(config *Config) {
 	}
 }
 
-func (p *project) RemoveKnownProject(config *Config) {
+func (p *project) RemoveKnownProject(config *Config) error {
 	newKnownProjects := make([]KnownProject, 0)
 
 	for _, knownProj := range config.KnownProjects {
@@ -1180,21 +1145,11 @@ func (p *project) RemoveKnownProject(config *Config) {
 
 	config.KnownProjects = newKnownProjects
 
-	err := SaveForgeConfig(*config)
+	err := config.Save()
 	if err != nil {
-		// if the save fails, we need to try with a fresh config again.
-		cfg, err := GetForgeConfig()
-		if err != nil {
-			// TODO: if this happens, what do we do? Chache messed up need to reset it?
-			printer.Notificationf("Warning: RemoveKnownProject failed to update config: %s", err)
-			logger.Error(eris.Wrap(err, "Failed to get config after removing known project"))
-		}
-		cfg.KnownProjects = newKnownProjects
-		err = SaveForgeConfig(cfg)
-		if err != nil {
-			// TODO: if this happens, what do we do? Chache messed up need to reset it?
-			printer.Notificationf("Warning: RemoveKnownProject failed to save config: %s", err)
-			logger.Error(eris.Wrap(err, "Failed to save config after removing known project"))
-		}
+		printer.Notificationf("Warning: RemoveKnownProject failed to save config: %s", err)
+		logger.Error(eris.Wrap(err, "RemoveKnownProject failed to save config"))
+		return ErrCannotSaveConfig
 	}
+	return nil
 }

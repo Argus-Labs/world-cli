@@ -15,23 +15,23 @@ var (
 // Need Organization //
 ///////////////////////
 
-func (flow *initFlow) handleNeedOrgData() error {
-	orgs, err := getListOfOrganizations(flow.context)
+func (flow *initFlow) handleNeedOrgData(fCtx *ForgeContext) error {
+	orgs, err := getListOfOrganizations(*fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organizations")
 	}
 
 	switch len(orgs) {
 	case 0: // No organizations found
-		return flow.handleNeedOrganizationCaseNoOrgs()
+		return flow.handleNeedOrganizationCaseNoOrgs(fCtx)
 	case 1: // One organization found
-		return flow.handleNeedOrganizationCaseOneOrg(orgs)
+		return flow.handleNeedOrganizationCaseOneOrg(fCtx, orgs)
 	default: // Multiple organizations found
-		return flow.handleNeedOrganizationCaseMultipleOrgs(orgs)
+		return flow.handleNeedOrganizationCaseMultipleOrgs(fCtx, orgs)
 	}
 }
 
-func (flow *initFlow) handleNeedOrganizationCaseNoOrgs() error {
+func (flow *initFlow) handleNeedOrganizationCaseNoOrgs(fCtx *ForgeContext) error {
 	for {
 		printer.NewLine(1)
 		printer.Infoln("No organizations found.")
@@ -39,11 +39,11 @@ func (flow *initFlow) handleNeedOrganizationCaseNoOrgs() error {
 
 		switch choice {
 		case "Y":
-			org, err := createOrganization(flow.context, &CreateOrganizationCmd{})
+			org, err := createOrganization(*fCtx, &CreateOrganizationCmd{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in no-orgs case")
 			}
-			flow.updateOrganization(org)
+			flow.updateOrganization(fCtx, org)
 			return nil
 		case "n":
 			return ErrOrganizationCreationCanceled
@@ -54,7 +54,7 @@ func (flow *initFlow) handleNeedOrganizationCaseNoOrgs() error {
 	}
 }
 
-func (flow *initFlow) handleNeedOrganizationCaseOneOrg(orgs []organization) error {
+func (flow *initFlow) handleNeedOrganizationCaseOneOrg(fCtx *ForgeContext, orgs []organization) error {
 	printer.NewLine(1)
 	printer.Infof("Found one organization: %s [%s]\n", orgs[0].Name, orgs[0].Slug)
 
@@ -63,16 +63,16 @@ func (flow *initFlow) handleNeedOrganizationCaseOneOrg(orgs []organization) erro
 
 		switch choice {
 		case "Y":
-			flow.updateOrganization(&orgs[0])
+			flow.updateOrganization(fCtx, &orgs[0])
 			return nil
 		case "n":
 			return ErrOrganizationSelectionCanceled
 		case "c":
-			org, err := createOrganization(flow.context, &CreateOrganizationCmd{})
+			org, err := createOrganization(*fCtx, &CreateOrganizationCmd{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in one-org case")
 			}
-			flow.updateOrganization(org)
+			flow.updateOrganization(fCtx, org)
 			return nil
 		default:
 			printer.NewLine(1)
@@ -81,12 +81,12 @@ func (flow *initFlow) handleNeedOrganizationCaseOneOrg(orgs []organization) erro
 	}
 }
 
-func (flow *initFlow) handleNeedOrganizationCaseMultipleOrgs(orgs []organization) error {
-	org, err := promptForOrganization(flow.context, orgs, true)
+func (flow *initFlow) handleNeedOrganizationCaseMultipleOrgs(fCtx *ForgeContext, orgs []organization) error {
+	org, err := promptForOrganization(*fCtx, orgs, true)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to prompt for organization in multiple-orgs case")
 	}
-	flow.updateOrganization(&org)
+	flow.updateOrganization(fCtx, &org)
 	return nil
 }
 
@@ -94,9 +94,9 @@ func (flow *initFlow) handleNeedOrganizationCaseMultipleOrgs(orgs []organization
 // Need Existing Organization //
 ////////////////////////////////
 
-func (flow *initFlow) handleNeedExistingOrgData() error {
+func (flow *initFlow) handleNeedExistingOrgData(fCtx *ForgeContext) error {
 	// No org selected, get list of organizations
-	orgs, err := getListOfOrganizations(flow.context)
+	orgs, err := getListOfOrganizations(*fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get organizations")
 	}
@@ -105,9 +105,9 @@ func (flow *initFlow) handleNeedExistingOrgData() error {
 	case 0: // No organizations found
 		return flow.handleNeedExistingOrganizationCaseNoOrgs()
 	case 1: // One organization found
-		return flow.handleNeedExistingOrganizationCaseOneOrg(orgs)
+		return flow.handleNeedExistingOrganizationCaseOneOrg(fCtx, orgs)
 	default: // Multiple organizations found
-		return flow.handleNeedExistingOrganizationCaseMultipleOrgs(orgs)
+		return flow.handleNeedExistingOrganizationCaseMultipleOrgs(fCtx, orgs)
 	}
 }
 
@@ -116,24 +116,24 @@ func (flow *initFlow) handleNeedExistingOrganizationCaseNoOrgs() error {
 	return ErrOrganizationSelectionCanceled
 }
 
-func (flow *initFlow) handleNeedExistingOrganizationCaseOneOrg(orgs []organization) error {
-	flow.updateOrganization(&orgs[0])
+func (flow *initFlow) handleNeedExistingOrganizationCaseOneOrg(fCtx *ForgeContext, orgs []organization) error {
+	flow.updateOrganization(fCtx, &orgs[0])
 	return nil
 }
 
-func (flow *initFlow) handleNeedExistingOrganizationCaseMultipleOrgs(orgs []organization) error {
+func (flow *initFlow) handleNeedExistingOrganizationCaseMultipleOrgs(fCtx *ForgeContext, orgs []organization) error {
 	// First check if we already have a selected organization
-	selectedOrg, err := getSelectedOrganization(flow.context)
+	selectedOrg, err := getSelectedOrganization(*fCtx)
 	if err == nil && selectedOrg.ID != "" {
-		flow.updateOrganization(&selectedOrg)
+		flow.updateOrganization(fCtx, &selectedOrg)
 		return nil
 	}
 
-	org, err := promptForOrganization(flow.context, orgs, false)
+	org, err := promptForOrganization(*fCtx, orgs, false)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to prompt for organization in existing multiple-orgs case")
 	}
-	flow.updateOrganization(&org)
+	flow.updateOrganization(fCtx, &org)
 	return nil
 }
 
@@ -142,12 +142,12 @@ func (flow *initFlow) handleNeedExistingOrganizationCaseMultipleOrgs(orgs []orga
 ////////////////////////////////
 
 // updateOrganization updates the organization in the flow state and saves the config.
-func (flow *initFlow) updateOrganization(org *organization) {
-	flow.State.Organization = org
+func (flow *initFlow) updateOrganization(fCtx *ForgeContext, org *organization) {
+	fCtx.State.Organization = org
 	flow.organizationStepDone = true
-	flow.config.OrganizationID = org.ID
+	fCtx.Config.OrganizationID = org.ID
 
-	err := SaveForgeConfig(flow.config)
+	err := fCtx.Config.Save()
 	if err != nil {
 		printer.Notificationf("Warning: Failed to save config: %s", err)
 		logger.Error(eris.Wrap(err, "Organization flow failed to save config"))

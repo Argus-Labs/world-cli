@@ -15,8 +15,8 @@ type User struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
-func getUser(ctx context.Context) (User, error) {
-	body, err := sendRequest(ctx, http.MethodGet, userURL, nil)
+func getUser(fCtx ForgeContext) (User, error) {
+	body, err := sendRequest(fCtx, http.MethodGet, userURL, nil)
 	if err != nil {
 		return User{}, eris.Wrap(err, "Failed to get user")
 	}
@@ -33,9 +33,9 @@ func getUser(ctx context.Context) (User, error) {
 	return *user, nil
 }
 
-func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
+func updateUser(fCtx ForgeContext, flags *UpdateUserCmd) error {
 	// get the current user
-	currentUser, err := getUser(ctx)
+	currentUser, err := getUser(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get current user")
 	}
@@ -47,7 +47,7 @@ func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
 	if flags.Name == "" {
 		flags.Name = currentUser.Name
 	}
-	flags.Name, err = inputUserName(ctx, flags.Name)
+	flags.Name, err = inputUserName(fCtx.Context, flags.Name)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user name")
 	}
@@ -56,7 +56,7 @@ func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
 	if flags.Email == "" {
 		flags.Email = currentUser.Email
 	}
-	flags.Email, err = inputUserEmail(ctx, flags.Email)
+	flags.Email, err = inputUserEmail(fCtx.Context, flags.Email)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user email")
 	}
@@ -65,7 +65,7 @@ func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
 	if flags.AvatarURL == "" {
 		flags.AvatarURL = currentUser.AvatarURL
 	}
-	flags.AvatarURL, err = inputUserAvatarURL(ctx, flags.AvatarURL)
+	flags.AvatarURL, err = inputUserAvatarURL(fCtx.Context, flags.AvatarURL)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input user avatar URL")
 	}
@@ -76,7 +76,7 @@ func updateUser(ctx context.Context, flags *UpdateUserCmd) error {
 		AvatarURL: flags.AvatarURL,
 	}
 
-	_, err = sendRequest(ctx, http.MethodPut, userURL, payload)
+	_, err = sendRequest(fCtx, http.MethodPut, userURL, payload)
 	if err != nil {
 		return eris.Wrap(err, "Failed to update user")
 	}

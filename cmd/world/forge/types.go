@@ -1,8 +1,16 @@
 package forge
 
 import (
+	"context"
 	"time"
 )
+
+//nolint:revive // Name makes sense and is generally used within package
+type ForgeContext struct {
+	Context context.Context
+	State   CommandState
+	Config  *Config
+}
 
 type Credential struct {
 	Token          string    `json:"token"`

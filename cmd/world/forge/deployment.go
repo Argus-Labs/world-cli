@@ -62,36 +62,30 @@ type DeployInfo struct {
 }
 
 // Deployment a project.
-func deployment(ctx context.Context, cmdState *CommandState, deployType string) error {
-	if cmdState.Organization == nil || cmdState.Organization.ID == "" {
+func deployment(fCtx ForgeContext, deployType string) error {
+	if fCtx.State.Organization == nil || fCtx.State.Organization.ID == "" {
 		printNoSelectedOrganization()
 		return nil
 	}
-	organizationID := cmdState.Organization.ID
-
-	var projectID string
-	if cmdState.Project != nil && cmdState.Project.ID != "" {
-		projectID = cmdState.Project.ID
-	}
 
 	// Ensure organization is not nil before this call.
-	if cmdState.Project == nil || projectID == "" {
-		org, err := getSelectedOrganization(ctx)
+	if fCtx.State.Project == nil || fCtx.State.Project.ID == "" {
+		org, err := getSelectedOrganization(fCtx)
 		if err != nil {
 			return eris.Wrap(err, "Failed on deployment to get selected organization")
 		}
 
 		printer.Infof("Deploy requires a project created in World Forge: %s\n", org.Name)
 
-		pID, err := createProject(ctx, &CreateProjectCmd{})
+		pID, err := createProject(fCtx, &CreateProjectCmd{})
 		if err != nil {
 			return eris.Wrap(err, "Failed on deployment to create project")
 		}
-		projectID = pID.ID
+		fCtx.State.Project = &project{ID: pID.ID}
 	}
 
 	// preview deployment
-	err := previewDeployment(ctx, deployType, organizationID, projectID)
+	err := previewDeployment(fCtx, deployType)
 	if err != nil {
 		return eris.Wrap(err, "Failed to preview deployment")
 	}
@@ -125,8 +119,11 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 	if deployType == DeploymentTypeForceDeploy {
 		deployType = "deploy?force=true"
 	}
-	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL, organizationID, projectID, deployType)
-	_, err = sendRequest(ctx, http.MethodPost, deployURL, nil)
+
+	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL,
+		fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
+
+	_, err = sendRequest(fCtx, http.MethodPost, deployURL, nil)
 	if err != nil {
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
@@ -136,7 +133,7 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 		env = DeployEnvLive
 	}
 
-	err = waitUntilDeploymentIsComplete(ctx, cmdState.Project, env, deployType)
+	err = waitUntilDeploymentIsComplete(fCtx, env, deployType)
 	if err != nil {
 		printer.NewLine(1)
 		printer.Successf("Your %s is being processed!\n\n", deployType)
@@ -147,23 +144,25 @@ func deployment(ctx context.Context, cmdState *CommandState, deployType string) 
 	return nil
 }
 
-func status(ctx context.Context, cmdState *CommandState) error {
-	if cmdState.Project == nil || cmdState.Project.ID == "" {
+func status(fCtx ForgeContext) error {
+	if fCtx.State.Project == nil || fCtx.State.Organization == nil {
 		return nil
-	} else if cmdState.Organization == nil || cmdState.Organization.ID == "" {
+	}
+
+	if fCtx.State.Project.ID == "" || fCtx.State.Organization.ID == "" {
 		return nil
 	}
 
 	printer.NewLine(1)
 	printer.Headerln("   Deployment Status   ")
-	printer.Infof("Organization: %s\n", cmdState.Organization.Name)
-	printer.Infof("Org Slug:     %s\n", cmdState.Organization.Slug)
-	printer.Infof("Project:      %s\n", cmdState.Project.Name)
-	printer.Infof("Project Slug: %s\n", cmdState.Project.Slug)
-	printer.Infof("Repository:   %s\n", cmdState.Project.RepoURL)
+	printer.Infof("Organization: %s\n", fCtx.State.Organization.Name)
+	printer.Infof("Org Slug:     %s\n", fCtx.State.Organization.Slug)
+	printer.Infof("Project:      %s\n", fCtx.State.Project.Name)
+	printer.Infof("Project Slug: %s\n", fCtx.State.Project.Slug)
+	printer.Infof("Repository:   %s\n", fCtx.State.Project.RepoURL)
 	printer.NewLine(1)
 
-	deployInfo, err := getDeploymentStatus(ctx, cmdState.Project)
+	deployInfo, err := getDeploymentStatus(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get deployment status")
 	}
@@ -177,7 +176,7 @@ func status(ctx context.Context, cmdState *CommandState) error {
 
 	if showHealth {
 		// don't care about healthComplete return because we are only doing this once
-		_, err = getAndPrintHealth(ctx, cmdState.Project, deployInfo)
+		_, err = getAndPrintHealth(fCtx, deployInfo)
 		if err != nil {
 			return eris.Wrap(err, "Failed to get health")
 		}
@@ -188,9 +187,9 @@ func status(ctx context.Context, cmdState *CommandState) error {
 // Returns a map of environment names to boolean values indicating whether the environment was
 // successfully deployed.
 // nolint: gocognit, gocyclo, cyclop, funlen // this is a complex function but it does what it needs to do
-func getDeploymentStatus(ctx context.Context, project *project) (map[string]DeployInfo, error) {
-	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, project.ID)
-	result, err := sendRequest(ctx, http.MethodGet, statusURL, nil)
+func getDeploymentStatus(fCtx ForgeContext) (map[string]DeployInfo, error) {
+	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, fCtx.State.Project.ID)
+	result, err := sendRequest(fCtx, http.MethodGet, statusURL, nil)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to get deployment status")
 	}
@@ -225,8 +224,8 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 		if !ok {
 			return nil, eris.Errorf("Failed to unmarshal response for environment %s", env)
 		}
-		if data["project_id"] != project.ID {
-			return nil, eris.Errorf("Deployment status does not match project id %s", project.ID)
+		if data["project_id"] != fCtx.State.Project.ID {
+			return nil, eris.Errorf("Deployment status does not match project id %s", fCtx.State.Project.ID)
 		}
 		deployType, ok := data["type"].(string)
 		if !ok {
@@ -376,9 +375,9 @@ func getDeploymentStatus(ctx context.Context, project *project) (map[string]Depl
 }
 
 // nolint: gocognit, gocyclo, cyclop, funlen // this is a complex function but it does what it needs to do
-func getAndPrintHealth(ctx context.Context, project *project, deployInfo map[string]DeployInfo) (bool, error) {
-	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, project.ID)
-	result, err := sendRequest(ctx, http.MethodGet, healthURL, nil)
+func getAndPrintHealth(fCtx ForgeContext, deployInfo map[string]DeployInfo) (bool, error) {
+	healthURL := fmt.Sprintf("%s/api/health/%s", baseURL, fCtx.State.Project.ID)
+	result, err := sendRequest(fCtx, http.MethodGet, healthURL, nil)
 	if err != nil {
 		return false, eris.Wrap(err, "Failed to get health")
 	}
@@ -518,10 +517,10 @@ func getAndPrintHealth(ctx context.Context, project *project, deployInfo map[str
 	return healthComplete, nil
 }
 
-func previewDeployment(ctx context.Context, deployType string, organizationID string, projectID string) error {
+func previewDeployment(fCtx ForgeContext, deployType string) error {
 	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s?preview=true",
-		baseURL, organizationID, projectID, deployType)
-	resultBytes, err := sendRequest(ctx, http.MethodPost, deployURL, nil)
+		baseURL, fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
+	resultBytes, err := sendRequest(fCtx, http.MethodPost, deployURL, nil)
 	if err != nil {
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
 	}
@@ -556,8 +555,8 @@ func previewDeployment(ctx context.Context, deployType string, organizationID st
 }
 
 // nolint: gocognit // this is a complex function but it does what it needs to do
-func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env string, deployType string) error {
-	ctx, cancel := context.WithCancel(ctx)
+func waitUntilDeploymentIsComplete(fCtx ForgeContext, env string, deployType string) error {
+	ctx, cancel := context.WithCancel(fCtx.Context)
 	defer cancel()
 
 	// Spinner Setup
@@ -617,7 +616,7 @@ func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env st
 				}
 			}
 
-			deploys, err := getDeploymentStatus(ctx, project)
+			deploys, err := getDeploymentStatus(fCtx)
 			if err != nil || deploys == nil {
 				continue
 			}
@@ -626,7 +625,7 @@ func waitUntilDeploymentIsComplete(ctx context.Context, project *project, env st
 				if shouldShowHealth(deploy) {
 					deployComplete = true // this changes the status message for the spinner
 					// just report health for the single environment
-					healthComplete, err := getAndPrintHealth(ctx, project, map[string]DeployInfo{
+					healthComplete, err := getAndPrintHealth(fCtx, map[string]DeployInfo{
 						env: deploy,
 					})
 					if err != nil || !healthComplete {

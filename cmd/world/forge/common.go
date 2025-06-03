@@ -89,18 +89,18 @@ var getInput = func(prompt, defaultStr string) string {
 }
 
 // sendRequest sends an HTTP request with auth token and returns the response body.
-func sendRequest(ctx context.Context, method, url string, body any) ([]byte, error) {
+func sendRequest(fCtx ForgeContext, method, url string, body any) ([]byte, error) {
 	// Prepare request body and headers
-	req, err := prepareRequest(ctx, method, url, body)
+	req, err := prepareRequest(fCtx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
 
 	// Make request with retries
-	return makeRequestWithRetries(ctx, req)
+	return makeRequestWithRetries(fCtx.Context, req)
 }
 
-func prepareRequest(ctx context.Context, method, url string, body any) (*http.Request, error) {
+func prepareRequest(fCtx ForgeContext, method, url string, body any) (*http.Request, error) {
 	var bodyReader io.Reader
 
 	if body != nil {
@@ -111,21 +111,19 @@ func prepareRequest(ctx context.Context, method, url string, body any) (*http.Re
 		bodyReader = bytes.NewReader(jsonBody)
 	}
 
-	// Get credential from config
-	config, err := GetForgeConfig()
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get credential")
-	}
-
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	req, err := http.NewRequestWithContext(fCtx.Context, method, url, bodyReader)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to create request")
 	}
 
+	if fCtx.Config == nil {
+		return nil, eris.New("No config found in ForgeContext")
+	}
+
 	// Add headers
 	prefix := "ArgusID "
-	req.Header.Add("Authorization", prefix+config.Credential.Token)
+	req.Header.Add("Authorization", prefix+fCtx.Config.Credential.Token)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

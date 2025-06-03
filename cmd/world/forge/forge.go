@@ -3,8 +3,10 @@ package forge
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -78,11 +80,7 @@ type LoginCmd struct {
 }
 
 func (c *LoginCmd) Run() error {
-	err := login(context.Background())
-	if err != nil {
-		return eris.Wrap(err, "Login Failed: ")
-	}
-	return nil
+	return WithForgeContextSetup(IgnoreLogin, Ignore, Ignore, login)
 }
 
 type DeployCmd struct {
@@ -94,60 +92,43 @@ func (c *DeployCmd) Run() error {
 	if c.Force {
 		deployType = DeploymentTypeForceDeploy
 	}
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return deployment(ctx, cmdState, deployType)
+	return WithForgeContextSetup(NeedLogin, NeedExistingIDOnly, NeedExistingData, func(fCtx ForgeContext) error {
+		return deployment(fCtx, deployType)
+	})
 }
 
 type StatusCmd struct {
 }
 
 func (c *StatusCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return status(ctx, cmdState)
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, NeedExistingData, status)
 }
 
 type PromoteCmd struct {
 }
 
 func (c *PromoteCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return deployment(ctx, cmdState, DeploymentTypePromote)
+	return WithForgeContextSetup(NeedLogin, NeedExistingIDOnly, NeedExistingData, func(fCtx ForgeContext) error {
+		return deployment(fCtx, DeploymentTypePromote)
+	})
 }
 
 type DestroyCmd struct {
 }
 
 func (c *DestroyCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return deployment(ctx, cmdState, "destroy")
+	return WithForgeContextSetup(NeedLogin, NeedExistingIDOnly, NeedExistingData, func(fCtx ForgeContext) error {
+		return deployment(fCtx, DeploymentTypeDestroy)
+	})
 }
 
 type ResetCmd struct {
 }
 
 func (c *ResetCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return deployment(ctx, cmdState, "reset")
+	return WithForgeContextSetup(NeedLogin, NeedExistingIDOnly, NeedExistingData, func(fCtx ForgeContext) error {
+		return deployment(fCtx, DeploymentTypeReset)
+	})
 }
 
 //nolint:lll // needed to put all the help text in the same line
@@ -157,12 +138,9 @@ type LogsCmd struct {
 }
 
 func (c *LogsCmd) Run() error {
-	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingIDOnly, NeedExistingIDOnly)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return tailLogs(ctx, c.Region, c.Env)
+	return WithForgeContextSetup(NeedLogin, NeedExistingIDOnly, NeedExistingIDOnly, func(fCtx ForgeContext) error {
+		return tailLogs(fCtx, c.Region, c.Env)
+	})
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -181,14 +159,10 @@ type CreateOrganizationCmd struct {
 }
 
 func (c *CreateOrganizationCmd) Run() error {
-	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedRepoLookup, NeedRepoLookup)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-
-	_, err = createOrganization(ctx, c)
-	return err
+	return WithForgeContextSetup(NeedLogin, NeedRepoLookup, NeedRepoLookup, func(fCtx ForgeContext) error {
+		_, err := createOrganization(fCtx, c)
+		return err
+	})
 }
 
 type SwitchOrganizationCmd struct {
@@ -196,14 +170,10 @@ type SwitchOrganizationCmd struct {
 }
 
 func (c *SwitchOrganizationCmd) Run() error {
-	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedRepoLookup, NeedRepoLookup)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-
-	_, err = selectOrganization(ctx, c)
-	return err
+	return WithForgeContextSetup(NeedLogin, NeedRepoLookup, NeedRepoLookup, func(fCtx ForgeContext) error {
+		_, err := selectOrganization(fCtx, c)
+		return err
+	})
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -224,14 +194,10 @@ type CreateProjectCmd struct {
 }
 
 func (c *CreateProjectCmd) Run() error {
-	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedRepoLookup)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-
-	_, err = createProject(ctx, c)
-	return err
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, NeedRepoLookup, func(fCtx ForgeContext) error {
+		_, err := createProject(fCtx, c)
+		return err
+	})
 }
 
 type SwitchProjectCmd struct {
@@ -239,14 +205,10 @@ type SwitchProjectCmd struct {
 }
 
 func (c *SwitchProjectCmd) Run() error {
-	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedRepoLookup)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-
-	_, err = selectProject(ctx, c)
-	return err
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, NeedRepoLookup, func(fCtx ForgeContext) error {
+		_, err := selectProject(fCtx, c)
+		return err
+	})
 }
 
 type UpdateProjectCmd struct {
@@ -256,30 +218,24 @@ type UpdateProjectCmd struct {
 }
 
 func (c *UpdateProjectCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	if cmdState.Project == nil {
-		return eris.New("Forge setup failed, no project selected")
-	}
-	return cmdState.Project.updateProject(ctx, c, cmdState)
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, NeedExistingData, func(fCtx ForgeContext) error {
+		if fCtx.State.Project == nil {
+			return eris.New("Forge setup failed, no project selected")
+		}
+		return fCtx.State.Project.updateProject(fCtx, c)
+	})
 }
 
 type DeleteProjectCmd struct {
 }
 
 func (c *DeleteProjectCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, NeedExistingData)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	if cmdState.Project == nil {
-		return eris.New("Forge setup failed, no project selected")
-	}
-	return cmdState.Project.delete(ctx)
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, NeedExistingData, func(fCtx ForgeContext) error {
+		if fCtx.State.Project == nil {
+			return eris.New("Forge setup failed, no project selected")
+		}
+		return fCtx.State.Project.delete(fCtx)
+	})
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -299,15 +255,12 @@ type InviteUserToOrganizationCmd struct {
 }
 
 func (c *InviteUserToOrganizationCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	if cmdState.Organization.ID == "" {
-		return eris.New("Forge setup failed, no organization selected")
-	}
-	return cmdState.Organization.inviteUser(ctx, c)
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, Ignore, func(fCtx ForgeContext) error {
+		if fCtx.State.Organization == nil {
+			return eris.New("Forge setup failed, no organization selected")
+		}
+		return fCtx.State.Organization.inviteUser(fCtx, c)
+	})
 }
 
 type ChangeUserRoleInOrganizationCmd struct {
@@ -316,15 +269,12 @@ type ChangeUserRoleInOrganizationCmd struct {
 }
 
 func (c *ChangeUserRoleInOrganizationCmd) Run() error {
-	ctx := context.Background()
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedExistingData, Ignore)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	if cmdState.Organization.ID == "" {
-		return eris.New("Forge setup failed, no organization selected")
-	}
-	return cmdState.Organization.updateUserRole(ctx, c)
+	return WithForgeContextSetup(NeedLogin, NeedExistingData, Ignore, func(fCtx ForgeContext) error {
+		if fCtx.State.Organization == nil {
+			return eris.New("Forge setup failed, no organization selected")
+		}
+		return fCtx.State.Organization.updateUserRole(fCtx, c)
+	})
 }
 
 type UpdateUserCmd struct {
@@ -334,12 +284,9 @@ type UpdateUserCmd struct {
 }
 
 func (c *UpdateUserCmd) Run() error {
-	ctx := context.Background()
-	_, err := SetupForgeCommandState(ctx, NeedLogin, Ignore, Ignore)
-	if err != nil {
-		return eris.Wrap(err, "forge command setup failed")
-	}
-	return updateUser(ctx, c)
+	return WithForgeContextSetup(NeedLogin, Ignore, Ignore, func(fCtx ForgeContext) error {
+		return updateUser(fCtx, c)
+	})
 }
 
 func InitForgeBase(env string) {
@@ -372,4 +319,40 @@ func InitForgeBase(env string) {
 
 	// Set user URL
 	userURL = fmt.Sprintf("%s/api/user", baseURL)
+}
+
+func WithForgeContextSetup(
+	needLogin LoginStepRequirement, needOrg, needProject StepRequirement,
+	handler func(fCtx ForgeContext) error,
+) error {
+	ctx := context.Background()
+
+	cfg, err := GetCurrentForgeConfig()
+	if err != nil {
+		printer.Notificationf("Warning: failed to load config: %s", err)
+		logger.Error(eris.Wrap(err, "WithForgeSetup failed to get config"))
+		return err
+	}
+
+	fCtx := ForgeContext{
+		Context: ctx,
+		Config:  &cfg,
+	}
+
+	err = fCtx.SetupForgeCommandState(needLogin, needOrg, needProject)
+	if err != nil {
+		return eris.Wrap(err, "forge command setup failed")
+	}
+
+	// Call the handler and wait for it to finish
+	if err := handler(fCtx); err != nil {
+		if strings.Contains(err.Error(), ErrCannotSaveConfig.Error()) {
+			printer.Errorln("Need to reset config, not implemented yet")
+			printer.Errorln("Go to homeDir/.worldcli/config.json and delete the file")
+			// TODO: reset the config
+		}
+		return err
+	}
+
+	return fCtx.Config.Save()
 }

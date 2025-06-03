@@ -34,60 +34,55 @@ type tokenStruct struct {
 }
 
 // login will open browser to login and save the token to the config file.
-func login(ctx context.Context) error {
-	config, err := GetCurrentForgeConfig()
-	if err != nil {
-		return eris.Wrap(err, "Failed to get current forge config")
-	}
-
+func login(fCtx ForgeContext) error {
 	// Perform login based on authentication method
-	if err := performLogin(ctx, &config); err != nil {
+	if err := performLogin(fCtx); err != nil {
 		return err
 	}
 
 	// Handle post-login configuration
-	cmdState, err := SetupForgeCommandState(ctx, NeedLogin, NeedData, NeedData)
+	err := fCtx.SetupForgeCommandState(NeedLogin, NeedData, NeedData)
 	if err != nil {
 		if !loginErrorCheck(err) {
 			// Even we have an error, if it's not a login error, we can display the login success message.
-			displayLoginSuccess(config)
+			displayLoginSuccess(*fCtx.Config)
 		}
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
-	if cmdState.CurrRepoKnown {
+	if fCtx.Config.CurrRepoKnown {
 		printer.NewLine(1)
 		printer.Headerln("   Known Project Details   ")
-		printer.Infof("Organization: %s\n", cmdState.Organization.Name)
-		printer.Infof("Org Slug:     %s\n", cmdState.Organization.Slug)
-		printer.Infof("Project:      %s\n", cmdState.Project.Name)
-		printer.Infof("Project Slug: %s\n", cmdState.Project.Slug)
-		printer.Infof("Repository:   %s\n", cmdState.Project.RepoURL)
+		printer.Infof("Organization: %s\n", fCtx.State.Organization.Name)
+		printer.Infof("Org Slug:     %s\n", fCtx.State.Organization.Slug)
+		printer.Infof("Project:      %s\n", fCtx.State.Project.Name)
+		printer.Infof("Project Slug: %s\n", fCtx.State.Project.Slug)
+		printer.Infof("Repository:   %s\n", fCtx.State.Project.RepoURL)
 		printer.NewLine(1)
 	}
 	// Display login success message
-	displayLoginSuccess(config)
+	displayLoginSuccess(*fCtx.Config)
 
 	return nil
 }
 
-func performLogin(ctx context.Context, config *Config) error {
+func performLogin(fCtx ForgeContext) error {
 	var err error
-	config.Credential, err = loginWithArgusID(ctx)
+	fCtx.Config.Credential, err = loginWithArgusID(fCtx.Context)
 	if err != nil {
 		return eris.Wrap(err, "Failed to login")
 	}
 
 	// Save credential to config
-	if err := SaveForgeConfig(*config); err != nil {
+	if err := fCtx.Config.Save(); err != nil {
 		return eris.Wrap(err, "Failed to save credential")
 	}
 
-	return handleArgusIDPostLogin(ctx, config)
+	return handleArgusIDPostLogin(fCtx)
 }
 
-func handleArgusIDPostLogin(ctx context.Context, config *Config) error {
-	user, err := getUser(ctx)
+func handleArgusIDPostLogin(fCtx ForgeContext) error {
+	user, err := getUser(fCtx)
 	if err != nil {
 		errStr := eris.ToString(err, false)
 		if strings.Contains(errStr, "503") {
@@ -98,8 +93,8 @@ func handleArgusIDPostLogin(ctx context.Context, config *Config) error {
 		return err
 	}
 
-	config.Credential.ID = user.ID
-	return SaveForgeConfig(*config)
+	fCtx.Config.Credential.ID = user.ID
+	return fCtx.Config.Save()
 }
 
 func displayLoginSuccess(config Config) {
