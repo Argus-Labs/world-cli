@@ -33,6 +33,8 @@ const (
 	jitterDivisor  time.Duration = 2 // Divisor used to calculate maximum jitter range
 	RetryBaseDelay time.Duration = 100 * time.Millisecond
 	requestTimeout time.Duration = 5 * time.Second
+
+	nilUUID = "00000000-0000-0000-0000-000000000000"
 )
 
 var (

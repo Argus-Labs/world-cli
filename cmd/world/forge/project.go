@@ -23,6 +23,9 @@ const MaxProjectNameLen = 50
 
 var regionSelector *tea.Program
 
+// ErrProjectSlugAlreadyExists is passed from forge to world-cli, Must always match.
+var ErrProjectSlugAlreadyExists = eris.New("project slug already exists")
+
 type project struct {
 	ID           string        `json:"id"`
 	OrgID        string        `json:"org_id"`
@@ -200,7 +203,7 @@ func getListOfAvailableRegionsForNewProject(fCtx ForgeContext) ([]string, error)
 		printNoSelectedOrganization()
 		return nil, nil
 	}
-	return getListRegions(fCtx, selectedOrg.ID, "00000000-0000-0000-0000-000000000000")
+	return getListRegions(fCtx, selectedOrg.ID, nilUUID)
 }
 
 // Get list of projects in selected organization.
@@ -280,6 +283,10 @@ func createProject(fCtx ForgeContext, flags *CreateProjectCmd) (*project, error)
 		"avatar_url": p.AvatarURL,
 	})
 	if err != nil {
+		if eris.Is(err, ErrProjectSlugAlreadyExists) {
+			printer.Errorf("Project already exists with slug: %s, please choose a different slug.\n", p.Slug)
+			printer.NewLine(1)
+		}
 		return nil, eris.Wrap(err, "Failed to create project")
 	}
 
@@ -411,11 +418,11 @@ func (p *project) validateAndSetName(name string) error {
 	return nil
 }
 
-func (p *project) inputSlug(ctx context.Context) error {
+func (p *project) inputSlug(fCtx ForgeContext) error {
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-fCtx.Context.Done():
+			return fCtx.Context.Err()
 		default:
 			// if no slug exists, create a default one from the name
 			minLength := 3
@@ -437,10 +444,35 @@ func (p *project) inputSlug(ctx context.Context) error {
 				continue
 			}
 
-			p.Slug = slug
+			if err := p.checkIfProjectSlugIsTaken(fCtx, slug); err != nil {
+				if eris.Is(err, ErrProjectSlugAlreadyExists) {
+					printer.Errorf("Project already exists with slug: %s\n", slug)
+				} else {
+					printer.Errorf("%s\n", err)
+				}
+				printer.NewLine(1)
+				continue
+			}
 			return nil
 		}
 	}
+}
+
+func (p *project) checkIfProjectSlugIsTaken(fCtx ForgeContext, slug string) error {
+	var projectID string
+	if p.ID == "" {
+		projectID = nilUUID
+	} else {
+		projectID = p.ID
+	}
+
+	url := fmt.Sprintf(projectURLPattern+"/%s/%s/check_slug", baseURL, p.OrgID, projectID, slug)
+	_, err := sendRequest(fCtx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	p.Slug = slug
+	return nil
 }
 
 func (p *project) inputRepoURLAndToken(ctx context.Context) error {
@@ -711,6 +743,7 @@ func (p *project) updateProject(fCtx ForgeContext, flags *UpdateProjectCmd) erro
 	p.AvatarURL = flags.AvatarURL
 	p.RepoPath = repoPath
 	p.RepoURL = repoURL
+	p.ID = fCtx.State.Project.ID
 
 	printer.NewLine(1)
 	printer.Headerln("  Project Update  ")
@@ -736,6 +769,10 @@ func (p *project) updateProject(fCtx ForgeContext, flags *UpdateProjectCmd) erro
 		"avatar_url": p.AvatarURL,
 	})
 	if err != nil {
+		if eris.Is(err, ErrProjectSlugAlreadyExists) {
+			printer.Errorf("Project already exists with slug: %s, please choose a different slug.\n", p.Slug)
+			printer.NewLine(1)
+		}
 		return eris.Wrap(err, "Failed to update project")
 	}
 
@@ -771,7 +808,7 @@ func (p *project) getSetupInput(fCtx ForgeContext, regions []string) error {
 		return eris.Wrap(err, "Failed to get project name")
 	}
 
-	err = p.inputSlug(fCtx.Context)
+	err = p.inputSlug(fCtx)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project slug")
 	}

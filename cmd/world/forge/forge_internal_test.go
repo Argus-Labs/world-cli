@@ -124,6 +124,10 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 					s.handleProjectLookup(w, r)
 				case "/api/auth/service-auth-session":
 					s.handleArgusIDAuthSession(w, r)
+				case "/api/organization/test-org-id/project/test-project-id/testp/check_slug":
+					s.handleProjectSlugCheck(w, r)
+				case "/api/organization/test-org-id/project/00000000-0000-0000-0000-000000000000/testp/check_slug":
+					s.handleProjectSlugCheck(w, r)
 				default:
 					http.Error(w, "Not found", http.StatusNotFound)
 				}
@@ -614,6 +618,24 @@ func (s *ForgeTestSuite) writeJSONString(w http.ResponseWriter, data string) {
 	s.Require().NoError(err)
 }
 
+func (s *ForgeTestSuite) handleProjectSlugCheck(w http.ResponseWriter, r *http.Request) {
+	// Extract org ID and project ID from URL
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 6 {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	slug := parts[len(parts)-2]
+	if slug != "testp" {
+		http.Error(w, "Project slug already exists", http.StatusConflict)
+		return
+	}
+
+	// Return success for any other slug
+	s.writeJSON(w, map[string]string{"status": "available"})
+}
+
 func (s *ForgeTestSuite) TestGetSelectedOrganization() {
 	testCases := []struct {
 		name          string
@@ -865,7 +887,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 			},
 			inputs: []string{
 				"Test Project", // Project name
-				"test_project", // Project slug
+				"testp",        // Project slug
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",   // No token needed for public repo
 				"",   // Default repo path
@@ -2220,7 +2242,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			},
 			inputs: []string{
 				"Test Project", // name
-				"",             // take default
+				"testp",        // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",                 // repoToken (empty for public repo)
 				"",                 // repoPath (empty for default root path of repo)
@@ -2245,7 +2267,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			expectedError:   false,
 			expectedProject: &project{
 				Name: "Test Project",
-				Slug: "test_project",
+				Slug: "testp",
 			},
 		},
 		{
@@ -2298,7 +2320,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			},
 			inputs: []string{
 				"Test Project", // name
-				"",             // take default slug
+				"testp",        // take default slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
 				"",   // repoToken (empty for public repo)
 				"",   // repoPath
@@ -2322,7 +2344,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			},
 			inputs: []string{
 				"Test Private",
-				"",
+				"testp",
 				"https://github.com/test/private-repo",
 				"bad-secret-token",
 			},
@@ -2411,8 +2433,8 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				},
 			},
 			inputs: []string{
-				"", // name (should be taken from world.toml)
-				"", // take default slug
+				"",      // name (should be taken from world.toml)
+				"testp", // take default slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
 				"",                // repoToken (empty for public repo)
 				"",                // repoPath (empty for default root path of repo)
@@ -2433,7 +2455,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 			expectedError:   false,
 			expectedProject: &project{
 				Name: "test-project-from-toml",
-				Slug: "test_project_from_toml",
+				Slug: "testp",
 			},
 			setupWorldToml: true,
 		},
@@ -4190,7 +4212,7 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 			inputs: []string{
 				"c",           // Choose to create new project
 				"New Project", // Project name
-				"newp",        // Project slug
+				"testp",       // Project slug
 				"https://github.com/argus-labs/starter-game-template", // Repo URL
 				"",   // No token needed for public repo
 				"",   // Default repo path
@@ -4741,8 +4763,8 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				AvatarURL: "http://test.com",
 			},
 			inputs: []string{
-				"", // name
-				"", // take default
+				"",      // name
+				"testp", // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",           // repoToken (empty for public repo)
 				"",           // repoPath (empty for default root path of repo)
@@ -4763,7 +4785,7 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 			expectedProj: &project{
 				ID:   "test-project-id",
 				Name: "Test Project",
-				Slug: "test-project",
+				Slug: "testp",
 			},
 		},
 		{
@@ -4781,8 +4803,8 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				AvatarURL: "http://test.com",
 			},
 			inputs: []string{
-				"", // name
-				"", // take default
+				"",      // name
+				"testp", // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",           // repoToken (empty for public repo)
 				"",           // repoPath (empty for default root path of repo)
@@ -4811,7 +4833,7 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 			},
 			cmd: &CreateProjectCmd{
 				Name:      "Test Project",
-				Slug:      "Test",
+				Slug:      "testp",
 				AvatarURL: "http://test.com",
 			},
 			expectedError: true,

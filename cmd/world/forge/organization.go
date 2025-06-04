@@ -9,6 +9,9 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
+// ErrOrganizationSlugAlreadyExists is passed from forge to world-cli, Must always match.
+var ErrOrganizationSlugAlreadyExists = eris.New("organization slug already exists")
+
 type organization struct {
 	ID               string `json:"id"`
 	Name             string `json:"name"`
@@ -345,6 +348,10 @@ func createOrgRequestAndSave(fCtx ForgeContext, name, slug, avatarURL string) (*
 		AvatarURL: avatarURL,
 	})
 	if err != nil {
+		if eris.Is(err, ErrOrganizationSlugAlreadyExists) {
+			printer.Errorf("An Organization already exists with slug: %s, please choose a different slug.\n", slug)
+			printer.NewLine(1)
+		}
 		return nil, eris.Wrap(err, "Failed to create organization")
 	}
 
