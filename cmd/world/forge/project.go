@@ -16,6 +16,7 @@ import (
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/tomlutil"
+	"pkg.world.dev/world-cli/common/util"
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
@@ -1022,9 +1023,9 @@ func (p *project) runRegionSelector(ctx context.Context, regions []string) (bool
 					selectedRegions[i] = true
 				}
 			}
-			regionSelector = NewTeaProgram(multiselect.UpdateMultiselectModel(ctx, regions, selectedRegions))
+			regionSelector = util.NewTeaProgram(multiselect.UpdateMultiselectModel(ctx, regions, selectedRegions))
 		} else {
-			regionSelector = NewTeaProgram(multiselect.InitialMultiselectModel(ctx, regions))
+			regionSelector = util.NewTeaProgram(multiselect.InitialMultiselectModel(ctx, regions))
 		}
 	}
 	m, err := regionSelector.Run()
