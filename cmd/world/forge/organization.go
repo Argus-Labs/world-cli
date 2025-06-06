@@ -81,6 +81,28 @@ func getSelectedOrganization(fCtx ForgeContext) (organization, error) {
 	return *org, nil
 }
 
+func getOrganizationsInvitedTo(fCtx ForgeContext) ([]organization, error) {
+	body, err := sendRequest(fCtx, http.MethodGet, fmt.Sprintf("%s/invited", organizationURL), nil)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get organizations")
+	}
+
+	orgs, err := parseResponse[[]organization](body)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to parse response")
+	}
+
+	return *orgs, nil
+}
+
+func (o *organization) acceptOrganizationInvitation(fCtx ForgeContext) error {
+	_, err := sendRequest(fCtx, http.MethodPost, fmt.Sprintf("%s/%s/accept-invite", organizationURL, o.ID), nil)
+	if err != nil {
+		return eris.Wrap(err, "Failed to accept organization invitation")
+	}
+	return nil
+}
+
 func getListOfOrganizations(fCtx ForgeContext) ([]organization, error) {
 	// Send request
 	body, err := sendRequest(fCtx, http.MethodGet, organizationURL, nil)

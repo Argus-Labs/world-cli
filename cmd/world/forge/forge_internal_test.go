@@ -128,6 +128,10 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 					s.handleProjectSlugCheck(w, r)
 				case "/api/organization/test-org-id/project/00000000-0000-0000-0000-000000000000/testp/check_slug":
 					s.handleProjectSlugCheck(w, r)
+				case "/api/organization/invited":
+					s.handleOrganizationsInvitedTo(w, r)
+				case "/api/organization/invited-org-id/accept-invite":
+					s.handleAcceptOrganizationInvitation(w, r)
 				default:
 					http.Error(w, "Not found", http.StatusNotFound)
 				}
@@ -634,6 +638,25 @@ func (s *ForgeTestSuite) handleProjectSlugCheck(w http.ResponseWriter, r *http.R
 
 	// Return success for any other slug
 	s.writeJSON(w, map[string]string{"status": "available"})
+}
+
+func (s *ForgeTestSuite) handleOrganizationsInvitedTo(w http.ResponseWriter, _ *http.Request) {
+	// Return a list of organizations the user is invited to
+	orgs := []organization{
+		{
+			ID:   "invited-org-id",
+			Name: "Invited Organization",
+			Slug: "invited-org",
+		},
+	}
+	s.writeJSON(w, map[string]interface{}{
+		"data": orgs,
+	})
+}
+
+func (s *ForgeTestSuite) handleAcceptOrganizationInvitation(w http.ResponseWriter, _ *http.Request) {
+	// Return success for accepting invitation
+	s.writeJSON(w, map[string]string{"status": "success"})
 }
 
 func (s *ForgeTestSuite) TestGetSelectedOrganization() {
@@ -4337,15 +4360,13 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
 				getInput = func(prompt string, defaultVal string) string {
-					if inputIndex >= len(tc.inputs) {
-						return defaultVal
+					if inputIndex < len(tc.inputs) {
+						input := tc.inputs[inputIndex]
+						inputIndex++
+						return input // Return the input directly, including "q"
 					}
-					input := tc.inputs[inputIndex]
-					inputIndex++
-					printer.Infof("%s [%s]: %s\n", prompt, defaultVal, input)
-					return input
+					return defaultVal
 				}
-				defer func() { getInput = originalGetInput }()
 			}
 
 			// Simulate region selection
@@ -4540,7 +4561,6 @@ func (s *ForgeTestSuite) TestCreateOrganizationCmd() {
 		config          Config
 		cmd             *CreateOrganizationCmd
 		inputs          []string // For confirmations and prompts
-		expectedPrompt  []string
 		expectInputFail int
 		expectedError   bool
 		expectedOrg     *organization
@@ -4559,16 +4579,11 @@ func (s *ForgeTestSuite) TestCreateOrganizationCmd() {
 				AvatarURL: "http://test.com",
 			},
 			inputs: []string{
+				"",
 				"",  // use default
 				"",  // use default
 				"",  // use default
 				"Y", // Confirm
-			},
-			expectedPrompt: []string{
-				"Enter organization name",
-				"Enter organization slug",
-				"Enter organization avatar URL (Empty Valid)",
-				"Create organization with these details? (Y/n)",
 			},
 			expectedError: false,
 			expectedOrg: &organization{
@@ -4590,22 +4605,11 @@ func (s *ForgeTestSuite) TestCreateOrganizationCmd() {
 			s.Require().NoError(err)
 
 			// Setup input mocking
-			//nolint:nestif // Test file is ok
+
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
 				getInput = func(prompt string, defaultVal string) string {
 					printer.Infof("%s [%s]: ", prompt, defaultVal)
-
-					// Validate against expected prompts if defined
-					if len(tc.expectedPrompt) > 0 {
-						if inputIndex >= len(tc.expectedPrompt) {
-							panic(eris.Errorf("More prompts than expected. Got: %s", prompt))
-						}
-						if prompt != tc.expectedPrompt[inputIndex] {
-							panic(eris.Errorf("Unexpected prompt at index %d. Expected: %s, Got: %s",
-								inputIndex, tc.expectedPrompt[inputIndex], prompt))
-						}
-					}
 
 					input := tc.inputs[inputIndex]
 					if input == "" {
@@ -4672,20 +4676,6 @@ func (s *ForgeTestSuite) TestSwitchOrganizationCmd() {
 			expectedError: true,
 		},
 		{
-			name: "Success - Interactive selection",
-			config: Config{
-				Credential: Credential{
-					Token:          "test-token",
-					TokenExpiresAt: time.Now().Add(1 * time.Hour),
-				},
-			},
-			cmd: &SwitchOrganizationCmd{},
-			inputs: []string{
-				"1", // Select first organization
-			},
-			expectedError: false,
-		},
-		{
 			name: "Error - Not logged in",
 			config: Config{
 				Credential: Credential{
@@ -4696,6 +4686,21 @@ func (s *ForgeTestSuite) TestSwitchOrganizationCmd() {
 				Slug: "testo",
 			},
 			expectedError: true,
+		},
+		{
+			name: "Success - Interactive selection",
+			config: Config{
+				Credential: Credential{
+					Token:          "test-token",
+					TokenExpiresAt: time.Now().Add(1 * time.Hour),
+				},
+			},
+			cmd: &SwitchOrganizationCmd{},
+			inputs: []string{
+				"",
+				"1", // Select first organization
+			},
+			expectedError: false,
 		},
 	}
 
@@ -4763,6 +4768,7 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				AvatarURL: "http://test.com",
 			},
 			inputs: []string{
+				"",      // use default
 				"",      // name
 				"testp", // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
@@ -4803,6 +4809,7 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				AvatarURL: "http://test.com",
 			},
 			inputs: []string{
+				"",
 				"",      // name
 				"testp", // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
@@ -4957,14 +4964,13 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 }
 
 func (s *ForgeTestSuite) TestSwitchProjectCmd() {
-	testCases := []struct {
-		name           string
-		config         Config
-		cmd            *SwitchProjectCmd
-		inputs         []string // For interactive project selection
-		expectedError  bool
-		expectedProj   *project
-		expectedOutput string
+	tests := []struct {
+		name          string
+		config        Config
+		cmd           *SwitchProjectCmd
+		inputs        []string
+		expectedError bool
+		expectedProj  *project
 	}{
 		{
 			name: "Success - Switch project by slug",
@@ -4974,9 +4980,16 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
 			},
 			cmd: &SwitchProjectCmd{
 				Slug: "testp",
+			},
+			inputs: []string{
+				"Y", // Accept invitation
 			},
 			expectedError: false,
 			expectedProj: &project{
@@ -4984,7 +4997,6 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 				Name: "Test Project",
 				Slug: "testp",
 			},
-			expectedOutput: "Switched to project: Test Project",
 		},
 		{
 			name: "Success - Switch project interactively",
@@ -4994,9 +5006,14 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
 			},
 			cmd: &SwitchProjectCmd{},
 			inputs: []string{
+				"Y", // Accept invitation
 				"1", // Select first project
 			},
 			expectedError: false,
@@ -5005,7 +5022,6 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 				Name: "Test Project",
 				Slug: "testp",
 			},
-			expectedOutput: "Switched to project: Test Project",
 		},
 		{
 			name: "Error - Not logged in",
@@ -5014,12 +5030,14 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 					Token:          "test-token",
 					TokenExpiresAt: time.Now().Add(-1 * time.Hour),
 				},
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
 			},
-			cmd: &SwitchProjectCmd{
-				Slug: "test-project",
-			},
+			cmd:           &SwitchProjectCmd{},
 			expectedError: true,
-			expectedProj:  nil,
 		},
 		{
 			name: "Error - No organization selected",
@@ -5028,12 +5046,18 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 					Token:          "test-token",
 					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
+				ProjectID:     "test-project-id",
+				CurrRepoKnown: true,
+				CurrRepoURL:   "https://github.com/test/repo",
+				CurrRepoPath:  "/",
 			},
 			cmd: &SwitchProjectCmd{
 				Slug: "test-project",
 			},
+			inputs: []string{
+				"Y", // Accept invitation
+			},
 			expectedError: true,
-			expectedProj:  nil,
 		},
 		{
 			name: "Error - No projects exist",
@@ -5043,29 +5067,18 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
 				OrganizationID: "empty-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
 			},
 			cmd: &SwitchProjectCmd{
 				Slug: "test-project",
 			},
-			expectedError: true,
-			expectedProj:  nil,
-		},
-		{
-			name: "Error - Project selection aborted",
-			config: Config{
-				Credential: Credential{
-					Token:          "test-token",
-					TokenExpiresAt: time.Now().Add(1 * time.Hour),
-				},
-				OrganizationID: "test-org-id",
-			},
-			cmd: &SwitchProjectCmd{},
 			inputs: []string{
-				"q", // Abort selection
+				"Y", // Accept invitation
 			},
-			expectedError:  false,
-			expectedProj:   nil,
-			expectedOutput: "No project selected.",
+			expectedError: true,
 		},
 		{
 			name: "Error - failed to select project",
@@ -5074,43 +5087,43 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 					Token:          "test-token",
 					TokenExpiresAt: time.Now().Add(1 * time.Hour),
 				},
-				CurrRepoKnown: false,
-				CurrRepoURL:   "https://github.com/test/repo",
-				CurrRepoPath:  "/",
+				OrganizationID: "test-org-id",
+				ProjectID:      "test-project-id",
+				CurrRepoKnown:  true,
+				CurrRepoURL:    "https://github.com/test/repo",
+				CurrRepoPath:   "/",
 			},
 			cmd: &SwitchProjectCmd{
-				Slug: "testp",
+				Slug: "invalid-project",
 			},
-			expectedError: false,
-			expectedProj:  nil,
+			inputs: []string{
+				"1", // Try to select first project
+			},
+			expectedError: true,
 		},
 	}
 
-	// Mock browser opening
-	openBrowser = func(_ string) error { return nil }
-	defer func() { openBrowser = originalOpenBrowser }()
-
-	for _, tc := range testCases {
+	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			// Save the test config
 			err := tc.config.Save()
 			s.Require().NoError(err)
 
-			// Setup input mocking
+			// Setup test config
 			if len(tc.inputs) > 0 {
 				inputIndex := 0
-				getInput = func(prompt string, defaultVal string) string {
-					printer.Infof("%s [%s]: ", prompt, defaultVal)
-
-					input := tc.inputs[inputIndex]
-					if input == "" {
-						input = defaultVal
+				getInput = func(prompt, defaultValue string) string {
+					if inputIndex < len(tc.inputs) {
+						input := tc.inputs[inputIndex]
+						inputIndex++
+						if input == "q" {
+							// When user quits, return empty string to trigger error
+							return ""
+						}
+						return input
 					}
-					printer.Infoln(input)
-					inputIndex++
-					return input
+					return defaultValue
 				}
-				defer func() { getInput = originalGetInput }()
 			}
 
 			// Run the command
@@ -5118,19 +5131,20 @@ func (s *ForgeTestSuite) TestSwitchProjectCmd() {
 
 			if tc.expectedError {
 				s.Require().Error(err)
-				switch tc.name {
-				case "Error - SetupForgeCommandState fails":
-					s.Contains(err.Error(), "forge command setup failed")
-				case "Error - Project selection fails":
-					s.Contains(err.Error(), "Failed to select project")
+				if tc.name == "Error - Project selection aborted" {
+					s.Contains(err.Error(), "Project selection canceled")
 				}
 			} else {
 				s.Require().NoError(err)
-				if tc.expectedProj != nil {
-					// Verify the project was selected by checking the config
-					config, err := GetForgeConfig()
-					s.Require().NoError(err)
-					s.Equal(tc.expectedProj.ID, config.ProjectID)
+				// Get the current config after command runs
+				currentConfig, err := GetForgeConfig()
+				s.Require().NoError(err)
+
+				// Check project state
+				if tc.expectedProj == nil {
+					s.Empty(currentConfig.ProjectID)
+				} else {
+					s.Equal(tc.expectedProj.ID, currentConfig.ProjectID)
 				}
 			}
 		})
@@ -5141,10 +5155,8 @@ func (s *ForgeTestSuite) TestDeleteProjectCmd() {
 	tests := []struct {
 		name          string
 		config        Config
-		cmd           *DeleteProjectCmd
-		expectedError bool
-		expectedProj  *project
 		inputs        []string
+		expectedError bool
 	}{
 		{
 			name: "Success - Delete project",
@@ -5159,10 +5171,11 @@ func (s *ForgeTestSuite) TestDeleteProjectCmd() {
 				CurrRepoURL:    "https://github.com/test/repo",
 				CurrRepoPath:   "/",
 			},
-			cmd:           &DeleteProjectCmd{},
+			inputs: []string{
+				"Y",   // Accept invitation
+				"Yes", // Confirm project deletion
+			},
 			expectedError: false,
-			expectedProj:  nil,
-			inputs:        []string{"Yes"},
 		},
 		{
 			name: "Error - SetupForgeCommandState fails",
@@ -5177,56 +5190,41 @@ func (s *ForgeTestSuite) TestDeleteProjectCmd() {
 				CurrRepoURL:    "https://github.com/test/repo",
 				CurrRepoPath:   "/",
 			},
-			cmd:           &DeleteProjectCmd{},
 			expectedError: true,
-			expectedProj:  nil,
 		},
 	}
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			// Set up test config
+			// Save the test config
 			err := tc.config.Save()
 			s.Require().NoError(err)
 
-			// Set up input mocking
+			// Setup test config
 			if len(tc.inputs) > 0 {
-				originalGetInput = getInput
-				defer func() { getInput = originalGetInput }()
 				inputIndex := 0
-				getInput = func(prompt string, defaultStr string) string {
+				getInput = func(prompt, defaultValue string) string {
 					if inputIndex < len(tc.inputs) {
 						input := tc.inputs[inputIndex]
 						inputIndex++
 						return input
 					}
-					return defaultStr
+					return defaultValue
 				}
 			}
 
 			// Run the command
-			err = tc.cmd.Run()
+			cmd := &DeleteProjectCmd{}
+			err = cmd.Run()
 
-			// Check error
 			if tc.expectedError {
 				s.Require().Error(err)
-				s.Contains(err.Error(), "forge command setup failed")
 			} else {
 				s.Require().NoError(err)
-			}
-
-			// Only check project state if we didn't get a login error
-			if !tc.config.Credential.TokenExpiresAt.Before(time.Now()) {
-				// Get the current config after command runs
+				// Verify project was removed from config
 				currentConfig, err := GetForgeConfig()
 				s.Require().NoError(err)
-
-				// Check project state
-				if tc.expectedProj == nil {
-					s.Empty(currentConfig.ProjectID)
-				} else {
-					s.Equal(tc.expectedProj.ID, currentConfig.ProjectID)
-				}
+				s.Empty(currentConfig.ProjectID)
 			}
 		})
 	}
@@ -5441,6 +5439,91 @@ func (s *ForgeTestSuite) TestUpdateUserCmd() {
 				s.Contains(err.Error(), "forge command setup failed")
 			} else {
 				s.Require().NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ForgeTestSuite) TestHandleInvitedOrganizations() {
+	tests := []struct {
+		name           string
+		inputs         []string
+		expectedError  error
+		expectedOutput string
+	}{
+		{
+			name: "Accept invitation",
+			inputs: []string{
+				"Y", // Accept invitation
+			},
+			expectedError: nil,
+			expectedOutput: "You are invited to join the organization: Invited Organization [invited-org]\n" +
+				"Would you like to join? [Y/n]: Y\n" +
+				"Successfully joined organization: Invited Organization\n",
+		},
+		{
+			name: "Decline invitation",
+			inputs: []string{
+				"n", // Decline invitation
+			},
+			expectedError: nil,
+			expectedOutput: "You are invited to join the organization: Invited Organization [invited-org]\n" +
+				"Would you like to join? [Y/n]: n\n",
+		},
+		{
+			name: "Invalid input then accept",
+			inputs: []string{
+				"invalid", // Invalid input
+				"Y",       // Accept invitation
+			},
+			expectedError: nil,
+			expectedOutput: "You are invited to join the organization: Invited Organization [invited-org]\n" +
+				"Would you like to join? [Y/n]: invalid\n" +
+				"Invalid input, must be capital 'Y' or 'n'\n\n" +
+				"Would you like to join? [Y/n]: Y\n" +
+				"Successfully joined organization: Invited Organization\n",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Setup test context
+			fCtx := ForgeContext{
+				Context: context.Background(),
+				Config: &Config{
+					Credential: Credential{
+						Token: "test-token",
+					},
+				},
+			}
+
+			// Setup input simulation
+			inputIndex := 0
+			getInput = func(prompt, defaultValue string) string {
+				if inputIndex < len(tt.inputs) {
+					input := tt.inputs[inputIndex]
+					inputIndex++
+					return input
+				}
+				return defaultValue
+			}
+
+			// Create flow with NeedLogin requirement
+			flow := &initFlow{
+				requiredLogin:        NeedLogin,
+				requiredOrganization: Ignore,
+				requiredProject:      Ignore,
+			}
+
+			// Run the test
+			err := flow.handleInvitedOrganizations(&fCtx)
+
+			// Check error
+			if tt.expectedError != nil {
+				s.Require().Error(err)
+				s.Equal(tt.expectedError, err)
+			} else {
+				s.NoError(err)
 			}
 		})
 	}

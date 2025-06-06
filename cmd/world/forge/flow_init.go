@@ -83,6 +83,10 @@ func (fCtx *ForgeContext) SetupForgeCommandState(
 		return err
 	}
 
+	if err := flow.handleInvitedOrganizations(fCtx); err != nil {
+		return err
+	}
+
 	if err := flow.handleRepoLookup(fCtx); err != nil {
 		return err
 	}
@@ -118,6 +122,41 @@ func (flow *initFlow) handleLogin(fCtx *ForgeContext) error {
 		flow.loginStepDone = true
 	}
 	fCtx.State.LoggedIn = loggedIn
+	return nil
+}
+
+func (flow *initFlow) handleInvitedOrganizations(fCtx *ForgeContext) error {
+	if flow.requiredLogin == IgnoreLogin {
+		return nil
+	}
+
+	orgs, err := getOrganizationsInvitedTo(*fCtx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get organizations invitation list")
+	}
+
+	if len(orgs) > 0 {
+		printer.NewLine(1)
+		printer.Headerln("  Organization Invitations  ")
+	}
+
+	for _, org := range orgs {
+		retry := true
+		for retry {
+			printer.Infof("You are invited to join the organization: %s [%s]\n", org.Name, org.Slug)
+			input := getInput("Would you like to join? [Y/n]", "Y")
+			switch input {
+			case "Y":
+				org.acceptOrganizationInvitation(*fCtx)
+				retry = false
+			case "n", "":
+				retry = false
+			default:
+				printer.Errorln("Invalid input, must be capital 'Y' or 'n'")
+				printer.NewLine(1)
+			}
+		}
+	}
 	return nil
 }
 
