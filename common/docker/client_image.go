@@ -21,9 +21,9 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
-	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/printer"
+	"pkg.world.dev/world-cli/common/util"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -50,7 +50,7 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 	// Channel to collect errors from the goroutines
 	errChan := make(chan error, len(imagesName))
 
-	p := forge.NewTeaProgram(multispinner.CreateSpinner(imagesName, cancel))
+	p := util.NewTeaProgram(multispinner.CreateSpinner(imagesName, cancel))
 
 	for _, ds := range serviceToBuild {
 		// Capture dockerService in the loop
