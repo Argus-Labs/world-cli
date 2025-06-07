@@ -90,11 +90,11 @@ func (s *ForgeTestSuite) SetupTest() { //nolint: cyclop, gocyclo // test, don't 
 					s.handleGetRegions(w, r)
 				case "/api/organization/test-org-id/invite":
 					s.handleInvite(w, r)
-				case "/api/organization/test-org-id/role":
+				case "/api/organization/test-org-id/update-role":
 					s.handleRole(w, r)
 				case "/api/organization/invalid-org-id/invite":
 					http.Error(w, "Organization not found", http.StatusNotFound)
-				case "/api/organization/invalid-org-id/role":
+				case "/api/organization/invalid-org-id/update-role":
 					http.Error(w, "Organization not found", http.StatusNotFound)
 				case "/api/user":
 					s.handleGetUser(w, r)
@@ -5251,8 +5251,8 @@ func (s *ForgeTestSuite) TestInviteUserToOrganizationCmd() {
 				CurrRepoPath:   "/",
 			},
 			cmd: &InviteUserToOrganizationCmd{
-				ID:   "test-user-id",
-				Role: "member",
+				Email: "test-user-email",
+				Role:  "member",
 			},
 			expectedError: false,
 		},
@@ -5270,8 +5270,8 @@ func (s *ForgeTestSuite) TestInviteUserToOrganizationCmd() {
 				CurrRepoPath:   "/",
 			},
 			cmd: &InviteUserToOrganizationCmd{
-				ID:   "test-user-id",
-				Role: "member",
+				Email: "test-user-email",
+				Role:  "member",
 			},
 			expectedError: true,
 		},
@@ -5318,8 +5318,8 @@ func (s *ForgeTestSuite) TestChangeUserRoleInOrganizationCmd() {
 				CurrRepoPath:   "/",
 			},
 			cmd: &ChangeUserRoleInOrganizationCmd{
-				ID:   "test-user-id",
-				Role: "admin",
+				Email: "test-user-email",
+				Role:  "admin",
 			},
 			expectedError: false,
 		},
@@ -5337,8 +5337,8 @@ func (s *ForgeTestSuite) TestChangeUserRoleInOrganizationCmd() {
 				CurrRepoPath:   "/",
 			},
 			cmd: &ChangeUserRoleInOrganizationCmd{
-				ID:   "test-user-id",
-				Role: "admin",
+				Email: "test-user-email",
+				Role:  "admin",
 			},
 			expectedError: true,
 		},

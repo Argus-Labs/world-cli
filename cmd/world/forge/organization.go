@@ -398,16 +398,16 @@ func (o *organization) inviteUser(fCtx ForgeContext, flags *InviteUserToOrganiza
 	printer.NewLine(1)
 	printer.Headerln("   Invite User to Organization   ")
 
-	userID := getInput("Enter user ID to invite", flags.ID)
-	if userID == "" {
-		return eris.New("User ID cannot be empty")
+	userEmail := getInput("Enter user email to invite", flags.Email)
+	if userEmail == "" {
+		return eris.New("User email cannot be empty")
 	}
 
 	userRole := getRoleInput(false, flags.Role)
 
 	payload := map[string]string{
-		"invited_user_id": userID,
-		"role":            userRole,
+		"invited_user_email": userEmail,
+		"role":               userRole,
 	}
 
 	// Send request
@@ -417,7 +417,7 @@ func (o *organization) inviteUser(fCtx ForgeContext, flags *InviteUserToOrganiza
 	}
 
 	printer.NewLine(1)
-	printer.Successf("Successfully invited user %s to organization!\n", userID)
+	printer.Successf("Successfully invited user %s to organization!\n", userEmail)
 	printer.Infof("Assigned role: %s\n", userRole)
 	return nil
 }
@@ -425,27 +425,28 @@ func (o *organization) inviteUser(fCtx ForgeContext, flags *InviteUserToOrganiza
 func (o *organization) updateUserRole(fCtx ForgeContext, flags *ChangeUserRoleInOrganizationCmd) error {
 	printer.NewLine(1)
 	printer.Headerln("  Update User Role in Organization  ")
-	userID := getInput("Enter user ID to update", flags.ID)
+	userEmail := getInput("Enter user email to update", flags.Email)
 
-	if userID == "" {
-		return eris.New("User ID cannot be empty")
+	if userEmail == "" {
+		return eris.New("User email cannot be empty")
 	}
 
 	userRole := getRoleInput(true, flags.Role)
 
 	payload := map[string]string{
-		"target_user_id": userID,
-		"role":           userRole,
+		"target_user_email": userEmail,
+		"role":              userRole,
 	}
 
 	// Send request
-	_, err := sendRequest(fCtx, http.MethodPost, fmt.Sprintf("%s/%s/role", organizationURL, o.ID), payload)
+	_, err := sendRequest(fCtx, http.MethodPost, fmt.Sprintf("%s/%s/update-role", organizationURL, o.ID), payload)
 	if err != nil {
+		printer.Errorf("Failed to set role in organization: %s\n", err)
 		return eris.Wrap(err, "Failed to set user role in organization")
 	}
 
 	printer.NewLine(1)
-	printer.Successf("Successfully updated role for user %s!\n", userID)
+	printer.Successf("Successfully updated role for user %s!\n", userEmail)
 	printer.Infof("New role: %s\n", userRole)
 	return nil
 }

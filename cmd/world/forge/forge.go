@@ -250,8 +250,8 @@ type UserCmd struct {
 }
 
 type InviteUserToOrganizationCmd struct {
-	ID   string `flag:"" help:"The ID of the user to invite"`
-	Role string `flag:"" help:"The role of the user to invite"`
+	Email string `flag:"" help:"The email of the user to invite"`
+	Role  string `flag:"" help:"The role of the user to invite"`
 }
 
 func (c *InviteUserToOrganizationCmd) Run() error {
@@ -264,8 +264,8 @@ func (c *InviteUserToOrganizationCmd) Run() error {
 }
 
 type ChangeUserRoleInOrganizationCmd struct {
-	ID   string `flag:"" help:"The ID of the user to change the role of"`
-	Role string `flag:"" help:"The new role of the user"`
+	Email string `flag:"" help:"The email of the user to change the role of"`
+	Role  string `flag:"" help:"The new role of the user"`
 }
 
 func (c *ChangeUserRoleInOrganizationCmd) Run() error {
