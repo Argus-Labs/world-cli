@@ -912,7 +912,7 @@ func (s *ForgeTestSuite) TestDeploy() {
 				"Test Project", // Project name
 				"testp",        // Project slug
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
-				"",  // No token needed for public repo
+				// No token queried for public repo
 				"",  // Default repo path
 				"n", // No Discord
 				"n", // No Slack
@@ -2266,7 +2266,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // take default
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
-				"",                 // repoToken (empty for public repo)
+				// repoToken (not queried for public repo)
 				"",                 // repoPath (empty for default root path of repo)
 				"Y",                // enable discord notifications  NOTE: these won't show up in the console
 				"test-token",       // discord token                       because results are mocked
@@ -2306,7 +2306,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"",                // repoToken (empty for public repo)
+				// repoToken (not queried for public repo)
 				"",                // repoPath (empty for default root path of repo)
 				"Y",               // enable discord notifications  NOTE: these won't show up in the console
 				"test-token",      // discord token                       because results are mocked
@@ -2342,7 +2342,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // take default slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"", // repoToken (empty for public repo)
+				// repoToken (not queried for public repo)
 				"", // repoPath
 			},
 			regionSelectActions: []tea.KeyMsg{
@@ -2455,7 +2455,7 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"",      // name (should be taken from world.toml)
 				"testp", // take default slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"",                // repoToken (empty for public repo)
+				// repoToken (not queried for public repo)
 				"",                // repoPath (empty for default root path of repo)
 				"Y",               // enable discord notifications
 				"test-token",      // discord token
