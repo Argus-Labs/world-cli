@@ -912,12 +912,11 @@ func (s *ForgeTestSuite) TestDeploy() {
 				"Test Project", // Project name
 				"testp",        // Project slug
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
-				"",   // No token needed for public repo
-				"",   // Default repo path
-				"10", // Tick rate
-				"n",  // No Discord
-				"n",  // No Slack
-				"",   // No avatar URL
+				"",  // No token needed for public repo
+				"",  // Default repo path
+				"n", // No Discord
+				"n", // No Slack
+				"",  // No avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
 				{Type: tea.KeySpace}, // select region
@@ -2269,7 +2268,6 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",                 // repoToken (empty for public repo)
 				"",                 // repoPath (empty for default root path of repo)
-				"10",               // tick rate
 				"Y",                // enable discord notifications  NOTE: these won't show up in the console
 				"test-token",       // discord token                       because results are mocked
 				"1234567890",       // discord channel ID
@@ -2310,7 +2308,6 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"https://github.com/argus-labs/starter-game-template", // repoURL
 				"",                // repoToken (empty for public repo)
 				"",                // repoPath (empty for default root path of repo)
-				"10",              // tick rate
 				"Y",               // enable discord notifications  NOTE: these won't show up in the console
 				"test-token",      // discord token                       because results are mocked
 				"1234567890",      // discord channel ID
@@ -2345,9 +2342,8 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"Test Project", // name
 				"testp",        // take default slug
 				"https://github.com/argus-labs/starter-game-template", // repoURL
-				"",   // repoToken (empty for public repo)
-				"",   // repoPath
-				"10", // tick rate
+				"", // repoToken (empty for public repo)
+				"", // repoPath
 			},
 			regionSelectActions: []tea.KeyMsg{
 				{Type: tea.KeyRunes, Runes: []rune{'q'}, Alt: false}, // simulate pressing 'q'
@@ -2461,7 +2457,6 @@ func (s *ForgeTestSuite) TestCreateProject() {
 				"https://github.com/argus-labs/starter-game-template", // repoURL
 				"",                // repoToken (empty for public repo)
 				"",                // repoPath (empty for default root path of repo)
-				"10",              // tick rate
 				"Y",               // enable discord notifications
 				"test-token",      // discord token
 				"1234567890",      // discord channel ID
@@ -4161,7 +4156,6 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 				"https://github.com/test/repo", // Repo URL
 				"",                             // No token needed for public repo
 				"",                             // Default repo path
-				"10",                           // Tick rate
 				"n",                            // No Discord
 				"n",                            // No Slack
 				"",                             // No avatar URL
@@ -4237,12 +4231,11 @@ func (s *ForgeTestSuite) TestHandleNeedProjectData() {
 				"New Project", // Project name
 				"testp",       // Project slug
 				"https://github.com/argus-labs/starter-game-template", // Repo URL
-				"",   // No token needed for public repo
-				"",   // Default repo path
-				"10", // Tick rate
-				"n",  // No Discord
-				"n",  // No Slack
-				"",   // No avatar URL
+				"",  // No token needed for public repo
+				"",  // Default repo path
+				"n", // No Discord
+				"n", // No Slack
+				"",  // No avatar URL
 			},
 			regionSelectActions: []tea.KeyMsg{
 				{Type: tea.KeySpace}, // select region
@@ -4774,7 +4767,6 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",           // repoToken (empty for public repo)
 				"",           // repoPath (empty for default root path of repo)
-				"10",         // tick rate
 				"Y",          // enable discord notifications  NOTE: these won't show up in the console
 				"test-token", // discord token                       because results are mocked
 				"1234567890", // discord channel ID
@@ -4815,7 +4807,6 @@ func (s *ForgeTestSuite) TestCreateProjectCmd() {
 				"https://github.com/argus-labs/starter-game-template", // Repository URL
 				"",           // repoToken (empty for public repo)
 				"",           // repoPath (empty for default root path of repo)
-				"10",         // tick rate
 				"Y",          // enable discord notifications
 				"test-token", // discord token
 				"1234567890", // discord channel ID
