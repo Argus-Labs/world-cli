@@ -47,10 +47,9 @@ type project struct {
 }
 
 type projectConfig struct {
-	TickRate int                  `json:"tick_rate"`
-	Region   []string             `json:"region"`
-	Discord  projectConfigDiscord `json:"discord"`
-	Slack    projectConfigSlack   `json:"slack"`
+	Region  []string             `json:"region"`
+	Discord projectConfigDiscord `json:"discord"`
+	Slack   projectConfigSlack   `json:"slack"`
 }
 
 type projectConfigDiscord struct {
@@ -316,7 +315,6 @@ func (p *project) displayProjectDetails() {
 	printer.Infof("• ID: %s\n", p.ID)
 	printer.Infof("• Repository URL: %s\n", p.RepoURL)
 	printer.Infof("• Repository Path: %s\n", p.RepoPath)
-	printer.Infof("• Tick Rate: %d\n", p.Config.TickRate)
 	printer.Infoln("• Regions:")
 	for _, region := range p.Config.Region {
 		printer.Infof("    - %s\n", region)
@@ -820,12 +818,6 @@ func (p *project) getSetupInput(fCtx ForgeContext, regions []string) error {
 
 	p.inputRepoPath(fCtx.Context)
 
-	// Tick Rate
-	err = p.inputTickRate(fCtx.Context)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get environment name")
-	}
-
 	// Regions
 	err = p.chooseRegion(fCtx.Context, regions)
 	if err != nil {
@@ -850,38 +842,6 @@ func (p *project) getSetupInput(fCtx ForgeContext, regions []string) error {
 	}
 
 	return nil
-}
-
-// inputTickRate prompts the user to enter a tick rate value (default is 1)
-// and validates that it is a valid number. Returns error after max attempts or context cancellation.
-func (p *project) inputTickRate(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			var defaultValStr string
-			if p.Config.TickRate != 0 {
-				printer.Infof("Current tick rate: %d\n", p.Config.TickRate)
-				defaultValStr = strconv.Itoa(p.Config.TickRate)
-			} else {
-				printer.Infoln("Enter tick rate for your project")
-				defaultValStr = "1"
-			}
-
-			tickRateStr := getInput("  └─ Examples: 10, 20, 30", defaultValStr)
-
-			newTickRate, err := strconv.Atoi(tickRateStr)
-			p.Config.TickRate = newTickRate
-			if p.Config.TickRate <= 0 || err != nil {
-				printer.Errorln("Invalid input. Please enter a non-zero positive number")
-				printer.NewLine(1)
-				continue
-			}
-
-			return nil
-		}
-	}
 }
 
 // configureNotifications handles configuration for both Discord and Slack notifications.
