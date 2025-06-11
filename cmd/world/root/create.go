@@ -8,10 +8,10 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/common/editor"
 	"pkg.world.dev/world-cli/common/teacmd"
 	"pkg.world.dev/world-cli/common/tomlutil"
+	"pkg.world.dev/world-cli/common/util"
 	"pkg.world.dev/world-cli/tea/component/steps"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -233,7 +233,7 @@ type CreateCmd struct {
 }
 
 func (c *CreateCmd) Run() error {
-	p := forge.NewTeaProgram(NewWorldCreateModel(c.Directory))
+	p := util.NewTeaProgram(NewWorldCreateModel(c.Directory))
 	if _, err := p.Run(); err != nil {
 		return err
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/cmd/world/forge"
+	"pkg.world.dev/world-cli/common/util"
 	"pkg.world.dev/world-cli/tea/component/multispinner"
 	"pkg.world.dev/world-cli/tea/style"
 )
@@ -13,7 +13,7 @@ import (
 func (c *Client) createNetworkIfNotExists(ctx context.Context, networkName string) error {
 	// Create context with cancel
 	ctx, cancel := context.WithCancel(ctx)
-	p := forge.NewTeaProgram(multispinner.CreateSpinner([]string{networkName}, cancel))
+	p := util.NewTeaProgram(multispinner.CreateSpinner([]string{networkName}, cancel))
 
 	errChan := make(chan error, 1)
 

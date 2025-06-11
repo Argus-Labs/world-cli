@@ -265,3 +265,12 @@ func (c *Client) Exec(ctx context.Context, containerID string, cmd []string) (st
 	// Return the output as a string
 	return outputBuf.String(), nil
 }
+
+func (c *Client) Save(ctx context.Context, imageName string) (io.ReadCloser, error) {
+	reader, err := c.client.ImageSave(ctx, []string{imageName})
+	if err != nil {
+		return nil, eris.Wrapf(err, "Failed to save image")
+	}
+
+	return reader, nil
+}

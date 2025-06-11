@@ -21,18 +21,16 @@ import (
 	"time"
 	"unicode"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 	"github.com/rotisserie/eris"
 	"github.com/tidwall/gjson"
-	"golang.org/x/term"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
 const (
 	jitterDivisor  time.Duration = 2 // Divisor used to calculate maximum jitter range
 	RetryBaseDelay time.Duration = 100 * time.Millisecond
-	requestTimeout time.Duration = 5 * time.Second
+	requestTimeout time.Duration = 30 * time.Second // Increased timeout for large file uploads
 
 	nilUUID = "00000000-0000-0000-0000-000000000000"
 )
@@ -372,16 +370,6 @@ func CreateSlugFromName(name string, minLength int, maxLength int) string {
 		slug = strings.TrimRight(slug, "_")
 	}
 	return slug
-}
-
-// NewTeaProgram will create a BubbleTea program that automatically sets the no input option
-// if you are not on a TTY, so you can run the debugger. Call it just as you would call tea.NewProgram().
-func NewTeaProgram(model tea.Model, opts ...tea.ProgramOption) *tea.Program {
-	if !term.IsTerminal(int(os.Stderr.Fd())) {
-		opts = append(opts, tea.WithInput(nil))
-		// opts = append(opts, tea.WithoutRenderer())
-	}
-	return tea.NewProgram(model, opts...)
 }
 
 func isValidEmail(email string) bool {

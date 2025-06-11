@@ -336,12 +336,13 @@ func (s *ForgeTestSuite) handleProjectGet(w http.ResponseWriter, _ *http.Request
 }
 
 func (s *ForgeTestSuite) handleGetRegions(w http.ResponseWriter, _ *http.Request) {
-	result := map[string]string{
-		"38f46cb3-63a3-4955-ae5f-6c31595fd970": "ap-southeast-1",
-		"4ee8a580-879f-47c8-a183-de6d50329dc1": "us-east-1",
-		"71d61857-f803-4135-80a7-68b3e6f55443": "eu-central-1",
-		"f80a422c-eb8d-4d6d-8244-0f065773cb20": "us-west-2",
+	result := map[string]struct{}{
+		"ap-southeast-1": {},
+		"us-east-1":      {},
+		"eu-central-1":   {},
+		"us-west-2":      {},
 	}
+
 	s.writeJSON(w, map[string]interface{}{"data": result})
 }
 
@@ -828,7 +829,8 @@ func (s *ForgeTestSuite) TestDeploy() {
 						ID: "test-org-id",
 					},
 					Project: &project{
-						ID: "test-project-id",
+						ID:      "test-project-id",
+						RepoURL: "https://github.com/argus-labs/starter-game-template",
 					},
 					User: &User{
 						ID: "test-user-id",
@@ -1216,7 +1218,8 @@ func (s *ForgeTestSuite) TestDestroy() {
 						ID: "test-org-id",
 					},
 					Project: &project{
-						ID: "test-project-id",
+						ID:      "test-project-id",
+						RepoURL: "https://github.com/argus-labs/starter-game-template",
 					},
 					User: &User{
 						ID: "test-user-id",
@@ -1330,7 +1333,8 @@ func (s *ForgeTestSuite) TestReset() {
 						ID: "test-org-id",
 					},
 					Project: &project{
-						ID: "test-project-id",
+						ID:      "test-project-id",
+						RepoURL: "https://github.com/argus-labs/starter-game-template",
 					},
 					User: &User{
 						ID: "test-user-id",

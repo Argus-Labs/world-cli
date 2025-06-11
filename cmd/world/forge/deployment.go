@@ -1,9 +1,12 @@
 package forge
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"regexp"
 	"strings"
@@ -62,7 +65,7 @@ type DeployInfo struct {
 }
 
 // Deployment a project.
-func deployment(fCtx ForgeContext, deployType string) error {
+func deployment(fCtx ForgeContext, deployType string) error { //nolint:gocognit,funlen // will refactor later
 	if fCtx.State.Organization == nil || fCtx.State.Organization.ID == "" {
 		printNoSelectedOrganization()
 		return nil
@@ -116,6 +119,34 @@ func deployment(fCtx ForgeContext, deployType string) error {
 		return nil
 	}
 
+	// build the image
+	commitHash, reader, err := deploymentBuild(fCtx.Context, fCtx.State.Project)
+	if err != nil {
+		return eris.Wrap(err, "Failed to build image")
+	}
+
+	/* create multipart request */
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// add commit_hash to the request
+	err = writer.WriteField("commit_hash", commitHash)
+	if err != nil {
+		return eris.Wrap(err, "Failed to write commit hash")
+	}
+
+	// add the image to the request
+	part, err := writer.CreateFormFile("file", "image.tar")
+	if err != nil {
+		return eris.Wrap(err, "Failed to create form file")
+	}
+	_, err = io.Copy(part, reader)
+	if err != nil {
+		return eris.Wrap(err, "Failed to copy image to request")
+	}
+	writer.Close()
+	/* end of multipart request */
+
 	if deployType == DeploymentTypeForceDeploy {
 		deployType = "deploy?force=true"
 	}
@@ -123,9 +154,33 @@ func deployment(fCtx ForgeContext, deployType string) error {
 	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL,
 		fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
 
-	_, err = sendRequest(fCtx, http.MethodPost, deployURL, nil)
+	// Create request with proper Content-Type
+	req, err := http.NewRequestWithContext(fCtx.Context, http.MethodPost, deployURL, body)
+	if err != nil {
+		return eris.Wrap(err, "Failed to create request")
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Add auth header
+	if fCtx.Config != nil {
+		prefix := "ArgusID "
+		req.Header.Add("Authorization", prefix+fCtx.Config.Credential.Token)
+	}
+
+	// Send request
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return eris.Wrap(err, "Failed to read error response")
+		}
+		return eris.New(string(body))
 	}
 
 	env := DeployEnvPreview
@@ -516,7 +571,6 @@ func getAndPrintHealth(fCtx ForgeContext, deployInfo map[string]DeployInfo) (boo
 	}
 	return healthComplete, nil
 }
-
 func previewDeployment(fCtx ForgeContext, deployType string) error {
 	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s?preview=true",
 		baseURL, fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
