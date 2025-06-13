@@ -372,11 +372,6 @@ func CreateSlugFromName(name string, minLength int, maxLength int) string {
 	return slug
 }
 
-func isValidEmail(email string) bool {
-	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	return emailRegex.MatchString(email)
-}
-
 func isValidURL(urlStr string) error {
 	parsedURL, err := url.ParseRequestURI(urlStr)
 	if err != nil {

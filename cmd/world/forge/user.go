@@ -52,15 +52,6 @@ func updateUser(fCtx ForgeContext, flags *UpdateUserCmd) error {
 		return eris.Wrap(err, "Failed to input user name")
 	}
 
-	// prompt update email
-	if flags.Email == "" {
-		flags.Email = currentUser.Email
-	}
-	flags.Email, err = inputUserEmail(fCtx.Context, flags.Email)
-	if err != nil {
-		return eris.Wrap(err, "Failed to input user email")
-	}
-
 	// prompt for avatar url
 	if flags.AvatarURL == "" {
 		flags.AvatarURL = currentUser.AvatarURL
@@ -70,19 +61,28 @@ func updateUser(fCtx ForgeContext, flags *UpdateUserCmd) error {
 		return eris.Wrap(err, "Failed to input user avatar URL")
 	}
 
-	payload := User{
-		Name:      flags.Name,
-		Email:     flags.Email,
-		AvatarURL: flags.AvatarURL,
-	}
-
-	_, err = sendRequest(fCtx, http.MethodPut, userURL, payload)
+	err = updateUserRequest(fCtx, flags.Name, currentUser.Email, flags.AvatarURL)
 	if err != nil {
-		return eris.Wrap(err, "Failed to update user")
+		return err
 	}
 
 	printer.NewLine(1)
 	printer.Success("User updated successfully")
+
+	return nil
+}
+
+func updateUserRequest(fCtx ForgeContext, name, email, avatarURL string) error {
+	payload := User{
+		Name:      name,
+		Email:     email,
+		AvatarURL: avatarURL,
+	}
+
+	_, err := sendRequest(fCtx, http.MethodPut, userURL, payload)
+	if err != nil {
+		return eris.Wrap(err, "Failed to update user")
+	}
 
 	return nil
 }
@@ -101,23 +101,6 @@ func inputUserName(ctx context.Context, currentUserName string) (string, error) 
 				continue
 			}
 			return name, nil
-		}
-	}
-}
-
-func inputUserEmail(ctx context.Context, currentUserEmail string) (string, error) { // TODO: refactor
-	for {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		default:
-			email := getInput("Enter email", currentUserEmail)
-			if !isValidEmail(email) {
-				printer.Errorf("Invalid email format\n")
-				printer.NewLine(1)
-				continue
-			}
-			return email, nil
 		}
 	}
 }

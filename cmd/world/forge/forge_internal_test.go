@@ -5380,7 +5380,6 @@ func (s *ForgeTestSuite) TestUpdateUserCmd() {
 				CurrRepoPath:   "/",
 			},
 			cmd: &UpdateUserCmd{
-				Email:     "test@example.com",
 				Name:      "admin",
 				AvatarURL: "https://github.com/test/avatar.png",
 			},

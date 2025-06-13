@@ -93,6 +93,15 @@ func handleArgusIDPostLogin(fCtx ForgeContext) error {
 	}
 
 	fCtx.Config.Credential.ID = user.ID
+
+	// Update user email if it's different from the JWT token
+	if user.Email != fCtx.Config.Credential.Email {
+		err = updateUserRequest(fCtx, user.Name, user.Email, user.AvatarURL)
+		if err != nil {
+			return eris.Wrap(err, "Failed to update user email")
+		}
+	}
+
 	return fCtx.Config.Save()
 }
 
@@ -100,7 +109,8 @@ func displayLoginSuccess(config Config) {
 	printer.NewLine(1)
 	printer.Headerln("   Login successful!  ")
 	printer.Infof("Welcome, %s!\n", config.Credential.Name)
-	printer.Infof("Your ID is: %s\n", config.Credential.ID)
+	printer.Infof("ID: %s\n", config.Credential.ID)
+	printer.Infof("Email: %s\n", config.Credential.Email)
 	printer.NewLine(1)
 	printer.Infoln("You're all set to start using World Forge!")
 }
@@ -266,6 +276,7 @@ func parseJWTToken(jwtToken string) (Credential, error) {
 		TokenExpiresAt: time.Unix(claims.Exp, 0).Add(-tokenLeeway), // expire shortly before real expiration
 		Name:           claims.Name,
 		ID:             claims.Sub,
+		Email:          claims.Email,
 	}, nil
 }
 
