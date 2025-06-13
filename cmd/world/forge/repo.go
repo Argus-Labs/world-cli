@@ -14,7 +14,10 @@ import (
 
 const minimumURLParts = 2
 
-var ErrNotInGitRepository = eris.New("Not in a git repository")
+var (
+	ErrNotInGitRepository     = eris.New("Not in a git repository")
+	ErrNotInWorldCardinalRoot = eris.New("Not in a World Cadinal root")
+)
 
 // identifyProvider determines the Git provider based on the URL's host.
 func identifyProvider(repoURL string) (string, string, error) {
@@ -186,7 +189,7 @@ func FindGitPathAndURL() (string, string, error) {
 		if fallbackErr != nil {
 			return "", "", eris.Wrap(
 				fallbackErr,
-				fmt.Sprintf("%s: %s", ErrNotInGitRepository, "failed to get remote list"),
+				"Need to be in git repo: failed to get remote list",
 			)
 		}
 		lines := strings.Split(string(remoteList), "\n")

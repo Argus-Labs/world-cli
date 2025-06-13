@@ -87,8 +87,7 @@ func handleArgusIDPostLogin(fCtx ForgeContext) error {
 		errStr := eris.ToString(err, false)
 		if strings.Contains(errStr, "503") {
 			printer.Errorln("World Forge is currently experiencing issues, please try again later.")
-		} else {
-			printer.Errorln(err.Error())
+			err = eris.Wrap(err, ErrHandledError.Error())
 		}
 		return err
 	}

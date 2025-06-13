@@ -4,13 +4,22 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-// ErrOrganizationSlugAlreadyExists is passed from forge to world-cli, Must always match.
-var ErrOrganizationSlugAlreadyExists = eris.New("organization slug already exists")
+var (
+	// ErrOrganizationSlugAlreadyExists is passed from forge to world-cli, Must always match.
+	ErrOrganizationSlugAlreadyExists = eris.New("organization slug already exists")
+	// ErrOrganizationInviteFailed is passed from forge to world-cli, Must always match.
+	ErrOrganizationInviteFailed = eris.New("Organization email invite failed, but invite is still created in CLI.")
+
+	ErrOrganizationNotFoundWithSlug = eris.New("Organization not found with slug: ")
+	ErrCannotSwitchOrganization     = eris.New("Cannot switch organization, directory belongs to another project.")
+	ErrFailedToSetUserRoleInOrg     = eris.New("Failed to set user role in organization")
+)
 
 type organization struct {
 	ID               string `json:"id"`
@@ -123,7 +132,7 @@ func selectOrganization(fCtx ForgeContext, flags *SwitchOrganizationCmd) (organi
 	if fCtx.Config.CurrRepoKnown {
 		printer.Errorf("Cannot switch organization, current git working directory belongs to project: %s.",
 			fCtx.Config.CurrProjectName)
-		return organization{}, eris.New("Cannot switch organization, directory belongs to another project.")
+		return organization{}, ErrCannotSwitchOrganization
 	}
 
 	// If slug is provided, select organization from slug
@@ -204,7 +213,7 @@ func selectOrganizationFromSlug(fCtx ForgeContext, slug string) (organization, e
 
 	printer.NewLine(1)
 	printer.Errorln("Organization not found with slug: " + slug)
-	return organization{}, eris.New("Organization not found with slug: " + slug)
+	return organization{}, eris.Wrap(ErrOrganizationNotFoundWithSlug, slug)
 }
 
 //nolint:gocognit // Makes sense to keep in one function.
@@ -413,6 +422,11 @@ func (o *organization) inviteUser(fCtx ForgeContext, flags *InviteUserToOrganiza
 	// Send request
 	_, err := sendRequest(fCtx, http.MethodPost, fmt.Sprintf("%s/%s/invite", organizationURL, o.ID), payload)
 	if err != nil {
+		if strings.Contains(err.Error(), ErrOrganizationInviteFailed.Error()) {
+			printer.Errorf("Failed to invite user to organization: %s\n", err)
+			printer.Successln("Invite is still created and can be accepted in the World Forge.")
+			printer.NewLine(1)
+		}
 		return eris.Wrap(err, "Failed to invite user to organization")
 	}
 
@@ -442,7 +456,7 @@ func (o *organization) updateUserRole(fCtx ForgeContext, flags *ChangeUserRoleIn
 	_, err := sendRequest(fCtx, http.MethodPost, fmt.Sprintf("%s/%s/update-role", organizationURL, o.ID), payload)
 	if err != nil {
 		printer.Errorf("Failed to set role in organization: %s\n", err)
-		return eris.Wrap(err, "Failed to set user role in organization")
+		return eris.Wrap(err, ErrFailedToSetUserRoleInOrg.Error())
 	}
 
 	printer.NewLine(1)

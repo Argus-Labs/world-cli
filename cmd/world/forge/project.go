@@ -25,7 +25,10 @@ const MaxProjectNameLen = 50
 var regionSelector *tea.Program
 
 // ErrProjectSlugAlreadyExists is passed from forge to world-cli, Must always match.
-var ErrProjectSlugAlreadyExists = eris.New("project slug already exists")
+var (
+	ErrProjectSlugAlreadyExists  = eris.New("project slug already exists")
+	ErrCannotCreateSwitchProject = eris.New("Cannot create/switch Project, directory belongs to another project.")
+)
 
 type project struct {
 	ID           string        `json:"id"`
@@ -230,7 +233,7 @@ func projectPreCreateUpdateValidation() (string, string, error) {
 		return repoPath, repoURL, eris.Wrap(err, "Failed to check if in World project root")
 	} else if !inRoot {
 		printer.Errorln(" Not in a World project root")
-		return repoPath, repoURL, eris.New("Not in a World project root")
+		return repoPath, repoURL, ErrNotInWorldCardinalRoot
 	}
 
 	return repoPath, repoURL, nil
@@ -240,7 +243,7 @@ func createProject(fCtx ForgeContext, flags *CreateProjectCmd) (*project, error)
 	if fCtx.Config.CurrRepoKnown {
 		printer.Errorf("Cannot create Project, current git working directory belongs to project: %s.",
 			fCtx.Config.CurrProjectName)
-		return nil, eris.New("Cannot create Project, directory belongs to another project.")
+		return nil, ErrCannotCreateSwitchProject
 	}
 
 	repoPath, repoURL, err := projectPreCreateUpdateValidation()
@@ -595,7 +598,7 @@ func selectProject(fCtx ForgeContext, flags *SwitchProjectCmd, createNew bool) (
 	if fCtx.Config.CurrRepoKnown {
 		printer.Errorf("Cannot switch Project, current git working directory belongs to project: %s.",
 			fCtx.Config.CurrProjectName)
-		return nil, eris.New("Cannot switch Project, directory belongs to another project.")
+		return nil, ErrCannotCreateSwitchProject
 	}
 
 	// Get projects from selected organization

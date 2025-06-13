@@ -58,6 +58,8 @@ var (
 	Env = "PROD"
 )
 
+var ErrHandledError = eris.New("handled error")
+
 //nolint:lll // needed to put all the help text in the same line
 var ForgeCmdPlugin struct {
 	Login        *LoginCmd        `cmd:"" group:"Getting Started:" help:"Login to World Forge, creating a new account if necessary"`
@@ -329,7 +331,7 @@ func WithForgeContextSetup(
 
 	cfg, err := GetCurrentForgeConfig()
 	if err != nil {
-		printer.Notificationf("Warning: failed to load config: %s", err)
+		printer.Errorf("Command cannot start: %s", err)
 		logger.Error(eris.Wrap(err, "WithForgeSetup failed to get config"))
 		return err
 	}
@@ -341,18 +343,70 @@ func WithForgeContextSetup(
 
 	err = fCtx.SetupForgeCommandState(needLogin, needOrg, needProject)
 	if err != nil {
+		forgeErrorHandler(err)
 		return eris.Wrap(err, "forge command setup failed")
 	}
 
 	// Call the handler and wait for it to finish
 	if err := handler(fCtx); err != nil {
-		if strings.Contains(err.Error(), ErrCannotSaveConfig.Error()) {
-			printer.Errorln("Need to reset config, not implemented yet")
-			printer.Errorln("Go to homeDir/.worldcli/config.json and delete the file")
-			// TODO: reset the config
-		}
+		forgeErrorHandler(err)
 		return err
 	}
 
 	return fCtx.Config.Save()
+}
+
+func forgeErrorHandler(err error) {
+	if strings.Contains(err.Error(), ErrCannotSaveConfig.Error()) {
+		printer.Errorln("Failed to save config at critical point")
+		printer.Errorln("Need to reset config or may cause issues in future commands")
+		printer.Errorln("Go to homeDir/.worldcli/config.json and delete the file")
+		// TODO: reset the config
+		return
+	}
+	if forgeHandledErrorIgnoreList(err) {
+		return
+	}
+
+	printer.Errorln("Unexpected error occurred")
+	printer.Errorln(err.Error())
+}
+
+// forgeHandledErrorIgnoreList is a list of errors that are expected and already printed
+// to the user in a user friendly way, so we don't need to print them again.
+func forgeHandledErrorIgnoreList(err error) bool {
+	switch {
+	case strings.Contains(err.Error(), ErrHandledError.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrLogin.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrProjectCreationCanceled.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrProjectSelectionCanceled.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrOrganizationSelectionCanceled.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrOrganizationCreationCanceled.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrOrganizationSlugAlreadyExists.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrCannotSwitchOrganization.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrOrganizationNotFoundWithSlug.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrFailedToSetUserRoleInOrg.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrProjectSlugAlreadyExists.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrNotInGitRepository.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrNotInWorldCardinalRoot.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrCannotCreateSwitchProject.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrOrganizationInviteFailed.Error()):
+		return true
+	default:
+		return false
+	}
 }
