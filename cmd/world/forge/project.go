@@ -397,25 +397,9 @@ func (p *project) getForgeProjectNameFromWorldToml() error {
 }
 
 func (p *project) validateAndSetName(name string) error {
-	if name == "" {
-		printer.Errorln("Error: Project name cannot be empty")
-		printer.NewLine(1)
-		return eris.New("empty name")
+	if err := validateName(name, MaxProjectNameLen); err != nil {
+		return err
 	}
-
-	if len(name) > MaxProjectNameLen {
-		printer.Errorf("Error: Project name cannot be longer than %d characters\n", MaxProjectNameLen)
-		printer.NewLine(1)
-		return eris.New("name too long")
-	}
-
-	if strings.ContainsAny(name, "<>:\"/\\|?*") {
-		printer.Errorln("Error: Project name contains invalid characters" +
-			"   Invalid characters: < > : \" / \\ | ? *")
-		printer.NewLine(1)
-		return eris.New("invalid characters")
-	}
-
 	p.Name = name
 	return nil
 }

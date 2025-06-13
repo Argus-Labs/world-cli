@@ -10,6 +10,8 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
+const MaxOrgNameLen = 50
+
 var (
 	// ErrOrganizationSlugAlreadyExists is passed from forge to world-cli, Must always match.
 	ErrOrganizationSlugAlreadyExists = eris.New("organization slug already exists")
@@ -290,9 +292,10 @@ func createOrganization(fCtx ForgeContext, flags *CreateOrganizationCmd) (*organ
 		printer.Headerln("  Create New Organization  ")
 		for {
 			orgName = getInput("Enter organization name", flags.Name)
-			if orgName == "" {
+			err := validateName(orgName, MaxOrgNameLen)
+			if err != nil {
+				printer.Errorf("%s\n", err)
 				printer.NewLine(1)
-				printer.Errorln("Organization name is required")
 				continue
 			}
 			break
