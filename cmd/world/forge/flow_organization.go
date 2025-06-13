@@ -2,7 +2,6 @@ package forge
 
 import (
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -146,11 +145,4 @@ func (flow *initFlow) updateOrganization(fCtx *ForgeContext, org *organization) 
 	fCtx.State.Organization = org
 	flow.organizationStepDone = true
 	fCtx.Config.OrganizationID = org.ID
-
-	err := fCtx.Config.Save()
-	if err != nil {
-		printer.Notificationf("Warning: Failed to save config: %s", err)
-		logger.Error(eris.Wrap(err, "Organization flow failed to save config"))
-		// continue on, this is not fatal
-	}
 }

@@ -2705,7 +2705,7 @@ func (s *ForgeTestSuite) TestSelectProject() {
 			}
 			defer func() { getInput = originalGetInput }()
 
-			proj, err := selectProject(*tc.fCtx, &SwitchProjectCmd{})
+			proj, err := selectProject(*tc.fCtx, &SwitchProjectCmd{}, false)
 			if tc.expectedError {
 				s.Require().Error(err)
 				s.Empty(proj)

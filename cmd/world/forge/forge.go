@@ -206,7 +206,7 @@ type SwitchProjectCmd struct {
 
 func (c *SwitchProjectCmd) Run() error {
 	return WithForgeContextSetup(NeedLogin, NeedExistingData, NeedRepoLookup, func(fCtx ForgeContext) error {
-		_, err := selectProject(fCtx, c)
+		_, err := selectProject(fCtx, c, false)
 		return err
 	})
 }

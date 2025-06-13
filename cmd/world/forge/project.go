@@ -590,7 +590,8 @@ func selectProjectBySlug(fCtx ForgeContext, projects []project, slug string) (*p
 	return nil, ErrProjectSelectionCanceled
 }
 
-func selectProject(fCtx ForgeContext, flags *SwitchProjectCmd) (*project, error) {
+//nolint:gocognit // making helpers just for this function would be overkill and make codebase more complex
+func selectProject(fCtx ForgeContext, flags *SwitchProjectCmd, createNew bool) (*project, error) {
 	if fCtx.Config.CurrRepoKnown {
 		printer.Errorf("Cannot switch Project, current git working directory belongs to project: %s.",
 			fCtx.Config.CurrProjectName)
@@ -604,6 +605,13 @@ func selectProject(fCtx ForgeContext, flags *SwitchProjectCmd) (*project, error)
 	}
 
 	if len(projects) == 0 {
+		if createNew {
+			proj, err := createProject(fCtx, &CreateProjectCmd{})
+			if err != nil {
+				return nil, eris.Wrap(err, "Failed to create project")
+			}
+			return proj, nil
+		}
 		printNoProjectsInOrganization()
 		return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
 	}
@@ -620,12 +628,30 @@ func selectProject(fCtx ForgeContext, flags *SwitchProjectCmd) (*project, error)
 		printer.Infof("  %d. %s\n     └─ Slug: %s\n", i+1, proj.Name, proj.Slug)
 	}
 
-	// Get user input
+	inRepoRoot := false
+	prompt := "Enter project number ('q' to quit)"
+	if createNew {
+		_, _, err = projectPreCreateUpdateValidation()
+		if err != nil { // if in repo root, we can create a new project
+			inRepoRoot = true
+			prompt = "Enter project number ('c' to create new, 'q' to quit)"
+		}
+	}
+
 	for {
-		input := getInput("\nEnter project number (or 'q' to quit)", "")
+		printer.NewLine(1)
+		input := getInput(prompt, "")
 		input = strings.TrimSpace(input)
 		if input == "q" {
 			return nil, nil //nolint: nilnil // bad linter! sentinel errors are slow
+		}
+
+		if input == "c" && inRepoRoot {
+			proj, err := createProject(fCtx, &CreateProjectCmd{})
+			if err != nil {
+				return nil, eris.Wrap(err, "Failed to create project")
+			}
+			return proj, nil
 		}
 
 		// Parse selection
@@ -1055,7 +1081,7 @@ func handleMultipleProjects(fCtx ForgeContext, projects []project) error {
 		}
 	}
 
-	project, err := selectProject(fCtx, &SwitchProjectCmd{})
+	project, err := selectProject(fCtx, &SwitchProjectCmd{}, false)
 	if err != nil {
 		return eris.Wrap(err, "Failed to select project")
 	}
@@ -1069,8 +1095,12 @@ func handleMultipleProjects(fCtx ForgeContext, projects []project) error {
 
 // handleNoProjects handles the case when there are no projects.
 func handleNoProjects(fCtx ForgeContext) error {
-	// Confirmation prompt
-	printNoProjectsInOrganization()
+	_, _, err := projectPreCreateUpdateValidation()
+	if err != nil {
+		printRequiredStepsToCreateProject()
+		return nil //nolint:nilerr // error here is representing a boolean
+	}
+
 	printer.NewLine(1)
 	confirmation := getInput("Do you want to create a new project now? (y/n)", "y")
 

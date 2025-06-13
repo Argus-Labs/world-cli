@@ -1,8 +1,9 @@
 package forge
 
 import (
+	"fmt"
+
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -33,9 +34,14 @@ func (flow *initFlow) handleNeedProjectData(fCtx *ForgeContext) error {
 
 func (flow *initFlow) handleNeedProjectCaseNoProjects(fCtx *ForgeContext) error {
 	for {
-		printNoProjectsInOrganization()
-		printer.NewLine(1)
-		choice := getInput("If conditions are met, would you like to create a new project? (Y/n)", "Y")
+		// Must be in a valid directory to create a project
+		_, _, err := projectPreCreateUpdateValidation()
+		if err != nil {
+			printNoProjectsInOrganization()
+			return ErrProjectCreationCanceled
+		}
+
+		choice := getInput("Would you like to create a new project? (Y/n)", "Y")
 
 		switch choice {
 		case "Y":
@@ -56,10 +62,17 @@ func (flow *initFlow) handleNeedProjectCaseNoProjects(fCtx *ForgeContext) error 
 
 func (flow *initFlow) handleNeedProjectCaseOneProject(fCtx *ForgeContext, projects []project) error {
 	printer.NewLine(1)
-	printer.Infof("Project: %s [%s]\n", projects[0].Name, projects[0].Slug)
+
+	inRepoRoot := true
+	prompt := fmt.Sprintf("Select project: %s [%s]? (Y/n/c to create new)", projects[0].Name, projects[0].Slug)
+	_, _, err := projectPreCreateUpdateValidation()
+	if err != nil {
+		inRepoRoot = false
+		prompt = fmt.Sprintf("Select project: %s [%s]? (Y/n)", projects[0].Name, projects[0].Slug)
+	}
 
 	for {
-		choice := getInput("Use this project? (Y/n/c to create new)", "Y")
+		choice := getInput(prompt, "Y")
 
 		switch choice {
 		case "Y":
@@ -68,21 +81,28 @@ func (flow *initFlow) handleNeedProjectCaseOneProject(fCtx *ForgeContext, projec
 		case "n":
 			return ErrProjectSelectionCanceled
 		case "c":
-			proj, err := createProject(*fCtx, &CreateProjectCmd{})
-			if err != nil {
-				return eris.Wrap(err, "Flow failed to create project in one-project case")
+			if inRepoRoot {
+				proj, err := createProject(*fCtx, &CreateProjectCmd{})
+				if err != nil {
+					return eris.Wrap(err, "Flow failed to create project in one-project case")
+				}
+				flow.updateProject(fCtx, proj)
+				return nil
 			}
-			flow.updateProject(fCtx, proj)
-			return nil
-		default:
 			printer.Infoln("Please select capital 'Y' or lowercase 'n'/'c'")
+		default:
+			if inRepoRoot {
+				printer.Infoln("Please select capital 'Y' or lowercase 'n'/'c'")
+			} else {
+				printer.Infoln("Please select capital 'Y' or lowercase 'n'")
+			}
 			printer.NewLine(1)
 		}
 	}
 }
 
 func (flow *initFlow) handleNeedProjectCaseMultipleProjects(fCtx *ForgeContext) error {
-	proj, err := selectProject(*fCtx, &SwitchProjectCmd{})
+	proj, err := selectProject(*fCtx, &SwitchProjectCmd{}, true)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in multiple-projects case")
 	}
@@ -131,7 +151,7 @@ func (flow *initFlow) handleNeedExistingProjectCaseMultipleProjects(fCtx *ForgeC
 		return nil
 	}
 
-	proj, err := selectProject(*fCtx, &SwitchProjectCmd{})
+	proj, err := selectProject(*fCtx, &SwitchProjectCmd{}, false)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
 	}
@@ -153,11 +173,4 @@ func (flow *initFlow) updateProject(fCtx *ForgeContext, project *project) {
 
 	fCtx.Config.ProjectID = project.ID
 	fCtx.Config.CurrProjectName = project.Name
-
-	err := fCtx.Config.Save()
-	if err != nil {
-		printer.Notificationf("Warning: Failed to save config: %s", err)
-		logger.Error(eris.Wrap(err, "Project flow failed to save config"))
-		// continue on, this is not fatal
-	}
 }
