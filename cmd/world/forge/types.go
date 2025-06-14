@@ -3,7 +3,11 @@ package forge
 import (
 	"context"
 	"time"
+
+	"github.com/rotisserie/eris"
 )
+
+var ErrContextCanceled = eris.New("context canceled")
 
 //nolint:revive // Name makes sense and is generally used within package
 type ForgeContext struct {
@@ -17,6 +21,7 @@ type Credential struct {
 	TokenExpiresAt time.Time `json:"token_expires_at,omitempty"`
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
+	Email          string    `json:"email"`
 }
 
 type CommandState struct {

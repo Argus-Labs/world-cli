@@ -280,7 +280,6 @@ func (c *ChangeUserRoleInOrganizationCmd) Run() error {
 }
 
 type UpdateUserCmd struct {
-	Email     string `flag:"" help:"The email of the user to update"`
 	Name      string `flag:"" help:"The new name of the user"`
 	AvatarURL string `flag:"" help:"The new avatar URL of the user"  type:"url"`
 }
@@ -405,6 +404,8 @@ func forgeHandledErrorIgnoreList(err error) bool {
 	case strings.Contains(err.Error(), ErrCannotCreateSwitchProject.Error()):
 		return true
 	case strings.Contains(err.Error(), ErrOrganizationInviteFailed.Error()):
+		return true
+	case strings.Contains(err.Error(), ErrContextCanceled.Error()):
 		return true
 	default:
 		return false
