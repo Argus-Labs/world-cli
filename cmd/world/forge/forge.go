@@ -281,7 +281,7 @@ func (c *ChangeUserRoleInOrganizationCmd) Run() error {
 
 type UpdateUserCmd struct {
 	Name      string `flag:"" help:"The new name of the user"`
-	AvatarURL string `flag:"" help:"The new avatar URL of the user"  type:"url"`
+	AvatarURL string `flag:"" help:"The new avatar URL of the user" type:"url"`
 }
 
 func (c *UpdateUserCmd) Run() error {
