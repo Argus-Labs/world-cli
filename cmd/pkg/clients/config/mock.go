@@ -17,3 +17,7 @@ func (m *MockClient) Save() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+func (m *MockClient) AddKnownProject(pID, oID, rURL, rPath, pName string) {
+	m.Called(pID, oID, rURL, rPath, pName)
+}
