@@ -43,4 +43,6 @@ type ServiceInterface interface {
 	GetConfig() *Config
 	// Save saves the config to the file system
 	Save() error
+	// AddKnownProject adds a known project to the config
+	AddKnownProject(projectID, projectName, organizationID, repoURL, repoPath string)
 }

@@ -26,3 +26,12 @@ func (m *MockHandler) Switch(ctx context.Context, flags *models.SwitchOrganizati
 	args := m.Called(ctx, flags)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
+
+func (m *MockHandler) PromptForOrganization(
+	ctx context.Context,
+	orgs []models.Organization,
+	createNew bool,
+) (models.Organization, error) {
+	args := m.Called(ctx, orgs, createNew)
+	return args.Get(0).(models.Organization), args.Error(1)
+}

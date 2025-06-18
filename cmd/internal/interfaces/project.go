@@ -11,4 +11,6 @@ type ProjectHandler interface {
 	Switch(ctx context.Context, flags *models.SwitchProjectFlags) (models.Project, error)
 	Update(ctx context.Context, flags *models.UpdateProjectFlags) error
 	Delete(ctx context.Context) error
+
+	PreCreateUpdateValidation() (string, string, error)
 }
