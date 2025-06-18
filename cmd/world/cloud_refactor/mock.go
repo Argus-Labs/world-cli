@@ -1,9 +1,12 @@
 package cloud
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+	"pkg.world.dev/world-cli/cmd/internal/interfaces"
+)
 
 // Interface guard.
-var _ HandlerInterface = (*MockHandler)(nil)
+var _ interfaces.CloudHandler = (*MockHandler)(nil)
 
 type MockHandler struct {
 	mock.Mock

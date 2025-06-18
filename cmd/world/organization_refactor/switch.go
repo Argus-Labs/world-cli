@@ -1,10 +1,13 @@
 package organization
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import (
+	"context"
+
+	"pkg.world.dev/world-cli/cmd/internal/models"
+)
 
 //nolint:revive // TODO: implement
-func (h *Handler) Switch(ctx models.CommandContext, flags *models.SwitchOrganizationFlags,
-) (*models.Organization, error) {
-	//nolint:nilnil // TODO: implement
-	return nil, nil
+func (h *Handler) Switch(ctx context.Context, flags *models.SwitchOrganizationFlags,
+) (models.Organization, error) {
+	return models.Organization{}, nil
 }

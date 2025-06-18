@@ -1,12 +1,14 @@
 package root
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
-	"pkg.world.dev/world-cli/cmd/world/pkg/models"
+	"pkg.world.dev/world-cli/cmd/internal/interfaces"
 )
 
 // Interface guard.
-var _ HandlerInterface = (*MockHandler)(nil)
+var _ interfaces.RootHandler = (*MockHandler)(nil)
 
 type MockHandler struct {
 	mock.Mock
@@ -27,7 +29,7 @@ func (m *MockHandler) Version(check bool) error {
 	return args.Error(0)
 }
 
-func (m *MockHandler) Login(ctx models.CommandContext) error {
+func (m *MockHandler) Login(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }

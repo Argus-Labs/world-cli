@@ -1,9 +1,9 @@
 package root
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import "context"
 
 //nolint:revive // TODO: implement
-func (h *Handler) Login(ctx models.CommandContext) error {
+func (h *Handler) Login(ctx context.Context) error {
 	// TODO: implement
 	return nil
 }
