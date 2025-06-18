@@ -1,7 +1,7 @@
 package project
 
 import (
-	"pkg.world.dev/world-cli/cmd/world/pkg/models"
+	"pkg.world.dev/world-cli/cmd/pkg/models"
 )
 
 // Interface guard.

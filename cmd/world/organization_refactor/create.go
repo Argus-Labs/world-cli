@@ -1,6 +1,6 @@
 package organization
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import "pkg.world.dev/world-cli/cmd/pkg/models"
 
 //nolint:revive // TODO: implement
 func (h *Handler) Create(ctx models.CommandContext, flags *models.CreateOrganizationFlags,

@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 
-	"pkg.world.dev/world-cli/cmd/world/pkg/clients/config"
+	"pkg.world.dev/world-cli/cmd/pkg/clients/config"
 )
 
 type CommandContext struct {

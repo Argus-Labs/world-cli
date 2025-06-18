@@ -1,6 +1,6 @@
 package organization
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import "pkg.world.dev/world-cli/cmd/pkg/models"
 
 // Interface guard.
 var _ HandlerInterface = (*Handler)(nil)

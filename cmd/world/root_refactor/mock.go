@@ -2,7 +2,7 @@ package root
 
 import (
 	"github.com/stretchr/testify/mock"
-	"pkg.world.dev/world-cli/cmd/world/pkg/models"
+	"pkg.world.dev/world-cli/cmd/pkg/models"
 )
 
 // Interface guard.
