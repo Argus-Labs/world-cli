@@ -11,7 +11,7 @@ before:
     - go generate ./...
 
 builds:
-  - main: ./cmd/world
+  - main: ./cmd
     binary: world
     env:
       - CGO_ENABLED=0
