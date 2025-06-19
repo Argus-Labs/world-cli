@@ -42,7 +42,10 @@ func (c *Controller) handleNeedOrganizationCaseNoOrgs(
 	for {
 		printer.NewLine(1)
 		printer.Infoln("No organizations found.")
-		choice := getInput("Would you like to create one? (Y/n)", "Y")
+		choice, err := c.inputService.Prompt(ctx, "Would you like to create one? (Y/n)", "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
 
 		switch choice {
 		case "Y":
@@ -71,7 +74,10 @@ func (c *Controller) handleNeedOrganizationCaseOneOrg(
 	printer.Infof("Found one organization: %s [%s]\n", orgs[0].Name, orgs[0].Slug)
 
 	for {
-		choice := getInput("Use this organization? (Y/n/c to create new)", "Y")
+		choice, err := c.inputService.Prompt(ctx, "Use this organization? (Y/n/c to create new)", "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
 
 		switch choice {
 		case "Y":
