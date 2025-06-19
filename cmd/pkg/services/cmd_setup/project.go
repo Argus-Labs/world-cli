@@ -31,7 +31,7 @@ func (s *Service) handleNeedProjectData(ctx context.Context, result *models.Comm
 	case 1: // One project found
 		return s.handleNeedProjectCaseOneProject(ctx, result, cfg, projects)
 	default: // Multiple projects found
-		return s.handleNeedProjectCaseMultipleProjects(ctx, result, cfg, projects)
+		return s.handleNeedProjectCaseMultipleProjects(ctx, result, cfg)
 	}
 }
 
@@ -123,9 +123,8 @@ func (s *Service) handleNeedProjectCaseMultipleProjects(
 	ctx context.Context,
 	result *models.CommandState,
 	cfg *config.Config,
-	projects []models.Project,
 ) error {
-	proj, err := s.projectHandler.PromptForProject(ctx, projects, true)
+	proj, err := s.projectHandler.Switch(ctx, result, models.SwitchProjectFlags{}, true)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in multiple-projects case")
 	}
@@ -153,7 +152,7 @@ func (s *Service) handleNeedExistingProjectData(
 	case 1: // One project found
 		return s.handleNeedExistingProjectCaseOneProject(result, cfg, projects)
 	default: // Multiple projects found
-		return s.handleNeedExistingProjectCaseMultipleProjects(ctx, result, cfg, projects)
+		return s.handleNeedExistingProjectCaseMultipleProjects(ctx, result, cfg)
 	}
 }
 
@@ -175,7 +174,6 @@ func (s *Service) handleNeedExistingProjectCaseMultipleProjects(
 	ctx context.Context,
 	result *models.CommandState,
 	cfg *config.Config,
-	projects []models.Project,
 ) error {
 	// First check if we already have a selected project
 	selectedProj, err := s.apiClient.GetProjectByID(ctx, cfg.ProjectID)
@@ -184,7 +182,7 @@ func (s *Service) handleNeedExistingProjectCaseMultipleProjects(
 		return nil
 	}
 
-	proj, err := s.projectHandler.PromptForProject(ctx, projects, false)
+	proj, err := s.projectHandler.Switch(ctx, result, models.SwitchProjectFlags{}, false)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
 	}

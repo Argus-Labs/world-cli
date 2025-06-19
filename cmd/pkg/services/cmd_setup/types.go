@@ -37,12 +37,26 @@ type APIClientInterface interface {
 }
 
 type OrganizationHandler interface {
-	PromptForOrganization(ctx context.Context, orgs []models.Organization, createNew bool) (models.Organization, error)
-	CreateOrganization(ctx context.Context, flags models.CreateOrganizationFlags) (models.Organization, error)
+	PromptForSwitch(
+		ctx context.Context,
+		state *models.CommandState,
+		orgs []models.Organization,
+		createNew bool,
+	) (models.Organization, error)
+	Create(
+		ctx context.Context,
+		state *models.CommandState,
+		flags models.CreateOrganizationFlags,
+	) (models.Organization, error)
 }
 
 type ProjectHandler interface {
-	PromptForProject(ctx context.Context, projects []models.Project, createNew bool) (models.Project, error)
+	Switch(
+		ctx context.Context,
+		state *models.CommandState,
+		flags models.SwitchProjectFlags,
+		createNew bool,
+	) (models.Project, error)
 	Create(ctx context.Context, state *models.CommandState, flags models.CreateProjectFlags) (models.Project, error)
 	ProjectPreCreateUpdateValidation() (string, string, error)
 }
