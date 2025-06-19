@@ -27,8 +27,12 @@ type ClientInterface interface {
 	LookupProjectFromRepo(ctx context.Context, repoURL, repoPath string) (models.Project, error)
 	GetOrganizationByID(ctx context.Context, id string) (models.Organization, error)
 	GetProjectByID(ctx context.Context, id string) (models.Project, error)
+	CreateOrganization(ctx context.Context, name, slug, avatarURL string) (models.Organization, error)
+	GetListRegions(ctx context.Context, orgID, projID string) ([]string, error)
+	CheckProjectSlugIsTaken(ctx context.Context, orgID, projID, slug string) error
+	CreateProject(ctx context.Context, orgID string, project models.Project) (models.Project, error)
 
-	// Authentication
+	// Utility methods
 	SetAuthToken(token string)
 }
 

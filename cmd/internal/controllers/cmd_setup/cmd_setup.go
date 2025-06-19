@@ -6,33 +6,11 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
-	"pkg.world.dev/world-cli/cmd/internal/interfaces"
 	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/cmd/internal/services/config"
-	"pkg.world.dev/world-cli/cmd/internal/services/input"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
-
-func NewController(
-	configService config.ServiceInterface,
-	repoClient repo.ClientInterface,
-	organizationHandler interfaces.OrganizationHandler,
-	projectHandler interfaces.ProjectHandler,
-	apiClient api.ClientInterface,
-	inputService input.ServiceInterface,
-) interfaces.CommandSetupController {
-	return &Controller{
-		configService:       configService,
-		repoClient:          repoClient,
-		organizationHandler: organizationHandler,
-		projectHandler:      projectHandler,
-		apiClient:           apiClient,
-		inputService:        inputService,
-	}
-}
 
 // SetupCommandState performs the setup flow and returns the established state.
 func (c *Controller) SetupCommandState(ctx context.Context, req models.SetupRequest) (*models.CommandState, error) {

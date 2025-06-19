@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 
 	"github.com/rotisserie/eris"
 	"github.com/tidwall/gjson"
@@ -18,7 +19,14 @@ const (
 	put  = http.MethodPut
 )
 
-// API-specific methods that implement the business logic calls
+// ErrOrganizationSlugAlreadyExists is passed from forge to world-cli, Must always match.
+var ErrOrganizationSlugAlreadyExists = eris.New("organization slug already exists")
+
+var (
+	ErrNoOrganizationID = eris.New("organization ID is required")
+	ErrNoProjectID      = eris.New("project ID is required")
+	ErrNoProjectSlug    = eris.New("project slug is required")
+)
 
 // GetUser retrieves the current user information.
 func (c *Client) GetUser(ctx context.Context) (models.User, error) {
@@ -88,6 +96,10 @@ func (c *Client) LookupProjectFromRepo(ctx context.Context, repoURL, repoPath st
 
 // GetOrganizationByID retrieves a specific organization by ID.
 func (c *Client) GetOrganizationByID(ctx context.Context, id string) (models.Organization, error) {
+	if id == "" {
+		return models.Organization{}, ErrNoOrganizationID
+	}
+
 	endpoint := fmt.Sprintf("/api/organization/%s", id)
 	body, err := c.sendRequest(ctx, get, endpoint, nil)
 	if err != nil {
@@ -98,11 +110,107 @@ func (c *Client) GetOrganizationByID(ctx context.Context, id string) (models.Org
 
 // GetProjectByID retrieves a specific project by ID.
 func (c *Client) GetProjectByID(ctx context.Context, id string) (models.Project, error) {
+	if id == "" {
+		return models.Project{}, ErrNoProjectID
+	}
+
 	endpoint := fmt.Sprintf("/api/project/%s", id)
 	body, err := c.sendRequest(ctx, get, endpoint, nil)
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to get project by ID")
 	}
+	return parseResponse[models.Project](body)
+}
+
+// CreateOrganization creates a new organization.
+func (c *Client) CreateOrganization(ctx context.Context, name, slug, avatarURL string) (models.Organization, error) {
+	payload := map[string]string{
+		"name":       name,
+		"slug":       slug,
+		"avatar_url": avatarURL,
+	}
+
+	body, err := c.sendRequest(ctx, post, "/api/organization", payload)
+	if err != nil {
+		return models.Organization{}, eris.Wrap(err, "Failed to create organization")
+	}
+
+	return parseResponse[models.Organization](body)
+}
+
+// GetListRegions retrieves available regions for a project.
+func (c *Client) GetListRegions(ctx context.Context, orgID, projID string) ([]string, error) {
+	if orgID == "" {
+		return nil, ErrNoOrganizationID
+	} else if projID == "" {
+		return nil, ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s/regions", orgID, projID)
+	body, err := c.sendRequest(ctx, get, endpoint, nil)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get regions")
+	}
+
+	regionMap, err := parseResponse[map[string]bool](body)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to parse regions")
+	}
+
+	regions := make([]string, 0, len(regionMap))
+	for region := range regionMap {
+		regions = append(regions, region)
+	}
+
+	// Sort regions for consistent output
+	sort.Strings(regions)
+	return regions, nil
+}
+
+// CheckProjectSlugIsTaken checks if a project slug is already taken.
+func (c *Client) CheckProjectSlugIsTaken(ctx context.Context, orgID, projID, slug string) error {
+	if orgID == "" {
+		return ErrNoOrganizationID
+	}
+	if slug == "" {
+		return ErrNoProjectSlug
+	}
+	if projID == "" {
+		return ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s/%s/check_slug", orgID, projID, slug)
+	_, err := c.sendRequest(ctx, get, endpoint, nil)
+	if err != nil {
+		return eris.Wrap(err, "Failed to check project slug")
+	}
+
+	return nil
+}
+
+// CreateProject creates a new project.
+func (c *Client) CreateProject(ctx context.Context, orgID string, project models.Project) (models.Project, error) {
+	if orgID == "" {
+		return models.Project{}, ErrNoOrganizationID
+	}
+
+	payload := map[string]interface{}{
+		"name":       project.Name,
+		"slug":       project.Slug,
+		"repo_url":   project.RepoURL,
+		"repo_token": project.RepoToken,
+		"repo_path":  project.RepoPath,
+		"org_id":     orgID,
+		"config":     project.Config,
+		"avatar_url": project.AvatarURL,
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project", orgID)
+	body, err := c.sendRequest(ctx, post, endpoint, payload)
+	if err != nil {
+		return models.Project{}, eris.Wrap(err, "Failed to create project")
+	}
+
 	return parseResponse[models.Project](body)
 }
 
