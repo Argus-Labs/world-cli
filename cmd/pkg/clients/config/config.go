@@ -54,6 +54,22 @@ func (c *Client) Save() error {
 	return os.WriteFile(configFile, configJSON, 0600)
 }
 
+func (c *Client) AddKnownProject(
+	projectID string,
+	projectName string,
+	organizationID string,
+	repoURL string,
+	repoPath string,
+) {
+	c.Config.KnownProjects = append(c.Config.KnownProjects, KnownProject{
+		ProjectID:      projectID,
+		ProjectName:    projectName,
+		OrganizationID: organizationID,
+		RepoURL:        repoURL,
+		RepoPath:       repoPath,
+	})
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // internal functions
 //////////////////////////////////////////////////////////////////////////////////////////////////
