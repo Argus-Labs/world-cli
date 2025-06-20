@@ -85,12 +85,14 @@ func (c *Client) LookupProjectFromRepo(ctx context.Context, repoURL, repoPath st
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to lookup project from repo")
 	}
+
 	proj, err := parseResponse[models.Project](body)
 	if err != nil && err.Error() != "Missing data field in response" {
 		// missing data field in response just means nothing was found
 		// but any other error is a problem
 		return models.Project{}, eris.Wrap(err, "Failed to parse response")
 	}
+
 	return proj, nil
 }
 
@@ -157,13 +159,15 @@ func (c *Client) GetListRegions(ctx context.Context, orgID, projID string) ([]st
 		return nil, eris.Wrap(err, "Failed to parse regions")
 	}
 
-	regions := make([]string, 0, len(regionMap))
+	regions := make([]string, 0, len(regionMap)+1)
 	for region := range regionMap {
 		regions = append(regions, region)
 	}
 
 	// Sort regions for consistent output
 	sort.Strings(regions)
+	// TODO: Remove this once we have a way to get the regions from the API
+	regions = append(regions, "us-east-1")
 	return regions, nil
 }
 
