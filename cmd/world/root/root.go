@@ -23,12 +23,13 @@ const (
 
 //nolint:revive // this is the natural name for the root command
 type RootCmd struct {
-	Create       *CreateCmd  `cmd:"" group:"Getting Started:"     help:"Create a new World Engine project"`
-	Doctor       *DoctorCmd  `cmd:"" group:"Getting Started:"     help:"Check your development environment"`
-	kong.Plugins             // put this here so tools will be in the right place
-	Version      *VersionCmd `cmd:"" group:"Additional Commands:" help:"Show the version of the CLI"`
+	Create       *CreateCmd    `cmd:"" group:"Getting Started:"     help:"Create a new World Engine project"`
+	Doctor       *DoctorCmd    `cmd:"" group:"Getting Started:"     help:"Check your development environment"`
+	TestSetup    *TestSetupCmd `cmd:"" group:"Testing:"             help:"Test the cmd_setup service end-to-end"`
+	kong.Plugins               // put this here so tools will be in the right place
+	Version      *VersionCmd   `cmd:"" group:"Additional Commands:" help:"Show the version of the CLI"`
 	// Help    *root.HelpCmd    `cmd:"" default:"1" group:"Additional Commands:" help:"Show more detailed help"`
-	Verbose bool `                                    help:"Enable World CLI Debug logs"        flag:"" short:"v"`
+	Verbose bool `                                    help:"Enable World CLI Debug logs"           flag:"" short:"v"`
 }
 
 var CLI RootCmd
