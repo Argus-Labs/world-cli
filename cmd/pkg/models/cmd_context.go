@@ -2,14 +2,11 @@ package models
 
 import (
 	"context"
-
-	"pkg.world.dev/world-cli/cmd/pkg/clients/config"
 )
 
 type CommandContext struct {
 	Context context.Context
 	State   CommandState
-	Config  *config.Config
 }
 
 type CommandState struct {
