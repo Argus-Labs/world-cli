@@ -43,20 +43,24 @@ type MockOrganizationHandler struct {
 	mock.Mock
 }
 
-// PromptForOrganization mocks selecting an organization.
-func (m *MockOrganizationHandler) PromptForOrganization(
+// PromptForSwitch mocks selecting an organization.
+func (m *MockOrganizationHandler) PromptForSwitch(
 	ctx context.Context,
+	state *models.CommandState,
 	orgs []models.Organization,
 	createNew bool,
 ) (models.Organization, error) {
-	args := m.Called(ctx, orgs, createNew)
+	args := m.Called(ctx, state, orgs, createNew)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
 
 // CreateOrganization mocks creating an organization.
-func (m *MockOrganizationHandler) CreateOrganization(
-	ctx context.Context, flags models.CreateOrganizationFlags) (models.Organization, error) {
-	args := m.Called(ctx, flags)
+func (m *MockOrganizationHandler) Create(
+	ctx context.Context,
+	state *models.CommandState,
+	flags models.CreateOrganizationFlags,
+) (models.Organization, error) {
+	args := m.Called(ctx, state, flags)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
 
@@ -72,12 +76,13 @@ type MockProjectHandler struct {
 }
 
 // PromptForProject mocks selecting a project.
-func (m *MockProjectHandler) PromptForProject(
+func (m *MockProjectHandler) Switch(
 	ctx context.Context,
-	projects []models.Project,
+	state *models.CommandState,
+	flags models.SwitchProjectFlags,
 	createNew bool,
 ) (models.Project, error) {
-	args := m.Called(ctx, projects, createNew)
+	args := m.Called(ctx, state, flags, createNew)
 	return args.Get(0).(models.Project), args.Error(1)
 }
 
