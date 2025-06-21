@@ -35,6 +35,7 @@ func (m *MockService) SetupCommandState(
 // Organization Handler Mock
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Ensure MockOrganizationHandler implements the interface.
 var _ OrganizationHandler = (*MockOrganizationHandler)(nil)
 
 // MockOrganizationHandler is a mock implementation of OrganizationHandler.
@@ -81,11 +82,12 @@ func (m *MockProjectHandler) PromptForProject(
 }
 
 // CreateProject mocks creating a project.
-func (m *MockProjectHandler) CreateProject(
+func (m *MockProjectHandler) Create(
 	ctx context.Context,
+	state *models.CommandState,
 	flags models.CreateProjectFlags,
 ) (models.Project, error) {
-	args := m.Called(ctx, flags)
+	args := m.Called(ctx, state, flags)
 	return args.Get(0).(models.Project), args.Error(1)
 }
 

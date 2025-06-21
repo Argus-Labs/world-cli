@@ -5,6 +5,7 @@ import (
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/pkg/clients/config"
+	"pkg.world.dev/world-cli/cmd/pkg/clients/input"
 	"pkg.world.dev/world-cli/cmd/pkg/clients/repo"
 	"pkg.world.dev/world-cli/cmd/pkg/models"
 )
@@ -19,7 +20,8 @@ type Service struct {
 	repoClient          repo.ClientInterface
 	organizationHandler OrganizationHandler
 	projectHandler      ProjectHandler
-	apiClient           APIClientInterface // TODO: Implement API package
+	apiClient           APIClientInterface
+	inputClient         input.ClientInterface
 }
 
 // APIClientInterface defines the API operations needed by the setup service.
@@ -41,6 +43,6 @@ type OrganizationHandler interface {
 
 type ProjectHandler interface {
 	PromptForProject(ctx context.Context, projects []models.Project, createNew bool) (models.Project, error)
-	CreateProject(ctx context.Context, flags models.CreateProjectFlags) (models.Project, error)
+	Create(ctx context.Context, state *models.CommandState, flags models.CreateProjectFlags) (models.Project, error)
 	ProjectPreCreateUpdateValidation() (string, string, error)
 }

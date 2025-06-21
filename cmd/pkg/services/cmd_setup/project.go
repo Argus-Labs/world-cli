@@ -48,11 +48,14 @@ func (s *Service) handleNeedProjectCaseNoProjects(
 			return ErrProjectCreationCanceled
 		}
 
-		choice := getInput("Would you like to create a new project? (Y/n)", "Y")
+		choice, err := s.inputClient.Prompt(ctx, "Would you like to create a new project? (Y/n)", "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
 
 		switch choice {
 		case "Y":
-			proj, err := s.projectHandler.CreateProject(ctx, models.CreateProjectFlags{})
+			proj, err := s.projectHandler.Create(ctx, result, models.CreateProjectFlags{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in no-projects case")
 			}
@@ -84,7 +87,10 @@ func (s *Service) handleNeedProjectCaseOneProject(
 	}
 
 	for {
-		choice := getInput(prompt, "Y")
+		choice, err := s.inputClient.Prompt(ctx, prompt, "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
 
 		switch choice {
 		case "Y":
@@ -94,7 +100,7 @@ func (s *Service) handleNeedProjectCaseOneProject(
 			return ErrProjectSelectionCanceled
 		case "c":
 			if inRepoRoot {
-				proj, err := s.projectHandler.CreateProject(ctx, models.CreateProjectFlags{})
+				proj, err := s.projectHandler.Create(ctx, result, models.CreateProjectFlags{})
 				if err != nil {
 					return eris.Wrap(err, "Flow failed to create project in one-project case")
 				}
