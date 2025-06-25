@@ -36,3 +36,8 @@ func (m *MockHandler) Delete(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }
+
+func (m *MockHandler) PreCreateUpdateValidation() (string, string, error) {
+	args := m.Called()
+	return args.Get(0).(string), args.Get(1).(string), args.Error(2)
+}

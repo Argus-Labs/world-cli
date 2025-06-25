@@ -11,3 +11,7 @@ func (h *Handler) Create(ctx context.Context, flags *models.CreateProjectFlags, 
 ) (models.Project, error) {
 	return models.Project{}, nil
 }
+
+func (h *Handler) PreCreateUpdateValidation() (string, string, error) {
+	return "", "", nil
+}
