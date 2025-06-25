@@ -25,9 +25,10 @@ const (
 var _ ClientInterface = (*Client)(nil)
 
 // NewClient creates a new API client with the given base URL.
-func NewClient(baseURL string) ClientInterface {
+func NewClient(baseURL, rpcURL string) ClientInterface {
 	return &Client{
 		BaseURL: baseURL,
+		RPCURL:  rpcURL,
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -37,6 +38,11 @@ func NewClient(baseURL string) ClientInterface {
 // SetAuthToken updates the client's authentication credentials.
 func (c *Client) SetAuthToken(token string) {
 	c.Token = token
+}
+
+// TODO: Remove this once we have a proper RPC client
+func (c *Client) GetRPCBaseURL() string {
+	return c.RPCURL
 }
 
 // sendRequest sends an HTTP request with auth token and returns the response body.
