@@ -9,18 +9,15 @@ import (
 type OrganizationHandler interface {
 	Create(
 		ctx context.Context,
-		state *models.CommandState,
 		flags models.CreateOrganizationFlags,
 	) (models.Organization, error)
 	Switch(
 		ctx context.Context,
-		state *models.CommandState,
 		flags models.SwitchOrganizationFlags,
 	) (models.Organization, error)
 	PromptForSwitch(
 		ctx context.Context,
-		state *models.CommandState,
 		orgs []models.Organization,
-		createNew bool,
+		enableCreation bool,
 	) (models.Organization, error)
 }

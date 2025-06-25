@@ -303,7 +303,7 @@ func (c *Controller) inKnownRepo(ctx context.Context, cfg *config.Config, result
 		if err != nil {
 			return false
 		}
-		proj, err := c.apiClient.GetProjectByID(ctx, cfg.ProjectID)
+		proj, err := c.apiClient.GetProjectByID(ctx, org.ID, cfg.ProjectID)
 		if err != nil {
 			return false
 		}

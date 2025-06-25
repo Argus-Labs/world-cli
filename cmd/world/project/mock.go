@@ -26,10 +26,15 @@ func (m *MockHandler) Create(
 func (m *MockHandler) Switch(
 	ctx context.Context,
 	flags models.SwitchProjectFlags,
-	createNew bool,
+	enableCreation bool,
 ) (models.Project, error) {
-	args := m.Called(ctx, flags, createNew)
+	args := m.Called(ctx, flags, enableCreation)
 	return args.Get(0).(models.Project), args.Error(1)
+}
+
+func (m *MockHandler) HandleSwitch(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *MockHandler) Update(

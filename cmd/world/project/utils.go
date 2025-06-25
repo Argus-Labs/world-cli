@@ -92,7 +92,7 @@ func (h *Handler) getSelectedProject(ctx context.Context) (models.Project, error
 	}
 
 	// Send request
-	project, err := h.apiClient.GetProjectByID(ctx, h.configService.GetConfig().ProjectID)
+	project, err := h.apiClient.GetProjectByID(ctx, selectedOrg.ID, h.configService.GetConfig().ProjectID)
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to get project")
 	}

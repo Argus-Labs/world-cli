@@ -113,12 +113,15 @@ func (c *Client) GetOrganizationByID(ctx context.Context, id string) (models.Org
 }
 
 // GetProjectByID retrieves a specific project by ID.
-func (c *Client) GetProjectByID(ctx context.Context, id string) (models.Project, error) {
-	if id == "" {
+func (c *Client) GetProjectByID(ctx context.Context, orgID, projID string) (models.Project, error) {
+	if projID == "" {
 		return models.Project{}, ErrNoProjectID
 	}
+	if orgID == "" {
+		return models.Project{}, ErrNoOrganizationID
+	}
 
-	endpoint := fmt.Sprintf("/api/project/%s", id)
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s", orgID, projID)
 	body, err := c.sendRequest(ctx, get, endpoint, nil)
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to get project by ID")

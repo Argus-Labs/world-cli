@@ -175,8 +175,12 @@ func (c *Controller) handleNeedExistingProjectCaseMultipleProjects(
 	result *models.CommandState,
 	cfg *config.Config,
 ) error {
+	if result.Organization == nil {
+		return eris.New("Organization is nil")
+	}
+
 	// First check if we already have a selected project
-	selectedProj, err := c.apiClient.GetProjectByID(ctx, cfg.ProjectID)
+	selectedProj, err := c.apiClient.GetProjectByID(ctx, result.Organization.ID, cfg.ProjectID)
 	if err == nil && selectedProj.ID != "" {
 		c.updateProject(cfg, &selectedProj, result)
 		return nil

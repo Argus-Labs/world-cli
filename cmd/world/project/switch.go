@@ -15,7 +15,7 @@ import (
 func (h *Handler) Switch(
 	ctx context.Context,
 	flags models.SwitchProjectFlags,
-	createNew bool,
+	enableCreation bool,
 ) (models.Project, error) {
 	if h.configService.GetConfig().CurrRepoKnown {
 		printer.Errorf("Cannot switch Project, current git working directory belongs to project: %s.",
@@ -30,7 +30,7 @@ func (h *Handler) Switch(
 	}
 
 	if len(projects) == 0 {
-		if createNew {
+		if enableCreation {
 			proj, err := h.Create(ctx, models.CreateProjectFlags{})
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "Failed to create project")
@@ -55,7 +55,7 @@ func (h *Handler) Switch(
 
 	inRepoRoot := false
 	prompt := "Enter project number ('q' to quit)"
-	if createNew {
+	if enableCreation {
 		_, _, err = h.PreCreateUpdateValidation()
 		if err != nil { // if in repo root, we can create a new project
 			inRepoRoot = true
@@ -123,4 +123,73 @@ func (h *Handler) switchBySlug(ctx context.Context, projects []models.Project, s
 	printer.NewLine(1)
 	printer.Errorln("Project not found in organization under the slug: " + slug)
 	return models.Project{}, cmdsetup.ErrProjectSelectionCanceled
+}
+
+// HandleSwitch manages the project selection logic.
+func (h *Handler) HandleSwitch(ctx context.Context) error {
+	projects, err := h.getListOfProjects(ctx)
+	if err != nil {
+		return eris.Wrap(err, "Failed to get projects")
+	}
+
+	switch numProjects := len(projects); {
+	case numProjects == 1:
+		return h.handleSingleProject(ctx, projects[0])
+	case numProjects > 1:
+		return h.handleMultipleProjects(ctx, projects)
+	default:
+		return h.handleNoProjects(ctx)
+	}
+}
+
+func (h *Handler) handleSingleProject(ctx context.Context, project models.Project) error {
+	h.saveToConfig(&project)
+	h.showProjectList(ctx)
+	return nil
+}
+
+// handleMultipleProjects handles the case when there are multiple projects.
+func (h *Handler) handleMultipleProjects(ctx context.Context, projects []models.Project) error {
+	for _, project := range projects {
+		if project.ID == h.configService.GetConfig().ProjectID {
+			h.showProjectList(ctx)
+			return nil
+		}
+	}
+
+	project, err := h.Switch(ctx, models.SwitchProjectFlags{}, false)
+	if err != nil {
+		return eris.Wrap(err, "Failed to select project")
+	}
+
+	h.saveToConfig(&project)
+	return nil
+}
+
+// handleNoProjects handles the case when there are no projects.
+func (h *Handler) handleNoProjects(ctx context.Context) error {
+	_, _, err := h.PreCreateUpdateValidation()
+	if err != nil {
+		printRequiredStepsToCreateProject()
+		return nil //nolint:nilerr // error here is representing a boolean
+	}
+
+	printer.NewLine(1)
+	confirmation, err := h.inputService.Confirm(ctx, "Do you want to create a new project now? (y/n)", "Y")
+	if err != nil {
+		return eris.Wrap(err, "Failed to prompt")
+	}
+
+	if !confirmation {
+		printer.Errorln("Project creation canceled")
+		return nil
+	}
+
+	project, err := h.Create(ctx, models.CreateProjectFlags{})
+	if err != nil {
+		return eris.Wrap(err, "Failed to create project")
+	}
+
+	h.saveToConfig(&project)
+	return nil
 }

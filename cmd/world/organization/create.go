@@ -14,8 +14,7 @@ import (
 const MaxOrgNameLen = 50
 
 //nolint:gocognit,funlen // Belongs in a single function
-func (h *Handler) Create(ctx context.Context, _ *models.CommandState, flags models.CreateOrganizationFlags,
-) (models.Organization, error) {
+func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFlags) (models.Organization, error) {
 	var orgName, orgSlug, orgAvatarURL string
 	var err error
 

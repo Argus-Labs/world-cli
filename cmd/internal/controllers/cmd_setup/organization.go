@@ -39,29 +39,23 @@ func (c *Controller) handleNeedOrganizationCaseNoOrgs(
 	result *models.CommandState,
 	cfg *config.Config,
 ) error {
-	for {
-		printer.NewLine(1)
-		printer.Infoln("No organizations found.")
-		choice, err := c.inputService.Prompt(ctx, "Would you like to create one? (Y/n)", "Y")
-		if err != nil {
-			return eris.Wrap(err, "failed to get input")
-		}
-
-		switch choice {
-		case "Y":
-			org, err := c.organizationHandler.Create(ctx, result, models.CreateOrganizationFlags{})
-			if err != nil {
-				return eris.Wrap(err, "Flow failed to create organization in no-orgs case")
-			}
-			c.updateOrganization(cfg, &org, result)
-			return nil
-		case "n":
-			return ErrOrganizationCreationCanceled
-		default:
-			printer.Infoln("Please select capital 'Y' or lowercase 'n'")
-			printer.NewLine(1)
-		}
+	printer.NewLine(1)
+	printer.Infoln("No organizations found.")
+	confirm, err := c.inputService.Confirm(ctx, "Would you like to create one? (Y/n)", "Y")
+	if err != nil {
+		return eris.Wrap(err, "failed to get input")
 	}
+
+	if confirm {
+		org, err := c.organizationHandler.Create(ctx, models.CreateOrganizationFlags{})
+		if err != nil {
+			return eris.Wrap(err, "Flow failed to create organization in no-orgs case")
+		}
+		c.updateOrganization(cfg, &org, result)
+		return nil
+	}
+
+	return ErrOrganizationCreationCanceled
 }
 
 func (c *Controller) handleNeedOrganizationCaseOneOrg(
@@ -86,7 +80,7 @@ func (c *Controller) handleNeedOrganizationCaseOneOrg(
 		case "n":
 			return ErrOrganizationSelectionCanceled
 		case "c":
-			org, err := c.organizationHandler.Create(ctx, result, models.CreateOrganizationFlags{})
+			org, err := c.organizationHandler.Create(ctx, models.CreateOrganizationFlags{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create organization in one-org case")
 			}
@@ -105,7 +99,7 @@ func (c *Controller) handleNeedOrganizationCaseMultipleOrgs(
 	cfg *config.Config,
 	orgs []models.Organization,
 ) error {
-	org, err := c.organizationHandler.PromptForSwitch(ctx, result, orgs, true)
+	org, err := c.organizationHandler.PromptForSwitch(ctx, orgs, true)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to prompt for organization in multiple-orgs case")
 	}
@@ -165,7 +159,7 @@ func (c *Controller) handleNeedExistingOrganizationCaseMultipleOrgs(
 		return nil
 	}
 
-	org, err := c.organizationHandler.PromptForSwitch(ctx, result, orgs, false)
+	org, err := c.organizationHandler.PromptForSwitch(ctx, orgs, false)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to prompt for organization in existing multiple-orgs case")
 	}

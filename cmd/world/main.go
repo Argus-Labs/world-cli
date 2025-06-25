@@ -20,7 +20,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
-	orgHandler "pkg.world.dev/world-cli/cmd/world/organization_refactor"
+	"pkg.world.dev/world-cli/cmd/world/organization"
 	"pkg.world.dev/world-cli/cmd/world/project"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/config"
@@ -123,6 +123,7 @@ func main() {
 		&evm.EvmCmdPlugin,
 		&forge.ForgeCmdPlugin,
 		&project.CmdPlugin,
+		&organization.CmdPlugin,
 	}
 
 	ctx := kong.Parse(
@@ -141,6 +142,7 @@ func main() {
 	SetKongParentsAndContext(realCtx, dependencies, &evm.EvmCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &forge.ForgeCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &project.CmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &organization.CmdPlugin)
 	err = ctx.Run()
 	if err != nil {
 		sentry.CaptureException(err)
@@ -298,7 +300,7 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		&inputService,
 	)
 
-	orgHandler := orgHandler.NewHandler(
+	orgHandler := organization.NewHandler(
 		projectHandler,
 		&inputService,
 		apiClient,

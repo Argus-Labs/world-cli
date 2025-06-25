@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
@@ -13,7 +12,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/cmd/internal/services/config"
 	"pkg.world.dev/world-cli/cmd/internal/services/input"
-	organization "pkg.world.dev/world-cli/cmd/world/organization_refactor"
+	"pkg.world.dev/world-cli/cmd/world/organization"
 	"pkg.world.dev/world-cli/cmd/world/project"
 )
 
@@ -317,7 +316,7 @@ func TestSetupCommandState_RepoLookup_Success(t *testing.T) {
 	mockAPI.On("GetUser", ctx).Return(user, nil)
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetOrganizationByID", ctx, "org-789").Return(foundOrg, nil)
-	mockAPI.On("GetProjectByID", ctx, "proj-789").Return(foundProject, nil)
+	mockAPI.On("GetProjectByID", ctx, "org-789", "proj-789").Return(foundProject, nil)
 	mockConfig.On("Save").Return(nil)
 
 	req := models.SetupRequest{
@@ -400,8 +399,8 @@ func TestSetupCommandState_NeedOrgData_NoOrgs_CreateNew(t *testing.T) {
 	mockAPI.On("GetUser", ctx).Return(user, nil)
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetOrganizations", ctx).Return([]models.Organization{}, nil)
-	mockInput.On("Prompt", ctx, "Would you like to create one? (Y/n)", "Y").Return("Y", nil)
-	mockOrgHandler.On("Create", ctx, mock.Anything, models.CreateOrganizationFlags{}).
+	mockInput.On("Confirm", ctx, "Would you like to create one? (Y/n)", "Y").Return(true, nil)
+	mockOrgHandler.On("Create", ctx, models.CreateOrganizationFlags{}).
 		Return(newOrg, nil)
 	mockConfig.On("Save").Return(nil)
 
@@ -498,7 +497,7 @@ func TestSetupCommandState_NeedOrgData_MultipleOrgs(t *testing.T) {
 	mockAPI.On("GetUser", ctx).Return(user, nil)
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetOrganizations", ctx).Return(orgs, nil)
-	mockOrgHandler.On("PromptForSwitch", ctx, mock.Anything, orgs, true).
+	mockOrgHandler.On("PromptForSwitch", ctx, orgs, true).
 		Return(selectedOrg, nil)
 	mockConfig.On("Save").Return(nil)
 
@@ -792,7 +791,7 @@ func TestSetupCommandState_RepoLookup_NewProjectDiscovered(t *testing.T) {
 	mockConfig.On("AddKnownProject", "proj-789", "Found Project", "org-789", "https://github.com/test/repo", "path")
 	// After discovery, the service will call inKnownRepo which needs these API calls
 	mockAPI.On("GetOrganizationByID", ctx, "org-789").Return(foundOrg, nil)
-	mockAPI.On("GetProjectByID", ctx, "proj-789").Return(foundProject, nil)
+	mockAPI.On("GetProjectByID", ctx, "org-789", "proj-789").Return(foundProject, nil)
 	mockConfig.On("Save").Return(nil).Twice() // Once for AddKnownProject, once at the end
 
 	req := models.SetupRequest{

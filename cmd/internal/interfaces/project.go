@@ -11,8 +11,9 @@ type ProjectHandler interface {
 	Switch(
 		ctx context.Context,
 		flags models.SwitchProjectFlags,
-		createNew bool,
+		enableCreation bool,
 	) (models.Project, error)
+	HandleSwitch(ctx context.Context) error
 	Update(ctx context.Context, project models.Project, flags models.UpdateProjectFlags) error
 	Delete(ctx context.Context, project models.Project) error
 

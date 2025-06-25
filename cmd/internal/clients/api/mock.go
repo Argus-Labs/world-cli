@@ -61,8 +61,8 @@ func (m *MockClient) GetOrganizationByID(ctx context.Context, id string) (models
 }
 
 // GetProjectByID mocks getting a project by ID.
-func (m *MockClient) GetProjectByID(ctx context.Context, id string) (models.Project, error) {
-	args := m.Called(ctx, id)
+func (m *MockClient) GetProjectByID(ctx context.Context, orgID, projID string) (models.Project, error) {
+	args := m.Called(ctx, orgID, projID)
 	return args.Get(0).(models.Project), args.Error(1)
 }
 
