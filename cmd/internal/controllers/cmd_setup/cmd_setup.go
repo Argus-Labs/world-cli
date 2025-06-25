@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
 	"pkg.world.dev/world-cli/cmd/internal/interfaces"
 	"pkg.world.dev/world-cli/cmd/internal/models"
@@ -19,7 +20,7 @@ func NewController(
 	repoClient repo.ClientInterface,
 	organizationHandler interfaces.OrganizationHandler,
 	projectHandler interfaces.ProjectHandler,
-	apiClient APIClientInterface,
+	apiClient api.ClientInterface,
 ) interfaces.CommandSetupController {
 	return &Controller{
 		configService:       configService,
