@@ -13,6 +13,20 @@ var (
 	ErrLogin = eris.New("not logged in")
 )
 
+// Dependencies holds all initialized clients and handlers.
+type Dependencies struct {
+	ConfigService       config.ServiceInterface
+	InputService        input.ServiceInterface
+	APIClient           api.ClientInterface
+	RepoClient          repo.ClientInterface
+	OrganizationHandler interfaces.OrganizationHandler
+	ProjectHandler      interfaces.ProjectHandler
+	UserHandler         interfaces.UserHandler
+	RootHandler         interfaces.RootHandler
+	CloudHandler        interfaces.CloudHandler
+	SetupController     interfaces.CommandSetupController
+}
+
 type Controller struct {
 	configService       config.ServiceInterface
 	inputService        input.ServiceInterface

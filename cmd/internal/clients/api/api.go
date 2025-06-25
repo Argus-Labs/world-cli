@@ -17,10 +17,14 @@ const (
 	get  = http.MethodGet
 	post = http.MethodPost
 	put  = http.MethodPut
+	del  = http.MethodDelete
 )
 
 // ErrOrganizationSlugAlreadyExists is passed from forge to world-cli, Must always match.
 var ErrOrganizationSlugAlreadyExists = eris.New("organization slug already exists")
+
+// ErrProjectSlugAlreadyExists is passed from forge to world-cli, Must always match.
+var ErrProjectSlugAlreadyExists = eris.New("project slug already exists")
 
 var (
 	ErrNoOrganizationID = eris.New("organization ID is required")
@@ -212,6 +216,54 @@ func (c *Client) CreateProject(ctx context.Context, orgID string, project models
 	}
 
 	return parseResponse[models.Project](body)
+}
+
+// UpdateProject updates a project.
+func (c *Client) UpdateProject(
+	ctx context.Context,
+	orgID, projID string,
+	project models.Project,
+) (models.Project, error) {
+	if orgID == "" {
+		return models.Project{}, ErrNoOrganizationID
+	}
+	if projID == "" {
+		return models.Project{}, ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s", orgID, projID)
+	body, err := c.sendRequest(ctx, put, endpoint, map[string]interface{}{
+		"name":       project.Name,
+		"slug":       project.Slug,
+		"repo_url":   project.RepoURL,
+		"repo_token": project.RepoToken,
+		"repo_path":  project.RepoPath,
+		"config":     project.Config,
+		"avatar_url": project.AvatarURL,
+	})
+	if err != nil {
+		return models.Project{}, eris.Wrap(err, "Failed to update project")
+	}
+
+	return parseResponse[models.Project](body)
+}
+
+// DeleteProject deletes a project.
+func (c *Client) DeleteProject(ctx context.Context, orgID, projID string) error {
+	if orgID == "" {
+		return ErrNoOrganizationID
+	}
+	if projID == "" {
+		return ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s", orgID, projID)
+	_, err := c.sendRequest(ctx, del, endpoint, nil)
+	if err != nil {
+		return eris.Wrap(err, "Failed to delete project")
+	}
+
+	return nil
 }
 
 // parseResponse is a generic version that returns the parsed data.

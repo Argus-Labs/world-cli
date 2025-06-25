@@ -17,37 +17,35 @@ type MockHandler struct {
 
 func (m *MockHandler) Create(
 	ctx context.Context,
-	state *models.CommandState,
 	flags models.CreateProjectFlags,
 ) (models.Project, error) {
-	args := m.Called(ctx, state, flags)
+	args := m.Called(ctx, flags)
 	return args.Get(0).(models.Project), args.Error(1)
 }
 
 func (m *MockHandler) Switch(
 	ctx context.Context,
-	state *models.CommandState,
 	flags models.SwitchProjectFlags,
 	createNew bool,
 ) (models.Project, error) {
-	args := m.Called(ctx, state, flags, createNew)
+	args := m.Called(ctx, flags, createNew)
 	return args.Get(0).(models.Project), args.Error(1)
 }
 
 func (m *MockHandler) Update(
 	ctx context.Context,
-	state *models.CommandState,
+	project models.Project,
 	flags models.UpdateProjectFlags,
 ) error {
-	args := m.Called(ctx, state, flags)
+	args := m.Called(ctx, project, flags)
 	return args.Error(0)
 }
 
 func (m *MockHandler) Delete(
 	ctx context.Context,
-	state *models.CommandState,
+	project models.Project,
 ) error {
-	args := m.Called(ctx, state)
+	args := m.Called(ctx, project)
 	return args.Error(0)
 }
 

@@ -12,14 +12,40 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
+	"pkg.world.dev/world-cli/cmd/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
+	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
+	cfgService "pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/internal/services/input"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
+	orgHandler "pkg.world.dev/world-cli/cmd/world/organization_refactor"
+	"pkg.world.dev/world-cli/cmd/world/project"
 	"pkg.world.dev/world-cli/cmd/world/root"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/telemetry"
+)
+
+const (
+	// For local development.
+	worldForgeBaseURLLocal = "http://localhost:8001"
+	// For Argus Dev.
+	worldForgeBaseURLDev = "https://forge.argus.dev"
+	// For Argus Production.
+	worldForgeBaseURLProd = "https://forge.world.dev"
+	// For local development.
+	// worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
+	// RPC Dev URL.
+	// worldForgeRPCBaseURLDev = "https://rpc.argus.dev"
+	// RPC Prod URL.
+	// worldForgeRPCBaseURLProd = "https://rpc.world.dev"
+	// For Argus ID Dev.
+	// argusIDBaseURLDev = "https://id.argus.dev"
+	// For Argus ID Production.
+	// argusIDBaseURLProd = "https://id.argus.gg"
 )
 
 // This variable will be overridden by ldflags during build
@@ -84,8 +110,20 @@ func main() {
 	// Capture event running
 	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
 
+	// Initialize dependencies once for all commands
+	dependencies, err := initDependencies()
+	if err != nil {
+		log.Err(err).Msg("could not initialize dependencies")
+		return
+	}
+
 	// Initialize packages
-	root.CLI.Plugins = kong.Plugins{&cardinal.CardinalCmdPlugin, &evm.EvmCmdPlugin, &forge.ForgeCmdPlugin}
+	root.CLI.Plugins = kong.Plugins{
+		&cardinal.CardinalCmdPlugin,
+		&evm.EvmCmdPlugin,
+		&forge.ForgeCmdPlugin,
+		&project.CmdPlugin,
+	}
 
 	ctx := kong.Parse(
 		&root.CLI,
@@ -98,10 +136,11 @@ func main() {
 		}),
 	)
 	realCtx := contextWithSigterm(context.Background())
-	SetKongParentsAndContext(realCtx, &root.CLI)
-	SetKongParentsAndContext(realCtx, &cardinal.CardinalCmdPlugin)
-	SetKongParentsAndContext(realCtx, &evm.EvmCmdPlugin)
-	SetKongParentsAndContext(realCtx, &forge.ForgeCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &root.CLI)
+	SetKongParentsAndContext(realCtx, dependencies, &cardinal.CardinalCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &evm.EvmCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &forge.ForgeCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &project.CmdPlugin)
 	err = ctx.Run()
 	if err != nil {
 		sentry.CaptureException(err)
@@ -144,12 +183,17 @@ func getEnvAndVersion() (string, string) {
 }
 
 // SetKongParents recursively sets Parent pointers for Kong CLI structs.
-func SetKongParentsAndContext(ctx context.Context, cmd interface{}) {
-	setParentsAndContext(ctx, reflect.ValueOf(cmd), reflect.ValueOf(nil))
+func SetKongParentsAndContext(ctx context.Context, dependencies cmdsetup.Dependencies, cmd interface{}) {
+	setParentsAndContext(ctx, dependencies, reflect.ValueOf(cmd), reflect.ValueOf(nil))
 }
 
 //nolint:gocognit // this does exactly what it's supposed to do
-func setParentsAndContext(ctx context.Context, v reflect.Value, parent reflect.Value) {
+func setParentsAndContext(
+	ctx context.Context,
+	dependencies cmdsetup.Dependencies,
+	v reflect.Value,
+	parent reflect.Value,
+) {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -174,11 +218,18 @@ func setParentsAndContext(ctx context.Context, v reflect.Value, parent reflect.V
 				continue
 			}
 		}
+		// Inject Dependencies if field is named "Dependencies"
+		if fieldType.Name == "Dependencies" && fieldType.Type.String() == "cmdsetup.Dependencies" {
+			if field.CanSet() {
+				field.Set(reflect.ValueOf(dependencies))
+				continue
+			}
+		}
 		// Recurse into subcommands (fields with `cmd:""` tag)
 		if field.Kind() == reflect.Ptr && !field.IsNil() {
 			_, ok := fieldType.Tag.Lookup("cmd")
 			if ok {
-				setParentsAndContext(ctx, field, v.Addr())
+				setParentsAndContext(ctx, dependencies, field, v.Addr())
 			}
 		}
 	}
@@ -205,4 +256,71 @@ func contextWithSigterm(ctx context.Context) context.Context {
 	}()
 
 	return ctx
+}
+
+func initDependencies() (cmdsetup.Dependencies, error) {
+	env, _ := getEnvAndVersion()
+
+	var baseURL string
+	// var rpcURL string
+	// var argusIDBaseURL string
+	switch env {
+	case cfgService.EnvLocal:
+		baseURL = worldForgeBaseURLLocal
+		// rpcURL = worldForgeRPCBaseURLLocal
+		// argusIDBaseURL = argusIDBaseURLDev
+		printer.Notificationln("Forge Env: LOCAL")
+	case cfgService.EnvDev:
+		baseURL = worldForgeBaseURLDev
+		// rpcURL = worldForgeRPCBaseURLDev
+		// argusIDBaseURL = argusIDBaseURLDev
+		printer.Notificationln("Forge Env: DEV")
+	default:
+		baseURL = worldForgeBaseURLProd
+		// rpcURL = worldForgeRPCBaseURLProd
+		// argusIDBaseURL = argusIDBaseURLProd
+	}
+
+	configService, err := cfgService.NewService(env)
+	if err != nil {
+		return cmdsetup.Dependencies{}, err
+	}
+
+	repoClient := repo.NewClient()
+	inputService := input.NewService()
+	apiClient := api.NewClient(baseURL)
+	apiClient.SetAuthToken(configService.GetConfig().Credential.Token)
+
+	projectHandler := project.NewHandler(
+		repoClient,
+		configService,
+		apiClient,
+		&inputService,
+	)
+
+	orgHandler := orgHandler.NewHandler(
+		projectHandler,
+		&inputService,
+		apiClient,
+		configService,
+	)
+
+	setupController := cmdsetup.NewController(
+		configService,
+		repoClient,
+		orgHandler,
+		projectHandler,
+		apiClient,
+		&inputService,
+	)
+
+	return cmdsetup.Dependencies{
+		ConfigService:       configService,
+		InputService:        &inputService,
+		APIClient:           apiClient,
+		RepoClient:          repoClient,
+		OrganizationHandler: orgHandler,
+		ProjectHandler:      projectHandler,
+		SetupController:     setupController,
+	}, nil
 }

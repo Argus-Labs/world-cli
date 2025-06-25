@@ -21,3 +21,8 @@ func (m *MockService) Save() error {
 func (m *MockService) AddKnownProject(pID, oID, rURL, rPath, pName string) {
 	m.Called(pID, oID, rURL, rPath, pName)
 }
+
+func (m *MockService) RemoveKnownProject(pID, oID string) error {
+	args := m.Called(pID, oID)
+	return args.Error(0)
+}

@@ -14,7 +14,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/services/config"
 	"pkg.world.dev/world-cli/cmd/internal/services/input"
 	organization "pkg.world.dev/world-cli/cmd/world/organization_refactor"
-	project "pkg.world.dev/world-cli/cmd/world/project_refactor"
+	"pkg.world.dev/world-cli/cmd/world/project"
 )
 
 // Helper function to create a controller with fresh mocks for each test.
@@ -401,7 +401,7 @@ func TestSetupCommandState_NeedOrgData_NoOrgs_CreateNew(t *testing.T) {
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetOrganizations", ctx).Return([]models.Organization{}, nil)
 	mockInput.On("Prompt", ctx, "Would you like to create one? (Y/n)", "Y").Return("Y", nil)
-	mockOrgHandler.On("Create", ctx, mock.AnythingOfType("*models.CommandState"), models.CreateOrganizationFlags{}).
+	mockOrgHandler.On("Create", ctx, mock.Anything, models.CreateOrganizationFlags{}).
 		Return(newOrg, nil)
 	mockConfig.On("Save").Return(nil)
 
@@ -498,7 +498,7 @@ func TestSetupCommandState_NeedOrgData_MultipleOrgs(t *testing.T) {
 	mockAPI.On("GetUser", ctx).Return(user, nil)
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetOrganizations", ctx).Return(orgs, nil)
-	mockOrgHandler.On("PromptForSwitch", ctx, mock.AnythingOfType("*models.CommandState"), orgs, true).
+	mockOrgHandler.On("PromptForSwitch", ctx, mock.Anything, orgs, true).
 		Return(selectedOrg, nil)
 	mockConfig.On("Save").Return(nil)
 
@@ -550,7 +550,7 @@ func TestSetupCommandState_NeedProjectData_NoProjects_CreateNew(t *testing.T) {
 	mockAPI.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
 	mockProjectHandler.On("PreCreateUpdateValidation").Return("", "", nil)
 	mockInput.On("Prompt", ctx, "Would you like to create a new project? (Y/n)", "Y").Return("Y", nil)
-	mockProjectHandler.On("Create", ctx, mock.AnythingOfType("*models.CommandState"), models.CreateProjectFlags{}).
+	mockProjectHandler.On("Create", ctx, models.CreateProjectFlags{}).
 		Return(newProject, nil)
 	mockConfig.On("Save").Return(nil)
 

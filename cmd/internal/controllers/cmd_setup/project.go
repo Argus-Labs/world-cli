@@ -55,7 +55,7 @@ func (c *Controller) handleNeedProjectCaseNoProjects(
 
 		switch choice {
 		case "Y":
-			proj, err := c.projectHandler.Create(ctx, result, models.CreateProjectFlags{})
+			proj, err := c.projectHandler.Create(ctx, models.CreateProjectFlags{})
 			if err != nil {
 				return eris.Wrap(err, "Flow failed to create project in no-projects case")
 			}
@@ -100,7 +100,7 @@ func (c *Controller) handleNeedProjectCaseOneProject(
 			return ErrProjectSelectionCanceled
 		case "c":
 			if inRepoRoot {
-				proj, err := c.projectHandler.Create(ctx, result, models.CreateProjectFlags{})
+				proj, err := c.projectHandler.Create(ctx, models.CreateProjectFlags{})
 				if err != nil {
 					return eris.Wrap(err, "Flow failed to create project in one-project case")
 				}
@@ -124,7 +124,7 @@ func (c *Controller) handleNeedProjectCaseMultipleProjects(
 	result *models.CommandState,
 	cfg *config.Config,
 ) error {
-	proj, err := c.projectHandler.Switch(ctx, result, models.SwitchProjectFlags{}, true)
+	proj, err := c.projectHandler.Switch(ctx, models.SwitchProjectFlags{}, true)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in multiple-projects case")
 	}
@@ -182,7 +182,7 @@ func (c *Controller) handleNeedExistingProjectCaseMultipleProjects(
 		return nil
 	}
 
-	proj, err := c.projectHandler.Switch(ctx, result, models.SwitchProjectFlags{}, false)
+	proj, err := c.projectHandler.Switch(ctx, models.SwitchProjectFlags{}, false)
 	if err != nil {
 		return eris.Wrap(err, "Flow failed to select project in existing multiple-projects case")
 	}

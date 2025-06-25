@@ -93,6 +93,22 @@ func (m *MockClient) CreateProject(ctx context.Context, orgID string, project mo
 	return args.Get(0).(models.Project), args.Error(1)
 }
 
+// UpdateProject mocks updating a project.
+func (m *MockClient) UpdateProject(
+	ctx context.Context,
+	orgID, projID string,
+	project models.Project,
+) (models.Project, error) {
+	args := m.Called(ctx, orgID, projID, project)
+	return args.Get(0).(models.Project), args.Error(1)
+}
+
+// DeleteProject mocks deleting a project.
+func (m *MockClient) DeleteProject(ctx context.Context, orgID, projID string) error {
+	args := m.Called(ctx, orgID, projID)
+	return args.Error(0)
+}
+
 // Utility methods
 
 // SetAuthToken mocks setting auth token.

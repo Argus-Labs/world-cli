@@ -14,7 +14,6 @@ import (
 //nolint:gocognit,funlen // Belongs in a single function
 func (h *Handler) Switch(
 	ctx context.Context,
-	state *models.CommandState,
 	flags models.SwitchProjectFlags,
 	createNew bool,
 ) (models.Project, error) {
@@ -32,7 +31,7 @@ func (h *Handler) Switch(
 
 	if len(projects) == 0 {
 		if createNew {
-			proj, err := h.Create(ctx, state, models.CreateProjectFlags{})
+			proj, err := h.Create(ctx, models.CreateProjectFlags{})
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "Failed to create project")
 			}
@@ -76,7 +75,7 @@ func (h *Handler) Switch(
 		}
 
 		if input == "c" && inRepoRoot {
-			proj, err := h.Create(ctx, state, models.CreateProjectFlags{})
+			proj, err := h.Create(ctx, models.CreateProjectFlags{})
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "Failed to create project")
 			}

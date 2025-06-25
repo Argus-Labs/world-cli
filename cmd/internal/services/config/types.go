@@ -45,4 +45,6 @@ type ServiceInterface interface {
 	Save() error
 	// AddKnownProject adds a known project to the config
 	AddKnownProject(projectID, projectName, organizationID, repoURL, repoPath string)
+	// RemoveKnownProject removes a known project from the config
+	RemoveKnownProject(projectID, orgID string) error
 }

@@ -20,10 +20,10 @@ type MockController struct {
 func (m *MockController) SetupCommandState(
 	ctx context.Context,
 	req models.SetupRequest,
-) (*models.CommandState, error) {
+) (models.CommandState, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return models.CommandState{}, args.Error(1)
 	}
-	return args.Get(0).(*models.CommandState), args.Error(1)
+	return args.Get(0).(models.CommandState), args.Error(1)
 }

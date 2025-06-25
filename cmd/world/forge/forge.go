@@ -70,7 +70,6 @@ var ForgeCmdPlugin struct {
 	Reset        *ResetCmd        `cmd:"" group:"Cloud Management Commands:" help:"Restart your game project with a clean state"`
 	Logs         *LogsCmd         `cmd:"" group:"Cloud Management Commands:" help:"Tail logs for your game project"`
 	Organization *OrganizationCmd `cmd:"" aliases:"org"  group:"Organization Commands:" help:"Manage your organizations"`
-	Project      *ProjectCmd      `cmd:"" aliases:"proj" group:"Project Commands:"      help:"Manage your projects"`
 	User         *UserCmd         `cmd:""`
 }
 

@@ -31,6 +31,8 @@ type ClientInterface interface {
 	GetListRegions(ctx context.Context, orgID, projID string) ([]string, error)
 	CheckProjectSlugIsTaken(ctx context.Context, orgID, projID, slug string) error
 	CreateProject(ctx context.Context, orgID string, project models.Project) (models.Project, error)
+	UpdateProject(ctx context.Context, orgID, projID string, project models.Project) (models.Project, error)
+	DeleteProject(ctx context.Context, orgID, projID string) error
 
 	// Utility methods
 	SetAuthToken(token string)

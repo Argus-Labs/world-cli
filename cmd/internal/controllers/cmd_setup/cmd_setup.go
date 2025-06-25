@@ -12,14 +12,35 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
+// WithSetup is a wrapper function that performs the setup flow and calls the handler with the established state.
+// This follows the same pattern as WithForgeContextSetup from forge.go.
+func WithSetup(
+	ctx context.Context,
+	deps Dependencies,
+	req models.SetupRequest,
+	handler func(models.CommandState) error,
+) error {
+	state, err := deps.SetupController.SetupCommandState(ctx, req)
+	if err != nil {
+		return eris.Wrap(err, "setup failed")
+	}
+
+	err = handler(state)
+	if err != nil {
+		return eris.Wrap(err, "setup failed")
+	}
+
+	return deps.ConfigService.Save()
+}
+
 // SetupCommandState performs the setup flow and returns the established state.
-func (c *Controller) SetupCommandState(ctx context.Context, req models.SetupRequest) (*models.CommandState, error) {
-	result := &models.CommandState{}
+func (c *Controller) SetupCommandState(ctx context.Context, req models.SetupRequest) (models.CommandState, error) {
+	result := models.CommandState{}
 
 	cfg := c.handleConfig()
 
 	// Handle login step
-	if err := c.handleLogin(ctx, req.LoginRequired, result, cfg); err != nil {
+	if err := c.handleLogin(ctx, req.LoginRequired, &result, cfg); err != nil {
 		return result, err
 	}
 
@@ -31,12 +52,12 @@ func (c *Controller) SetupCommandState(ctx context.Context, req models.SetupRequ
 	}
 
 	// Handle repository lookup if needed
-	if err := c.handleRepoLookup(ctx, req, result, cfg); err != nil {
+	if err := c.handleRepoLookup(ctx, req, &result, cfg); err != nil {
 		return result, err
 	}
 
 	// Handle state setup
-	if err := c.handleStateSetup(ctx, req, result, cfg); err != nil {
+	if err := c.handleStateSetup(ctx, req, &result, cfg); err != nil {
 		return result, err
 	}
 

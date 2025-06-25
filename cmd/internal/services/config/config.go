@@ -9,6 +9,7 @@ import (
 	"github.com/rotisserie/eris"
 	commonConfig "pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
+	"pkg.world.dev/world-cli/common/printer"
 )
 
 // TODO: break this config into credentials and known projects. Don't save org/project id in the config.
@@ -68,6 +69,26 @@ func (s *Service) AddKnownProject(
 		RepoURL:        repoURL,
 		RepoPath:       repoPath,
 	})
+}
+
+func (s *Service) RemoveKnownProject(projectID string, orgID string) error {
+	newKnownProjects := make([]KnownProject, 0)
+
+	for _, knownProj := range s.Config.KnownProjects {
+		if knownProj.OrganizationID != orgID || knownProj.ProjectID != projectID {
+			newKnownProjects = append(newKnownProjects, knownProj)
+		}
+	}
+
+	s.Config.KnownProjects = newKnownProjects
+
+	err := s.Save()
+	if err != nil {
+		printer.Notificationf("Warning: RemoveKnownProject failed to save config: %s", err)
+		logger.Error(eris.Wrap(err, "RemoveKnownProject failed to save config"))
+		return ErrCannotSaveConfig
+	}
+	return nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

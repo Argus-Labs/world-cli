@@ -25,16 +25,11 @@ const MaxProjectNameLen = 50
 var regionSelector *tea.Program
 
 var (
-	// ErrProjectSlugAlreadyExists is passed from forge to world-cli, Must always match.
-	ErrProjectSlugAlreadyExists = eris.New("project slug already exists")
-
 	ErrCannotCreateSwitchProject = eris.New("Cannot create/switch Project, directory belongs to another project.")
 )
 
-//nolint:revive // TODO: implement
 func (h *Handler) Create(
 	ctx context.Context,
-	state *models.CommandState,
 	flags models.CreateProjectFlags,
 ) (models.Project, error) {
 	if h.configService.GetConfig().CurrRepoKnown {
@@ -73,7 +68,7 @@ func (h *Handler) Create(
 	// Send request
 	prj, err := h.apiClient.CreateProject(ctx, p.OrgID, p)
 	if err != nil {
-		if eris.Is(err, ErrProjectSlugAlreadyExists) {
+		if eris.Is(err, api.ErrProjectSlugAlreadyExists) {
 			printer.Errorf("Project already exists with slug: %s, please choose a different slug.\n", p.Slug)
 			printer.NewLine(1)
 		}
@@ -248,7 +243,7 @@ func (h *Handler) inputSlug(ctx context.Context, project *models.Project) error 
 			}
 
 			if err := h.checkIfProjectSlugIsTaken(ctx, project, slug); err != nil {
-				if eris.Is(err, ErrProjectSlugAlreadyExists) {
+				if eris.Is(err, api.ErrProjectSlugAlreadyExists) {
 					printer.Errorf("Project already exists with slug: %s\n", slug)
 				} else {
 					printer.Errorf("%s\n", err)

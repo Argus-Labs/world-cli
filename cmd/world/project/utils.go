@@ -151,6 +151,15 @@ func printNoSelectedOrganization() {
 	printer.Infoln(" to select one!")
 }
 
+func printNoSelectedProject() {
+	printer.NewLine(1)
+	printer.Headerln("   No Project Selected   ")
+	printer.Infoln("You don't have any project selected.")
+	printer.Info("Use ")
+	printer.Notification("'world project switch'")
+	printer.Infoln(" to select one!")
+}
+
 func (h *Handler) saveToConfig(project *models.Project) error {
 	h.configService.GetConfig().ProjectID = project.ID
 	err := h.configService.Save()
