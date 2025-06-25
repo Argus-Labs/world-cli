@@ -24,6 +24,24 @@ func (m *MockClient) GetUser(ctx context.Context) (models.User, error) {
 	return args.Get(0).(models.User), args.Error(1)
 }
 
+// UpdateUser mocks updating user information.
+func (m *MockClient) UpdateUser(ctx context.Context, name, email, avatarURL string) error {
+	args := m.Called(ctx, name, email, avatarURL)
+	return args.Error(0)
+}
+
+// UpdateUserRoleInOrganization mocks updating user role in organization.
+func (m *MockClient) UpdateUserRoleInOrganization(ctx context.Context, orgID, userEmail, role string) error {
+	args := m.Called(ctx, orgID, userEmail, role)
+	return args.Error(0)
+}
+
+// InviteUserToOrganization mocks inviting a user to an organization.
+func (m *MockClient) InviteUserToOrganization(ctx context.Context, orgID, userEmail, role string) error {
+	args := m.Called(ctx, orgID, userEmail, role)
+	return args.Error(0)
+}
+
 // GetOrganizations mocks getting organizations.
 func (m *MockClient) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
 	args := m.Called(ctx)

@@ -23,6 +23,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/organization"
 	"pkg.world.dev/world-cli/cmd/world/project"
 	"pkg.world.dev/world-cli/cmd/world/root"
+	"pkg.world.dev/world-cli/cmd/world/user"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
@@ -124,6 +125,7 @@ func main() {
 		&forge.ForgeCmdPlugin,
 		&project.CmdPlugin,
 		&organization.CmdPlugin,
+		&user.CmdPlugin,
 	}
 
 	ctx := kong.Parse(
@@ -143,6 +145,7 @@ func main() {
 	SetKongParentsAndContext(realCtx, dependencies, &forge.ForgeCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &project.CmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &organization.CmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &user.CmdPlugin)
 	err = ctx.Run()
 	if err != nil {
 		sentry.CaptureException(err)
@@ -307,6 +310,11 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		configService,
 	)
 
+	userHandler := user.NewHandler(
+		apiClient,
+		&inputService,
+	)
+
 	setupController := cmdsetup.NewController(
 		configService,
 		repoClient,
@@ -323,6 +331,7 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		RepoClient:          repoClient,
 		OrganizationHandler: orgHandler,
 		ProjectHandler:      projectHandler,
+		UserHandler:         userHandler,
 		SetupController:     setupController,
 	}, nil
 }

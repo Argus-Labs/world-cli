@@ -30,6 +30,9 @@ var (
 	ErrNoOrganizationID = eris.New("organization ID is required")
 	ErrNoProjectID      = eris.New("project ID is required")
 	ErrNoProjectSlug    = eris.New("project slug is required")
+	ErrNoUserEmail      = eris.New("user email is required")
+	ErrNoUserName       = eris.New("user name is required")
+	ErrNoUserAvatarURL  = eris.New("user avatar URL is required")
 )
 
 // GetUser retrieves the current user information.
@@ -39,6 +42,58 @@ func (c *Client) GetUser(ctx context.Context) (models.User, error) {
 		return models.User{}, eris.Wrap(err, "Failed to get user")
 	}
 	return parseResponse[models.User](body)
+}
+
+// UpdateUser updates the current user information.
+func (c *Client) UpdateUser(ctx context.Context, name, email, avatarURL string) error {
+	if email == "" {
+		return ErrNoUserEmail
+	}
+	if name == "" {
+		return ErrNoUserName
+	}
+	if avatarURL == "" {
+		return ErrNoUserAvatarURL
+	}
+
+	payload := models.User{
+		Name:      name,
+		Email:     email,
+		AvatarURL: avatarURL,
+	}
+
+	_, err := c.sendRequest(ctx, put, "/api/user", payload)
+	if err != nil {
+		return eris.Wrap(err, "Failed to update user")
+	}
+
+	return nil
+}
+
+// UpdateUserRoleInOrganization updates the role of a user in an organization.
+func (c *Client) UpdateUserRoleInOrganization(ctx context.Context, orgID, userEmail, role string) error {
+	_, err := c.sendRequest(ctx, post, fmt.Sprintf("/api/organization/%s/update-role", orgID), map[string]string{
+		"target_user_email": userEmail,
+		"role":              role,
+	})
+	if err != nil {
+		return eris.Wrap(err, "Failed to update user role in organization")
+	}
+
+	return nil
+}
+
+// InviteUserToOrganization invites a user to an organization.
+func (c *Client) InviteUserToOrganization(ctx context.Context, orgID, userEmail, role string) error {
+	_, err := c.sendRequest(ctx, post, fmt.Sprintf("/api/organization/%s/invite", orgID), map[string]string{
+		"invited_user_email": userEmail,
+		"role":               role,
+	})
+	if err != nil {
+		return eris.Wrap(err, "Failed to invite user to organization")
+	}
+
+	return nil
 }
 
 // GetOrganizations retrieves the list of organizations the user belongs to.

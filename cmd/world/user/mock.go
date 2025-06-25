@@ -17,21 +17,23 @@ type MockHandler struct {
 
 func (m *MockHandler) InviteToOrganization(
 	ctx context.Context,
-	flags *models.InviteUserToOrganizationFlags,
+	organization models.Organization,
+	flags models.InviteUserToOrganizationFlags,
 ) error {
-	args := m.Called(ctx, flags)
+	args := m.Called(ctx, organization, flags)
 	return args.Error(0)
 }
 
 func (m *MockHandler) ChangeRoleInOrganization(
 	ctx context.Context,
-	flags *models.ChangeUserRoleInOrganizationFlags,
+	organization models.Organization,
+	flags models.ChangeUserRoleInOrganizationFlags,
 ) error {
-	args := m.Called(ctx, flags)
+	args := m.Called(ctx, organization, flags)
 	return args.Error(0)
 }
 
-func (m *MockHandler) Update(ctx context.Context, flags *models.UpdateUserFlags) error {
+func (m *MockHandler) Update(ctx context.Context, flags models.UpdateUserFlags) error {
 	args := m.Called(ctx, flags)
 	return args.Error(0)
 }

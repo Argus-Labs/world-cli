@@ -8,6 +8,9 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/models"
 )
 
+// Interface implementation check.
+var _ ClientInterface = &Client{}
+
 // Client implements HTTP API client with retry logic and authentication.
 type Client struct {
 	BaseURL    string
@@ -20,6 +23,9 @@ type Client struct {
 type ClientInterface interface {
 	// API-specific methods that return parsed models
 	GetUser(ctx context.Context) (models.User, error)
+	UpdateUser(ctx context.Context, name, email, avatarURL string) error
+	UpdateUserRoleInOrganization(ctx context.Context, orgID, userEmail, role string) error
+	InviteUserToOrganization(ctx context.Context, orgID, userEmail, role string) error
 	GetOrganizations(ctx context.Context) ([]models.Organization, error)
 	GetOrganizationsInvitedTo(ctx context.Context) ([]models.Organization, error)
 	AcceptOrganizationInvitation(ctx context.Context, orgID string) error

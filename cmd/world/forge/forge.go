@@ -69,7 +69,6 @@ var ForgeCmdPlugin struct {
 	Destroy *DestroyCmd `cmd:"" group:"Cloud Management Commands:" help:"Remove your game project's deployed infrastructure from the cloud"`
 	Reset   *ResetCmd   `cmd:"" group:"Cloud Management Commands:" help:"Restart your game project with a clean state"`
 	Logs    *LogsCmd    `cmd:"" group:"Cloud Management Commands:" help:"Tail logs for your game project"`
-	User    *UserCmd    `cmd:""`
 }
 
 // ------------------------------------------------------------------------------------------------
