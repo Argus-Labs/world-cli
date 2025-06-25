@@ -31,14 +31,14 @@ type KnownProject struct {
 	ProjectName    string `json:"project_name"`
 }
 
-var _ ClientInterface = (*Client)(nil)
+var _ ServiceInterface = (*Service)(nil)
 
-type Client struct {
+type Service struct {
 	Env    string
 	Config Config
 }
 
-type ClientInterface interface {
+type ServiceInterface interface {
 	// GetConfig returns a copy of the config
 	GetConfig() *Config
 	// Save saves the config to the file system

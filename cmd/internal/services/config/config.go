@@ -23,30 +23,30 @@ const (
 
 var ErrCannotSaveConfig = eris.New("Critical config update error could not save")
 
-func NewClient(env string) (ClientInterface, error) {
-	client := &Client{
+func NewService(env string) (ServiceInterface, error) {
+	service := &Service{
 		Env:    env,
 		Config: Config{},
 	}
 
-	err := client.getSetConfig()
+	err := service.getSetConfig()
 	if err != nil {
 		return nil, eris.Wrap(err, "failed to get config")
 	}
-	return client, nil
+	return service, nil
 }
 
-func (c *Client) GetConfig() *Config {
-	return &c.Config
+func (s *Service) GetConfig() *Config {
+	return &s.Config
 }
 
-func (c *Client) Save() error {
-	configFile, err := c.getConfigFileName()
+func (s *Service) Save() error {
+	configFile, err := s.getConfigFileName()
 	if err != nil {
 		return eris.Wrap(err, "failed get config file name")
 	}
 
-	configJSON, err := json.Marshal(c.Config)
+	configJSON, err := json.Marshal(s.Config)
 	if err != nil {
 		return eris.Wrap(err, "failed to marshal config")
 	}
@@ -58,10 +58,10 @@ func (c *Client) Save() error {
 // internal functions
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (c *Client) getSetConfig() error {
+func (s *Service) getSetConfig() error {
 	var config Config
 
-	configFile, err := c.getConfigFileName()
+	configFile, err := s.getConfigFileName()
 	if err != nil {
 		return eris.Wrap(err, "failed get config file name")
 	}
@@ -86,14 +86,14 @@ func (c *Client) getSetConfig() error {
 	config.CurrRepoPath = ""
 	config.CurrProjectName = ""
 
-	c.Config = config
+	s.Config = config
 	return nil
 }
 
-func (c *Client) getConfigFileName() (string, error) {
+func (s *Service) getConfigFileName() (string, error) {
 	fileName := defaultFileName
-	if c.Env == EnvDev || c.Env == EnvLocal {
-		fileName = strings.ToLower(c.Env) + "-" + fileName
+	if s.Env == EnvDev || s.Env == EnvLocal {
+		fileName = strings.ToLower(s.Env) + "-" + fileName
 	}
 	fullConfigDir, err := commonConfig.GetCLIConfigDir()
 	if err != nil {

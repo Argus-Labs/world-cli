@@ -1,10 +1,13 @@
 package project
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import (
+	"context"
+
+	"pkg.world.dev/world-cli/cmd/internal/models"
+)
 
 //nolint:revive // TODO: implement
-func (h *Handler) Switch(ctx models.CommandContext, flags *models.SwitchProjectFlags,
-) (*models.Project, error) {
-	//nolint:nilnil // TODO: implement
-	return nil, nil
+func (h *Handler) Switch(ctx context.Context, flags *models.SwitchProjectFlags,
+) (models.Project, error) {
+	return models.Project{}, nil
 }

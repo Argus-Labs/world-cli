@@ -1,10 +1,14 @@
 package user
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import (
+	"context"
+
+	"pkg.world.dev/world-cli/cmd/internal/models"
+)
 
 //nolint:revive // TODO: implement
 func (h *Handler) ChangeRoleInOrganization(
-	ctx models.CommandContext,
+	ctx context.Context,
 	flags *models.ChangeUserRoleInOrganizationFlags,
 ) error {
 	// TODO: implement

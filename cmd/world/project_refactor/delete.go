@@ -1,9 +1,11 @@
 package project
 
-import "pkg.world.dev/world-cli/cmd/world/pkg/models"
+import (
+	"context"
+)
 
 //nolint:revive // TODO: implement
-func (h *Handler) Delete(ctx models.CommandContext) error {
+func (h *Handler) Delete(ctx context.Context) error {
 	// TODO: implement
 	return nil
 }

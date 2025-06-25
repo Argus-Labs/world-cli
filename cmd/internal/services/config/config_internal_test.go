@@ -37,22 +37,22 @@ func TestConfigSuite(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }
 
-func (s *ConfigTestSuite) TestNewClient() {
-	client, err := NewClient(EnvDev)
+func (s *ConfigTestSuite) TestNewService() {
+	service, err := NewService(EnvDev)
 	s.Require().NoError(err)
-	s.NotNil(client)
-	s.Implements((*ClientInterface)(nil), client)
+	s.NotNil(service)
+	s.Implements((*ServiceInterface)(nil), service)
 
-	realClient := client.(*Client)
-	s.Equal(EnvDev, realClient.Env)
+	realService := service.(*Service)
+	s.Equal(EnvDev, realService.Env)
 }
 
 func (s *ConfigTestSuite) TestGetForgeConfig_NoFile() {
 	// Test the REAL Client implementation
-	client, err := NewClient(EnvDev)
+	service, err := NewService(EnvDev)
 	s.Require().NoError(err)
 
-	config := client.GetConfig()
+	config := service.GetConfig()
 	s.Empty(config.Credential.Token)
 	s.Empty(config.KnownProjects)
 	s.False(config.CurrRepoKnown)
@@ -88,9 +88,9 @@ func (s *ConfigTestSuite) TestGetForgeConfig_WithFile() {
 	s.Require().NoError(err)
 
 	// Test the REAL Client.GetForgeConfig() method
-	client, err := NewClient(EnvDev)
+	service, err := NewService(EnvDev)
 	s.Require().NoError(err)
-	config := client.GetConfig()
+	config := service.GetConfig()
 
 	// Verify it read the real file correctly
 	s.Equal("test-token", config.Credential.Token)
@@ -115,11 +115,11 @@ func (s *ConfigTestSuite) TestSave() {
 	}
 
 	// Test the REAL Client.Save() method
-	client, err := NewClient(EnvDev)
+	service, err := NewService(EnvDev)
 	s.Require().NoError(err)
 
-	client.(*Client).Config = testConfig
-	err = client.Save()
+	service.(*Service).Config = testConfig
+	err = service.Save()
 	s.Require().NoError(err)
 
 	// Verify the real implementation created the file with correct name
@@ -162,9 +162,9 @@ func (s *ConfigTestSuite) TestGetConfigFileName() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			client, err := NewClient(tt.env)
+			service, err := NewService(tt.env)
 			s.Require().NoError(err)
-			filename, err := client.(*Client).getConfigFileName()
+			filename, err := service.(*Service).getConfigFileName()
 			s.Require().NoError(err)
 			s.Contains(filename, tt.expectedFile)
 			s.Equal(filepath.Join(s.tempDir, tt.expectedFile), filename)
@@ -173,6 +173,6 @@ func (s *ConfigTestSuite) TestGetConfigFileName() {
 }
 
 func (s *ConfigTestSuite) TestMockImplementsInterface() {
-	mockClient := &MockClient{}
-	s.Implements((*ClientInterface)(nil), mockClient)
+	mockService := &MockService{}
+	s.Implements((*ServiceInterface)(nil), mockService)
 }

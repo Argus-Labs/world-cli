@@ -2,18 +2,18 @@ package config
 
 import "github.com/stretchr/testify/mock"
 
-var _ ClientInterface = (*MockClient)(nil)
+var _ ServiceInterface = (*MockService)(nil)
 
-type MockClient struct {
+type MockService struct {
 	mock.Mock
 }
 
-func (m *MockClient) GetConfig() *Config {
+func (m *MockService) GetConfig() *Config {
 	args := m.Called()
 	return args.Get(0).(*Config)
 }
 
-func (m *MockClient) Save() error {
+func (m *MockService) Save() error {
 	args := m.Called()
 	return args.Error(0)
 }

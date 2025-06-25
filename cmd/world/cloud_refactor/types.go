@@ -1,16 +1,9 @@
 package cloud
 
+import "pkg.world.dev/world-cli/cmd/internal/interfaces"
+
 // Interface guard.
-var _ HandlerInterface = (*Handler)(nil)
+var _ interfaces.CloudHandler = (*Handler)(nil)
 
 type Handler struct {
-}
-
-type HandlerInterface interface {
-	Deploy(force bool) error
-	Status() error
-	Promote() error
-	Destroy() error
-	Reset() error
-	Logs(region string, env string) error
 }
