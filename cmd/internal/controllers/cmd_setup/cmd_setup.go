@@ -11,6 +11,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/interfaces"
 	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/internal/services/input"
 	"pkg.world.dev/world-cli/common/logger"
 	"pkg.world.dev/world-cli/common/printer"
 )
@@ -21,6 +22,7 @@ func NewController(
 	organizationHandler interfaces.OrganizationHandler,
 	projectHandler interfaces.ProjectHandler,
 	apiClient api.ClientInterface,
+	inputService input.ServiceInterface,
 ) interfaces.CommandSetupController {
 	return &Controller{
 		configService:       configService,
@@ -28,6 +30,7 @@ func NewController(
 		organizationHandler: organizationHandler,
 		projectHandler:      projectHandler,
 		apiClient:           apiClient,
+		inputService:        inputService,
 	}
 }
 
@@ -106,21 +109,14 @@ func (c *Controller) handleOrganizationInvitations(ctx context.Context) error {
 	}
 
 	for _, org := range orgs {
-		retry := true
-		for retry {
-			printer.Infof("You are invited to join the organization: %s [%s]\n", org.Name, org.Slug)
-			input := getInput("Would you like to join? [Y/n]", "Y")
-			switch input {
-			case "Y":
-				if err := c.apiClient.AcceptOrganizationInvitation(ctx, org.ID); err != nil {
-					return eris.Wrap(err, "failed to accept organization invitation")
-				}
-				retry = false
-			case "n", "":
-				retry = false
-			default:
-				printer.Errorln("Invalid input, must be capital 'Y' or 'n'")
-				printer.NewLine(1)
+		printer.Infof("You are invited to join the organization: %s [%s]\n", org.Name, org.Slug)
+		join, err := c.inputService.Confirm(ctx, "Would you like to join? [Y/n]", "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
+		if join {
+			if err := c.apiClient.AcceptOrganizationInvitation(ctx, org.ID); err != nil {
+				return eris.Wrap(err, "failed to accept organization invitation")
 			}
 		}
 	}
@@ -318,10 +314,4 @@ func (c *Controller) inKnownRepo(ctx context.Context, cfg *config.Config, result
 		return true
 	}
 	return false
-}
-
-// getInput is a simple input helper (this should be injected for better testing).
-var getInput = func(_, defaultStr string) string {
-	// This is a simplified version - the real implementation would be more robust
-	return defaultStr
 }

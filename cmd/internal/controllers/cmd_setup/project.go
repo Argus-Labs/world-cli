@@ -48,7 +48,10 @@ func (c *Controller) handleNeedProjectCaseNoProjects(
 			return ErrProjectCreationCanceled
 		}
 
-		choice := getInput("Would you like to create a new project? (Y/n)", "Y")
+		choice, err := c.inputService.Prompt(ctx, "Would you like to create a new project? (Y/n)", "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
 
 		switch choice {
 		case "Y":
@@ -84,7 +87,10 @@ func (c *Controller) handleNeedProjectCaseOneProject(
 	}
 
 	for {
-		choice := getInput(prompt, "Y")
+		choice, err := c.inputService.Prompt(ctx, prompt, "Y")
+		if err != nil {
+			return eris.Wrap(err, "failed to get input")
+		}
 
 		switch choice {
 		case "Y":

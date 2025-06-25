@@ -6,6 +6,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
 	"pkg.world.dev/world-cli/cmd/internal/interfaces"
 	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/internal/services/input"
 )
 
 var (
@@ -18,4 +19,5 @@ type Controller struct {
 	organizationHandler interfaces.OrganizationHandler
 	projectHandler      interfaces.ProjectHandler
 	apiClient           api.ClientInterface
+	inputService        input.ServiceInterface
 }
