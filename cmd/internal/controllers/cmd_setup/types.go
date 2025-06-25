@@ -15,9 +15,27 @@ var (
 
 type Controller struct {
 	configService       config.ServiceInterface
+	inputService        input.ServiceInterface
+	apiClient           api.ClientInterface
 	repoClient          repo.ClientInterface
 	organizationHandler interfaces.OrganizationHandler
 	projectHandler      interfaces.ProjectHandler
-	apiClient           api.ClientInterface
-	inputService        input.ServiceInterface
+}
+
+func NewController(
+	configService config.ServiceInterface,
+	repoClient repo.ClientInterface,
+	organizationHandler interfaces.OrganizationHandler,
+	projectHandler interfaces.ProjectHandler,
+	apiClient api.ClientInterface,
+	inputService input.ServiceInterface,
+) interfaces.CommandSetupController {
+	return &Controller{
+		configService:       configService,
+		inputService:        inputService,
+		repoClient:          repoClient,
+		organizationHandler: organizationHandler,
+		projectHandler:      projectHandler,
+		apiClient:           apiClient,
+	}
 }

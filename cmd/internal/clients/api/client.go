@@ -41,7 +41,7 @@ func (c *Client) SetAuthToken(token string) {
 
 // sendRequest sends an HTTP request with auth token and returns the response body.
 //
-//nolint:unparam // body is used for all requests
+
 func (c *Client) sendRequest(ctx context.Context, method, endpoint string, body interface{}) ([]byte, error) {
 	// Prepare request body and headers
 	req, err := c.prepareRequest(ctx, method, endpoint, body)

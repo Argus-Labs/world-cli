@@ -7,7 +7,11 @@ import (
 )
 
 //nolint:revive // TODO: implement
-func (h *Handler) Update(ctx context.Context, flags *models.UpdateProjectFlags) error {
+func (h *Handler) Update(
+	ctx context.Context,
+	state *models.CommandState,
+	flags models.UpdateProjectFlags,
+) error {
 	// TODO: implement
 	return nil
 }

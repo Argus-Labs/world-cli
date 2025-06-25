@@ -66,7 +66,34 @@ func (m *MockClient) GetProjectByID(ctx context.Context, id string) (models.Proj
 	return args.Get(0).(models.Project), args.Error(1)
 }
 
-// Authentication
+// CreateOrganization mocks creating an organization.
+func (m *MockClient) CreateOrganization(
+	ctx context.Context,
+	name, slug, avatarURL string,
+) (models.Organization, error) {
+	args := m.Called(ctx, name, slug, avatarURL)
+	return args.Get(0).(models.Organization), args.Error(1)
+}
+
+// GetListRegions mocks getting list of regions.
+func (m *MockClient) GetListRegions(ctx context.Context, orgID, projID string) ([]string, error) {
+	args := m.Called(ctx, orgID, projID)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+// CheckProjectSlugIsTaken mocks checking if a project slug is taken.
+func (m *MockClient) CheckProjectSlugIsTaken(ctx context.Context, orgID, projID, slug string) error {
+	args := m.Called(ctx, orgID, projID, slug)
+	return args.Error(0)
+}
+
+// CreateProject mocks creating a project.
+func (m *MockClient) CreateProject(ctx context.Context, orgID string, project models.Project) (models.Project, error) {
+	args := m.Called(ctx, orgID, project)
+	return args.Get(0).(models.Project), args.Error(1)
+}
+
+// Utility methods
 
 // SetAuthToken mocks setting auth token.
 func (m *MockClient) SetAuthToken(token string) {

@@ -110,7 +110,7 @@ func TestPromptWithTimeout(t *testing.T) {
 	defer cancel()
 
 	_, err := client.Prompt(ctx, "Test prompt", "")
-	assert.Error(t, err)
+	require.Error(t, err)
 	// The actual error might be EOF when reader is exhausted, not necessarily timeout
 }
 
