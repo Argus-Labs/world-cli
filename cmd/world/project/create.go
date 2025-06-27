@@ -5,24 +5,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/cmd/internal/utils"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/tomlutil"
-	"pkg.world.dev/world-cli/common/util"
-	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
 const MaxProjectNameLen = 50
-
-// TODO: un global this but atleast with new command refactor not affecting other command tests!
-var regionSelector *tea.Program
 
 var (
 	ErrCannotCreateSwitchProject = eris.New("Cannot create/switch Project, directory belongs to another project.")
@@ -123,10 +116,11 @@ func (h *Handler) getSetupInput(ctx context.Context, project *models.Project, re
 	h.inputRepoPath(ctx, project)
 
 	// Regions
-	err = h.chooseRegion(ctx, project, regions)
+	selectedRegions, err := h.regionSelector.SelectRegions(ctx, regions, project.Config.Region)
 	if err != nil {
 		return eris.Wrap(err, "Failed to choose region")
 	}
+	project.Config.Region = selectedRegions
 
 	// Discord
 	err = h.inputDiscord(ctx, project)
@@ -490,74 +484,6 @@ func (h *Handler) inputSlack(ctx context.Context, project *models.Project) error
 		Channel: channelID,
 	}
 	return nil
-}
-
-// chooseRegion displays an interactive menu for selecting one or more AWS regions
-// using the bubbletea TUI library. Returns error if no regions selected after max attempts
-// or context cancellation.
-func (h *Handler) chooseRegion(ctx context.Context, project *models.Project, regions []string) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			aborted, err := h.runRegionSelector(ctx, project, regions)
-			if err != nil {
-				printer.Errorln(err.Error())
-				printer.NewLine(1)
-				if aborted {
-					return err
-				}
-				continue
-			}
-			if len(project.Config.Region) > 0 {
-				return nil
-			}
-			printer.NewLine(1)
-			printer.Errorln("At least one region must be selected")
-			printer.Infoln("🔄 Please try again")
-		}
-	}
-}
-
-func (h *Handler) runRegionSelector(ctx context.Context, project *models.Project, regions []string) (bool, error) {
-	if regionSelector == nil {
-		if project.Update {
-			selectedRegions := make(map[int]bool)
-			for i, region := range regions {
-				if slices.Contains(project.Config.Region, region) {
-					selectedRegions[i] = true
-				}
-			}
-			regionSelector = util.NewTeaProgram(multiselect.UpdateMultiselectModel(ctx, regions, selectedRegions))
-		} else {
-			regionSelector = util.NewTeaProgram(multiselect.InitialMultiselectModel(ctx, regions))
-		}
-	}
-	m, err := regionSelector.Run()
-	regionSelector = nil
-	if err != nil {
-		return false, eris.Wrap(err, "failed to run region selector")
-	}
-
-	model, ok := m.(multiselect.Model)
-	if !ok {
-		return false, eris.New("failed to get selected regions")
-	}
-	if model.Aborted {
-		return true, eris.New("Region selection aborted")
-	}
-
-	var selectedRegions []string
-	for i, item := range regions {
-		if model.Selected[i] {
-			selectedRegions = append(selectedRegions, item)
-		}
-	}
-
-	project.Config.Region = selectedRegions
-
-	return false, nil
 }
 
 func (h *Handler) inputAvatarURL(ctx context.Context, project *models.Project) error {

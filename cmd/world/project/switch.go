@@ -57,7 +57,7 @@ func (h *Handler) Switch(
 	prompt := "Enter project number ('q' to quit)"
 	if enableCreation {
 		_, _, err = h.PreCreateUpdateValidation()
-		if err != nil { // if in repo root, we can create a new project
+		if err == nil { // if in repo root, we can create a new project
 			inRepoRoot = true
 			prompt = "Enter project number ('c' to create new, 'q' to quit)"
 		}

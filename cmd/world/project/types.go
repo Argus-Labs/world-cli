@@ -1,6 +1,8 @@
 package project
 
 import (
+	"context"
+
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
 	"pkg.world.dev/world-cli/cmd/internal/interfaces"
@@ -13,11 +15,17 @@ var nilUUID = "00000000-0000-0000-0000-000000000000"
 // Interface guard.
 var _ interfaces.ProjectHandler = (*Handler)(nil)
 
+// RegionSelector interface for selecting regions.
+type RegionSelector interface {
+	SelectRegions(ctx context.Context, regions []string, selectedRegions []string) ([]string, error)
+}
+
 type Handler struct {
-	repoClient    repo.ClientInterface
-	configService config.ServiceInterface
-	apiClient     api.ClientInterface
-	inputService  input.ServiceInterface
+	repoClient     repo.ClientInterface
+	configService  config.ServiceInterface
+	apiClient      api.ClientInterface
+	inputService   input.ServiceInterface
+	regionSelector RegionSelector
 }
 
 // notificationConfig holds common notification configuration fields.
@@ -33,9 +41,28 @@ func NewHandler(
 	inputService input.ServiceInterface,
 ) interfaces.ProjectHandler {
 	return &Handler{
-		repoClient:    repoClient,
-		configService: configService,
-		apiClient:     apiClient,
-		inputService:  inputService,
+		repoClient:     repoClient,
+		configService:  configService,
+		apiClient:      apiClient,
+		inputService:   inputService,
+		regionSelector: &BubbleteeRegionSelector{},
+	}
+}
+
+// NewHandlerWithRegionSelector creates a new project handler with a custom region selector.
+// This is used for testing purposes to inject a mock region selector.
+func NewHandlerWithRegionSelector(
+	repoClient repo.ClientInterface,
+	configService config.ServiceInterface,
+	apiClient api.ClientInterface,
+	inputService input.ServiceInterface,
+	regionSelector RegionSelector,
+) interfaces.ProjectHandler {
+	return &Handler{
+		repoClient:     repoClient,
+		configService:  configService,
+		apiClient:      apiClient,
+		inputService:   inputService,
+		regionSelector: regionSelector,
 	}
 }
