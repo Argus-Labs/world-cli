@@ -30,8 +30,8 @@ const (
 	DeploymentTypePromote     = "promote"
 
 	DeployStatusFailed  DeployStatus = "failed"
-	DeployStatusPassed  DeployStatus = "passed"
-	DeployStatusRunning DeployStatus = "running"
+	DeployStatusCreated DeployStatus = "created"
+	DeployStatusRemoved DeployStatus = "removed"
 
 	DeployEnvPreview = "dev"
 	DeployEnvLive    = "prod"
@@ -223,10 +223,12 @@ func status(fCtx ForgeContext) error {
 	}
 	showHealth := false
 	for env := range deployInfo {
-		printDeploymentStatus(deployInfo[env])
-		if shouldShowHealth(deployInfo[env]) {
-			showHealth = true
-		}
+		printer.Infoln(deployInfo[env].DeployDisplay)
+
+		// printDeploymentStatus(deployInfo[env])
+		// if shouldShowHealth(deployInfo[env]) {
+		// 	showHealth = true
+		// }
 	}
 
 	if showHealth {
@@ -270,11 +272,6 @@ func getDeploymentStatus(fCtx ForgeContext) (map[string]DeployInfo, error) {
 	}
 	deployStatus := map[string]DeployInfo{}
 	for env, val := range envMap {
-		deployStatus[env] = DeployInfo{
-			DeployType:    "",
-			DeployStatus:  DeployStatusFailed,
-			DeployDisplay: "",
-		}
 		data, ok := val.(map[string]any)
 		if !ok {
 			return nil, eris.Errorf("Failed to unmarshal response for environment %s", env)
@@ -282,149 +279,35 @@ func getDeploymentStatus(fCtx ForgeContext) (map[string]DeployInfo, error) {
 		if data["project_id"] != fCtx.State.Project.ID {
 			return nil, eris.Errorf("Deployment status does not match project id %s", fCtx.State.Project.ID)
 		}
-		deployType, ok := data["type"].(string)
+
+		executorID, ok := data["created_by"].(string)
 		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment type")
-		}
-		if deployType != DeploymentTypeDeploy &&
-			deployType != DeploymentTypeDestroy &&
-			deployType != DeploymentTypeReset {
-			return nil, eris.Errorf("Unknown deployment type %s", deployType)
-		}
-		executorID, ok := data["executor_id"].(string)
-		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment executor_id")
+			return nil, eris.New("Failed to unmarshal deployment created_by")
 		}
 		executorName, ok := data["executor_name"].(string)
 		if ok {
 			executorID = executorName
 		}
-		executionTimeStr, ok := data["execution_time"].(string)
+		executionTimeStr, ok := data["created_at"].(string)
 		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment execution_time")
+			return nil, eris.New("Failed to unmarshal deployment created_at")
 		}
-		dt, dte := time.Parse(time.RFC3339, executionTimeStr)
-		if dte != nil {
-			return nil, eris.Wrapf(dte, "Failed to parse deployment execution_time %s", executionTimeStr)
-		}
-		buildState, ok := data["build_state"].(string)
-		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment build_state")
-		}
-		switch deployType {
-		case DeploymentTypeDeploy:
-			bnf, okInner := data["build_number"].(float64)
-			if !okInner {
-				return nil, eris.New("Failed to unmarshal deployment build_number")
-			}
-			buildNumber := int(bnf)
-			buildStartTimeStr, okInner := data["build_start_time"].(string)
-			if !okInner {
-				return nil, eris.New("Failed to unmarshal deployment build_start_time")
-			}
-			bst, bte := time.Parse(time.RFC3339, buildStartTimeStr)
-			if bte != nil {
-				return nil, eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
-			}
-			if bst.Before(dt) {
-				bst = dt // we don't have a real build start time yet because build kite hasn't run yet
-			}
-			buildEndTimeStr, okInner := data["build_end_time"].(string)
-			if !okInner {
-				buildEndTimeStr = buildStartTimeStr // we don't know how long this took
-			}
-			bet, bte := time.Parse(time.RFC3339, buildEndTimeStr)
-			if bte != nil {
-				return nil, eris.Wrapf(bte, "Failed to parse deployment build_end_time %s", buildEndTimeStr)
-			}
-			if bet.Before(bst) {
-				bet = bst // we don't know how long this took
-			}
-			buildDuration := bet.Sub(bst)
-			// buildkite states (used with deployType deploy) are:
-			//   creating, scheduled, running, passed, failing, failed, blocked, canceling, canceled, skipped, not_run
 
-			switch buildState {
-			case string(DeployStatusPassed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDeploy,
-					DeployStatus: DeployStatusPassed,
-					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
-						envDisplayName(env), buildNumber,
-						formattedDuration(buildDuration),
-						bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID),
-				}
-			case string(DeployStatusFailed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDeploy,
-					DeployStatus: DeployStatusFailed,
-					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
-						envDisplayName(env), buildNumber, formattedDuration(buildDuration),
-						bet.Format(time.RFC822), formattedDuration(time.Since(bet))),
-				}
-			default:
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDeploy,
-					DeployStatus: DeployStatusRunning,
-					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
-						envDisplayName(env), buildNumber,
-						bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState),
-				}
-			}
-		case DeploymentTypeDestroy:
-			switch buildState {
-			case string(DeployStatusPassed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDestroy,
-					DeployStatus: DeployStatusPassed,
-					DeployDisplay: fmt.Sprintf("Destroyed: [%s] on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			case string(DeployStatusFailed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDestroy,
-					DeployStatus: DeployStatusFailed,
-					DeployDisplay: fmt.Sprintf("Destroy:   [%s] failed on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			default:
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDestroy,
-					DeployStatus: DeployStatusRunning,
-					DeployDisplay: fmt.Sprintf("Destroy:   [%s] started %s (%s ago) by %s - %s\n",
-						envDisplayName(env), dt.Format(time.RFC822),
-						formattedDuration(time.Since(dt)), executorID, buildState),
-				}
-			}
-		case DeploymentTypeReset:
-			// results can be "passed" or "failed", but either way continue to show the health
-			switch buildState {
-			case string(DeployStatusPassed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeReset,
-					DeployStatus: DeployStatusPassed,
-					DeployDisplay: fmt.Sprintf("Reset:     [%s] on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			case string(DeployStatusFailed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeReset,
-					DeployStatus: DeployStatusFailed,
-					DeployDisplay: fmt.Sprintf("Reset:     [%s] failed on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			default:
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeReset,
-					DeployStatus: DeployStatusRunning,
-					DeployDisplay: fmt.Sprintf("Reset:     [%s] started %s (%s ago) by %s - %s\n",
-						envDisplayName(env), dt.Format(time.RFC822),
-						formattedDuration(time.Since(dt)), executorID, buildState),
-				}
-			}
-		default:
-			return nil, eris.Errorf("Unknown deployment type %s", deployType)
+		// Parse the timestamp and format it as yyyy-mm-dd hh:mm timezone
+		executionTime, err := time.Parse(time.RFC3339, executionTimeStr)
+		if err != nil {
+			return nil, eris.Wrap(err, "Failed to parse deployment created_at timestamp")
 		}
+		executionTimeStr = executionTime.Format("2006-01-02 15:04 MST")
+		deploymentStatus, ok := data["deployment_status"].(string)
+		if !ok {
+			return nil, eris.New("Failed to unmarshal deployment deployment_status")
+		}
+		deployStatus[env] = DeployInfo{
+			DeployStatus:  DeployStatusFailed,
+			DeployDisplay: fmt.Sprintf("Pod `%s` %s at %s by `%s`", env, deploymentStatus, executionTimeStr, executorID),
+		}
+
 	}
 	return deployStatus, nil
 }
@@ -599,7 +482,6 @@ func previewDeployment(fCtx ForgeContext, deployType string) error {
 	printer.Headerln("     Configuration     ")
 	printer.Infof("Executor:        %s\n", response.Data.ExecutorName)
 	printer.Infof("Deployment Type: %s\n", response.Data.DeploymentType)
-	printer.Infof("Tick Rate:       %d\n", response.Data.TickRate)
 
 	printer.NewLine(1)
 	printer.Headerln("  Deployment Regions  ")
@@ -676,16 +558,16 @@ func waitUntilDeploymentIsComplete(fCtx ForgeContext, env string, deployType str
 			}
 			if deploy, exists := deploys[env]; exists {
 				printDeploymentStatus(deploy)
-				if shouldShowHealth(deploy) {
-					deployComplete = true // this changes the status message for the spinner
-					// just report health for the single environment
-					healthComplete, err := getAndPrintHealth(fCtx, map[string]DeployInfo{
-						env: deploy,
-					})
-					if err != nil || !healthComplete {
-						continue
-					}
-				}
+				// if shouldShowHealth(deploy) {
+				// 	deployComplete = true // this changes the status message for the spinner
+				// 	// just report health for the single environment
+				// 	healthComplete, err := getAndPrintHealth(fCtx, map[string]DeployInfo{
+				// 		env: deploy,
+				// 	})
+				// 	if err != nil || !healthComplete {
+				// 		continue
+				// 	}
+				// }
 			}
 
 			spinnnerCompleted(true)
@@ -712,7 +594,9 @@ func formattedDuration(d time.Duration) string {
 
 func printDeploymentStatus(deployInfo DeployInfo) {
 	switch deployInfo.DeployStatus { //nolint:exhaustive // only success and failure have special messages
-	case DeployStatusPassed:
+	case DeployStatusCreated:
+		printer.Successf("%s\n", deployInfo.DeployDisplay)
+	case DeployStatusRemoved:
 		printer.Successf("%s\n", deployInfo.DeployDisplay)
 	case DeployStatusFailed:
 		printer.Errorf("%s\n", deployInfo.DeployDisplay)
@@ -724,9 +608,9 @@ func printDeploymentStatus(deployInfo DeployInfo) {
 func shouldShowHealth(deployInfo DeployInfo) bool {
 	switch deployInfo.DeployType {
 	case DeploymentTypeDeploy:
-		return deployInfo.DeployStatus == DeployStatusPassed
+		return deployInfo.DeployStatus == DeployStatusCreated
 	case DeploymentTypeDestroy:
-		return deployInfo.DeployStatus != DeployStatusPassed
+		return deployInfo.DeployStatus == DeployStatusRemoved
 	case DeploymentTypeReset:
 		return true
 	}

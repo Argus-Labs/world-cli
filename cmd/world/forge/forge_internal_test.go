@@ -336,11 +336,11 @@ func (s *ForgeTestSuite) handleProjectGet(w http.ResponseWriter, _ *http.Request
 }
 
 func (s *ForgeTestSuite) handleGetRegions(w http.ResponseWriter, _ *http.Request) {
-	result := map[string]struct{}{
-		"ap-southeast-1": {},
-		"us-east-1":      {},
-		"eu-central-1":   {},
-		"us-west-2":      {},
+	result := map[string]bool{
+		"ap-southeast-1": true,
+		"us-east-1":      true,
+		"eu-central-1":   true,
+		"us-west-2":      true,
 	}
 
 	s.writeJSON(w, map[string]interface{}{"data": result})
