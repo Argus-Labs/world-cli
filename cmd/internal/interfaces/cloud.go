@@ -1,10 +1,13 @@
 package interfaces
 
+import (
+	"context"
+
+	"pkg.world.dev/world-cli/cmd/internal/models"
+)
+
 type CloudHandler interface {
-	Deploy(force bool) error
-	Status() error
-	Promote() error
-	Destroy() error
-	Reset() error
-	Logs(region string, env string) error
+	Deployment(ctx context.Context, organizationID string, project models.Project, deployType string) error
+	Status(ctx context.Context, organization models.Organization, project models.Project) error
+	TailLogs(ctx context.Context, region string, env string) error
 }

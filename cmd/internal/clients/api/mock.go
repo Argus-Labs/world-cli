@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"github.com/stretchr/testify/mock"
@@ -127,11 +128,57 @@ func (m *MockClient) DeleteProject(ctx context.Context, orgID, projID string) er
 	return args.Error(0)
 }
 
+// PreviewDeployment mocks previewing a deployment.
+func (m *MockClient) PreviewDeployment(
+	ctx context.Context,
+	orgID, projID, deployType string,
+) (models.DeploymentPreview, error) {
+	args := m.Called(ctx, orgID, projID, deployType)
+	return args.Get(0).(models.DeploymentPreview), args.Error(1)
+}
+
+// DeployProject mocks deploying a project.
+func (m *MockClient) DeployProject(
+	ctx context.Context,
+	orgID, projID, deployType, commitHash string,
+	imageReader io.Reader,
+) error {
+	args := m.Called(ctx, orgID, projID, deployType, commitHash, imageReader)
+	return args.Error(0)
+}
+
+// GetDeploymentStatus mocks getting deployment status.
+func (m *MockClient) GetDeploymentStatus(ctx context.Context, projID string) ([]byte, error) {
+	args := m.Called(ctx, projID)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+// GetHealthStatus mocks getting health status.
+func (m *MockClient) GetHealthStatus(ctx context.Context, projID string) ([]byte, error) {
+	args := m.Called(ctx, projID)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+// GetDeploymentHealthStatus mocks getting deployment health status.
+func (m *MockClient) GetDeploymentHealthStatus(
+	ctx context.Context,
+	projID string,
+) (map[string]models.DeploymentHealthCheckResult, error) {
+	args := m.Called(ctx, projID)
+	return args.Get(0).(map[string]models.DeploymentHealthCheckResult), args.Error(1)
+}
+
 // Utility methods
 
 // SetAuthToken mocks setting auth token.
 func (m *MockClient) SetAuthToken(token string) {
 	m.Called(token)
+}
+
+// TODO: Remove this once we have a proper RPC client
+// GetRPCBaseURL mocks getting RPC base URL.
+func (m *MockClient) GetRPCBaseURL() string {
+	return m.Called().String(0)
 }
 
 // MockHTTPClient is a mock implementation of HTTPClientInterface for testing.
