@@ -3,17 +3,36 @@ package forge
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/magefile/mage/sh"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 )
+
+type temporaryCredential struct {
+	AccessKeyID     string `json:"access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
+	SessionToken    string `json:"session_token"`
+	Region          string `json:"region"`
+	RepoURI         string `json:"repo_uri"`
+}
 
 // deploymentBuild builds the image and returns the commit hash and the image reader.
 func deploymentBuild(ctx context.Context, project *project) (string, io.ReadCloser, error) {
@@ -98,4 +117,79 @@ func buildImage(ctx context.Context, repoPath, tempDir string) (io.ReadCloser, e
 	}
 
 	return reader, nil
+}
+
+func pushImage(fCtx ForgeContext, tag string, buf bytes.Buffer) error {
+	// get temporary credentials
+	getTempCredURL := fmt.Sprintf("%s/api/organization/%s/project/%s/temporary-credential",
+		baseURL, fCtx.State.Organization.ID, fCtx.State.Project.ID)
+	result, err := sendRequest(fCtx, http.MethodGet, getTempCredURL, nil)
+	if err != nil {
+		return eris.Wrapf(err, "Failed to get temporary credentials")
+	}
+
+	// parse the result
+	tempCred, err := parseResponse[temporaryCredential](result)
+	if err != nil {
+		return eris.Wrapf(err, "Failed to parse temporary credentials")
+	}
+
+	// push the image to the registry
+	ref, err := name.ParseReference(tempCred.RepoURI + ":" + tag)
+	if err != nil {
+		return eris.Wrapf(err, "Failed to parse reference")
+	}
+
+	// Create a custom opener that uses the buffered data
+	opener := func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	}
+
+	// read the image from the tarball
+	img, err := tarball.Image(opener, nil)
+	if err != nil {
+		return eris.Wrapf(err, "Failed to read tarball")
+	}
+
+	// get ECR auth
+	auth, err := getECRAuth(*tempCred)
+	if err != nil {
+		return eris.Wrapf(err, "Failed to get ECR auth")
+	}
+
+	// push the image to the registry
+	err = remote.Write(ref, img, remote.WithAuth(auth))
+	if err != nil {
+		return eris.Wrapf(err, "Failed to push image")
+	}
+
+	return nil
+}
+
+func getECRAuth(tempCred temporaryCredential) (authn.Authenticator, error) {
+	// load AWS config
+	cfg, err := awsconfig.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, eris.Wrapf(err, "Failed to load AWS config")
+	}
+	cfg.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
+		tempCred.AccessKeyID,
+		tempCred.SecretAccessKey,
+		tempCred.SessionToken,
+	))
+	// set region
+	cfg.Region = tempCred.Region
+	ecrClient := ecr.NewFromConfig(cfg)
+	resp, err := ecrClient.GetAuthorizationToken(context.TODO(), &ecr.GetAuthorizationTokenInput{})
+	if err != nil {
+		return nil, eris.Wrapf(err, "Failed to get authorization token")
+	}
+	token := *resp.AuthorizationData[0].AuthorizationToken
+	decoded, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, eris.Wrapf(err, "Failed to decode authorization token")
+	}
+	parts := strings.SplitN(string(decoded), ":", 2)
+
+	return &authn.Basic{Username: parts[0], Password: parts[1]}, nil
 }

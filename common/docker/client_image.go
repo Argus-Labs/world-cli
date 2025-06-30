@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
@@ -122,7 +122,7 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 	return nil
 }
 
-func (c *Client) buildImage(ctx context.Context, dockerService service.Service) (*types.ImageBuildResponse, error) {
+func (c *Client) buildImage(ctx context.Context, dockerService service.Service) (*build.ImageBuildResponse, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
@@ -147,14 +147,14 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	// Read the tar archive
 	tarReader := bytes.NewReader(buf.Bytes())
 
-	buildOptions := types.ImageBuildOptions{
+	buildOptions := build.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
 		Tags:       []string{dockerService.Image},
 		Target:     dockerService.BuildTarget,
 	}
 
 	if service.BuildkitSupport {
-		buildOptions.Version = types.BuilderBuildKit
+		buildOptions.Version = build.BuilderBuildKit
 	}
 
 	// Build the image
@@ -341,7 +341,7 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 func (c *Client) filterImages(ctx context.Context, images map[string]string, services ...service.Service) {
 	for _, service := range services {
 		// check if the image exists
-		_, _, err := c.client.ImageInspectWithRaw(ctx, service.Image)
+		_, err := c.client.ImageInspect(ctx, service.Image)
 		if err == nil {
 			// Image already exists, skip pulling
 			continue
@@ -497,7 +497,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 		imageName := service.Image
 
 		// check if the image exists
-		_, _, err := c.client.ImageInspectWithRaw(ctx, imageName)
+		_, err := c.client.ImageInspect(ctx, imageName)
 		if err != nil {
 			return eris.New(fmt.Sprintf("Error inspecting image %s for service %s: %v\n",
 				imageName, service.Name, err))

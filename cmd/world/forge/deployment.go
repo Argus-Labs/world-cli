@@ -30,8 +30,8 @@ const (
 	DeploymentTypePromote     = "promote"
 
 	DeployStatusFailed  DeployStatus = "failed"
-	DeployStatusPassed  DeployStatus = "passed"
-	DeployStatusRunning DeployStatus = "running"
+	DeployStatusCreated DeployStatus = "created"
+	DeployStatusRemoved DeployStatus = "removed"
 
 	DeployEnvPreview = "dev"
 	DeployEnvLive    = "prod"
@@ -65,7 +65,12 @@ type DeployInfo struct {
 }
 
 // Deployment a project.
-func deployment(fCtx ForgeContext, deployType string) error { //nolint:gocognit,funlen // will refactor later
+//
+//nolint:gocognit,funlen // will refactor later
+func deployment(
+	fCtx ForgeContext,
+	deployType string,
+) error {
 	if fCtx.State.Organization == nil || fCtx.State.Organization.ID == "" {
 		printNoSelectedOrganization()
 		return nil
@@ -119,68 +124,119 @@ func deployment(fCtx ForgeContext, deployType string) error { //nolint:gocognit,
 		return nil
 	}
 
-	// build the image
-	commitHash, reader, err := deploymentBuild(fCtx.Context, fCtx.State.Project)
-	if err != nil {
-		return eris.Wrap(err, "Failed to build image")
-	}
+	// Use case when the deployment type is not deploy or force deploy
+	// Reset, Destroy, Promote no need to build the image, push the image to the registry,
+	// and send the request to the World Forge.
+	//nolint:nestif // this is a complex function but it does what it needs to do
+	if deployType == DeploymentTypeReset ||
+		deployType == DeploymentTypeDestroy ||
+		deployType == DeploymentTypePromote {
+		// send request to the World Forge
+		deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL,
+			fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
 
-	/* create multipart request */
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	// add commit_hash to the request
-	err = writer.WriteField("commit_hash", commitHash)
-	if err != nil {
-		return eris.Wrap(err, "Failed to write commit hash")
-	}
-
-	// add the image to the request
-	part, err := writer.CreateFormFile("file", "image.tar")
-	if err != nil {
-		return eris.Wrap(err, "Failed to create form file")
-	}
-	_, err = io.Copy(part, reader)
-	if err != nil {
-		return eris.Wrap(err, "Failed to copy image to request")
-	}
-	writer.Close()
-	/* end of multipart request */
-
-	if deployType == DeploymentTypeForceDeploy {
-		deployType = "deploy?force=true"
-	}
-
-	deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL,
-		fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
-
-	// Create request with proper Content-Type
-	req, err := http.NewRequestWithContext(fCtx.Context, http.MethodPost, deployURL, body)
-	if err != nil {
-		return eris.Wrap(err, "Failed to create request")
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// Add auth header
-	if fCtx.Config != nil {
-		prefix := "ArgusID "
-		req.Header.Add("Authorization", prefix+fCtx.Config.Credential.Token)
-	}
-
-	// Send request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
+		_, err = sendRequest(fCtx, http.MethodPost, deployURL, nil)
 		if err != nil {
-			return eris.Wrap(err, "Failed to read error response")
+			return eris.Wrap(err, "Failed to send request")
 		}
-		return eris.New(string(body))
+	} else {
+		// Use case when the deployment type is deploy or force deploy
+		// Contain the logic to build the image, push the image to the registry, and send the request to the World Forge
+
+		// build the image
+		commitHash, reader, err := deploymentBuild(fCtx.Context, fCtx.State.Project)
+		if err != nil {
+			return eris.Wrap(err, "Failed to build image")
+		}
+
+		// Create a buffer to store the image data
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, reader); err != nil {
+			return eris.Wrapf(err, "Failed to copy stream to buffer")
+		}
+
+		// Trim the commit hash from spaces
+		commitHash = strings.TrimSpace(commitHash)
+
+		// try to push the image to the registry
+		var successPush bool
+		err = pushImage(fCtx, commitHash, buf)
+		if err != nil {
+			successPush = false
+			printer.Errorln("Failed to push image to registry in the local machine")
+			printer.Infoln("Trying to push the image to the registry through the World Forge")
+		} else {
+			successPush = true
+			printer.Successln("Pushed image to registry")
+		}
+
+		/* create multipart request */
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// add commit_hash to the request
+		err = writer.WriteField("commit_hash", commitHash)
+		if err != nil {
+			return eris.Wrap(err, "Failed to write commit hash")
+		}
+
+		// if the image was not pushed to the registry in the local machine, add the image to the request
+		// World Forge will push the image to the registry
+		if !successPush {
+			// add the image to the request
+			part, err := writer.CreateFormFile("file", "image.tar")
+			if err != nil {
+				return eris.Wrap(err, "Failed to create form file")
+			}
+			_, err = io.Copy(part, &buf)
+			if err != nil {
+				return eris.Wrap(err, "Failed to copy image to request")
+			}
+		} else {
+			deployType = "deploy?nofile=true"
+		}
+
+		writer.Close()
+		/* end of multipart request */
+
+		if deployType == DeploymentTypeForceDeploy {
+			deployType = "deploy?force=true"
+			if successPush {
+				deployType = "deploy?force=true&nofile=true"
+			}
+		}
+
+		deployURL := fmt.Sprintf("%s/api/organization/%s/project/%s/%s", baseURL,
+			fCtx.State.Organization.ID, fCtx.State.Project.ID, deployType)
+
+		// Create request with proper Content-Type
+		req, err := http.NewRequestWithContext(fCtx.Context, http.MethodPost, deployURL, body)
+		if err != nil {
+			return eris.Wrap(err, "Failed to create request")
+		}
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+
+		// Add auth header
+		if fCtx.Config != nil {
+			prefix := "ArgusID "
+			req.Header.Add("Authorization", prefix+fCtx.Config.Credential.Token)
+		}
+
+		// Send request
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return eris.Wrap(err, "Failed to read error response")
+			}
+			return eris.New(string(body))
+		}
 	}
 
 	env := DeployEnvPreview
@@ -188,6 +244,7 @@ func deployment(fCtx ForgeContext, deployType string) error { //nolint:gocognit,
 		env = DeployEnvLive
 	}
 
+	// wait until the deployment is complete
 	err = waitUntilDeploymentIsComplete(fCtx, env, deployType)
 	if err != nil {
 		printer.NewLine(1)
@@ -223,10 +280,12 @@ func status(fCtx ForgeContext) error {
 	}
 	showHealth := false
 	for env := range deployInfo {
-		printDeploymentStatus(deployInfo[env])
-		if shouldShowHealth(deployInfo[env]) {
-			showHealth = true
-		}
+		printer.Infoln(deployInfo[env].DeployDisplay)
+
+		// printDeploymentStatus(deployInfo[env])
+		// if shouldShowHealth(deployInfo[env]) {
+		// 	showHealth = true
+		// }
 	}
 
 	if showHealth {
@@ -241,7 +300,7 @@ func status(fCtx ForgeContext) error {
 
 // Returns a map of environment names to boolean values indicating whether the environment was
 // successfully deployed.
-// nolint: gocognit, gocyclo, cyclop, funlen // this is a complex function but it does what it needs to do
+// nolint: gocognit // this is a complex function but it does what it needs to do
 func getDeploymentStatus(fCtx ForgeContext) (map[string]DeployInfo, error) {
 	statusURL := fmt.Sprintf("%s/api/deployment/%s", baseURL, fCtx.State.Project.ID)
 	result, err := sendRequest(fCtx, http.MethodGet, statusURL, nil)
@@ -270,11 +329,6 @@ func getDeploymentStatus(fCtx ForgeContext) (map[string]DeployInfo, error) {
 	}
 	deployStatus := map[string]DeployInfo{}
 	for env, val := range envMap {
-		deployStatus[env] = DeployInfo{
-			DeployType:    "",
-			DeployStatus:  DeployStatusFailed,
-			DeployDisplay: "",
-		}
 		data, ok := val.(map[string]any)
 		if !ok {
 			return nil, eris.Errorf("Failed to unmarshal response for environment %s", env)
@@ -282,148 +336,39 @@ func getDeploymentStatus(fCtx ForgeContext) (map[string]DeployInfo, error) {
 		if data["project_id"] != fCtx.State.Project.ID {
 			return nil, eris.Errorf("Deployment status does not match project id %s", fCtx.State.Project.ID)
 		}
-		deployType, ok := data["type"].(string)
+
+		executorID, ok := data["created_by"].(string)
 		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment type")
-		}
-		if deployType != DeploymentTypeDeploy &&
-			deployType != DeploymentTypeDestroy &&
-			deployType != DeploymentTypeReset {
-			return nil, eris.Errorf("Unknown deployment type %s", deployType)
-		}
-		executorID, ok := data["executor_id"].(string)
-		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment executor_id")
+			return nil, eris.New("Failed to unmarshal deployment created_by")
 		}
 		executorName, ok := data["executor_name"].(string)
 		if ok {
 			executorID = executorName
 		}
-		executionTimeStr, ok := data["execution_time"].(string)
+		executionTimeStr, ok := data["created_at"].(string)
 		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment execution_time")
+			return nil, eris.New("Failed to unmarshal deployment created_at")
 		}
-		dt, dte := time.Parse(time.RFC3339, executionTimeStr)
-		if dte != nil {
-			return nil, eris.Wrapf(dte, "Failed to parse deployment execution_time %s", executionTimeStr)
-		}
-		buildState, ok := data["build_state"].(string)
-		if !ok {
-			return nil, eris.New("Failed to unmarshal deployment build_state")
-		}
-		switch deployType {
-		case DeploymentTypeDeploy:
-			bnf, okInner := data["build_number"].(float64)
-			if !okInner {
-				return nil, eris.New("Failed to unmarshal deployment build_number")
-			}
-			buildNumber := int(bnf)
-			buildStartTimeStr, okInner := data["build_start_time"].(string)
-			if !okInner {
-				return nil, eris.New("Failed to unmarshal deployment build_start_time")
-			}
-			bst, bte := time.Parse(time.RFC3339, buildStartTimeStr)
-			if bte != nil {
-				return nil, eris.Wrapf(bte, "Failed to parse deployment build_start_time %s", buildStartTimeStr)
-			}
-			if bst.Before(dt) {
-				bst = dt // we don't have a real build start time yet because build kite hasn't run yet
-			}
-			buildEndTimeStr, okInner := data["build_end_time"].(string)
-			if !okInner {
-				buildEndTimeStr = buildStartTimeStr // we don't know how long this took
-			}
-			bet, bte := time.Parse(time.RFC3339, buildEndTimeStr)
-			if bte != nil {
-				return nil, eris.Wrapf(bte, "Failed to parse deployment build_end_time %s", buildEndTimeStr)
-			}
-			if bet.Before(bst) {
-				bet = bst // we don't know how long this took
-			}
-			buildDuration := bet.Sub(bst)
-			// buildkite states (used with deployType deploy) are:
-			//   creating, scheduled, running, passed, failing, failed, blocked, canceling, canceled, skipped, not_run
 
-			switch buildState {
-			case string(DeployStatusPassed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDeploy,
-					DeployStatus: DeployStatusPassed,
-					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) completed %s (%s ago) by %s\n",
-						envDisplayName(env), buildNumber,
-						formattedDuration(buildDuration),
-						bet.Format(time.RFC822), formattedDuration(time.Since(bet)), executorID),
-				}
-			case string(DeployStatusFailed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDeploy,
-					DeployStatus: DeployStatusFailed,
-					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d (duration %s) failed at %s (%s ago)\n",
-						envDisplayName(env), buildNumber, formattedDuration(buildDuration),
-						bet.Format(time.RFC822), formattedDuration(time.Since(bet))),
-				}
-			default:
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDeploy,
-					DeployStatus: DeployStatusRunning,
-					DeployDisplay: fmt.Sprintf("Build:     [%s] #%d started %s (%s ago) by %s - %s\n",
-						envDisplayName(env), buildNumber,
-						bst.Format(time.RFC822), formattedDuration(time.Since(bst)), executorID, buildState),
-				}
-			}
-		case DeploymentTypeDestroy:
-			switch buildState {
-			case string(DeployStatusPassed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDestroy,
-					DeployStatus: DeployStatusPassed,
-					DeployDisplay: fmt.Sprintf("Destroyed: [%s] on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			case string(DeployStatusFailed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDestroy,
-					DeployStatus: DeployStatusFailed,
-					DeployDisplay: fmt.Sprintf("Destroy:   [%s] failed on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			default:
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeDestroy,
-					DeployStatus: DeployStatusRunning,
-					DeployDisplay: fmt.Sprintf("Destroy:   [%s] started %s (%s ago) by %s - %s\n",
-						envDisplayName(env), dt.Format(time.RFC822),
-						formattedDuration(time.Since(dt)), executorID, buildState),
-				}
-			}
-		case DeploymentTypeReset:
-			// results can be "passed" or "failed", but either way continue to show the health
-			switch buildState {
-			case string(DeployStatusPassed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeReset,
-					DeployStatus: DeployStatusPassed,
-					DeployDisplay: fmt.Sprintf("Reset:     [%s] on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			case string(DeployStatusFailed):
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeReset,
-					DeployStatus: DeployStatusFailed,
-					DeployDisplay: fmt.Sprintf("Reset:     [%s] failed on %s by %s\n",
-						envDisplayName(env), dt.Format(time.RFC822), executorID),
-				}
-			default:
-				deployStatus[env] = DeployInfo{
-					DeployType:   DeploymentTypeReset,
-					DeployStatus: DeployStatusRunning,
-					DeployDisplay: fmt.Sprintf("Reset:     [%s] started %s (%s ago) by %s - %s\n",
-						envDisplayName(env), dt.Format(time.RFC822),
-						formattedDuration(time.Since(dt)), executorID, buildState),
-				}
-			}
-		default:
-			return nil, eris.Errorf("Unknown deployment type %s", deployType)
+		// Parse the timestamp and format it as yyyy-mm-dd hh:mm timezone
+		executionTime, err := time.Parse(time.RFC3339, executionTimeStr)
+		if err != nil {
+			return nil, eris.Wrap(err, "Failed to parse deployment created_at timestamp")
+		}
+		executionTimeStr = executionTime.Format("2006-01-02 15:04 MST")
+		deploymentStatus, ok := data["deployment_status"].(string)
+		if !ok {
+			return nil, eris.New("Failed to unmarshal deployment deployment_status")
+		}
+		deployStatus[env] = DeployInfo{
+			DeployStatus: DeployStatus(deploymentStatus),
+			DeployDisplay: fmt.Sprintf(
+				"Pod `%s` %s at %s by `%s`",
+				env,
+				deploymentStatus,
+				executionTimeStr,
+				executorID,
+			),
 		}
 	}
 	return deployStatus, nil
@@ -599,7 +544,6 @@ func previewDeployment(fCtx ForgeContext, deployType string) error {
 	printer.Headerln("     Configuration     ")
 	printer.Infof("Executor:        %s\n", response.Data.ExecutorName)
 	printer.Infof("Deployment Type: %s\n", response.Data.DeploymentType)
-	printer.Infof("Tick Rate:       %d\n", response.Data.TickRate)
 
 	printer.NewLine(1)
 	printer.Headerln("  Deployment Regions  ")
@@ -676,16 +620,16 @@ func waitUntilDeploymentIsComplete(fCtx ForgeContext, env string, deployType str
 			}
 			if deploy, exists := deploys[env]; exists {
 				printDeploymentStatus(deploy)
-				if shouldShowHealth(deploy) {
-					deployComplete = true // this changes the status message for the spinner
-					// just report health for the single environment
-					healthComplete, err := getAndPrintHealth(fCtx, map[string]DeployInfo{
-						env: deploy,
-					})
-					if err != nil || !healthComplete {
-						continue
-					}
-				}
+				// if shouldShowHealth(deploy) {
+				// 	deployComplete = true // this changes the status message for the spinner
+				// 	// just report health for the single environment
+				// 	healthComplete, err := getAndPrintHealth(fCtx, map[string]DeployInfo{
+				// 		env: deploy,
+				// 	})
+				// 	if err != nil || !healthComplete {
+				// 		continue
+				// 	}
+				// }
 			}
 
 			spinnnerCompleted(true)
@@ -694,25 +638,11 @@ func waitUntilDeploymentIsComplete(fCtx ForgeContext, env string, deployType str
 	}
 }
 
-func formattedDuration(d time.Duration) string {
-	const hoursPerDay = 24
-	const minPerHour = 60
-	const secPerMinute = 60
-	if d.Hours() > hoursPerDay {
-		return fmt.Sprintf("%dd %dh", int(d.Hours()/hoursPerDay), int(d.Hours())%hoursPerDay)
-	}
-	if d.Minutes() > minPerHour {
-		return fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%minPerHour)
-	}
-	if d.Seconds() > secPerMinute {
-		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%secPerMinute)
-	}
-	return fmt.Sprintf("%ds", int(d.Seconds()))
-}
-
 func printDeploymentStatus(deployInfo DeployInfo) {
-	switch deployInfo.DeployStatus { //nolint:exhaustive // only success and failure have special messages
-	case DeployStatusPassed:
+	switch deployInfo.DeployStatus {
+	case DeployStatusCreated:
+		printer.Successf("%s\n", deployInfo.DeployDisplay)
+	case DeployStatusRemoved:
 		printer.Successf("%s\n", deployInfo.DeployDisplay)
 	case DeployStatusFailed:
 		printer.Errorf("%s\n", deployInfo.DeployDisplay)
@@ -724,9 +654,9 @@ func printDeploymentStatus(deployInfo DeployInfo) {
 func shouldShowHealth(deployInfo DeployInfo) bool {
 	switch deployInfo.DeployType {
 	case DeploymentTypeDeploy:
-		return deployInfo.DeployStatus == DeployStatusPassed
+		return deployInfo.DeployStatus == DeployStatusCreated
 	case DeploymentTypeDestroy:
-		return deployInfo.DeployStatus != DeployStatusPassed
+		return deployInfo.DeployStatus == DeployStatusRemoved
 	case DeploymentTypeReset:
 		return true
 	}

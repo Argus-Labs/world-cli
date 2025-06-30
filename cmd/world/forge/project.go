@@ -182,7 +182,7 @@ func getListRegions(fCtx ForgeContext, orgID, projID string) ([]string, error) {
 		return nil, eris.Wrap(err, "Failed to get regions")
 	}
 
-	regionMap, err := parseResponse[map[string]struct{}](body)
+	regionMap, err := parseResponse[map[string]bool](body)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to parse regions")
 	}

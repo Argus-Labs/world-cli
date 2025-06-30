@@ -274,7 +274,6 @@ func redisIsDown(t *testing.T, port string) bool {
 }
 func cleanUp(t *testing.T, dockerClient *Client) {
 	t.Cleanup(func() {
-		//nolint:usetesting // don't use t.Context() here; it's canceled during cleanup
 		assert.NilError(t, dockerClient.Purge(context.Background(), service.Nakama,
 			service.Cardinal, service.Redis, service.NakamaDB, service.Jaeger, service.Prometheus),
 			"Failed to purge container during cleanup")

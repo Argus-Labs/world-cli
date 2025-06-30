@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/printer"
@@ -137,7 +137,7 @@ func (c *Client) startContainer(ctx context.Context, service service.Service) er
 func (c *Client) containerExists(ctx context.Context, containerName string) (bool, error) {
 	_, err := c.client.ContainerInspect(ctx, containerName)
 	if err != nil {
-		if client.IsErrNotFound(err) {
+		if cerrdefs.IsNotFound(err) {
 			return false, nil
 		}
 		return false, eris.Wrapf(err, "Failed to inspect container %s", containerName)
