@@ -34,7 +34,8 @@ type TestUser struct {
 func TestNewClient(t *testing.T) {
 	t.Parallel()
 	baseURL := "https://api.example.com"
-	client := NewClient(baseURL)
+	rpcURL := "https://rpc.example.com"
+	client := NewClient(baseURL, rpcURL)
 
 	assert.NotNil(t, client)
 

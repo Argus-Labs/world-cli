@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.45.0
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
+	github.com/containerd/errdefs v1.0.0
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v28.2.2+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -56,7 +57,6 @@ require (
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.2.3 // indirect
 	github.com/charmbracelet/x/term v0.2.0 // indirect
-	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"time"
 
@@ -13,7 +14,9 @@ var _ ClientInterface = &Client{}
 
 // Client implements HTTP API client with retry logic and authentication.
 type Client struct {
-	BaseURL    string
+	BaseURL string
+	// TODO: Remove this once we have a proper RPC client
+	RPCURL     string
 	Token      string
 	HTTPClient HTTPClientInterface
 }
@@ -39,9 +42,24 @@ type ClientInterface interface {
 	CreateProject(ctx context.Context, orgID string, project models.Project) (models.Project, error)
 	UpdateProject(ctx context.Context, orgID, projID string, project models.Project) (models.Project, error)
 	DeleteProject(ctx context.Context, orgID, projID string) error
+	PreviewDeployment(ctx context.Context, orgID, projID, deployType string) (models.DeploymentPreview, error)
 
+	// Cloud deployment methods
+	DeployProject(
+		ctx context.Context,
+		orgID, projID, deployType, commitHash string,
+		imageReader io.Reader,
+		successPush bool,
+	) error
+	ResetDestroyPromoteProject(ctx context.Context, orgID, projID, deployType string) error
+	GetTemporaryCredential(ctx context.Context, orgID, projID string) (models.TemporaryCredential, error)
+	GetDeploymentStatus(ctx context.Context, projID string) ([]byte, error)
+	GetHealthStatus(ctx context.Context, projID string) ([]byte, error)
+	GetDeploymentHealthStatus(ctx context.Context, projID string) (map[string]models.DeploymentHealthCheckResult, error)
 	// Utility methods
 	SetAuthToken(token string)
+	// TODO: Remove this once we have a proper RPC client
+	GetRPCBaseURL() string
 }
 
 // HTTPClientInterface allows for mocking the underlying HTTP client.

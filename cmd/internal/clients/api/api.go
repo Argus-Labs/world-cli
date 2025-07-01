@@ -1,9 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"sort"
@@ -322,6 +325,161 @@ func (c *Client) DeleteProject(ctx context.Context, orgID, projID string) error 
 	}
 
 	return nil
+}
+
+// PreviewDeployment previews a deployment.
+func (c *Client) PreviewDeployment(
+	ctx context.Context,
+	orgID, projID, deployType string,
+) (models.DeploymentPreview, error) {
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s/%s?preview=true", orgID, projID, deployType)
+	resultBytes, err := c.sendRequest(ctx, post, endpoint, nil)
+	if err != nil {
+		return models.DeploymentPreview{}, eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+	}
+
+	return parseResponse[models.DeploymentPreview](resultBytes)
+}
+
+// DeployProject deploys a project with multipart upload.
+func (c *Client) DeployProject(
+	ctx context.Context,
+	orgID, projID, deployType, commitHash string,
+	imageReader io.Reader, successPush bool,
+) error {
+	if orgID == "" {
+		return ErrNoOrganizationID
+	}
+	if projID == "" {
+		return ErrNoProjectID
+	}
+	/* create multipart request */
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// add commit_hash to the request
+	err := writer.WriteField("commit_hash", commitHash)
+	if err != nil {
+		return eris.Wrap(err, "Failed to write commit hash")
+	}
+
+	// if the image was not pushed to the registry in the local machine, add the image to the request
+	// World Forge will push the image to the registry
+	if !successPush {
+		// add the image to the request
+		part, err := writer.CreateFormFile("file", "image.tar")
+		if err != nil {
+			return eris.Wrap(err, "Failed to create form file")
+		}
+		_, err = io.Copy(part, imageReader)
+		if err != nil {
+			return eris.Wrap(err, "Failed to copy image to request")
+		}
+	} else {
+		deployType = "deploy?nofile=true"
+	}
+
+	writer.Close()
+	/* end of multipart request */
+
+	if deployType == "forceDeploy" {
+		deployType = "deploy?force=true"
+		if successPush {
+			deployType = "deploy?force=true&nofile=true"
+		}
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s/%s", orgID, projID, deployType)
+	// Create request with proper Content-Type for multipart
+	req, err := c.prepareRequest(ctx, http.MethodPost, endpoint, nil)
+	if err != nil {
+		return eris.Wrap(err, "Failed to create request")
+	}
+	// Override body and content type for multipart
+	req.Body = io.NopCloser(body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	// Use the existing retry logic
+	_, err = c.makeRequestWithRetries(ctx, req)
+	if err != nil {
+		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+	}
+	return nil
+}
+
+// DeployProject deploys a project with multipart upload.
+func (c *Client) ResetDestroyPromoteProject(
+	ctx context.Context,
+	orgID, projID, deployType string,
+) error {
+	if orgID == "" {
+		return ErrNoOrganizationID
+	}
+	if projID == "" {
+		return ErrNoProjectID
+	}
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s/%s", orgID, projID, deployType)
+
+	_, err := c.sendRequest(ctx, post, endpoint, nil)
+	if err != nil {
+		return eris.Wrap(err, fmt.Sprintf("Failed to %s project", deployType))
+	}
+
+	return nil
+}
+
+func (c *Client) GetTemporaryCredential(ctx context.Context, orgID, projID string) (models.TemporaryCredential, error) {
+	if orgID == "" {
+		return models.TemporaryCredential{}, ErrNoOrganizationID
+	}
+	if projID == "" {
+		return models.TemporaryCredential{}, ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/project/%s/temporary-credential", orgID, projID)
+	result, err := c.sendRequest(ctx, get, endpoint, nil)
+	if err != nil {
+		return models.TemporaryCredential{}, eris.Wrap(err, "Failed to get temporary credential")
+	}
+
+	return parseResponse[models.TemporaryCredential](result)
+}
+
+// GetDeploymentStatus retrieves deployment status.
+func (c *Client) GetDeploymentStatus(ctx context.Context, projID string) ([]byte, error) {
+	if projID == "" {
+		return nil, ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/deployment/%s", projID)
+	return c.sendRequest(ctx, get, endpoint, nil)
+}
+
+// GetHealthStatus retrieves health status.
+func (c *Client) GetHealthStatus(ctx context.Context, projID string) ([]byte, error) {
+	if projID == "" {
+		return nil, ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/health/%s", projID)
+	return c.sendRequest(ctx, get, endpoint, nil)
+}
+
+// GetDeploymentHealthStatus retrieves deployment health status.
+func (c *Client) GetDeploymentHealthStatus(
+	ctx context.Context,
+	projID string,
+) (map[string]models.DeploymentHealthCheckResult, error) {
+	if projID == "" {
+		return nil, ErrNoProjectID
+	}
+
+	endpoint := fmt.Sprintf("/api/health/%s", projID)
+	result, err := c.sendRequest(ctx, get, endpoint, nil)
+	if err != nil {
+		return nil, eris.Wrap(err, "Failed to get deployment status")
+	}
+
+	return parseResponse[map[string]models.DeploymentHealthCheckResult](result)
 }
 
 // parseResponse is a generic version that returns the parsed data.

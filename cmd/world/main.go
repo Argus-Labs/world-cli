@@ -18,6 +18,7 @@ import (
 	cfgService "pkg.world.dev/world-cli/cmd/internal/services/config"
 	"pkg.world.dev/world-cli/cmd/internal/services/input"
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
+	"pkg.world.dev/world-cli/cmd/world/cloud"
 	"pkg.world.dev/world-cli/cmd/world/evm"
 	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/organization"
@@ -38,11 +39,11 @@ const (
 	// For Argus Production.
 	worldForgeBaseURLProd = "https://forge.world.dev"
 	// For local development.
-	// worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
+	worldForgeRPCBaseURLLocal = "http://localhost:8002/rpc"
 	// RPC Dev URL.
-	// worldForgeRPCBaseURLDev = "https://rpc.argus.dev"
+	worldForgeRPCBaseURLDev = "https://rpc.argus.dev"
 	// RPC Prod URL.
-	// worldForgeRPCBaseURLProd = "https://rpc.world.dev"
+	worldForgeRPCBaseURLProd = "https://rpc.world.dev"
 	// For Argus ID Dev.
 	// argusIDBaseURLDev = "https://id.argus.dev"
 	// For Argus ID Production.
@@ -121,6 +122,7 @@ func main() {
 	// Initialize packages
 	root.CLI.Plugins = kong.Plugins{
 		&cardinal.CardinalCmdPlugin,
+		&cloud.CmdPlugin,
 		&evm.EvmCmdPlugin,
 		&forge.ForgeCmdPlugin,
 		&project.CmdPlugin,
@@ -141,6 +143,7 @@ func main() {
 	realCtx := contextWithSigterm(context.Background())
 	SetKongParentsAndContext(realCtx, dependencies, &root.CLI)
 	SetKongParentsAndContext(realCtx, dependencies, &cardinal.CardinalCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &cloud.CmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &evm.EvmCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &forge.ForgeCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &project.CmdPlugin)
@@ -152,6 +155,8 @@ func main() {
 		if logger.VerboseMode {
 			logger.Errors(err)
 		}
+		// TODO: Remove this once we have a proper error handling
+		printer.Errorln(err.Error())
 	}
 	// print log stack
 	logger.PrintLogs()
@@ -267,22 +272,22 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 	env, _ := getEnvAndVersion()
 
 	var baseURL string
-	// var rpcURL string
+	var rpcURL string
 	// var argusIDBaseURL string
 	switch env {
 	case cfgService.EnvLocal:
 		baseURL = worldForgeBaseURLLocal
-		// rpcURL = worldForgeRPCBaseURLLocal
+		rpcURL = worldForgeRPCBaseURLLocal
 		// argusIDBaseURL = argusIDBaseURLDev
 		printer.Notificationln("Forge Env: LOCAL")
 	case cfgService.EnvDev:
 		baseURL = worldForgeBaseURLDev
-		// rpcURL = worldForgeRPCBaseURLDev
+		rpcURL = worldForgeRPCBaseURLDev
 		// argusIDBaseURL = argusIDBaseURLDev
 		printer.Notificationln("Forge Env: DEV")
 	default:
 		baseURL = worldForgeBaseURLProd
-		// rpcURL = worldForgeRPCBaseURLProd
+		rpcURL = worldForgeRPCBaseURLProd
 		// argusIDBaseURL = argusIDBaseURLProd
 	}
 
@@ -293,7 +298,8 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 
 	repoClient := repo.NewClient()
 	inputService := input.NewService()
-	apiClient := api.NewClient(baseURL)
+	// TODO: Make a proper RPC client
+	apiClient := api.NewClient(baseURL, rpcURL)
 	apiClient.SetAuthToken(configService.GetConfig().Credential.Token)
 
 	projectHandler := project.NewHandler(
@@ -315,6 +321,13 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		&inputService,
 	)
 
+	cloudHandler := cloud.NewHandler(
+		apiClient,
+		configService,
+		projectHandler,
+		&inputService,
+	)
+
 	setupController := cmdsetup.NewController(
 		configService,
 		repoClient,
@@ -332,6 +345,7 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		OrganizationHandler: orgHandler,
 		ProjectHandler:      projectHandler,
 		UserHandler:         userHandler,
+		CloudHandler:        cloudHandler,
 		SetupController:     setupController,
 	}, nil
 }
