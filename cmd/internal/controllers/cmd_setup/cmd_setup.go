@@ -314,3 +314,12 @@ func (c *Controller) inKnownRepo(ctx context.Context, cfg *config.Config, result
 	}
 	return false
 }
+
+// LoginErrorCheck is used to check if the error is a login error.
+// Used to prevent reprinting the error which was already printed in a user friendly manner.
+func LoginErrorCheck(err error) bool {
+	if err == nil {
+		return false
+	}
+	return eris.Is(err, ErrLogin)
+}

@@ -201,6 +201,20 @@ func (m *MockClient) GetRPCBaseURL() string {
 	return m.Called().String(0)
 }
 
+// Authentication methods
+
+// GetLoginLink mocks getting the login link.
+func (m *MockClient) GetLoginLink(ctx context.Context) (LoginLinkResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(LoginLinkResponse), args.Error(1)
+}
+
+// GetLoginToken mocks getting the login token.
+func (m *MockClient) GetLoginToken(ctx context.Context, callbackURL string) (models.LoginToken, error) {
+	args := m.Called(ctx, callbackURL)
+	return args.Get(0).(models.LoginToken), args.Error(1)
+}
+
 // MockHTTPClient is a mock implementation of HTTPClientInterface for testing.
 type MockHTTPClient struct {
 	mock.Mock

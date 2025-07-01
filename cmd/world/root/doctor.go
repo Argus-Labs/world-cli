@@ -15,6 +15,15 @@ var DoctorDeps = []dependency.Dependency{
 	dependency.DockerDaemon,
 }
 
+func (h *Handler) Doctor() error {
+	p := util.NewTeaProgram(NewWorldDoctorModel())
+	_, err := p.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 //////////////////////
 // Bubble Tea Model //
 //////////////////////
@@ -60,17 +69,4 @@ func (m WorldDoctorModel) View() string {
 	out += "Checking dependencies...\n"
 	out += depList + "\n" + help + "\n"
 	return out
-}
-
-type DoctorCmd struct {
-	Parent *RootCmd `kong:"-"`
-}
-
-func (c *DoctorCmd) Run() error {
-	p := util.NewTeaProgram(NewWorldDoctorModel())
-	_, err := p.Run()
-	if err != nil {
-		return err
-	}
-	return nil
 }

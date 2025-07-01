@@ -25,10 +25,11 @@ const (
 var _ ClientInterface = (*Client)(nil)
 
 // NewClient creates a new API client with the given base URL.
-func NewClient(baseURL, rpcURL string) ClientInterface {
+func NewClient(baseURL, rpcURL, argusIDBaseURL string) ClientInterface {
 	return &Client{
-		BaseURL: baseURL,
-		RPCURL:  rpcURL,
+		BaseURL:        baseURL,
+		ArgusIDBaseURL: argusIDBaseURL,
+		RPCURL:         rpcURL,
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -46,8 +47,6 @@ func (c *Client) GetRPCBaseURL() string {
 }
 
 // sendRequest sends an HTTP request with auth token and returns the response body.
-//
-
 func (c *Client) sendRequest(ctx context.Context, method, endpoint string, body interface{}) ([]byte, error) {
 	// Prepare request body and headers
 	req, err := c.prepareRequest(ctx, method, endpoint, body)
@@ -217,4 +216,19 @@ func (c *Client) exponentialBackoffWithJitter(base time.Duration, attempt int) t
 	backoff := base * (1 << attempt)                                     // Exponential growth
 	jitter := time.Duration(rand.Int63n(int64(backoff / jitterDivisor))) //nolint:gosec // it's safe to use rand here
 	return backoff + jitter
+}
+
+// parseResponse is a generic version that returns the parsed data.
+func parseResponse[T any](body []byte) (T, error) {
+	result := gjson.GetBytes(body, "data")
+	if !result.Exists() {
+		return *new(T), eris.New("Missing data field in response")
+	}
+
+	var data T
+	if err := json.Unmarshal([]byte(result.Raw), &data); err != nil {
+		return *new(T), eris.Wrap(err, "Failed to parse response")
+	}
+
+	return data, nil
 }

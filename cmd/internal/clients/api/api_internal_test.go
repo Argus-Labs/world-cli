@@ -35,7 +35,8 @@ func TestNewClient(t *testing.T) {
 	t.Parallel()
 	baseURL := "https://api.example.com"
 	rpcURL := "https://rpc.example.com"
-	client := NewClient(baseURL, rpcURL)
+	argusIDBaseURL := "https://argusid.example.com"
+	client := NewClient(baseURL, rpcURL, argusIDBaseURL)
 
 	assert.NotNil(t, client)
 

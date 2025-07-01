@@ -7,4 +7,6 @@ type RootHandler interface {
 	Doctor() error
 	Version(check bool) error
 	Login(ctx context.Context) error
+
+	SetAppVersion(version string)
 }

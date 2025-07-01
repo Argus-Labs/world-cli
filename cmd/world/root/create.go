@@ -16,6 +16,14 @@ import (
 	"pkg.world.dev/world-cli/tea/style"
 )
 
+func (h *Handler) Create(directory string) error {
+	p := util.NewTeaProgram(NewWorldCreateModel(directory))
+	if _, err := p.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
 const TemplateGitURL = "https://github.com/Argus-Labs/starter-game-template.git"
 
 /////////////////////////
@@ -224,18 +232,5 @@ func updateWorldToml(projectName string) error {
 		return fmt.Errorf("failed to update world.toml: %w", err)
 	}
 
-	return nil
-}
-
-type CreateCmd struct {
-	Parent    *RootCmd `kong:"-"`
-	Directory string   `         arg:"" optional:"" type:"path" help:"The directory to create the project in"`
-}
-
-func (c *CreateCmd) Run() error {
-	p := util.NewTeaProgram(NewWorldCreateModel(c.Directory))
-	if _, err := p.Run(); err != nil {
-		return err
-	}
 	return nil
 }

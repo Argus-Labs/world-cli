@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	commonConfig "pkg.world.dev/world-cli/common/config"
 )
 
@@ -63,7 +64,7 @@ func (s *ConfigTestSuite) TestGetForgeConfig_WithFile() {
 	testConfig := Config{
 		OrganizationID: "org-123",
 		ProjectID:      "proj-456",
-		Credential: Credential{
+		Credential: models.Credential{
 			Token: "test-token",
 			ID:    "user-123",
 			Name:  "Test User",
@@ -109,7 +110,7 @@ func (s *ConfigTestSuite) TestGetForgeConfig_WithFile() {
 func (s *ConfigTestSuite) TestSave() {
 	testConfig := Config{
 		OrganizationID: "org-123",
-		Credential: Credential{
+		Credential: models.Credential{
 			Token: "test-token",
 		},
 	}

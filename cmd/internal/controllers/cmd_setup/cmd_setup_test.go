@@ -87,7 +87,7 @@ func TestSetupCommandState_NeedLogin_NotLoggedIn(t *testing.T) {
 	ctx := t.Context()
 
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token: "", // No token
 		},
 	}
@@ -120,7 +120,7 @@ func TestSetupCommandState_NeedLogin_Success(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -164,7 +164,7 @@ func TestSetupCommandState_ExpiredToken(t *testing.T) {
 
 	pastTime := time.Now().Add(-time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "expired-token",
 			TokenExpiresAt: pastTime,
 		},
@@ -198,7 +198,7 @@ func TestHandleOrganizationInvitations_AcceptInvitation(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -241,7 +241,7 @@ func TestHandleOrganizationInvitations_DeclineInvitation(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -283,7 +283,7 @@ func TestSetupCommandState_RepoLookup_Success(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -382,7 +382,7 @@ func TestSetupCommandState_NeedOrgData_NoOrgs_CreateNew(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -432,7 +432,7 @@ func TestSetupCommandState_NeedOrgData_OneOrg_UseExisting(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -480,7 +480,7 @@ func TestSetupCommandState_NeedOrgData_MultipleOrgs(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -529,7 +529,7 @@ func TestSetupCommandState_NeedProjectData_NoProjects_CreateNew(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -582,7 +582,7 @@ func TestSetupCommandState_NeedProjectData_OneProject_UseExisting(t *testing.T) 
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},
@@ -763,7 +763,7 @@ func TestSetupCommandState_RepoLookup_NewProjectDiscovered(t *testing.T) {
 
 	futureTime := time.Now().Add(time.Hour)
 	cfg := &config.Config{
-		Credential: config.Credential{
+		Credential: models.Credential{
 			Token:          "valid-token",
 			TokenExpiresAt: futureTime,
 		},

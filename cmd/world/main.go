@@ -13,6 +13,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/internal/clients/browser"
 	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
 	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
 	cfgService "pkg.world.dev/world-cli/cmd/internal/services/config"
@@ -20,7 +21,6 @@ import (
 	"pkg.world.dev/world-cli/cmd/world/cardinal"
 	"pkg.world.dev/world-cli/cmd/world/cloud"
 	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/cmd/world/forge"
 	"pkg.world.dev/world-cli/cmd/world/organization"
 	"pkg.world.dev/world-cli/cmd/world/project"
 	"pkg.world.dev/world-cli/cmd/world/root"
@@ -45,9 +45,9 @@ const (
 	// RPC Prod URL.
 	worldForgeRPCBaseURLProd = "https://rpc.world.dev"
 	// For Argus ID Dev.
-	// argusIDBaseURLDev = "https://id.argus.dev"
+	argusIDBaseURLDev = "https://id.argus.dev"
 	// For Argus ID Production.
-	// argusIDBaseURLProd = "https://id.argus.gg"
+	argusIDBaseURLProd = "https://id.argus.gg"
 )
 
 // This variable will be overridden by ldflags during build
@@ -61,17 +61,7 @@ var (
 	SentryDsn     string
 )
 
-func EnvVersionInit() {
-	env, version := getEnvAndVersion()
-	root.SetAppVersion(version)
-	// Initialize forge base environment
-	forge.InitForgeBase(env)
-}
-
 func main() {
-	// Initialize environment and version
-	EnvVersionInit()
-
 	// Create a channel to receive signals.
 	sigChan := make(chan os.Signal, 1)
 
@@ -88,8 +78,10 @@ func main() {
 		}
 	}()
 
+	env, version := getEnvAndVersion()
+
 	// Sentry initialization
-	telemetry.SentryInit(SentryDsn, forge.Env, root.AppVersion)
+	telemetry.SentryInit(SentryDsn, env, version)
 	defer telemetry.SentryFlush()
 
 	// Set up config directory "~/.worldcli/"
@@ -105,15 +97,15 @@ func main() {
 
 	// Capture event post installation
 	if len(os.Args) > 1 && os.Args[1] == "post-installation" {
-		telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.PostInstallationEvent)
+		telemetry.PosthogCaptureEvent(version, telemetry.PostInstallationEvent)
 		return
 	}
 
 	// Capture event running
-	telemetry.PosthogCaptureEvent(root.AppVersion, telemetry.RunningEvent)
+	telemetry.PosthogCaptureEvent(version, telemetry.RunningEvent)
 
 	// Initialize dependencies once for all commands
-	dependencies, err := initDependencies()
+	dependencies, err := initDependencies(env, version)
 	if err != nil {
 		log.Err(err).Msg("could not initialize dependencies")
 		return
@@ -124,7 +116,6 @@ func main() {
 		&cardinal.CardinalCmdPlugin,
 		&cloud.CmdPlugin,
 		&evm.EvmCmdPlugin,
-		&forge.ForgeCmdPlugin,
 		&project.CmdPlugin,
 		&organization.CmdPlugin,
 		&user.CmdPlugin,
@@ -145,7 +136,6 @@ func main() {
 	SetKongParentsAndContext(realCtx, dependencies, &cardinal.CardinalCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &cloud.CmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &evm.EvmCmdPlugin)
-	SetKongParentsAndContext(realCtx, dependencies, &forge.ForgeCmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &project.CmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &organization.CmdPlugin)
 	SetKongParentsAndContext(realCtx, dependencies, &user.CmdPlugin)
@@ -268,27 +258,25 @@ func contextWithSigterm(ctx context.Context) context.Context {
 	return ctx
 }
 
-func initDependencies() (cmdsetup.Dependencies, error) {
-	env, _ := getEnvAndVersion()
-
+func initDependencies(env, version string) (cmdsetup.Dependencies, error) {
 	var baseURL string
 	var rpcURL string
-	// var argusIDBaseURL string
+	var argusIDBaseURL string
 	switch env {
 	case cfgService.EnvLocal:
 		baseURL = worldForgeBaseURLLocal
 		rpcURL = worldForgeRPCBaseURLLocal
-		// argusIDBaseURL = argusIDBaseURLDev
+		argusIDBaseURL = argusIDBaseURLDev
 		printer.Notificationln("Forge Env: LOCAL")
 	case cfgService.EnvDev:
 		baseURL = worldForgeBaseURLDev
 		rpcURL = worldForgeRPCBaseURLDev
-		// argusIDBaseURL = argusIDBaseURLDev
+		argusIDBaseURL = argusIDBaseURLDev
 		printer.Notificationln("Forge Env: DEV")
 	default:
 		baseURL = worldForgeBaseURLProd
 		rpcURL = worldForgeRPCBaseURLProd
-		// argusIDBaseURL = argusIDBaseURLProd
+		argusIDBaseURL = argusIDBaseURLProd
 	}
 
 	configService, err := cfgService.NewService(env)
@@ -299,7 +287,7 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 	repoClient := repo.NewClient()
 	inputService := input.NewService()
 	// TODO: Make a proper RPC client
-	apiClient := api.NewClient(baseURL, rpcURL)
+	apiClient := api.NewClient(baseURL, rpcURL, argusIDBaseURL)
 	apiClient.SetAuthToken(configService.GetConfig().Credential.Token)
 
 	projectHandler := project.NewHandler(
@@ -337,6 +325,9 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		&inputService,
 	)
 
+	browserClient := browser.NewClient()
+	rootHandler := root.NewHandler(version, configService, apiClient, setupController, browserClient)
+
 	return cmdsetup.Dependencies{
 		ConfigService:       configService,
 		InputService:        &inputService,
@@ -347,5 +338,6 @@ func initDependencies() (cmdsetup.Dependencies, error) {
 		UserHandler:         userHandler,
 		CloudHandler:        cloudHandler,
 		SetupController:     setupController,
+		RootHandler:         rootHandler,
 	}, nil
 }

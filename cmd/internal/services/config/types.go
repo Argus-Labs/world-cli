@@ -1,26 +1,18 @@
 package config
 
-import "time"
+import "pkg.world.dev/world-cli/cmd/internal/models"
 
 type Config struct {
-	OrganizationID string         `json:"organization_id"`
-	ProjectID      string         `json:"project_id"`
-	Credential     Credential     `json:"credential"`
-	KnownProjects  []KnownProject `json:"known_projects"`
+	OrganizationID string            `json:"organization_id"`
+	ProjectID      string            `json:"project_id"`
+	Credential     models.Credential `json:"credential"`
+	KnownProjects  []KnownProject    `json:"known_projects"`
 	// the following are not saved in json
 	// TODO: get rid of these since they will be handled by the init flow state
 	CurrRepoKnown   bool   `json:"-"` // when true, the current repo and path are already in known_projects
 	CurrRepoURL     string `json:"-"`
 	CurrRepoPath    string `json:"-"`
 	CurrProjectName string `json:"-"`
-}
-
-type Credential struct {
-	Token          string    `json:"token"`
-	TokenExpiresAt time.Time `json:"token_expires_at,omitempty"`
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
 }
 
 type KnownProject struct {
