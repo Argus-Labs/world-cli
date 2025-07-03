@@ -15,7 +15,7 @@ func (h *Handler) saveOrganization(org models.Organization) error {
 	return nil
 }
 
-func printNoOrganizations() {
+func (h *Handler) PrintNoOrganizations() {
 	printer.NewLine(1)
 	printer.Headerln("   No Organizations Found   ")
 	printer.Info("1. Use ")

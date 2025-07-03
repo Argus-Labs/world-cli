@@ -54,7 +54,11 @@ func (m *MockHandler) Delete(
 	return args.Error(0)
 }
 
-func (m *MockHandler) PreCreateUpdateValidation() (string, string, error) {
-	args := m.Called()
+func (m *MockHandler) PreCreateUpdateValidation(printError bool) (string, string, error) {
+	args := m.Called(printError)
 	return args.Get(0).(string), args.Get(1).(string), args.Error(2)
+}
+
+func (m *MockHandler) PrintNoProjectsInOrganization() {
+	m.Called()
 }

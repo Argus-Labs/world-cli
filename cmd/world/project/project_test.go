@@ -656,7 +656,7 @@ func (s *ProjectTestSuite) TestHandler_PreCreateUpdateValidation_Success() {
 	// Mock successful validation
 	mockRepoClient.On("FindGitPathAndURL").Return("cardinal", "https://github.com/test/repo", nil)
 
-	repoPath, repoURL, err := handler.PreCreateUpdateValidation()
+	repoPath, repoURL, err := handler.PreCreateUpdateValidation(false)
 
 	// Should succeed because we're in a proper World project directory
 	s.Equal("cardinal", repoPath)
@@ -674,7 +674,7 @@ func (s *ProjectTestSuite) TestHandler_PreCreateUpdateValidation_NotInRepo() {
 	validationErr := errors.New("not in git repository")
 	mockRepoClient.On("FindGitPathAndURL").Return("", "", validationErr)
 
-	repoPath, repoURL, err := handler.PreCreateUpdateValidation()
+	repoPath, repoURL, err := handler.PreCreateUpdateValidation(false)
 
 	s.Require().Error(err)
 	s.Empty(repoPath)
@@ -1228,7 +1228,7 @@ func (s *ProjectTestSuite) TestHandler_PreCreateUpdateValidation_NotInWorldRoot(
 	// Mock successful git validation but not in World root
 	mockRepoClient.On("FindGitPathAndURL").Return("cardinal", "https://github.com/test/repo", nil)
 
-	repoPath, repoURL, err := handler.PreCreateUpdateValidation()
+	repoPath, repoURL, err := handler.PreCreateUpdateValidation(false)
 
 	// Should fail because not in World Cardinal root (no world.toml/cardinal dir setup)
 	s.Require().Error(err)

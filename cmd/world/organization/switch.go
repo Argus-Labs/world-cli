@@ -38,7 +38,7 @@ func (h *Handler) Switch(ctx context.Context, flags models.SwitchOrganizationFla
 	}
 
 	if len(orgs) == 0 {
-		printNoOrganizations()
+		h.PrintNoOrganizations()
 		return models.Organization{}, nil
 	}
 

@@ -37,7 +37,7 @@ func (h *Handler) Switch(
 			}
 			return proj, nil
 		}
-		printNoProjectsInOrganization()
+		h.PrintNoProjectsInOrganization()
 		return models.Project{}, nil
 	}
 
@@ -56,7 +56,7 @@ func (h *Handler) Switch(
 	inRepoRoot := false
 	prompt := "Enter project number ('q' to quit)"
 	if enableCreation {
-		_, _, err = h.PreCreateUpdateValidation()
+		_, _, err = h.PreCreateUpdateValidation(false)
 		if err == nil { // if in repo root, we can create a new project
 			inRepoRoot = true
 			prompt = "Enter project number ('c' to create new, 'q' to quit)"
@@ -168,7 +168,7 @@ func (h *Handler) handleMultipleProjects(ctx context.Context, projects []models.
 
 // handleNoProjects handles the case when there are no projects.
 func (h *Handler) handleNoProjects(ctx context.Context) error {
-	_, _, err := h.PreCreateUpdateValidation()
+	_, _, err := h.PreCreateUpdateValidation(true)
 	if err != nil {
 		printRequiredStepsToCreateProject()
 		return nil //nolint:nilerr // error here is representing a boolean

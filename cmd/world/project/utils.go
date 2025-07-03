@@ -40,7 +40,7 @@ func (h *Handler) showProjectList(ctx context.Context) error {
 	}
 
 	if len(projects) == 0 {
-		printNoProjectsInOrganization()
+		h.PrintNoProjectsInOrganization()
 		return nil
 	}
 
@@ -86,7 +86,7 @@ func (h *Handler) getSelectedProject(ctx context.Context) (models.Project, error
 			return models.Project{}, eris.Wrap(err, "Failed to get projects")
 		}
 		if len(projects) == 0 {
-			printNoProjectsInOrganization()
+			h.PrintNoProjectsInOrganization()
 		}
 		return models.Project{}, nil
 	}
@@ -102,24 +102,30 @@ func (h *Handler) getSelectedProject(ctx context.Context) (models.Project, error
 }
 
 // PreCreateUpdateValidation returns the repo path and URL, and an error.
-func (h *Handler) PreCreateUpdateValidation() (string, string, error) {
+func (h *Handler) PreCreateUpdateValidation(printError bool) (string, string, error) {
+	var lastError error
+
 	repoPath, repoURL, err := h.repoClient.FindGitPathAndURL()
 	if err != nil && !strings.Contains(err.Error(), repo.ErrNotInGitRepository.Error()) {
-		return repoPath, repoURL, eris.Wrap(err, "Failed to find git path and URL")
-	} else if repoURL == "" { // Path is ok as empty, This means it's in repo root.
-		printer.Errorln(" Not in a git repository")
-		return repoPath, repoURL, repo.ErrNotInGitRepository
+		lastError = eris.Wrap(err, "Failed to find git path and URL")
+	} else if repoURL == "" { // Empty URL means not in a git repository or no remotes configured
+		if printError {
+			printer.Errorln(" Not in a git repository")
+		}
+		lastError = repo.ErrNotInGitRepository
 	}
 
 	inRoot, err := utils.IsInWorldCardinalRoot()
 	if err != nil {
-		return repoPath, repoURL, eris.Wrap(err, "Failed to check if in World project root")
+		lastError = eris.Wrap(err, "Failed to check if in World project root")
 	} else if !inRoot {
-		printer.Errorln(" Not in a World project root")
-		return repoPath, repoURL, utils.ErrNotInWorldCardinalRoot
+		if printError {
+			printer.Errorln(" Not in a World project root")
+		}
+		lastError = utils.ErrNotInWorldCardinalRoot
 	}
 
-	return repoPath, repoURL, nil
+	return repoPath, repoURL, lastError
 }
 
 // Get list of projects in selected organization.
@@ -135,7 +141,7 @@ func (h *Handler) getListOfAvailableRegionsForNewProject(ctx context.Context) ([
 	return h.apiClient.GetListRegions(ctx, selectedOrg.ID, nilUUID)
 }
 
-func printNoProjectsInOrganization() {
+func (h *Handler) PrintNoProjectsInOrganization() {
 	printer.NewLine(1)
 	printer.Headerln("   No Projects Found   ")
 	printer.Infoln("You don't have any projects in this organization yet.")

@@ -31,7 +31,7 @@ func (h *Handler) Create(
 		return models.Project{}, ErrCannotCreateSwitchProject
 	}
 
-	repoPath, repoURL, err := h.PreCreateUpdateValidation()
+	repoPath, repoURL, err := h.PreCreateUpdateValidation(true)
 	if err != nil {
 		printRequiredStepsToCreateProject()
 		return models.Project{}, eris.Wrap(err, "Failed to validate project creation")

@@ -21,7 +21,7 @@ func (h *Handler) Update(
 
 	printer.Infof("Updating Project: %s [%s]\n", project.Name, project.Slug)
 
-	repoPath, repoURL, err := h.PreCreateUpdateValidation()
+	repoPath, repoURL, err := h.PreCreateUpdateValidation(true)
 	if err != nil {
 		printRequiredStepsToCreateProject()
 		return eris.Wrap(err, "Failed to validate project update")

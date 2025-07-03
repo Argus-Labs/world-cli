@@ -133,7 +133,7 @@ func (c *Controller) handleNeedExistingOrgData(
 }
 
 func (c *Controller) handleNeedExistingOrganizationCaseNoOrgs() error {
-	// TODO: printNoOrganizations()
+	c.organizationHandler.PrintNoOrganizations()
 	return ErrOrganizationSelectionCanceled
 }
 

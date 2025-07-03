@@ -17,5 +17,7 @@ type ProjectHandler interface {
 	Update(ctx context.Context, project models.Project, flags models.UpdateProjectFlags) error
 	Delete(ctx context.Context, project models.Project) error
 
-	PreCreateUpdateValidation() (string, string, error)
+	// Utils
+	PreCreateUpdateValidation(printError bool) (string, string, error)
+	PrintNoProjectsInOrganization()
 }

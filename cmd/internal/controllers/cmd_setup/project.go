@@ -42,9 +42,9 @@ func (c *Controller) handleNeedProjectCaseNoProjects(
 ) error {
 	for {
 		// Must be in a valid directory to create a project
-		_, _, err := c.projectHandler.PreCreateUpdateValidation()
+		_, _, err := c.projectHandler.PreCreateUpdateValidation(true)
 		if err != nil {
-			// TODO: printNoProjectsInOrganization()
+			c.projectHandler.PrintNoProjectsInOrganization()
 			return ErrProjectCreationCanceled
 		}
 
@@ -80,7 +80,7 @@ func (c *Controller) handleNeedProjectCaseOneProject(
 
 	inRepoRoot := true
 	prompt := fmt.Sprintf("Select project: %s [%s]? (Y/n/c to create new)", projects[0].Name, projects[0].Slug)
-	_, _, err := c.projectHandler.PreCreateUpdateValidation()
+	_, _, err := c.projectHandler.PreCreateUpdateValidation(false)
 	if err != nil {
 		inRepoRoot = false
 		prompt = fmt.Sprintf("Select project: %s [%s]? (Y/n)", projects[0].Name, projects[0].Slug)
@@ -157,7 +157,7 @@ func (c *Controller) handleNeedExistingProjectData(
 }
 
 func (c *Controller) handleNeedExistingProjectCaseNoProjects() error {
-	// TODO: printNoProjectsInOrganization()
+	c.projectHandler.PrintNoProjectsInOrganization()
 	return ErrProjectSelectionCanceled
 }
 

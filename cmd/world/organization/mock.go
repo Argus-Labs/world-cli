@@ -30,3 +30,7 @@ func (m *MockHandler) PromptForSwitch(ctx context.Context, orgs []models.Organiz
 	args := m.Called(ctx, orgs, enableCreation)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
+
+func (m *MockHandler) PrintNoOrganizations() {
+	m.Called()
+}

@@ -547,7 +547,7 @@ func TestSetupCommandState_NeedProjectData_NoProjects_CreateNew(t *testing.T) {
 	mockAPI.On("GetUser", ctx).Return(user, nil)
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
-	mockProjectHandler.On("PreCreateUpdateValidation").Return("", "", nil)
+	mockProjectHandler.On("PreCreateUpdateValidation", true).Return("", "", nil)
 	mockInput.On("Prompt", ctx, "Would you like to create a new project? (Y/n)", "Y").Return("Y", nil)
 	mockProjectHandler.On("Create", ctx, models.CreateProjectFlags{}).
 		Return(newProject, nil)
@@ -601,7 +601,7 @@ func TestSetupCommandState_NeedProjectData_OneProject_UseExisting(t *testing.T) 
 	mockAPI.On("GetUser", ctx).Return(user, nil)
 	mockAPI.On("GetOrganizationsInvitedTo", ctx).Return([]models.Organization{}, nil)
 	mockAPI.On("GetProjects", ctx, "org-123").Return([]models.Project{existingProject}, nil)
-	mockProjectHandler.On("PreCreateUpdateValidation").Return("", "", repo.ErrNotInGitRepository)
+	mockProjectHandler.On("PreCreateUpdateValidation", false).Return("", "", repo.ErrNotInGitRepository)
 	mockInput.On("Prompt", ctx, "Select project: Existing Project [existing-project]? (Y/n)", "Y").Return("Y", nil)
 	mockConfig.On("Save").Return(nil)
 

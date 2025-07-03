@@ -20,4 +20,7 @@ type OrganizationHandler interface {
 		orgs []models.Organization,
 		enableCreation bool,
 	) (models.Organization, error)
+
+	// Utils
+	PrintNoOrganizations()
 }
