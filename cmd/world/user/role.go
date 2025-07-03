@@ -12,6 +12,12 @@ var (
 	ErrFailedToSetUserRoleInOrg = eris.New("Failed to set user role in organization")
 )
 
+var roles = []string{
+	"member",
+	"admin",
+	"owner",
+}
+
 func (h *Handler) ChangeRoleInOrganization(
 	ctx context.Context,
 	organization models.Organization,
@@ -26,6 +32,10 @@ func (h *Handler) ChangeRoleInOrganization(
 
 	if userEmail == "" {
 		return eris.New("User email cannot be empty")
+	}
+
+	if flags.Role == "" {
+		flags.Role = roles[0]
 	}
 
 	userRole, err := h.inputService.Prompt(ctx, "Enter user role to update", flags.Role)

@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/models"
@@ -28,7 +29,8 @@ func (h *Handler) Delete(
 	printer.Infoln("• All associated resources")
 	printer.NewLine(1)
 
-	confirmation, err := h.inputService.Prompt(ctx, "Type 'Yes' to confirm deletion of project: ", project.Name)
+	prompt := fmt.Sprintf("Type 'Yes' to confirm deletion of '%s (%s)'", project.Name, project.Slug)
+	confirmation, err := h.inputService.Prompt(ctx, prompt, "no")
 	if err != nil {
 		return eris.Wrap(err, "Failed to prompt for confirmation")
 	}

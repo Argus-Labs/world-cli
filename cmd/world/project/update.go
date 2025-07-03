@@ -32,6 +32,13 @@ func (h *Handler) Update(
 		return eris.Wrap(err, "Failed to get available regions")
 	}
 
+	if flags.Name == "" {
+		flags.Name = project.Name
+	}
+	if flags.Slug == "" {
+		flags.Slug = project.Slug
+	}
+
 	// set update to true
 	project.Update = true
 	project.Name = flags.Name

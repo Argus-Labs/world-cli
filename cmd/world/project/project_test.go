@@ -309,7 +309,7 @@ func (s *ProjectTestSuite) TestHandler_Delete_Success() {
 	testProject := s.createTestProject()
 
 	// Mock input confirmation
-	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of project: ", "Test Project").
+	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of 'Test Project (test_project)'", "no").
 		Return("Yes", nil)
 
 	// Mock API call
@@ -334,7 +334,7 @@ func (s *ProjectTestSuite) TestHandler_Delete_UserDeclines() {
 	testProject := s.createTestProject()
 
 	// Mock input confirmation - user declines
-	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of project: ", "Test Project").
+	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of 'Test Project (test_project)'", "no").
 		Return("no", nil)
 
 	err := handler.Delete(ctx, testProject)
@@ -351,7 +351,7 @@ func (s *ProjectTestSuite) TestHandler_Delete_IncorrectConfirmation() {
 	testProject := s.createTestProject()
 
 	// Mock input confirmation - user types "yes" instead of "Yes"
-	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of project: ", "Test Project").
+	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of 'Test Project (test_project)'", "no").
 		Return("yes", nil)
 
 	err := handler.Delete(ctx, testProject)
@@ -369,7 +369,7 @@ func (s *ProjectTestSuite) TestHandler_Delete_InputError() {
 
 	// Mock input error
 	inputErr := errors.New("input error")
-	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of project: ", "Test Project").
+	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of 'Test Project (test_project)'", "no").
 		Return("", inputErr)
 
 	err := handler.Delete(ctx, testProject)
@@ -387,7 +387,7 @@ func (s *ProjectTestSuite) TestHandler_Delete_APIError() {
 	testProject := s.createTestProject()
 
 	// Mock input confirmation
-	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of project: ", "Test Project").
+	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of 'Test Project (test_project)'", "no").
 		Return("Yes", nil)
 
 	// Mock API error
@@ -1182,7 +1182,7 @@ func (s *ProjectTestSuite) TestHandler_Delete_ConfigError() {
 	testProject := s.createTestProject()
 
 	// Mock input confirmation
-	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of project: ", "Test Project").
+	mockInputService.On("Prompt", ctx, "Type 'Yes' to confirm deletion of 'Test Project (test_project)'", "no").
 		Return("Yes", nil)
 
 	// Mock successful API call
@@ -1694,7 +1694,7 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 		OrgID:     "org-123",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
-		RepoToken: "", // Empty because "public" was selected
+		RepoToken: "",
 		Update:    false,
 		Config: models.ProjectConfig{
 			Region: []string{"us-east-1"},
