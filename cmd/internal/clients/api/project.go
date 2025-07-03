@@ -75,7 +75,6 @@ func (c *Client) CreateProject(ctx context.Context, orgID string, project models
 		"repo_path":  project.RepoPath,
 		"org_id":     orgID,
 		"config":     project.Config,
-		"avatar_url": project.AvatarURL,
 	}
 
 	endpoint := fmt.Sprintf("/api/organization/%s/project", orgID)
@@ -108,7 +107,6 @@ func (c *Client) UpdateProject(
 		"repo_token": project.RepoToken,
 		"repo_path":  project.RepoPath,
 		"config":     project.Config,
-		"avatar_url": project.AvatarURL,
 	})
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to update project")

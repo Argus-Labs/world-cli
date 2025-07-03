@@ -46,12 +46,11 @@ func (h *Handler) Create(
 	printer.Headerln("   Project Creation   ")
 
 	p := models.Project{
-		Name:      flags.Name,
-		Slug:      flags.Slug,
-		AvatarURL: flags.AvatarURL,
-		RepoPath:  repoPath,
-		RepoURL:   repoURL,
-		Update:    false,
+		Name:     flags.Name,
+		Slug:     flags.Slug,
+		RepoPath: repoPath,
+		RepoURL:  repoURL,
+		Update:   false,
 	}
 	err = h.getSetupInput(ctx, &p, regions)
 	if err != nil {
@@ -132,11 +131,6 @@ func (h *Handler) getSetupInput(ctx context.Context, project *models.Project, re
 	err = h.inputSlack(ctx, project)
 	if err != nil {
 		return eris.Wrap(err, "Failed to input slack")
-	}
-
-	err = h.inputAvatarURL(ctx, project)
-	if err != nil {
-		return eris.Wrap(err, "Failed to input avatar URL")
 	}
 
 	return nil
@@ -486,36 +480,6 @@ func (h *Handler) inputSlack(ctx context.Context, project *models.Project) error
 	return nil
 }
 
-func (h *Handler) inputAvatarURL(ctx context.Context, project *models.Project) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			avatarURL, err := h.inputService.Prompt(ctx, "Enter avatar URL (Empty Valid)", project.AvatarURL)
-			if err != nil {
-				return eris.Wrap(err, "Failed to get avatar URL")
-			}
-
-			if avatarURL == "" {
-				// No avatar URL provided
-				project.AvatarURL = ""
-				return nil
-			}
-
-			if err := utils.IsValidURL(avatarURL); err != nil {
-				printer.Errorln(err.Error())
-				printer.NewLine(1)
-				project.AvatarURL = ""
-				continue
-			}
-
-			project.AvatarURL = avatarURL
-			return nil
-		}
-	}
-}
-
 func displayProjectDetails(project *models.Project) {
 	printer.NewLine(1)
 	printer.Infoln("Project Details:")
@@ -544,7 +508,6 @@ func displayProjectDetails(project *models.Project) {
 	} else {
 		printer.Infoln("  - Enabled: No")
 	}
-	printer.Infof("• Avatar URL: %s\n", project.AvatarURL)
 }
 
 func printRequiredStepsToCreateProject() {

@@ -40,11 +40,10 @@ func (c *Client) GetOrganizationByID(ctx context.Context, id string) (models.Org
 }
 
 // CreateOrganization creates a new organization.
-func (c *Client) CreateOrganization(ctx context.Context, name, slug, avatarURL string) (models.Organization, error) {
+func (c *Client) CreateOrganization(ctx context.Context, name, slug string) (models.Organization, error) {
 	payload := map[string]string{
-		"name":       name,
-		"slug":       slug,
-		"avatar_url": avatarURL,
+		"name": name,
+		"slug": slug,
 	}
 
 	body, err := c.sendRequest(ctx, post, "/api/organization", payload)

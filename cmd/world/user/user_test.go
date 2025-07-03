@@ -41,10 +41,9 @@ func (s *UserTestSuite) createTestOrganization() models.Organization {
 
 func (s *UserTestSuite) createTestUser() models.User {
 	return models.User{
-		ID:        "user-123",
-		Name:      "Test User",
-		Email:     "test@example.com",
-		AvatarURL: "https://example.com/avatar.png",
+		ID:    "user-123",
+		Name:  "Test User",
+		Email: "test@example.com",
 	}
 }
 
@@ -294,8 +293,7 @@ func (s *UserTestSuite) TestHandler_Update_Success() {
 	ctx := context.Background()
 	currentUser := s.createTestUser()
 	flags := models.UpdateUserFlags{
-		Name:      "Updated User",
-		AvatarURL: "https://example.com/new-avatar.png",
+		Name: "Updated User",
 	}
 
 	// Mock getting current user
@@ -305,11 +303,9 @@ func (s *UserTestSuite) TestHandler_Update_Success() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter name", "Updated User").
 		Return("Updated User", nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/new-avatar.png").
-		Return("https://example.com/new-avatar.png", nil)
 
 	// Mock API call
-	mockAPIClient.On("UpdateUser", ctx, "Updated User", "test@example.com", "https://example.com/new-avatar.png").
+	mockAPIClient.On("UpdateUser", ctx, "Updated User", "test@example.com").
 		Return(nil)
 
 	err := handler.Update(ctx, flags)
@@ -326,8 +322,7 @@ func (s *UserTestSuite) TestHandler_Update_EmptyName() {
 	ctx := context.Background()
 	currentUser := s.createTestUser()
 	flags := models.UpdateUserFlags{
-		Name:      "",
-		AvatarURL: "",
+		Name: "",
 	}
 
 	// Mock getting current user
@@ -339,45 +334,9 @@ func (s *UserTestSuite) TestHandler_Update_EmptyName() {
 		Return("", nil).Once()
 	mockInputService.On("Prompt", ctx, "Enter name", "Test User").
 		Return("Valid User", nil).Once()
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("", nil)
 
 	// Mock API call
-	mockAPIClient.On("UpdateUser", ctx, "Valid User", "test@example.com", "").
-		Return(nil)
-
-	err := handler.Update(ctx, flags)
-
-	s.Require().NoError(err)
-	mockAPIClient.AssertExpectations(s.T())
-	mockInputService.AssertExpectations(s.T())
-}
-
-func (s *UserTestSuite) TestHandler_Update_InvalidAvatarURL() {
-	s.T().Parallel()
-
-	handler, mockAPIClient, mockInputService := s.createTestHandler()
-	ctx := context.Background()
-	currentUser := s.createTestUser()
-	flags := models.UpdateUserFlags{
-		Name:      "Updated User",
-		AvatarURL: "",
-	}
-
-	// Mock getting current user
-	mockAPIClient.On("GetUser", ctx).
-		Return(currentUser, nil)
-
-	// Mock input interactions - user enters invalid URL first, then valid URL
-	mockInputService.On("Prompt", ctx, "Enter name", "Updated User").
-		Return("Updated User", nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("invalid-url", nil).Once()
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("https://example.com/valid-avatar.png", nil).Once()
-
-	// Mock API call
-	mockAPIClient.On("UpdateUser", ctx, "Updated User", "test@example.com", "https://example.com/valid-avatar.png").
+	mockAPIClient.On("UpdateUser", ctx, "Valid User", "test@example.com").
 		Return(nil)
 
 	err := handler.Update(ctx, flags)
@@ -441,8 +400,7 @@ func (s *UserTestSuite) TestHandler_Update_APIError() {
 	ctx := context.Background()
 	currentUser := s.createTestUser()
 	flags := models.UpdateUserFlags{
-		Name:      "Updated User",
-		AvatarURL: "",
+		Name: "Updated User",
 	}
 
 	// Mock getting current user
@@ -452,12 +410,10 @@ func (s *UserTestSuite) TestHandler_Update_APIError() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter name", "Updated User").
 		Return("Updated User", nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("", nil)
 
 	// Mock API error
 	apiErr := errors.New("update user error")
-	mockAPIClient.On("UpdateUser", ctx, "Updated User", "test@example.com", "").
+	mockAPIClient.On("UpdateUser", ctx, "Updated User", "test@example.com").
 		Return(apiErr)
 
 	err := handler.Update(ctx, flags)
@@ -487,38 +443,6 @@ func (s *UserTestSuite) TestHandler_Update_ContextCanceled() {
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "context canceled")
-	mockAPIClient.AssertExpectations(s.T())
-	mockInputService.AssertExpectations(s.T())
-}
-
-func (s *UserTestSuite) TestHandler_Update_EmptyAvatarURL() {
-	s.T().Parallel()
-
-	handler, mockAPIClient, mockInputService := s.createTestHandler()
-	ctx := context.Background()
-	currentUser := s.createTestUser()
-	flags := models.UpdateUserFlags{
-		Name:      "Updated User",
-		AvatarURL: "",
-	}
-
-	// Mock getting current user
-	mockAPIClient.On("GetUser", ctx).
-		Return(currentUser, nil)
-
-	// Mock input interactions
-	mockInputService.On("Prompt", ctx, "Enter name", "Updated User").
-		Return("Updated User", nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("", nil)
-
-	// Mock API call with empty avatar URL
-	mockAPIClient.On("UpdateUser", ctx, "Updated User", "test@example.com", "").
-		Return(nil)
-
-	err := handler.Update(ctx, flags)
-
-	s.Require().NoError(err)
 	mockAPIClient.AssertExpectations(s.T())
 	mockInputService.AssertExpectations(s.T())
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
@@ -703,7 +702,7 @@ func (s *CloudTestSuite) TestDeployCmd_Run() {
 
 	// Test that the command exists and has expected fields
 	s.NotNil(cmd)
-	assert.False(s.T(), cmd.Force)
+	s.False(cmd.Force)
 }
 
 func (s *CloudTestSuite) TestStatusCmd_Run() {

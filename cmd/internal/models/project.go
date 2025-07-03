@@ -15,7 +15,6 @@ type Project struct {
 	RepoPath     string        `json:"repo_path"`
 	DeploySecret string        `json:"deploy_secret,omitempty"`
 	Config       ProjectConfig `json:"config"`
-	AvatarURL    string        `json:"avatar_url"`
 
 	Update bool `json:"-"`
 }
@@ -39,9 +38,8 @@ type ProjectConfigSlack struct {
 }
 
 type CreateProjectFlags struct {
-	Name      string
-	Slug      string
-	AvatarURL string
+	Name string
+	Slug string
 }
 
 type SwitchProjectFlags struct {
@@ -49,7 +47,6 @@ type SwitchProjectFlags struct {
 }
 
 type UpdateProjectFlags struct {
-	Name      string
-	Slug      string
-	AvatarURL string
+	Name string
+	Slug string
 }

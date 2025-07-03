@@ -57,7 +57,7 @@ type ClientInterface interface {
 	// GetUser retrieves the current authenticated user's information
 	GetUser(ctx context.Context) (models.User, error)
 	// UpdateUser updates the current user's profile information
-	UpdateUser(ctx context.Context, name, email, avatarURL string) error
+	UpdateUser(ctx context.Context, name, email string) error
 	// InviteUserToOrganization invites a user to join an organization with a specific role
 	InviteUserToOrganization(ctx context.Context, orgID, userEmail, role string) error
 	// UpdateUserRoleInOrganization updates a user's role within an organization
@@ -76,7 +76,7 @@ type ClientInterface interface {
 	// GetOrganizationByID retrieves a specific organization by its ID
 	GetOrganizationByID(ctx context.Context, id string) (models.Organization, error)
 	// CreateOrganization creates a new organization
-	CreateOrganization(ctx context.Context, name, slug, avatarURL string) (models.Organization, error)
+	CreateOrganization(ctx context.Context, name, slug string) (models.Organization, error)
 
 	// ========================================
 	// Project Management Methods

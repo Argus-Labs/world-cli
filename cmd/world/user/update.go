@@ -5,7 +5,6 @@ import (
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/utils"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -28,16 +27,7 @@ func (h *Handler) Update(ctx context.Context, flags models.UpdateUserFlags) erro
 		return eris.Wrap(err, "Failed to input user name")
 	}
 
-	// prompt for avatar url
-	if flags.AvatarURL == "" {
-		flags.AvatarURL = currentUser.AvatarURL
-	}
-	flags.AvatarURL, err = h.inputUserAvatarURL(ctx, flags.AvatarURL)
-	if err != nil {
-		return eris.Wrap(err, "Failed to input user avatar URL")
-	}
-
-	err = h.apiClient.UpdateUser(ctx, flags.Name, currentUser.Email, flags.AvatarURL)
+	err = h.apiClient.UpdateUser(ctx, flags.Name, currentUser.Email)
 	if err != nil {
 		return eris.Wrap(err, "Failed to update user")
 	}
@@ -65,29 +55,6 @@ func (h *Handler) inputUserName(ctx context.Context, currentUserName string) (st
 				continue
 			}
 			return name, nil
-		}
-	}
-}
-
-func (h *Handler) inputUserAvatarURL(ctx context.Context, currentUserAvatarURL string) (string, error) {
-	for {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		default:
-			avatarURL, err := h.inputService.Prompt(ctx, "Enter avatar URL (Empty Valid)", currentUserAvatarURL)
-			if err != nil {
-				return "", err
-			}
-			if avatarURL == "" {
-				return avatarURL, nil
-			}
-			if err := utils.IsValidURL(avatarURL); err != nil {
-				printer.Errorln(err.Error())
-				printer.NewLine(1)
-				continue
-			}
-			return avatarURL, nil
 		}
 	}
 }

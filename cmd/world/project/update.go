@@ -36,7 +36,6 @@ func (h *Handler) Update(
 	project.Update = true
 	project.Name = flags.Name
 	project.Slug = flags.Slug
-	project.AvatarURL = flags.AvatarURL
 	project.RepoPath = repoPath
 	project.RepoURL = repoURL
 

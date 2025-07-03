@@ -40,10 +40,9 @@ func (s *OrganizationTestSuite) createTestHandler() (
 // Test fixtures.
 func (s *OrganizationTestSuite) createTestOrganization() models.Organization {
 	return models.Organization{
-		ID:        "org-123",
-		Name:      "Test Organization",
-		Slug:      "test_org",
-		AvatarURL: "https://example.com/avatar.png",
+		ID:   "org-123",
+		Name: "Test Organization",
+		Slug: "test_org",
 	}
 }
 
@@ -63,9 +62,8 @@ func (s *OrganizationTestSuite) TestHandler_Create_Success() {
 	ctx := context.Background()
 	testOrg := s.createTestOrganization()
 	flags := models.CreateOrganizationFlags{
-		Name:      "Test Organization",
-		Slug:      "test-org",
-		AvatarURL: "https://example.com/avatar.png",
+		Name: "Test Organization",
+		Slug: "test-org",
 	}
 
 	// Mock input interactions
@@ -73,12 +71,10 @@ func (s *OrganizationTestSuite) TestHandler_Create_Success() {
 		Return("Test Organization", nil)
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "test_org").
 		Return("test_org", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("https://example.com/avatar.png", nil)
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").Return(true, nil)
 
 	// Mock API call
-	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "test_org", "https://example.com/avatar.png").
+	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "test_org").
 		Return(testOrg, nil)
 
 	// Mock config operations
@@ -108,7 +104,6 @@ func (s *OrganizationTestSuite) TestHandler_Create_InvalidName() {
 	mockInputService.On("Prompt", ctx, "Enter organization name", "").Return("Good Organization", nil).Once()
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "goodorganizatio").
 		Return("goodorganizatio", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").Return("", nil)
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").Return(true, nil)
 
 	testOrg := models.Organization{
@@ -117,7 +112,7 @@ func (s *OrganizationTestSuite) TestHandler_Create_InvalidName() {
 		Slug: "goodorganizatio",
 	}
 
-	mockAPIClient.On("CreateOrganization", ctx, "Good Organization", "goodorganizatio", "").Return(testOrg, nil)
+	mockAPIClient.On("CreateOrganization", ctx, "Good Organization", "goodorganizatio").Return(testOrg, nil)
 	mockConfigService.On("GetConfig").Return(s.createTestConfig())
 	mockConfigService.On("Save").Return(nil)
 
@@ -146,7 +141,6 @@ func (s *OrganizationTestSuite) TestHandler_Create_UserDeclinesThenAccepts() {
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "testorganizatio").
 		Return("testorganizatio", nil).
 		Once()
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").Return("", nil).Once()
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").
 		Return(false, nil).
 		Once()
@@ -158,7 +152,6 @@ func (s *OrganizationTestSuite) TestHandler_Create_UserDeclinesThenAccepts() {
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "finalorganizati").
 		Return("finalorganizati", nil).
 		Once()
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").Return("", nil).Once()
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").
 		Return(true, nil).
 		Once()
@@ -168,7 +161,7 @@ func (s *OrganizationTestSuite) TestHandler_Create_UserDeclinesThenAccepts() {
 		Name: "Final Organization",
 		Slug: "finalorganizati",
 	}
-	mockAPIClient.On("CreateOrganization", ctx, "Final Organization", "finalorganizati", "").Return(finalOrg, nil)
+	mockAPIClient.On("CreateOrganization", ctx, "Final Organization", "finalorganizati").Return(finalOrg, nil)
 	mockConfigService.On("GetConfig").Return(s.createTestConfig())
 	mockConfigService.On("Save").Return(nil)
 
@@ -196,12 +189,11 @@ func (s *OrganizationTestSuite) TestHandler_Create_SlugAlreadyExists() {
 		Return("Test Organization", nil)
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "test_org").
 		Return("test_org", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").Return("", nil)
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").Return(true, nil)
 
 	// API call fails with slug already exists error - function returns error immediately
 	slugExistsErr := errors.New("organization slug already exists")
-	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "test_org", "").
+	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "test_org").
 		Return(models.Organization{}, slugExistsErr)
 
 	// No config operations expected since the method returns error immediately
@@ -437,7 +429,6 @@ func (s *OrganizationTestSuite) TestHandler_PromptForSwitch_CreateNew() {
 	// Mock inputs for create flow
 	mockInputService.On("Prompt", ctx, "Enter organization name", "").Return("New Organization", nil)
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "neworganization").Return("neworganization", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").Return("", nil)
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").Return(true, nil)
 
 	newOrg := models.Organization{
@@ -447,7 +438,7 @@ func (s *OrganizationTestSuite) TestHandler_PromptForSwitch_CreateNew() {
 	}
 
 	// Mock API calls
-	mockAPIClient.On("CreateOrganization", ctx, "New Organization", "neworganization", "").Return(newOrg, nil)
+	mockAPIClient.On("CreateOrganization", ctx, "New Organization", "neworganization").Return(newOrg, nil)
 
 	// Mock config service
 	mockConfigService.On("GetConfig").Return(s.createTestConfig())
@@ -543,11 +534,10 @@ func (s *OrganizationTestSuite) TestHandler_Create_SaveError() {
 	mockInputService.On("Prompt", ctx, "Enter organization name", "Test Organization").
 		Return("Test Organization", nil)
 	mockInputService.On("Prompt", ctx, "Enter organization slug", "testorganizatio").Return("testorganizatio", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").Return("", nil)
 	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").Return(true, nil)
 
 	// Mock API call
-	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "testorganizatio", "").Return(testOrg, nil)
+	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "testorganizatio").Return(testOrg, nil)
 
 	// Mock config operations - save fails
 	mockConfigService.On("GetConfig").Return(s.createTestConfig())
@@ -559,47 +549,6 @@ func (s *OrganizationTestSuite) TestHandler_Create_SaveError() {
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to save organization")
 	s.Equal(models.Organization{}, result)
-	mockInputService.AssertExpectations(s.T())
-	mockAPIClient.AssertExpectations(s.T())
-	mockConfigService.AssertExpectations(s.T())
-}
-
-func (s *OrganizationTestSuite) TestHandler_Create_EmptyAvatarURL() {
-	s.T().Parallel()
-
-	handler, _, mockInputService, mockAPIClient, mockConfigService := s.createTestHandler()
-	ctx := context.Background()
-	testOrg := models.Organization{
-		ID:        "org-123",
-		Name:      "Test Organization",
-		Slug:      "test_org",
-		AvatarURL: "",
-	}
-	flags := models.CreateOrganizationFlags{
-		Name: "Test Organization",
-		Slug: "test-org",
-	}
-
-	// Mock input interactions
-	mockInputService.On("Prompt", ctx, "Enter organization name", "Test Organization").
-		Return("Test Organization", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization slug", "test_org").
-		Return("test_org", nil)
-	mockInputService.On("Prompt", ctx, "Enter organization avatar URL (Empty Valid)", "").
-		Return("", nil)
-	mockInputService.On("Confirm", ctx, "Create organization with these details? (Y/n)", "n").Return(true, nil)
-
-	// Mock API call
-	mockAPIClient.On("CreateOrganization", ctx, "Test Organization", "test_org", "").Return(testOrg, nil)
-
-	// Mock config operations
-	mockConfigService.On("GetConfig").Return(s.createTestConfig())
-	mockConfigService.On("Save").Return(nil)
-
-	result, err := handler.Create(ctx, flags)
-
-	s.Require().NoError(err)
-	s.Equal(testOrg, result)
 	mockInputService.AssertExpectations(s.T())
 	mockAPIClient.AssertExpectations(s.T())
 	mockConfigService.AssertExpectations(s.T())

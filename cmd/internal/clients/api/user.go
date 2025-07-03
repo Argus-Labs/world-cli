@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	ErrNoUserEmail     = eris.New("user email is required")
-	ErrNoUserName      = eris.New("user name is required")
-	ErrNoUserAvatarURL = eris.New("user avatar URL is required")
+	ErrNoUserEmail = eris.New("user email is required")
+	ErrNoUserName  = eris.New("user name is required")
 )
 
 // ========================================
@@ -27,21 +26,17 @@ func (c *Client) GetUser(ctx context.Context) (models.User, error) {
 }
 
 // UpdateUser updates the current user information.
-func (c *Client) UpdateUser(ctx context.Context, name, email, avatarURL string) error {
+func (c *Client) UpdateUser(ctx context.Context, name, email string) error {
 	if email == "" {
 		return ErrNoUserEmail
 	}
 	if name == "" {
 		return ErrNoUserName
 	}
-	if avatarURL == "" {
-		return ErrNoUserAvatarURL
-	}
 
 	payload := models.User{
-		Name:      name,
-		Email:     email,
-		AvatarURL: avatarURL,
+		Name:  name,
+		Email: email,
 	}
 
 	_, err := c.sendRequest(ctx, put, "/api/user", payload)

@@ -23,7 +23,6 @@ type CreateCmd struct {
 	Dependencies cmdsetup.Dependencies `kong:"-"`
 	Name         string                `         flag:"" help:"The name of the project"`
 	Slug         string                `         flag:"" help:"The slug of the project"`
-	AvatarURL    string                `         flag:"" help:"The avatar URL of the project" type:"url"`
 }
 
 func (c *CreateCmd) Run() error {
@@ -34,9 +33,8 @@ func (c *CreateCmd) Run() error {
 	}
 
 	flags := models.CreateProjectFlags{
-		Name:      c.Name,
-		Slug:      c.Slug,
-		AvatarURL: c.AvatarURL,
+		Name: c.Name,
+		Slug: c.Slug,
 	}
 
 	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(_ models.CommandState) error {
@@ -84,9 +82,8 @@ func (c *UpdateCmd) Run() error {
 	}
 
 	flags := models.UpdateProjectFlags{
-		Name:      c.Name,
-		Slug:      c.Slug,
-		AvatarURL: c.AvatarURL,
+		Name: c.Name,
+		Slug: c.Slug,
 	}
 
 	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(state models.CommandState) error {

@@ -15,7 +15,7 @@ const MaxOrgNameLen = 50
 
 //nolint:gocognit,funlen // Belongs in a single function
 func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFlags) (models.Organization, error) {
-	var orgName, orgSlug, orgAvatarURL string
+	var orgName, orgSlug string
 	var err error
 
 	for {
@@ -62,40 +62,11 @@ func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFla
 			break
 		}
 
-		// Get and validate organization avatar URL
-		for {
-			orgAvatarURL, err = h.inputService.Prompt(
-				ctx,
-				"Enter organization avatar URL (Empty Valid)",
-				flags.AvatarURL,
-			)
-			if err != nil {
-				return models.Organization{}, eris.Wrap(err, "Failed to get organization avatar URL")
-			}
-
-			if orgAvatarURL == "" {
-				break
-			}
-
-			if err := utils.IsValidURL(orgAvatarURL); err != nil {
-				printer.Errorln(err.Error())
-				printer.NewLine(1)
-				continue
-			}
-
-			break
-		}
-
 		// Show confirmation
 		printer.NewLine(1)
 		printer.Headerln("  Organization Details  ")
 		printer.Infof("Name: %s\n", orgName)
 		printer.Infof("Slug: %s\n", orgSlug)
-		if orgAvatarURL != "" {
-			printer.Infof("Avatar URL: %s\n", orgAvatarURL)
-		} else {
-			printer.Infoln("Avatar URL: None")
-		}
 
 		// Get confirmation
 		printer.NewLine(1)
@@ -104,7 +75,7 @@ func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFla
 			return models.Organization{}, eris.Wrap(err, "Failed to get confirmation")
 		}
 		if confirm {
-			org, err := h.apiClient.CreateOrganization(ctx, orgName, orgSlug, orgAvatarURL)
+			org, err := h.apiClient.CreateOrganization(ctx, orgName, orgSlug)
 			if err != nil {
 				if strings.Contains(err.Error(), api.ErrOrganizationSlugAlreadyExists.Error()) {
 					printer.Errorf(

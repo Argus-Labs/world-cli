@@ -70,7 +70,6 @@ type UpdateCmd struct {
 	Context      context.Context       `kong:"-"`
 	Dependencies cmdsetup.Dependencies `kong:"-"`
 	Name         string                `         flag:"" help:"The new name of the user"`
-	AvatarURL    string                `         flag:"" help:"The new avatar URL of the user" type:"url"`
 }
 
 func (c *UpdateCmd) Run() error {
@@ -81,8 +80,7 @@ func (c *UpdateCmd) Run() error {
 	}
 
 	flags := models.UpdateUserFlags{
-		Name:      c.Name,
-		AvatarURL: c.AvatarURL,
+		Name: c.Name,
 	}
 
 	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(_ models.CommandState) error {

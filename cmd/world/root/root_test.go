@@ -101,10 +101,9 @@ func (s *RootTestSuite) TestLogin_Success() {
 	}
 
 	user := models.User{
-		ID:        "12345",
-		Name:      "John Doe",
-		Email:     "john.updated@example.com", // Different from JWT email to trigger UpdateUser
-		AvatarURL: "https://example.com/avatar.jpg",
+		ID:    "12345",
+		Name:  "John Doe",
+		Email: "john.updated@example.com", // Different from JWT email to trigger UpdateUser
 	}
 
 	setupState := models.CommandState{
@@ -126,7 +125,7 @@ func (s *RootTestSuite) TestLogin_Success() {
 	mockAPIClient.On("SetAuthToken", mock.AnythingOfType("string")).Return()
 	mockAPIClient.On("GetUser", mock.Anything).Return(user, nil)
 	mockAPIClient.On(
-		"UpdateUser", mock.Anything, "John Doe", "john.updated@example.com", "https://example.com/avatar.jpg").
+		"UpdateUser", mock.Anything, "John Doe", "john.updated@example.com").
 		Return(nil)
 
 	// Mock config operations
@@ -284,10 +283,9 @@ func (s *RootTestSuite) TestLogin_SetupCommandStateFails() {
 	}
 
 	user := models.User{
-		ID:        "12345",
-		Name:      "John Doe",
-		Email:     "john@example.com",
-		AvatarURL: "https://example.com/avatar.jpg",
+		ID:    "12345",
+		Name:  "John Doe",
+		Email: "john@example.com",
 	}
 
 	// Mock API calls
@@ -296,7 +294,7 @@ func (s *RootTestSuite) TestLogin_SetupCommandStateFails() {
 	mockAPIClient.On("GetLoginToken", mock.Anything, loginLink.CallBackURL).Return(loginToken, nil)
 	mockAPIClient.On("SetAuthToken", mock.AnythingOfType("string")).Return()
 	mockAPIClient.On("GetUser", mock.Anything).Return(user, nil)
-	mockAPIClient.On("UpdateUser", mock.Anything, user.Name, user.Email, user.AvatarURL).Return(nil)
+	mockAPIClient.On("UpdateUser", mock.Anything, user.Name, user.Email).Return(nil)
 
 	// Mock config operations
 	configObj := &config.Config{

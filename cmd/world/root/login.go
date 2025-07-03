@@ -128,7 +128,7 @@ func (h *Handler) handleArgusIDPostLogin(ctx context.Context) error {
 
 	// Update user email if it's different from the JWT token
 	if user.Email != h.configService.GetConfig().Credential.Email {
-		err = h.apiClient.UpdateUser(ctx, user.Name, user.Email, user.AvatarURL)
+		err = h.apiClient.UpdateUser(ctx, user.Name, user.Email)
 		if err != nil {
 			return eris.Wrap(err, "Failed to update user email")
 		}

@@ -21,7 +21,6 @@ type CreateCmd struct {
 	Dependencies cmdsetup.Dependencies `kong:"-"`
 	Name         string                `         flag:"" help:"The name of the organization"`
 	Slug         string                `         flag:"" help:"The slug of the organization"`
-	AvatarURL    string                `         flag:"" help:"The avatar URL of the organization" type:"url"`
 }
 
 func (c *CreateCmd) Run() error {
@@ -32,9 +31,8 @@ func (c *CreateCmd) Run() error {
 	}
 
 	flags := models.CreateOrganizationFlags{
-		Name:      c.Name,
-		Slug:      c.Slug,
-		AvatarURL: c.AvatarURL,
+		Name: c.Name,
+		Slug: c.Slug,
 	}
 
 	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(_ models.CommandState) error {

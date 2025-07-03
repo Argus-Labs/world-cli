@@ -10,13 +10,11 @@ type Organization struct {
 	Deleted          bool   `json:"deleted"`
 	DeletedTime      string `json:"deleted_time"`
 	BaseShardAddress string `json:"base_shard_address"`
-	AvatarURL        string `json:"avatar_url"`
 }
 
 type CreateOrganizationFlags struct {
-	Name      string
-	Slug      string
-	AvatarURL string
+	Name string
+	Slug string
 }
 
 type SwitchOrganizationFlags struct {

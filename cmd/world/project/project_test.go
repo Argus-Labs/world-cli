@@ -82,7 +82,6 @@ func (s *ProjectTestSuite) createTestProject() models.Project {
 		Name:      "Test Project",
 		Slug:      "test_project",
 		OrgID:     "org-123",
-		AvatarURL: "https://example.com/avatar.png",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "token123",
@@ -138,9 +137,8 @@ func (s *ProjectTestSuite) TestHandler_Create_Success() {
 	testProject := s.createTestProject()
 	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
-		Name:      "Test Project",
-		Slug:      "test_project",
-		AvatarURL: "https://example.com/avatar.png",
+		Name: "Test Project",
+		Slug: "test_project",
 	}
 
 	// Mock config service
@@ -170,8 +168,6 @@ func (s *ProjectTestSuite) TestHandler_Create_Success() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("https://example.com/avatar.png", nil)
 
 	// Mock repo validation
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
@@ -182,7 +178,6 @@ func (s *ProjectTestSuite) TestHandler_Create_Success() {
 		Name:      "Test Project",
 		Slug:      "test_project",
 		OrgID:     "org-123",
-		AvatarURL: "https://example.com/avatar.png",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "", // Empty because repo validation succeeded without token
@@ -729,8 +724,6 @@ func (s *ProjectTestSuite) TestHandler_Create_SlugAlreadyExists() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
 
 	// Mock repo validation
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
@@ -745,7 +738,6 @@ func (s *ProjectTestSuite) TestHandler_Create_SlugAlreadyExists() {
 		Name:      "Test Project",
 		Slug:      "test_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -792,9 +784,8 @@ func (s *ProjectTestSuite) TestHandler_Update_Success() {
 	ctx := context.Background()
 	testProject := s.createTestProject()
 	flags := models.UpdateProjectFlags{
-		Name:      "Updated Project",
-		Slug:      "updated_project",
-		AvatarURL: "https://example.com/new_avatar.png",
+		Name: "Updated Project",
+		Slug: "updated_project",
 	}
 
 	// Mock PreCreateUpdateValidation
@@ -821,8 +812,6 @@ func (s *ProjectTestSuite) TestHandler_Update_Success() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/new_avatar.png").
-		Return("https://example.com/new_avatar.png", nil)
 
 	// Mock repo validation - first tries public (empty token), then prompts for token
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").
@@ -838,7 +827,6 @@ func (s *ProjectTestSuite) TestHandler_Update_Success() {
 	updatedProject := testProject
 	updatedProject.Name = "Updated Project"
 	updatedProject.Slug = "updated_project"
-	updatedProject.AvatarURL = "https://example.com/new_avatar.png"
 	updatedProject.Update = true
 	updatedProject.Config.Region = []string{"us-east-1"}
 
@@ -874,9 +862,8 @@ func (s *ProjectTestSuite) TestHandler_Update_SlugAlreadyExists() {
 	ctx := context.Background()
 	testProject := s.createTestProject()
 	flags := models.UpdateProjectFlags{
-		Name:      "Updated Project",
-		Slug:      "existing_slug",
-		AvatarURL: "https://example.com/avatar.png", // Set avatar URL to match the mock expectation
+		Name: "Updated Project",
+		Slug: "existing_slug",
 	}
 
 	// Mock PreCreateUpdateValidation
@@ -903,8 +890,6 @@ func (s *ProjectTestSuite) TestHandler_Update_SlugAlreadyExists() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "https://example.com/avatar.png").
-		Return("https://example.com/avatar.png", nil)
 
 	// Mock repo validation - first tries public (empty token), then prompts for token
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").
@@ -983,8 +968,6 @@ func (s *ProjectTestSuite) TestHandler_Switch_EnableCreation_NoProjects() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
 
 	// Mock repo validation
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
@@ -999,7 +982,6 @@ func (s *ProjectTestSuite) TestHandler_Switch_EnableCreation_NoProjects() {
 		Name:      "New Project",
 		Slug:      "new_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1009,7 +991,6 @@ func (s *ProjectTestSuite) TestHandler_Switch_EnableCreation_NoProjects() {
 		Name:      "New Project",
 		Slug:      "new_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1288,8 +1269,6 @@ func (s *ProjectTestSuite) TestHandler_Switch_CreateOption_InRepoRoot() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
 
 	// Mock repo validation
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
@@ -1304,7 +1283,6 @@ func (s *ProjectTestSuite) TestHandler_Switch_CreateOption_InRepoRoot() {
 		Name:      "New Project",
 		Slug:      "new_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1314,7 +1292,6 @@ func (s *ProjectTestSuite) TestHandler_Switch_CreateOption_InRepoRoot() {
 		Name:      "New Project",
 		Slug:      "new_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1390,8 +1367,6 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_NoProjects_CreateConfirmed()
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
 
 	// Mock repo validation
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
@@ -1406,7 +1381,6 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_NoProjects_CreateConfirmed()
 		Name:      "New Project",
 		Slug:      "new_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1416,7 +1390,6 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_NoProjects_CreateConfirmed()
 		Name:      "New Project",
 		Slug:      "new_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1494,8 +1467,6 @@ func (s *ProjectTestSuite) TestHandler_Create_InvalidURL() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
 
 	// Mock repo validation - first for invalid URL (with https:// prepended), then for valid URL
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://invalid-url", "").
@@ -1519,7 +1490,6 @@ func (s *ProjectTestSuite) TestHandler_Create_InvalidURL() {
 		Name:      "Test Project",
 		Slug:      "test_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1607,9 +1577,6 @@ func (s *ProjectTestSuite) TestHandler_Create_WithNotifications() {
 	mockInputService.On("Prompt", ctx, "Enter Slack channel ID", "").
 		Return("slack-channel-123", nil)
 
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
-
 	// Mock repo validation
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
 	mockRepoClient.On("ValidateRepoPath", ctx, "https://github.com/test/repo", "", "cardinal").Return(nil)
@@ -1622,7 +1589,6 @@ func (s *ProjectTestSuite) TestHandler_Create_WithNotifications() {
 		Name:      "Test Project",
 		Slug:      "test_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "",
@@ -1650,101 +1616,6 @@ func (s *ProjectTestSuite) TestHandler_Create_WithNotifications() {
 	testProject.Config.Slack.Token = "slack-token-123"
 	testProject.Config.Slack.Channel = "slack-channel-123"
 
-	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).Return(testProject, nil)
-
-	result, err := handler.Create(ctx, flags)
-
-	s.Require().NoError(err)
-	s.Equal(testProject, result)
-	mockRepoClient.AssertExpectations(s.T())
-	mockConfigService.AssertExpectations(s.T())
-	mockAPIClient.AssertExpectations(s.T())
-	mockInputService.AssertExpectations(s.T())
-}
-
-func (s *ProjectTestSuite) TestHandler_Create_InvalidAvatarURL() {
-	// Remove s.T().Parallel() to avoid race conditions with directory changes
-
-	// Setup World project directory structure and change to it
-	tmpDir := s.setupWorldProjectDir()
-	originalDir, err := os.Getwd()
-	s.Require().NoError(err)
-	s.T().Cleanup(func() {
-		os.Chdir(originalDir)
-	})
-	err = os.Chdir(tmpDir)
-	s.Require().NoError(err)
-
-	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
-	ctx := context.Background()
-	flags := models.CreateProjectFlags{
-		Name: "Test Project",
-	}
-
-	// Mock config service
-	cfg := s.createTestConfig()
-	cfg.CurrRepoKnown = false
-	mockConfigService.On("GetConfig").Return(cfg)
-	mockConfigService.On("Save").Return(nil)
-
-	// Mock PreCreateUpdateValidation
-	mockRepoClient.On("FindGitPathAndURL").Return("cardinal", "https://github.com/test/repo", nil)
-
-	// Mock API calls
-	mockAPIClient.On("GetListRegions", ctx, "org-123", "00000000-0000-0000-0000-000000000000").
-		Return([]string{"us-east-1"}, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
-
-	// Mock input interactions
-	mockInputService.On("Prompt", ctx, "Enter project name", "Test Project").
-		Return("Test Project", nil)
-	mockInputService.On("Prompt", ctx, "Slug", "test_project").
-		Return("test_project", nil)
-	mockInputService.On("Prompt", ctx, "Enter Repository URL", "https://github.com/test/repo").
-		Return("https://github.com/test/repo", nil)
-	mockInputService.On("Prompt", ctx, "Enter path to Cardinal within Repo (Empty Valid)", "cardinal").
-		Return("cardinal", nil)
-	mockInputService.On("Confirm", ctx, "Do you want to set up Discord notifications? (y/n)", "n").
-		Return(false, nil)
-	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
-		Return(false, nil)
-
-	// Invalid avatar URL first, then valid empty
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("invalid-url", nil).Once()
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil).Once()
-
-	// Mock repo validation
-	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").Return(nil)
-	mockRepoClient.On("ValidateRepoPath", ctx, "https://github.com/test/repo", "", "cardinal").Return(nil)
-
-	// Mock API calls
-	mockAPIClient.On("CheckProjectSlugIsTaken", ctx, "org-123", "00000000-0000-0000-0000-000000000000", "test_project").
-		Return(nil)
-
-	expectedProject := models.Project{
-		Name:      "Test Project",
-		Slug:      "test_project",
-		OrgID:     "org-123",
-		AvatarURL: "",
-		RepoURL:   "https://github.com/test/repo",
-		RepoPath:  "cardinal",
-		RepoToken: "",
-		Update:    false,
-		Config: models.ProjectConfig{
-			Region: []string{"us-east-1"},
-			Discord: models.ProjectConfigDiscord{
-				Enabled: false,
-			},
-			Slack: models.ProjectConfigSlack{
-				Enabled: false,
-			},
-		},
-	}
-
-	testProject := s.createTestProject()
-	testProject.AvatarURL = ""
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).Return(testProject, nil)
 
 	result, err := handler.Create(ctx, flags)
@@ -1803,8 +1674,6 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 		Return(false, nil)
 	mockInputService.On("Confirm", ctx, "Do you want to set up Slack notifications? (y/n)", "n").
 		Return(false, nil)
-	mockInputService.On("Prompt", ctx, "Enter avatar URL (Empty Valid)", "").
-		Return("", nil)
 
 	// Mock repo validation - first fails (private), user selects "public", second validation succeeds
 	mockRepoClient.On("ValidateRepoToken", ctx, "https://github.com/test/repo", "").
@@ -1823,7 +1692,6 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 		Name:      "Test Project",
 		Slug:      "test_project",
 		OrgID:     "org-123",
-		AvatarURL: "",
 		RepoURL:   "https://github.com/test/repo",
 		RepoPath:  "cardinal",
 		RepoToken: "", // Empty because "public" was selected

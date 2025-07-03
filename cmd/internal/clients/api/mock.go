@@ -26,8 +26,8 @@ func (m *MockClient) GetUser(ctx context.Context) (models.User, error) {
 }
 
 // UpdateUser mocks updating user information.
-func (m *MockClient) UpdateUser(ctx context.Context, name, email, avatarURL string) error {
-	args := m.Called(ctx, name, email, avatarURL)
+func (m *MockClient) UpdateUser(ctx context.Context, name, email string) error {
+	args := m.Called(ctx, name, email)
 	return args.Error(0)
 }
 
@@ -88,9 +88,9 @@ func (m *MockClient) GetProjectByID(ctx context.Context, orgID, projID string) (
 // CreateOrganization mocks creating an organization.
 func (m *MockClient) CreateOrganization(
 	ctx context.Context,
-	name, slug, avatarURL string,
+	name, slug string,
 ) (models.Organization, error) {
-	args := m.Called(ctx, name, slug, avatarURL)
+	args := m.Called(ctx, name, slug)
 	return args.Get(0).(models.Organization), args.Error(1)
 }
 

@@ -1,10 +1,9 @@
 package models
 
 type User struct {
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 type InviteUserToOrganizationFlags struct {
@@ -18,6 +17,5 @@ type ChangeUserRoleInOrganizationFlags struct {
 }
 
 type UpdateUserFlags struct {
-	Name      string
-	AvatarURL string
+	Name string
 }
