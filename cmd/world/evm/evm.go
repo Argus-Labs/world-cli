@@ -1,6 +1,8 @@
 package evm
 
 import (
+	"context"
+
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
@@ -24,4 +26,24 @@ type EvmCmd struct {
 
 	Start *StartCmd `cmd:"" group:"EVM Commands:" help:"Launch your EVM blockchain environment"`
 	Stop  *StopCmd  `cmd:"" group:"EVM Commands:" help:"Shut down your EVM blockchain environment"`
+}
+
+//nolint:lll // needed to put all the help text in the same line
+type StartCmd struct {
+	Parent      *EvmCmd         `kong:"-"`
+	DAAuthToken string          `         flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
+	UseDevDA    bool            `         flag:"" optional:"" help:"Use a locally running DA layer"                                                    name:"dev"`
+	Context     context.Context `kong:"-"`
+}
+
+func (c *StartCmd) Run() error {
+	return Start(c)
+}
+
+type StopCmd struct {
+	Parent *EvmCmd `kong:"-"`
+}
+
+func (c *StopCmd) Run() error {
+	return Stop(c)
 }

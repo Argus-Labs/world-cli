@@ -9,11 +9,7 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-type StopCmd struct {
-	Parent *EvmCmd `kong:"-"`
-}
-
-func (c *StopCmd) Run() error {
+func Stop(c *StopCmd) error {
 	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err

@@ -7,13 +7,7 @@ import (
 	"pkg.world.dev/world-cli/common/docker"
 )
 
-type RestartCmd struct {
-	Parent *CardinalCmd `kong:"-"`
-	Detach bool         `         flag:"" help:"Run in detached mode"`
-	Debug  bool         `         flag:"" help:"Enable debugging"`
-}
-
-func (c *RestartCmd) Run() error {
+func Restart(c *RestartCmd) error {
 	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err

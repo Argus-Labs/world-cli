@@ -1,6 +1,8 @@
 package cardinal
 
 import (
+	"context"
+
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/docker/service"
@@ -29,6 +31,74 @@ func (c *CardinalCmd) Run() error {
 		dependency.Docker,
 		dependency.DockerDaemon,
 	)
+}
+
+//nolint:lll // needed to put all the help text in the same line
+type StartCmd struct {
+	Parent     *CardinalCmd `kong:"-"`
+	Detach     bool         `         flag:"" help:"Run in detached mode"`
+	LogLevel   string       `         flag:"" help:"Set the log level for Cardinal"`
+	Debug      bool         `         flag:"" help:"Enable delve debugging"`
+	Telemetry  bool         `         flag:"" help:"Enable tracing, metrics, and profiling"`
+	Editor     bool         `         flag:"" help:"Run Cardinal Editor, useful for prototyping and debugging"`
+	EditorPort string       `         flag:"" help:"Port for Cardinal Editor"                                  default:"auto"`
+}
+
+func (c *StartCmd) Run() error {
+	return Start(c)
+}
+
+type StopCmd struct {
+	Parent *CardinalCmd `kong:"-"`
+}
+
+func (c *StopCmd) Run() error {
+	return Stop(c)
+}
+
+type RestartCmd struct {
+	Parent *CardinalCmd `kong:"-"`
+	Detach bool         `         flag:"" help:"Run in detached mode"`
+	Debug  bool         `         flag:"" help:"Enable debugging"`
+}
+
+func (c *RestartCmd) Run() error {
+	return Restart(c)
+}
+
+type DevCmd struct {
+	Parent    *CardinalCmd    `kong:"-"`
+	Editor    bool            `         flag:"" help:"Enable Cardinal Editor"`
+	PrettyLog bool            `         flag:"" help:"Run Cardinal with pretty logging" default:"true"`
+	Context   context.Context `kong:"-"`
+}
+
+func (c *DevCmd) Run() error {
+	return Dev(c)
+}
+
+type PurgeCmd struct {
+	Parent *CardinalCmd `kong:"-"`
+}
+
+func (c *PurgeCmd) Run() error {
+	return Purge(c)
+}
+
+type BuildCmd struct {
+	Parent    *CardinalCmd `kong:"-"`
+	LogLevel  string       `         flag:"" help:"Set the log level for Cardinal"`
+	Debug     bool         `         flag:"" help:"Enable debugging"`
+	Telemetry bool         `         flag:"" help:"Enable tracing, metrics, and profiling"`
+	Push      string       `         flag:"" help:"Push your cardinal image to a given image repository" hidden:"true"`
+	Auth      string       `         flag:"" help:"Auth token for the given image repository"            hidden:"true"`
+	User      string       `         flag:"" help:"User for the given image repository"                  hidden:"true"`
+	Pass      string       `         flag:"" help:"Password for the given image repository"              hidden:"true"`
+	RegToken  string       `         flag:"" help:"Registry token for the given image repository"        hidden:"true"`
+}
+
+func (c *BuildCmd) Run() error {
+	return Build(c)
 }
 
 func getServices(cfg *config.Config) []service.Builder {

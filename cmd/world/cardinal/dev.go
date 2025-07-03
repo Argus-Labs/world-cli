@@ -32,14 +32,7 @@ const (
 	cePortEnd   = 4000
 )
 
-type DevCmd struct {
-	Parent    *CardinalCmd    `kong:"-"`
-	Editor    bool            `         flag:"" help:"Enable Cardinal Editor"`
-	PrettyLog bool            `         flag:"" help:"Run Cardinal with pretty logging" default:"true"`
-	Context   context.Context `kong:"-"`
-}
-
-func (c *DevCmd) Run() error {
+func Dev(c *DevCmd) error {
 	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err

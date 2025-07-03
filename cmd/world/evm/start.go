@@ -14,15 +14,7 @@ import (
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
-//nolint:lll // needed to put all the help text in the same line
-type StartCmd struct {
-	Parent      *EvmCmd         `kong:"-"`
-	DAAuthToken string          `         flag:"" optional:"" help:"The DA Auth Token that allows the rollup to communicate with the Celestia client."`
-	UseDevDA    bool            `         flag:"" optional:"" help:"Use a locally running DA layer"                                                    name:"dev"`
-	Context     context.Context `kong:"-"`
-}
-
-func (c *StartCmd) Run() error {
+func Start(c *StartCmd) error {
 	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err

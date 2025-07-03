@@ -9,11 +9,7 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-type PurgeCmd struct {
-	Parent *CardinalCmd `kong:"-"`
-}
-
-func (c *PurgeCmd) Run() error {
+func Purge(c *PurgeCmd) error {
 	cfg, err := config.GetConfig(&c.Parent.Config)
 	if err != nil {
 		return err
