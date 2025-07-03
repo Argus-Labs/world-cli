@@ -273,7 +273,7 @@ func TestSelect(t *testing.T) {
 			client := NewTestService(input, output)
 
 			ctx := t.Context()
-			result, err := client.Select(ctx, tt.prompt, tt.options, tt.defaultIndex)
+			result, err := client.Select(ctx, tt.name, tt.prompt, tt.options, tt.defaultIndex)
 
 			if tt.shouldError {
 				require.Error(t, err)
@@ -298,7 +298,7 @@ func TestSelectWithContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	options := []string{"Option 1", "Option 2"}
-	_, err := client.Select(ctx, "Choose", options, -1)
+	_, err := client.Select(ctx, "", "Choose", options, -1)
 	require.Error(t, err)
 	require.Equal(t, context.Canceled, err)
 }
@@ -364,7 +364,7 @@ func TestSelectString(t *testing.T) {
 			client := NewTestService(input, output)
 
 			ctx := t.Context()
-			result, err := client.SelectString(ctx, tt.prompt, tt.options, tt.defaultValue)
+			result, err := client.SelectString(ctx, tt.name, tt.prompt, tt.options, tt.defaultValue)
 
 			if tt.shouldError {
 				require.Error(t, err)
@@ -389,7 +389,7 @@ func TestSelectStringWithContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	options := []string{"Option 1", "Option 2"}
-	_, err := client.SelectString(ctx, "Choose", options, "")
+	_, err := client.SelectString(ctx, "", "Choose", options, "")
 	require.Error(t, err)
 	require.Equal(t, context.Canceled, err)
 }
@@ -445,7 +445,7 @@ func TestSelectIntegration(t *testing.T) {
 
 	options := []string{"First", "Second", "Third"}
 	ctx := t.Context()
-	result, err := client.Select(ctx, "Choose", options, -1)
+	result, err := client.Select(ctx, "", "Choose", options, -1)
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, result)
@@ -514,7 +514,7 @@ func TestSelectWithEmptyOptions(t *testing.T) {
 	client := NewTestService(input, output)
 
 	ctx := t.Context()
-	_, err := client.Select(ctx, "Choose", []string{}, -1)
+	_, err := client.Select(ctx, "", "Choose", []string{}, -1)
 
 	// Should get an error when trying to parse "1" with no options
 	require.Error(t, err)
@@ -527,7 +527,7 @@ func TestSelectStringWithEmptyOptions(t *testing.T) {
 	client := NewTestService(input, output)
 
 	ctx := t.Context()
-	_, err := client.SelectString(ctx, "Choose", []string{}, "")
+	_, err := client.SelectString(ctx, "", "Choose", []string{}, "")
 
 	// Should get an error when trying to parse "1" with no options
 	require.Error(t, err)

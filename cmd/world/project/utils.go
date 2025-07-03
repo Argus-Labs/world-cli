@@ -68,7 +68,6 @@ func (h *Handler) showProjectList(ctx context.Context) error {
 	return nil
 }
 
-// Get selected project.
 func (h *Handler) getSelectedProject(ctx context.Context) (models.Project, error) {
 	selectedOrg, err := h.apiClient.GetOrganizationByID(ctx, h.configService.GetConfig().OrganizationID)
 	if err != nil && !eris.Is(err, api.ErrNoOrganizationID) {

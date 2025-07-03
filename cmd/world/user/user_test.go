@@ -66,8 +66,9 @@ func (s *UserTestSuite) TestHandler_InviteToOrganization_Success() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter user email to invite", "invite@example.com").
 		Return("invite@example.com", nil)
-	mockInputService.On("Prompt", ctx, "Enter user role to invite", "member").
-		Return("member", nil)
+	mockInputService.On(
+		"Select", ctx, "Available Roles", "Select a role by number", []string{"member", "admin", "owner", "none"}, 0).
+		Return(0, nil)
 
 	// Mock API call
 	mockAPIClient.On("InviteUserToOrganization", ctx, "org-123", "invite@example.com", "member").
@@ -138,8 +139,9 @@ func (s *UserTestSuite) TestHandler_InviteToOrganization_APIError() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter user email to invite", "invite@example.com").
 		Return("invite@example.com", nil)
-	mockInputService.On("Prompt", ctx, "Enter user role to invite", "admin").
-		Return("admin", nil)
+	mockInputService.On(
+		"Select", ctx, "Available Roles", "Select a role by number", []string{"member", "admin", "owner", "none"}, 1).
+		Return(1, nil)
 
 	// Mock API error
 	apiErr := errors.New("API error")
@@ -168,8 +170,9 @@ func (s *UserTestSuite) TestHandler_InviteToOrganization_EmailFailed() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter user email to invite", "invite@example.com").
 		Return("invite@example.com", nil)
-	mockInputService.On("Prompt", ctx, "Enter user role to invite", "member").
-		Return("member", nil)
+	mockInputService.On(
+		"Select", ctx, "Available Roles", "Select a role by number", []string{"member", "admin", "owner", "none"}, 0).
+		Return(0, nil)
 
 	// Mock API error with email failed message
 	emailErr := errors.New("Organization email invite failed, but invite is still created in CLI.")
@@ -198,8 +201,9 @@ func (s *UserTestSuite) TestHandler_ChangeRoleInOrganization_Success() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter user email to update", "user@example.com").
 		Return("user@example.com", nil)
-	mockInputService.On("Prompt", ctx, "Enter user role to update", "admin").
-		Return("admin", nil)
+	mockInputService.On(
+		"Select", ctx, "Available Roles", "Select a role by number", []string{"member", "admin", "owner", "none"}, 1).
+		Return(1, nil)
 
 	// Mock API call
 	mockAPIClient.On("UpdateUserRoleInOrganization", ctx, "org-123", "user@example.com", "admin").
@@ -270,8 +274,9 @@ func (s *UserTestSuite) TestHandler_ChangeRoleInOrganization_APIError() {
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter user email to update", "user@example.com").
 		Return("user@example.com", nil)
-	mockInputService.On("Prompt", ctx, "Enter user role to update", "member").
-		Return("member", nil)
+	mockInputService.On(
+		"Select", ctx, "Available Roles", "Select a role by number", []string{"member", "admin", "owner", "none"}, 0).
+		Return(0, nil)
 
 	// Mock API error
 	apiErr := errors.New("API error")

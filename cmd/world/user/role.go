@@ -8,15 +8,16 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
+const (
+	RoleMember Role = "member"
+	RoleAdmin  Role = "admin"
+	RoleOwner  Role = "owner"
+	NoneRole   Role = "none"
+)
+
 var (
 	ErrFailedToSetUserRoleInOrg = eris.New("Failed to set user role in organization")
 )
-
-var roles = []string{
-	"member",
-	"admin",
-	"owner",
-}
 
 func (h *Handler) ChangeRoleInOrganization(
 	ctx context.Context,
@@ -34,11 +35,7 @@ func (h *Handler) ChangeRoleInOrganization(
 		return eris.New("User email cannot be empty")
 	}
 
-	if flags.Role == "" {
-		flags.Role = roles[0]
-	}
-
-	userRole, err := h.inputService.Prompt(ctx, "Enter user role to update", flags.Role)
+	userRole, err := h.promptForRole(ctx, flags.Role)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get user role")
 	}
@@ -54,4 +51,31 @@ func (h *Handler) ChangeRoleInOrganization(
 	printer.Successf("Successfully updated role for user %s!\n", userEmail)
 	printer.Infof("New role: %s\n", userRole)
 	return nil
+}
+
+func (h *Handler) promptForRole(ctx context.Context, roleFlag string) (string, error) {
+	roles := []string{
+		string(RoleMember),
+		string(RoleAdmin),
+		string(RoleOwner),
+		string(NoneRole),
+	}
+
+	roleIndex := 0
+	if roleFlag != "" {
+		for i, role := range roles {
+			if roleFlag == role {
+				roleIndex = i
+			}
+		}
+	}
+
+	title := "Available Roles"
+	prompt := "Select a role by number"
+	roleIndex, err := h.inputService.Select(ctx, title, prompt, roles, roleIndex)
+	if err != nil {
+		return "", eris.Wrap(err, "Failed to get role")
+	}
+
+	return roles[roleIndex], nil
 }

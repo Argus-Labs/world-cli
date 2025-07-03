@@ -28,19 +28,24 @@ func (m *MockService) Confirm(ctx context.Context, prompt, defaultValue string) 
 }
 
 // Select mocks the Select method.
-func (m *MockService) Select(ctx context.Context, prompt string, options []string, defaultIndex int) (int, error) {
-	args := m.Called(ctx, prompt, options, defaultIndex)
+func (m *MockService) Select(
+	ctx context.Context,
+	title, prompt string,
+	options []string,
+	defaultIndex int,
+) (int, error) {
+	args := m.Called(ctx, title, prompt, options, defaultIndex)
 	return args.Int(0), args.Error(1)
 }
 
 // SelectString mocks the SelectString method.
 func (m *MockService) SelectString(
 	ctx context.Context,
-	prompt string,
+	title, prompt string,
 	options []string,
 	defaultValue string,
 ) (string, error) {
-	args := m.Called(ctx, prompt, options, defaultValue)
+	args := m.Called(ctx, title, prompt, options, defaultValue)
 	return args.String(0), args.Error(1)
 }
 

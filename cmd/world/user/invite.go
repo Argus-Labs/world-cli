@@ -27,11 +27,7 @@ func (h *Handler) InviteToOrganization(
 		return eris.New("User email cannot be empty")
 	}
 
-	if flags.Role == "" {
-		flags.Role = roles[0]
-	}
-
-	userRole, err := h.inputService.Prompt(ctx, "Enter user role to invite", flags.Role)
+	userRole, err := h.promptForRole(ctx, flags.Role)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get user role")
 	}

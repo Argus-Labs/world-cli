@@ -14,10 +14,10 @@ type ServiceInterface interface {
 	Confirm(ctx context.Context, prompt, defaultValue string) (bool, error)
 
 	// Select allows user to select from multiple options by number
-	Select(ctx context.Context, prompt string, options []string, defaultIndex int) (int, error)
+	Select(ctx context.Context, title, prompt string, options []string, defaultIndex int) (int, error)
 
 	// SelectString allows user to select from multiple options, returns the selected string
-	SelectString(ctx context.Context, prompt string, options []string, defaultValue string) (string, error)
+	SelectString(ctx context.Context, title, prompt string, options []string, defaultValue string) (string, error)
 }
 
 // Service implements the input interface using standard input/output.

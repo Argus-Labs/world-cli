@@ -107,7 +107,7 @@ func (s *Service) Confirm(ctx context.Context, prompt, defaultValue string) (boo
 // Select allows user to select from multiple options by number.
 //
 //nolint:gocognit // This function is complex but separated into smaller functions would make it harder to read.
-func (s *Service) Select(ctx context.Context, prompt string, options []string, defaultIndex int) (int, error) {
+func (s *Service) Select(ctx context.Context, title, prompt string, options []string, defaultIndex int) (int, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -115,8 +115,11 @@ func (s *Service) Select(ctx context.Context, prompt string, options []string, d
 		default:
 			// Display options
 			s.println("")
+			if title != "" {
+				s.println(" " + title)
+			}
 			for i, option := range options {
-				s.printf("  %d. %s\n", i+1, option)
+				s.printf("%d. %s\n", i+1, option)
 			}
 
 			defaultStr := ""
@@ -148,7 +151,7 @@ func (s *Service) Select(ctx context.Context, prompt string, options []string, d
 // SelectString allows user to select from multiple options, returns the selected string.
 func (s *Service) SelectString(
 	ctx context.Context,
-	prompt string,
+	title, prompt string,
 	options []string,
 	defaultValue string,
 ) (string, error) {
@@ -160,7 +163,7 @@ func (s *Service) SelectString(
 		}
 	}
 
-	selectedIndex, err := s.Select(ctx, prompt, options, defaultIndex)
+	selectedIndex, err := s.Select(ctx, title, prompt, options, defaultIndex)
 	if err != nil {
 		return "", err
 	}

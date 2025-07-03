@@ -20,3 +20,5 @@ func NewHandler(apiClient api.ClientInterface, inputService input.ServiceInterfa
 		inputService: inputService,
 	}
 }
+
+type Role string
