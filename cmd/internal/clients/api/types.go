@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"time"
 
@@ -105,15 +104,8 @@ type ClientInterface interface {
 	GetListRegions(ctx context.Context, orgID, projID string) ([]string, error)
 	// PreviewDeployment shows what would happen during a deployment without executing it
 	PreviewDeployment(ctx context.Context, orgID, projID, deployType string) (models.DeploymentPreview, error)
-	// DeployProject deploys a project with the provided Docker image
-	DeployProject(
-		ctx context.Context,
-		orgID, projID, deployType, commitHash string,
-		imageReader io.Reader,
-		successPush bool,
-	) error
-	// ResetDestroyPromoteProject resets, destroys, or promotes a project
-	ResetDestroyPromoteProject(ctx context.Context, orgID, projID, deployType string) error
+	// DeployProject deploy, resets, destroys, or promotes a project
+	DeployProject(ctx context.Context, orgID, projID, deployType string) error
 	// GetTemporaryCredential retrieves temporary credentials for a project
 	GetTemporaryCredential(ctx context.Context, orgID, projID string) (models.TemporaryCredential, error)
 	// GetDeploymentStatus retrieves the current deployment status for a project
