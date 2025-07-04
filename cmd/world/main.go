@@ -316,6 +316,8 @@ func initDependencies(env, version string) (cmdsetup.Dependencies, error) {
 		&inputService,
 	)
 
+	evmHandler := evm.NewHandler()
+
 	setupController := cmdsetup.NewController(
 		configService,
 		repoClient,
@@ -337,6 +339,7 @@ func initDependencies(env, version string) (cmdsetup.Dependencies, error) {
 		ProjectHandler:      projectHandler,
 		UserHandler:         userHandler,
 		CloudHandler:        cloudHandler,
+		EVMHandler:          evmHandler,
 		SetupController:     setupController,
 		RootHandler:         rootHandler,
 	}, nil
