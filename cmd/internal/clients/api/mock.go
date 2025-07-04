@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"io"
 	"net/http"
 
 	"github.com/stretchr/testify/mock"
@@ -139,17 +138,6 @@ func (m *MockClient) PreviewDeployment(
 
 // DeployProject mocks deploying a project.
 func (m *MockClient) DeployProject(
-	ctx context.Context,
-	orgID, projID, deployType, commitHash string,
-	imageReader io.Reader,
-	successPush bool,
-) error {
-	args := m.Called(ctx, orgID, projID, deployType, commitHash, imageReader, successPush)
-	return args.Error(0)
-}
-
-// ResetDestroyPromoteProject mocks Reset, Destroy, Promote a project.
-func (m *MockClient) ResetDestroyPromoteProject(
 	ctx context.Context,
 	orgID, projID, deployType string,
 ) error {
