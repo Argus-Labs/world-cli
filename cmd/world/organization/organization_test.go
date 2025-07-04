@@ -55,6 +55,11 @@ func (s *OrganizationTestSuite) createTestConfig() *config.Config {
 	}
 }
 
+// TestOrganizationSuite runs the test suite.
+func TestOrganizationSuite(t *testing.T) {
+	suite.Run(t, new(OrganizationTestSuite))
+}
+
 func (s *OrganizationTestSuite) TestHandler_Create_Success() {
 	s.T().Parallel()
 
@@ -245,8 +250,6 @@ func (s *OrganizationTestSuite) TestHandler_Switch_WithSlug_Success() {
 	mockConfigService.On("Save").Return(nil)
 
 	// Mock API calls
-	mockAPIClient.On("GetOrganizations", ctx).Return(orgs, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(testOrg, nil)
 	mockAPIClient.On("GetOrganizations", ctx).Return(orgs, nil)
 
 	// Mock project handler
@@ -480,18 +483,22 @@ func (s *OrganizationTestSuite) TestHandler_PromptForSwitch_InvalidSelection() {
 func (s *OrganizationTestSuite) TestHandler_PromptForSwitch_ContextCanceled() {
 	s.T().Parallel()
 
-	handler, _, _, _, _ := s.createTestHandler()
+	handler, _, mockInputService, _, _ := s.createTestHandler()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel the context immediately
 
 	testOrg := s.createTestOrganization()
 	orgs := []models.Organization{testOrg}
 
+	// Mock input service to return context canceled error
+	mockInputService.On("Prompt", ctx, "Enter organization number ('q' to quit)", "").Return("", context.Canceled)
+
 	result, err := handler.PromptForSwitch(ctx, orgs, false)
 
 	s.Require().Error(err)
-	s.Equal(context.Canceled, err)
+	s.Contains(err.Error(), "context canceled")
 	s.Equal(models.Organization{}, result)
+	mockInputService.AssertExpectations(s.T())
 }
 
 func (s *OrganizationTestSuite) TestHandler_Switch_APIError() {
@@ -572,9 +579,4 @@ func (s *OrganizationTestSuite) TestHandler_PromptForSwitch_InputError() {
 	s.Contains(err.Error(), "Failed to get organization number")
 	s.Equal(models.Organization{}, result)
 	mockInputService.AssertExpectations(s.T())
-}
-
-// TestOrganizationSuite runs the test suite.
-func TestOrganizationSuite(t *testing.T) {
-	suite.Run(t, new(OrganizationTestSuite))
 }
