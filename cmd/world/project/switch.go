@@ -142,7 +142,7 @@ func (h *Handler) HandleSwitch(ctx context.Context, org models.Organization) err
 	case numProjects == 1:
 		return h.handleSingleProject(ctx, projects[0], org)
 	case numProjects > 1:
-		return h.handleMultipleProjects(ctx, projects, org)
+		return h.handleMultipleProjects(ctx, org)
 	default:
 		return h.handleNoProjects(ctx, org)
 	}
@@ -161,16 +161,8 @@ func (h *Handler) handleSingleProject(
 // handleMultipleProjects handles the case when there are multiple projects.
 func (h *Handler) handleMultipleProjects(
 	ctx context.Context,
-	projects []models.Project,
 	org models.Organization,
 ) error {
-	for _, project := range projects {
-		if project.ID == h.configService.GetConfig().ProjectID {
-			h.showProjectList(ctx, project, org)
-			return nil
-		}
-	}
-
 	project, err := h.Switch(ctx, models.SwitchProjectFlags{}, org, false)
 	if err != nil {
 		return eris.Wrap(err, "Failed to select project")
