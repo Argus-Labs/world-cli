@@ -15,6 +15,7 @@ import (
 func (h *Handler) Switch(
 	ctx context.Context,
 	flags models.SwitchProjectFlags,
+	org models.Organization,
 	enableCreation bool,
 ) (models.Project, error) {
 	if h.configService.GetConfig().CurrRepoKnown {
@@ -24,14 +25,14 @@ func (h *Handler) Switch(
 	}
 
 	// Get projects from selected organization
-	projects, err := h.apiClient.GetProjects(ctx, h.configService.GetConfig().OrganizationID)
+	projects, err := h.apiClient.GetProjects(ctx, org.ID)
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to get projects")
 	}
 
 	if len(projects) == 0 {
 		if enableCreation {
-			proj, err := h.Create(ctx, models.CreateProjectFlags{})
+			proj, err := h.Create(ctx, org, models.CreateProjectFlags{})
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "Failed to create project")
 			}
@@ -43,7 +44,7 @@ func (h *Handler) Switch(
 
 	// If slug is provided, select the project by slug
 	if flags.Slug != "" {
-		return h.switchBySlug(ctx, projects, flags.Slug)
+		return h.switchBySlug(ctx, projects, org, flags.Slug)
 	}
 
 	// Display projects as a numbered list
@@ -75,7 +76,7 @@ func (h *Handler) Switch(
 		}
 
 		if input == "c" && inRepoRoot {
-			proj, err := h.Create(ctx, models.CreateProjectFlags{})
+			proj, err := h.Create(ctx, org, models.CreateProjectFlags{})
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "Failed to create project")
 			}
@@ -102,21 +103,26 @@ func (h *Handler) Switch(
 	}
 }
 
-func (h *Handler) switchBySlug(ctx context.Context, projects []models.Project, slug string) (models.Project, error) {
+func (h *Handler) switchBySlug(
+	ctx context.Context,
+	projects []models.Project,
+	org models.Organization,
+	slug string,
+) (models.Project, error) {
 	for _, project := range projects {
 		if project.Slug == slug {
 			err := h.saveToConfig(&project)
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "selectProjectBySlug")
 			}
-			err = h.showProjectList(ctx)
+			err = h.showProjectList(ctx, project, org)
 			if err != nil {
 				return models.Project{}, eris.Wrap(err, "Failed to show project list")
 			}
 			return project, nil
 		}
 	}
-	err := h.showProjectList(ctx)
+	err := h.showProjectList(ctx, models.Project{}, org)
 	if err != nil {
 		return models.Project{}, eris.Wrap(err, "Failed to show project list")
 	}
@@ -126,38 +132,46 @@ func (h *Handler) switchBySlug(ctx context.Context, projects []models.Project, s
 }
 
 // HandleSwitch manages the project selection logic.
-func (h *Handler) HandleSwitch(ctx context.Context) error {
-	projects, err := h.getListOfProjects(ctx)
+func (h *Handler) HandleSwitch(ctx context.Context, org models.Organization) error {
+	projects, err := h.apiClient.GetProjects(ctx, org.ID)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
 	}
 
 	switch numProjects := len(projects); {
 	case numProjects == 1:
-		return h.handleSingleProject(ctx, projects[0])
+		return h.handleSingleProject(ctx, projects[0], org)
 	case numProjects > 1:
-		return h.handleMultipleProjects(ctx, projects)
+		return h.handleMultipleProjects(ctx, projects, org)
 	default:
-		return h.handleNoProjects(ctx)
+		return h.handleNoProjects(ctx, org)
 	}
 }
 
-func (h *Handler) handleSingleProject(ctx context.Context, project models.Project) error {
+func (h *Handler) handleSingleProject(
+	ctx context.Context,
+	project models.Project,
+	org models.Organization,
+) error {
 	h.saveToConfig(&project)
-	h.showProjectList(ctx)
+	h.showProjectList(ctx, project, org)
 	return nil
 }
 
 // handleMultipleProjects handles the case when there are multiple projects.
-func (h *Handler) handleMultipleProjects(ctx context.Context, projects []models.Project) error {
+func (h *Handler) handleMultipleProjects(
+	ctx context.Context,
+	projects []models.Project,
+	org models.Organization,
+) error {
 	for _, project := range projects {
 		if project.ID == h.configService.GetConfig().ProjectID {
-			h.showProjectList(ctx)
+			h.showProjectList(ctx, project, org)
 			return nil
 		}
 	}
 
-	project, err := h.Switch(ctx, models.SwitchProjectFlags{}, false)
+	project, err := h.Switch(ctx, models.SwitchProjectFlags{}, org, false)
 	if err != nil {
 		return eris.Wrap(err, "Failed to select project")
 	}
@@ -167,7 +181,7 @@ func (h *Handler) handleMultipleProjects(ctx context.Context, projects []models.
 }
 
 // handleNoProjects handles the case when there are no projects.
-func (h *Handler) handleNoProjects(ctx context.Context) error {
+func (h *Handler) handleNoProjects(ctx context.Context, org models.Organization) error {
 	_, _, err := h.PreCreateUpdateValidation(true)
 	if err != nil {
 		printRequiredStepsToCreateProject()
@@ -185,7 +199,7 @@ func (h *Handler) handleNoProjects(ctx context.Context) error {
 		return nil
 	}
 
-	project, err := h.Create(ctx, models.CreateProjectFlags{})
+	project, err := h.Create(ctx, org, models.CreateProjectFlags{})
 	if err != nil {
 		return eris.Wrap(err, "Failed to create project")
 	}

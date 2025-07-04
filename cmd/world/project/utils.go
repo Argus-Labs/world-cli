@@ -8,33 +8,20 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
 	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/utils"
+	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-// Get list of projects in selected organization.
-func (h *Handler) getListOfProjects(ctx context.Context) ([]models.Project, error) {
-	selectedOrg, err := h.apiClient.GetOrganizationByID(ctx, h.configService.GetConfig().OrganizationID)
-	if err != nil && !eris.Is(err, api.ErrNoOrganizationID) {
-		return nil, eris.Wrap(err, "Failed to get organization")
-	}
-
-	if selectedOrg.ID == "" {
-		printNoSelectedOrganization()
-		return nil, nil
-	}
-
-	projects, err := h.apiClient.GetProjects(ctx, selectedOrg.ID)
-	if err != nil {
-		return nil, eris.Wrap(err, "Failed to get projects")
-	}
-
-	return projects, nil
-}
-
 // Show list of projects in selected organization.
-func (h *Handler) showProjectList(ctx context.Context) error {
-	projects, err := h.getListOfProjects(ctx)
+// Input: project is the project to highlight in the list.
+// If project is empty, no project is selected when the list is shown.
+func (h *Handler) showProjectList(ctx context.Context, project models.Project, org models.Organization) error {
+	if org.ID == "" {
+		printNoSelectedOrganization()
+		return nil
+	}
+
+	projects, err := h.apiClient.GetProjects(ctx, org.ID)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get projects")
 	}
@@ -44,60 +31,17 @@ func (h *Handler) showProjectList(ctx context.Context) error {
 		return nil
 	}
 
-	selectedProject, err := h.getSelectedProject(ctx)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get selected project")
-	}
-
 	printer.NewLine(1)
 	printer.Headerln("   Project Information   ")
-	if selectedProject.Name == "" {
-		printer.Errorln("No project selected")
-		printer.NewLine(1)
-		printer.Infoln("Use 'world forge project switch' to choose a project")
-	} else {
-		for _, prj := range projects {
-			if prj.ID == selectedProject.ID {
-				printer.Infof("• %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
-			} else {
-				printer.Infof("  %s (%s)\n", prj.Name, prj.Slug)
-			}
+	for _, prj := range projects {
+		if prj.ID == project.ID {
+			printer.Infof("• %s (%s) [SELECTED]\n", prj.Name, prj.Slug)
+		} else {
+			printer.Infof("  %s (%s)\n", prj.Name, prj.Slug)
 		}
 	}
 
 	return nil
-}
-
-func (h *Handler) getSelectedProject(ctx context.Context) (models.Project, error) {
-	selectedOrg, err := h.apiClient.GetOrganizationByID(ctx, h.configService.GetConfig().OrganizationID)
-	if err != nil && !eris.Is(err, api.ErrNoOrganizationID) {
-		return models.Project{}, eris.Wrap(err, "Failed to get organization")
-	}
-
-	if selectedOrg.ID == "" {
-		printNoSelectedOrganization()
-		return models.Project{}, nil
-	}
-
-	if h.configService.GetConfig().ProjectID == "" {
-		projects, err := h.getListOfProjects(ctx)
-		if err != nil {
-			return models.Project{}, eris.Wrap(err, "Failed to get projects")
-		}
-		if len(projects) == 0 {
-			h.PrintNoProjectsInOrganization()
-		}
-		return models.Project{}, nil
-	}
-
-	// Send request
-	project, err := h.apiClient.GetProjectByID(ctx, selectedOrg.ID, h.configService.GetConfig().ProjectID)
-	if err != nil {
-		return models.Project{}, eris.Wrap(err, "Failed to get project")
-	}
-
-	// Parse response
-	return project, nil
 }
 
 // PreCreateUpdateValidation returns the repo path and URL, and an error.
@@ -114,16 +58,15 @@ func (h *Handler) PreCreateUpdateValidation(printError bool) (string, string, er
 		lastError = repo.ErrNotInGitRepository
 	}
 
-	inRoot, err := utils.IsInWorldCardinalRoot()
+	inRoot, err := validate.IsInWorldCardinalRoot()
 	if err != nil {
 		lastError = eris.Wrap(err, "Failed to check if in World project root")
 	} else if !inRoot {
 		if printError {
 			printer.Errorln(" Not in a World project root")
 		}
-		lastError = utils.ErrNotInWorldCardinalRoot
+		lastError = repo.ErrNotInWorldCardinalRoot
 	}
-
 	return repoPath, repoURL, lastError
 }
 
@@ -140,6 +83,16 @@ func (h *Handler) getListOfAvailableRegionsForNewProject(ctx context.Context) ([
 	return h.apiClient.GetListRegions(ctx, selectedOrg.ID, nilUUID)
 }
 
+func printRequiredStepsToCreateProject() {
+	printer.NewLine(1)
+	printer.Headerln(" To create a new project follow these steps ")
+	printer.Infoln("1. Move to the root of your World project.")
+	printer.Infoln("   This is the directory that contains world.toml and the cardinal directory")
+	printer.Infoln("2. Must be within a git repository")
+	printer.Info("3. Use command ")
+	printer.Notificationln("'world project create'")
+}
+
 func (h *Handler) PrintNoProjectsInOrganization() {
 	printer.NewLine(1)
 	printer.Headerln("   No Projects Found   ")
@@ -153,15 +106,6 @@ func printNoSelectedOrganization() {
 	printer.Infoln("You don't have any organization selected.")
 	printer.Info("Use ")
 	printer.Notification("'world organization switch'")
-	printer.Infoln(" to select one!")
-}
-
-func printNoSelectedProject() {
-	printer.NewLine(1)
-	printer.Headerln("   No Project Selected   ")
-	printer.Infoln("You don't have any project selected.")
-	printer.Info("Use ")
-	printer.Notification("'world project switch'")
 	printer.Infoln(" to select one!")
 }
 

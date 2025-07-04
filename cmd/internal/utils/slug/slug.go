@@ -1,4 +1,4 @@
-package utils
+package slug
 
 import (
 	"regexp"
@@ -12,8 +12,8 @@ import (
 // Pre-compiled regex for merging multiple underscores.
 var underscoreRegex = regexp.MustCompile(`_+`)
 
-// SlugToSaneCheck checks that slug is valid, and returns a sanitized version.
-func SlugToSaneCheck(slug string, minLength int, maxLength int) (string, error) {
+// ToSaneCheck checks that slug is valid, and returns a sanitized version.
+func ToSaneCheck(slug string, minLength int, maxLength int) (string, error) {
 	if len(slug) < minLength {
 		return slug, eris.Errorf("Slug must be at least %d characters", minLength)
 	}
@@ -40,7 +40,7 @@ func SlugToSaneCheck(slug string, minLength int, maxLength int) (string, error) 
 	return returnSlug, nil
 }
 
-func CreateSlugFromName(name string, minLength int, maxLength int) string {
+func CreateFromName(name string, minLength int, maxLength int) string {
 	shorten := len(name) > maxLength
 
 	var slug string

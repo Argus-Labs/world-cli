@@ -10,7 +10,7 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/services/input"
 )
 
-var nilUUID = "00000000-0000-0000-0000-000000000000"
+const nilUUID = "00000000-0000-0000-0000-000000000000"
 
 // Interface guard.
 var _ interfaces.ProjectHandler = (*Handler)(nil)

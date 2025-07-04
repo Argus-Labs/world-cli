@@ -37,8 +37,8 @@ func (c *CreateCmd) Run() error {
 		Slug: c.Slug,
 	}
 
-	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(_ models.CommandState) error {
-		_, err := c.Dependencies.ProjectHandler.Create(c.Context, flags)
+	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(state models.CommandState) error {
+		_, err := c.Dependencies.ProjectHandler.Create(c.Context, *state.Organization, flags)
 		return err
 	})
 }
@@ -60,8 +60,8 @@ func (c *SwitchCmd) Run() error {
 		Slug: c.Slug,
 	}
 
-	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(_ models.CommandState) error {
-		_, err := c.Dependencies.ProjectHandler.Switch(c.Context, flags, false)
+	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(state models.CommandState) error {
+		_, err := c.Dependencies.ProjectHandler.Switch(c.Context, flags, *state.Organization, false)
 		return err
 	})
 }
@@ -87,7 +87,7 @@ func (c *UpdateCmd) Run() error {
 	}
 
 	return cmdsetup.WithSetup(c.Context, c.Dependencies, req, func(state models.CommandState) error {
-		return c.Dependencies.ProjectHandler.Update(c.Context, *state.Project, flags)
+		return c.Dependencies.ProjectHandler.Update(c.Context, *state.Project, *state.Organization, flags)
 	})
 }
 

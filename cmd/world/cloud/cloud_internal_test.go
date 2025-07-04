@@ -437,7 +437,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentCreateProject() {
 		OrgID:   "test-org-id",
 		RepoURL: "https://github.com/argus-labs/starter-game-template",
 	}
-	mockProject.On("Create", mock.Anything, models.CreateProjectFlags{}).Return(createdProject, nil)
+	mockProject.On("Create", mock.Anything, org, models.CreateProjectFlags{}).Return(createdProject, nil)
 
 	// Mock preview deployment with new project ID
 	previewResponse := models.DeploymentPreview{

@@ -12,13 +12,9 @@ import (
 func (h *Handler) Update(
 	ctx context.Context,
 	project models.Project,
+	org models.Organization,
 	flags models.UpdateProjectFlags,
 ) error {
-	if project.ID == "" || project.OrgID == "" {
-		printNoSelectedProject()
-		return eris.New("Forge setup failed, no project selected")
-	}
-
 	printer.Infof("Updating Project: %s [%s]\n", project.Name, project.Slug)
 
 	repoPath, repoURL, err := h.PreCreateUpdateValidation(true)
@@ -43,6 +39,7 @@ func (h *Handler) Update(
 	project.Update = true
 	project.Name = flags.Name
 	project.Slug = flags.Slug
+	project.OrgID = org.ID
 	project.RepoPath = repoPath
 	project.RepoURL = repoURL
 

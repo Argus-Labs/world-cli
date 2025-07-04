@@ -78,7 +78,7 @@ func replaceLast(x, y, z string) string {
 func identifyProvider(repoURL string) (string, string, error) {
 	parsedURL, err := url.Parse(repoURL)
 	if err != nil {
-		return "", "", fmt.Errorf("invalid URL: %w", err)
+		return "", "", eris.Wrap(err, "invalid URL")
 	}
 
 	host := parsedURL.Host
@@ -90,7 +90,7 @@ func identifyProvider(repoURL string) (string, string, error) {
 	case strings.Contains(host, "bitbucket.org"):
 		return "Bitbucket", "https://api.bitbucket.org/2.0", nil
 	default:
-		return "Unknown", "", fmt.Errorf("unknown provider: %s", host)
+		return "Unknown", "", eris.Errorf("unknown provider: %s", host)
 	}
 }
 
@@ -98,7 +98,7 @@ func identifyProvider(repoURL string) (string, string, error) {
 func (c *Client) ValidateRepoToken(ctx context.Context, repoURL, token string) error {
 	provider, apiBaseURL, err := identifyProvider(repoURL)
 	if err != nil {
-		return fmt.Errorf("failed to identify provider: %w", err)
+		return eris.Wrap(err, "failed to identify provider")
 	}
 
 	switch provider {
@@ -109,14 +109,14 @@ func (c *Client) ValidateRepoToken(ctx context.Context, repoURL, token string) e
 	case "Bitbucket":
 		return validateBitbucket(ctx, repoURL, token, apiBaseURL)
 	default:
-		return fmt.Errorf("provider %s is not supported", provider)
+		return eris.Errorf("provider %s is not supported", provider)
 	}
 }
 
 // params: ctx, repoURL, token, path
 func (c *Client) ValidateRepoPath(_ context.Context, _, _, path string) error {
 	if strings.Contains(path, " ") {
-		return fmt.Errorf("invalid path: %s", path)
+		return eris.Errorf("invalid path: %s", path)
 	}
 	// I don't think we need to verify that the path actually exists in the repo,
 	// but if we decide to here's where we would do that. If it doesn't exist then
@@ -159,7 +159,7 @@ func validateGitHub(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	if resp.StatusCode == http.StatusOK {
 		return nil
 	}
-	return fmt.Errorf("GitHub validation failed: %s", resp.Status)
+	return eris.Errorf("GitHub validation failed: %s", resp.Status)
 }
 
 // validateGitLab validates the token and repository for GitLab.
@@ -195,7 +195,7 @@ func validateGitLab(ctx context.Context, repoURL, token, apiBaseURL string) erro
 	if resp.StatusCode == http.StatusOK {
 		return nil
 	}
-	return fmt.Errorf("GitLab validation failed: %s", resp.Status)
+	return eris.Errorf("GitLab validation failed: %s", resp.Status)
 }
 
 // validateBitbucket validates the token and repository for Bitbucket.
@@ -232,5 +232,5 @@ func validateBitbucket(ctx context.Context, repoURL, token, apiBaseURL string) e
 	if resp.StatusCode == http.StatusOK {
 		return nil
 	}
-	return fmt.Errorf("bitbucket validation failed: %s", resp.Status)
+	return eris.Errorf("bitbucket validation failed: %s", resp.Status)
 }

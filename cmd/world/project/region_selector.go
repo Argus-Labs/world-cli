@@ -11,6 +11,10 @@ import (
 	"pkg.world.dev/world-cli/tea/component/multiselect"
 )
 
+// TODO: This is a temporary implementation of the region selector.
+// We need to make the bubbletea component reuable and mockable.
+// This way we can test the region selector without having to run the TUI.
+
 // BubbleteeRegionSelector implements RegionSelector using bubbletea TUI.
 type BubbleteeRegionSelector struct{}
 

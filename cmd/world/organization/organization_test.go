@@ -250,7 +250,7 @@ func (s *OrganizationTestSuite) TestHandler_Switch_WithSlug_Success() {
 	mockAPIClient.On("GetOrganizations", ctx).Return(orgs, nil)
 
 	// Mock project handler
-	mockProjectHandler.On("HandleSwitch", ctx).Return(nil)
+	mockProjectHandler.On("HandleSwitch", ctx, testOrg).Return(nil)
 
 	result, err := handler.Switch(ctx, flags)
 
@@ -360,7 +360,7 @@ func (s *OrganizationTestSuite) TestHandler_Switch_MultipleOrganizations_Success
 	mockInputService.On("Prompt", ctx, "Enter organization number ('q' to quit)", "").Return("1", nil)
 
 	// Mock project handler
-	mockProjectHandler.On("HandleSwitch", ctx).Return(nil)
+	mockProjectHandler.On("HandleSwitch", ctx, testOrg).Return(nil)
 
 	result, err := handler.Switch(ctx, flags)
 

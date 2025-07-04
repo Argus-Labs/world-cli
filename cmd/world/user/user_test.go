@@ -99,7 +99,7 @@ func (s *UserTestSuite) TestHandler_InviteToOrganization_EmptyEmail() {
 	err := handler.InviteToOrganization(ctx, org, flags)
 
 	s.Require().Error(err)
-	s.Contains(err.Error(), "User email cannot be empty")
+	s.Contains(err.Error(), "email cannot be empty")
 	mockAPIClient.AssertExpectations(s.T())
 	mockInputService.AssertExpectations(s.T())
 }
@@ -234,7 +234,7 @@ func (s *UserTestSuite) TestHandler_ChangeRoleInOrganization_EmptyEmail() {
 	err := handler.ChangeRoleInOrganization(ctx, org, flags)
 
 	s.Require().Error(err)
-	s.Contains(err.Error(), "User email cannot be empty")
+	s.Contains(err.Error(), "email cannot be empty")
 	mockAPIClient.AssertExpectations(s.T())
 	mockInputService.AssertExpectations(s.T())
 }
@@ -443,6 +443,10 @@ func (s *UserTestSuite) TestHandler_Update_ContextCanceled() {
 	// Mock getting current user
 	mockAPIClient.On("GetUser", ctx).
 		Return(currentUser, nil)
+
+	// Mock input interaction that will fail due to canceled context
+	mockInputService.On("Prompt", ctx, "Enter name", "Test User").
+		Return("", context.Canceled)
 
 	err := handler.Update(ctx, flags)
 

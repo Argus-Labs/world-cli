@@ -7,7 +7,8 @@ import (
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/utils"
+	"pkg.world.dev/world-cli/cmd/internal/utils/slug"
+	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -27,7 +28,7 @@ func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFla
 			if err != nil {
 				return models.Organization{}, eris.Wrap(err, "Failed to get organization name")
 			}
-			err = utils.ValidateName(orgName, MaxOrgNameLen)
+			err = validate.Name(orgName, MaxOrgNameLen)
 			if err != nil {
 				printer.Errorf("%s\n", err)
 				printer.NewLine(1)
@@ -46,14 +47,14 @@ func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFla
 		for {
 			minLength := 3
 			maxLength := 15
-			orgSlug = utils.CreateSlugFromName(orgSlug, minLength, maxLength)
+			orgSlug = slug.CreateFromName(orgSlug, minLength, maxLength)
 			orgSlug, err = h.inputService.Prompt(ctx, "Enter organization slug", orgSlug)
 			if err != nil {
 				return models.Organization{}, eris.Wrap(err, "Failed to get organization slug")
 			}
 
 			// Validate slug
-			orgSlug, err = utils.SlugToSaneCheck(orgSlug, minLength, maxLength)
+			orgSlug, err = slug.ToSaneCheck(orgSlug, minLength, maxLength)
 			if err != nil {
 				printer.Errorf("%s\n", err)
 				printer.NewLine(1)

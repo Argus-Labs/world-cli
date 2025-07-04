@@ -47,7 +47,7 @@ func (h *Handler) Switch(ctx context.Context, flags models.SwitchOrganizationFla
 		return models.Organization{}, err
 	}
 
-	err = h.projectHandler.HandleSwitch(ctx)
+	err = h.projectHandler.HandleSwitch(ctx, selectedOrg)
 	if err != nil {
 		return models.Organization{}, err
 	}
@@ -73,7 +73,7 @@ func (h *Handler) switchOrganizationFromSlug(ctx context.Context, slug string) (
 				return models.Organization{}, err
 			}
 
-			err = h.projectHandler.HandleSwitch(ctx)
+			err = h.projectHandler.HandleSwitch(ctx, org)
 			if err != nil {
 				return models.Organization{}, err
 			}

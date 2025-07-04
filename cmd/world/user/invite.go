@@ -6,6 +6,7 @@ import (
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -23,8 +24,9 @@ func (h *Handler) InviteToOrganization(
 	if err != nil {
 		return eris.Wrap(err, "Failed to get user email")
 	}
-	if userEmail == "" {
-		return eris.New("User email cannot be empty")
+
+	if err := validate.Email(userEmail); err != nil {
+		return eris.Wrap(err, "Invalid email format")
 	}
 
 	userRole, err := h.promptForRole(ctx, flags.Role)
@@ -44,6 +46,6 @@ func (h *Handler) InviteToOrganization(
 
 	printer.NewLine(1)
 	printer.Successf("Successfully invited user %s to organization!\n", userEmail)
-	printer.Infof("Assigned role: %s\n", userRole)
+	printer.Infof("  Assigned role: %s\n", userRole)
 	return nil
 }

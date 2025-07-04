@@ -5,7 +5,12 @@ import (
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
+)
+
+const (
+	maxNameLength = 64
 )
 
 func (h *Handler) Update(ctx context.Context, flags models.UpdateUserFlags) error {
@@ -40,21 +45,15 @@ func (h *Handler) Update(ctx context.Context, flags models.UpdateUserFlags) erro
 
 func (h *Handler) inputUserName(ctx context.Context, currentUserName string) (string, error) {
 	for {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		default:
-			name, err := h.inputService.Prompt(ctx, "Enter name", currentUserName)
-			if err != nil {
-				return "", err
-			}
-
-			if name == "" {
-				printer.Errorf("Name cannot be empty\n")
-				printer.NewLine(1)
-				continue
-			}
-			return name, nil
+		name, err := h.inputService.Prompt(ctx, "Enter name", currentUserName)
+		if err != nil {
+			return "", err
 		}
+
+		err = validate.Name(name, maxNameLength)
+		if err != nil {
+			continue
+		}
+		return name, nil
 	}
 }

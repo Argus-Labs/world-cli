@@ -42,7 +42,7 @@ func (h *Handler) Deployment(
 
 		printer.Infof("Deploy requires a project created in World Forge: %s\n", org.Name)
 
-		pID, err := h.projectHandler.Create(ctx, models.CreateProjectFlags{})
+		pID, err := h.projectHandler.Create(ctx, org, models.CreateProjectFlags{})
 		if err != nil {
 			return eris.Wrap(err, "Failed on deployment to create project")
 		}

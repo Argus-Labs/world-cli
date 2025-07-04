@@ -33,6 +33,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/vbauerster/mpb/v8 v8.8.2
 	golang.org/x/mod v0.25.0
+	golang.org/x/net v0.41.0
 	google.golang.org/protobuf v1.36.3
 	gotest.tools/v3 v3.5.1
 )
@@ -95,7 +96,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
-	golang.org/x/net v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/grpc v1.68.1 // indirect
@@ -116,7 +116,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/sync v0.15.0
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.27.0
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/term v0.32.0
+	golang.org/x/text v0.26.0 // indirect
 	gopkg.in/gookit/color.v1 v1.1.6 // indirect
 )

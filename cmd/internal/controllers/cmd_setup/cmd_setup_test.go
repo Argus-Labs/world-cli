@@ -549,7 +549,7 @@ func TestSetupCommandState_NeedProjectData_NoProjects_CreateNew(t *testing.T) {
 	mockAPI.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
 	mockProjectHandler.On("PreCreateUpdateValidation", true).Return("", "", nil)
 	mockInput.On("Prompt", ctx, "Would you like to create a new project? (Y/n)", "Y").Return("Y", nil)
-	mockProjectHandler.On("Create", ctx, models.CreateProjectFlags{}).
+	mockProjectHandler.On("Create", ctx, models.Organization{ID: "org-123"}, models.CreateProjectFlags{}).
 		Return(newProject, nil)
 	mockConfig.On("Save").Return(nil)
 

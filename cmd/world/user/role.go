@@ -5,6 +5,7 @@ import (
 
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
@@ -31,8 +32,8 @@ func (h *Handler) ChangeRoleInOrganization(
 		return eris.Wrap(err, "Failed to get user email")
 	}
 
-	if userEmail == "" {
-		return eris.New("User email cannot be empty")
+	if err := validate.Email(userEmail); err != nil {
+		return eris.Wrap(err, "Invalid email format")
 	}
 
 	userRole, err := h.promptForRole(ctx, flags.Role)
@@ -49,7 +50,7 @@ func (h *Handler) ChangeRoleInOrganization(
 
 	printer.NewLine(1)
 	printer.Successf("Successfully updated role for user %s!\n", userEmail)
-	printer.Infof("New role: %s\n", userRole)
+	printer.Infof("  New role: %s\n", userRole)
 	return nil
 }
 

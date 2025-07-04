@@ -198,7 +198,7 @@ func (s *ProjectTestSuite) TestHandler_Create_Success() {
 		Return(nil)
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProjectForAPI).Return(testProject, nil)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().NoError(err)
 	s.Equal(testProject, result)
@@ -213,6 +213,7 @@ func (s *ProjectTestSuite) TestHandler_Create_CurrentRepoKnown() {
 
 	handler, _, mockConfigService, _, _ := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
 		Name: "Test Project",
 	}
@@ -223,7 +224,7 @@ func (s *ProjectTestSuite) TestHandler_Create_CurrentRepoKnown() {
 	cfg.CurrProjectName = "Existing Project"
 	mockConfigService.On("GetConfig").Return(cfg)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().Error(err)
 	s.Equal(project.ErrCannotCreateSwitchProject, err)
@@ -236,6 +237,7 @@ func (s *ProjectTestSuite) TestHandler_Create_ValidationError() {
 
 	handler, mockRepoClient, mockConfigService, _, _ := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
 		Name: "Test Project",
 	}
@@ -249,7 +251,7 @@ func (s *ProjectTestSuite) TestHandler_Create_ValidationError() {
 	validationErr := errors.New("not in git repository")
 	mockRepoClient.On("FindGitPathAndURL").Return("", "", validationErr)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to validate project creation")
@@ -273,6 +275,7 @@ func (s *ProjectTestSuite) TestHandler_Create_GetRegionsError() {
 
 	handler, mockRepoClient, mockConfigService, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
 		Name: "Test Project",
 	}
@@ -291,7 +294,7 @@ func (s *ProjectTestSuite) TestHandler_Create_GetRegionsError() {
 	mockAPIClient.On("GetListRegions", ctx, "org-123", "00000000-0000-0000-0000-000000000000").
 		Return([]string{}, regionsErr)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to get available regions")
@@ -411,6 +414,9 @@ func (s *ProjectTestSuite) TestHandler_Switch_WithSlug_Success() {
 	flags := models.SwitchProjectFlags{
 		Slug: "test_project",
 	}
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 
 	// Mock config service
 	cfg := s.createTestConfig()
@@ -421,11 +427,8 @@ func (s *ProjectTestSuite) TestHandler_Switch_WithSlug_Success() {
 	// Mock API calls
 	projects := []models.Project{testProject}
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
-	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetProjectByID", ctx, "org-123", "proj-123").Return(testProject, nil)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, testOrg, false)
 
 	s.Require().NoError(err)
 	s.Equal(testProject, result)
@@ -441,6 +444,9 @@ func (s *ProjectTestSuite) TestHandler_Switch_WithSlug_NotFound() {
 	flags := models.SwitchProjectFlags{
 		Slug: "nonexistent-project",
 	}
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 
 	// Mock config service
 	cfg := s.createTestConfig()
@@ -450,11 +456,8 @@ func (s *ProjectTestSuite) TestHandler_Switch_WithSlug_NotFound() {
 	// Mock API calls
 	projects := []models.Project{s.createTestProject()}
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
-	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetProjectByID", ctx, "org-123", "proj-123").Return(s.createTestProject(), nil)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, testOrg, false)
 
 	s.Require().Error(err)
 	s.Equal(models.Project{}, result)
@@ -468,14 +471,16 @@ func (s *ProjectTestSuite) TestHandler_Switch_CurrentRepoKnown() {
 	handler, _, mockConfigService, _, _ := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
-
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 	// Mock config service - current repo is known
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = true
 	cfg.CurrProjectName = "Existing Project"
 	mockConfigService.On("GetConfig").Return(cfg)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, testOrg, false)
 
 	s.Require().Error(err)
 	s.Equal(project.ErrCannotCreateSwitchProject, err)
@@ -489,6 +494,9 @@ func (s *ProjectTestSuite) TestHandler_Switch_NoProjects() {
 	handler, _, mockConfigService, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 
 	// Mock config service
 	cfg := s.createTestConfig()
@@ -498,7 +506,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_NoProjects() {
 	// Mock API calls - return empty projects list
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, testOrg, false)
 
 	s.Require().NoError(err)
 	s.Equal(models.Project{}, result)
@@ -512,7 +520,9 @@ func (s *ProjectTestSuite) TestHandler_Switch_APIError() {
 	handler, _, mockConfigService, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
-
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 	// Mock config service
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = false
@@ -522,7 +532,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_APIError() {
 	apiErr := errors.New("API error")
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return([]models.Project{}, apiErr)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, testOrg, false)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to get projects")
@@ -534,17 +544,23 @@ func (s *ProjectTestSuite) TestHandler_Switch_APIError() {
 func (s *ProjectTestSuite) TestHandler_Update_EmptyProject() {
 	s.T().Parallel()
 
-	handler, _, _, _, _ := s.createTestHandler()
+	handler, mockRepoClient, _, _, _ := s.createTestHandler()
 	ctx := context.Background()
 	emptyProject := models.Project{} // Empty project
+	testOrg := s.createTestOrganization()
 	flags := models.UpdateProjectFlags{
 		Name: "Updated Project",
 	}
 
-	err := handler.Update(ctx, emptyProject, flags)
+	// Mock validation failure - not in repository
+	validationErr := errors.New("not in git repository")
+	mockRepoClient.On("FindGitPathAndURL").Return("", "", validationErr)
+
+	err := handler.Update(ctx, emptyProject, testOrg, flags)
 
 	s.Require().Error(err)
-	s.Contains(err.Error(), "Forge setup failed, no project selected")
+	s.Contains(err.Error(), "Failed to validate project update")
+	mockRepoClient.AssertExpectations(s.T())
 }
 
 func (s *ProjectTestSuite) TestHandler_Update_ValidationError() {
@@ -553,6 +569,7 @@ func (s *ProjectTestSuite) TestHandler_Update_ValidationError() {
 	handler, mockRepoClient, _, _, _ := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
+	testOrg := s.createTestOrganization()
 	flags := models.UpdateProjectFlags{
 		Name: "Updated Project",
 	}
@@ -561,7 +578,7 @@ func (s *ProjectTestSuite) TestHandler_Update_ValidationError() {
 	validationErr := errors.New("not in git repository")
 	mockRepoClient.On("FindGitPathAndURL").Return("", "", validationErr)
 
-	err := handler.Update(ctx, testProject, flags)
+	err := handler.Update(ctx, testProject, testOrg, flags)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to validate project update")
@@ -574,7 +591,9 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_SingleProject() {
 	handler, _, mockConfigService, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
-
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 	// Mock config service
 	cfg := s.createTestConfig()
 	mockConfigService.On("GetConfig").Return(cfg)
@@ -582,11 +601,9 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_SingleProject() {
 
 	// Mock API calls
 	projects := []models.Project{testProject}
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetProjectByID", ctx, "org-123", "proj-123").Return(testProject, nil)
 
-	err := handler.HandleSwitch(ctx)
+	err := handler.HandleSwitch(ctx, testOrg)
 
 	s.Require().NoError(err)
 	mockConfigService.AssertExpectations(s.T())
@@ -606,28 +623,24 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_NoProjects() {
 	err = os.Chdir(tmpDir)
 	s.Require().NoError(err)
 
-	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
+	handler, mockRepoClient, _, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
-
-	// Mock config service
-	cfg := s.createTestConfig()
-	mockConfigService.On("GetConfig").Return(cfg)
-
+	testOrg := models.Organization{
+		ID: "org-123",
+	}
 	// Mock API calls - no projects
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
 
 	// Mock PreCreateUpdateValidation - success (can create project)
 	mockRepoClient.On("FindGitPathAndURL").Return("cardinal", "https://github.com/test/repo", nil)
 
-	// Mock user confirms project creation
+	// Mock user declines project creation
 	mockInputService.On("Confirm", ctx, "Do you want to create a new project now? (y/n)", "Y").
 		Return(false, nil)
 
-	err = handler.HandleSwitch(ctx)
+	err = handler.HandleSwitch(ctx, testOrg)
 
 	s.Require().NoError(err)
-	mockConfigService.AssertExpectations(s.T())
 	mockAPIClient.AssertExpectations(s.T())
 	mockRepoClient.AssertExpectations(s.T())
 	mockInputService.AssertExpectations(s.T())
@@ -756,7 +769,7 @@ func (s *ProjectTestSuite) TestHandler_Create_SlugAlreadyExists() {
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).
 		Return(models.Project{}, api.ErrProjectSlugAlreadyExists)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to create project")
@@ -783,6 +796,7 @@ func (s *ProjectTestSuite) TestHandler_Update_Success() {
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
+	testOrg := s.createTestOrganization()
 	flags := models.UpdateProjectFlags{
 		Name: "Updated Project",
 		Slug: "updated_project",
@@ -791,13 +805,9 @@ func (s *ProjectTestSuite) TestHandler_Update_Success() {
 	// Mock PreCreateUpdateValidation
 	mockRepoClient.On("FindGitPathAndURL").Return("cardinal", "https://github.com/test/repo", nil)
 
-	// Mock config service for getSetupInput
-	mockConfigService.On("GetConfig").Return(s.createTestConfig())
-
 	// Mock API calls
 	mockAPIClient.On("GetListRegions", ctx, "org-123", "proj-123").
 		Return([]string{"us-east-1", "us-west-2"}, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
 
 	// Mock input interactions for update
 	mockInputService.On("Prompt", ctx, "Enter project name", "Updated Project").
@@ -836,7 +846,7 @@ func (s *ProjectTestSuite) TestHandler_Update_Success() {
 	// Mock config service
 	mockConfigService.On("RemoveKnownProject", "proj-123", "org-123").Return(nil)
 
-	err = handler.Update(ctx, testProject, flags)
+	err = handler.Update(ctx, testProject, testOrg, flags)
 
 	s.Require().NoError(err)
 	mockRepoClient.AssertExpectations(s.T())
@@ -861,6 +871,7 @@ func (s *ProjectTestSuite) TestHandler_Update_SlugAlreadyExists() {
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
+	testOrg := s.createTestOrganization()
 	flags := models.UpdateProjectFlags{
 		Name: "Updated Project",
 		Slug: "existing_slug",
@@ -869,13 +880,9 @@ func (s *ProjectTestSuite) TestHandler_Update_SlugAlreadyExists() {
 	// Mock PreCreateUpdateValidation
 	mockRepoClient.On("FindGitPathAndURL").Return("cardinal", "https://github.com/test/repo", nil)
 
-	// Mock config service for getSetupInput
-	mockConfigService.On("GetConfig").Return(s.createTestConfig())
-
 	// Mock API calls
 	mockAPIClient.On("GetListRegions", ctx, "org-123", "proj-123").
 		Return([]string{"us-east-1"}, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
 
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter project name", "Updated Project").
@@ -914,7 +921,7 @@ func (s *ProjectTestSuite) TestHandler_Update_SlugAlreadyExists() {
 	// Mock config service (won't be called due to error)
 	mockConfigService.On("RemoveKnownProject", "proj-123", "org-123").Return(nil)
 
-	err = handler.Update(ctx, testProject, flags)
+	err = handler.Update(ctx, testProject, testOrg, flags)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Failed to update project")
@@ -939,7 +946,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_EnableCreation_NoProjects() {
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
-
+	org := s.createTestOrganization()
 	// Mock config service
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = false
@@ -948,7 +955,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_EnableCreation_NoProjects() {
 
 	// Mock API calls - no projects, but enableCreation is true
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
+	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(org, nil)
 	mockAPIClient.On("GetListRegions", ctx, "org-123", "00000000-0000-0000-0000-000000000000").
 		Return([]string{"us-east-1"}, nil)
 
@@ -1009,7 +1016,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_EnableCreation_NoProjects() {
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).
 		Return(newProject, nil)
 
-	result, err := handler.Switch(ctx, flags, true) // enableCreation = true
+	result, err := handler.Switch(ctx, flags, org, true) // enableCreation = true
 
 	s.Require().NoError(err)
 	s.Equal(newProject, result)
@@ -1025,7 +1032,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_MultipleProjects_UserSelection() {
 	handler, _, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{} // No slug provided
-
+	org := s.createTestOrganization()
 	// Mock config service
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = false
@@ -1049,7 +1056,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_MultipleProjects_UserSelection() {
 	mockInputService.On("Prompt", ctx, "Enter project number ('q' to quit)", "").
 		Return("2", nil)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, org, false)
 
 	s.Require().NoError(err)
 	s.Equal(project2, result)
@@ -1064,7 +1071,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_UserQuits() {
 	handler, _, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
-
+	org := s.createTestOrganization()
 	// Mock config service
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = false
@@ -1078,7 +1085,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_UserQuits() {
 	mockInputService.On("Prompt", ctx, "Enter project number ('q' to quit)", "").
 		Return("q", nil)
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, org, false)
 
 	s.Require().NoError(err)
 	s.Equal(models.Project{}, result)
@@ -1093,7 +1100,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_InvalidSelection() {
 	handler, _, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
-
+	org := s.createTestOrganization()
 	// Mock config service
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = false
@@ -1110,7 +1117,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_InvalidSelection() {
 	mockInputService.On("Prompt", ctx, "Enter project number ('q' to quit)", "").
 		Return("1", nil).Once()
 
-	result, err := handler.Switch(ctx, flags, false)
+	result, err := handler.Switch(ctx, flags, org, false)
 
 	s.Require().NoError(err)
 	s.Equal(s.createTestProject(), result)
@@ -1125,7 +1132,7 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_CurrentSele
 	handler, _, mockConfigService, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
-
+	org := s.createTestOrganization()
 	// Mock config service with current project ID matching one of the projects
 	cfg := s.createTestConfig()
 	cfg.ProjectID = "proj-123" // Matches testProject.ID
@@ -1136,11 +1143,9 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_CurrentSele
 		testProject,
 		{ID: "proj-456", Name: "Other Project", OrgID: "org-123"},
 	}
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetProjectByID", ctx, "org-123", "proj-123").Return(testProject, nil)
 
-	err := handler.HandleSwitch(ctx)
+	err := handler.HandleSwitch(ctx, org)
 
 	s.Require().NoError(err)
 	mockConfigService.AssertExpectations(s.T())
@@ -1153,7 +1158,7 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_NoneSelecte
 	handler, _, mockConfigService, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
-
+	org := s.createTestOrganization()
 	// Mock config service with different project ID
 	cfg := s.createTestConfig()
 	cfg.ProjectID = "different-proj-id"
@@ -1162,12 +1167,9 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_NoneSelecte
 
 	// Mock API calls with multiple projects
 	projects := []models.Project{testProject}
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
-	mockAPIClient.On("GetProjectByID", ctx, "org-123", "proj-123").Return(testProject, nil)
 
-	err := handler.HandleSwitch(ctx)
+	err := handler.HandleSwitch(ctx, org)
 
 	s.Require().NoError(err)
 	mockConfigService.AssertExpectations(s.T())
@@ -1235,7 +1237,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_CreateOption_InRepoRoot() {
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	flags := models.SwitchProjectFlags{}
-
+	org := s.createTestOrganization()
 	// Mock config service
 	cfg := s.createTestConfig()
 	cfg.CurrRepoKnown = false
@@ -1310,7 +1312,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_CreateOption_InRepoRoot() {
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).
 		Return(newProject, nil)
 
-	result, err := handler.Switch(ctx, flags, true) // enableCreation = true
+	result, err := handler.Switch(ctx, flags, org, true) // enableCreation = true
 
 	s.Require().NoError(err)
 	s.Equal(newProject, result)
@@ -1335,7 +1337,7 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_NoProjects_CreateConfirmed()
 
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
-
+	org := s.createTestOrganization()
 	// Mock config service
 	cfg := s.createTestConfig()
 	mockConfigService.On("GetConfig").Return(cfg)
@@ -1408,7 +1410,7 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_NoProjects_CreateConfirmed()
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).
 		Return(newProject, nil)
 
-	err = handler.HandleSwitch(ctx)
+	err = handler.HandleSwitch(ctx, org)
 
 	s.Require().NoError(err)
 	mockConfigService.AssertExpectations(s.T())
@@ -1432,6 +1434,7 @@ func (s *ProjectTestSuite) TestHandler_Create_InvalidURL() {
 
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
 		Name: "Test Project",
 	}
@@ -1508,7 +1511,7 @@ func (s *ProjectTestSuite) TestHandler_Create_InvalidURL() {
 	testProject := s.createTestProject()
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).Return(testProject, nil)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().NoError(err)
 	s.Equal(testProject, result)
@@ -1533,6 +1536,7 @@ func (s *ProjectTestSuite) TestHandler_Create_WithNotifications() {
 
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
 		Name: "Test Project",
 	}
@@ -1618,7 +1622,7 @@ func (s *ProjectTestSuite) TestHandler_Create_WithNotifications() {
 
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).Return(testProject, nil)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().NoError(err)
 	s.Equal(testProject, result)
@@ -1643,6 +1647,7 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 
 	handler, mockRepoClient, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
 	flags := models.CreateProjectFlags{
 		Name: "Test Project",
 	}
@@ -1659,7 +1664,7 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 	// Mock API calls
 	mockAPIClient.On("GetListRegions", ctx, "org-123", "00000000-0000-0000-0000-000000000000").
 		Return([]string{"us-east-1"}, nil)
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
+	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(testOrg, nil)
 
 	// Mock input interactions
 	mockInputService.On("Prompt", ctx, "Enter project name", "Test Project").
@@ -1711,7 +1716,7 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 	testProject.RepoToken = ""
 	mockAPIClient.On("CreateProject", ctx, "org-123", expectedProject).Return(testProject, nil)
 
-	result, err := handler.Create(ctx, flags)
+	result, err := handler.Create(ctx, testOrg, flags)
 
 	s.Require().NoError(err)
 	s.Equal(testProject, result)
@@ -1724,26 +1729,19 @@ func (s *ProjectTestSuite) TestHandler_Create_PublicTokenSelection() {
 func (s *ProjectTestSuite) TestHandler_Utils_GetSelectedProject_NoProjectID() {
 	s.T().Parallel()
 
-	handler, mockRepoClient, mockConfigService, mockAPIClient, _ := s.createTestHandler()
+	handler, mockRepoClient, _, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
-
-	// Mock config service with no project ID
-	cfg := s.createTestConfig()
-	cfg.ProjectID = ""
-	mockConfigService.On("GetConfig").Return(cfg)
-
-	// Mock API calls
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(s.createTestOrganization(), nil)
+	testOrg := s.createTestOrganization()
+	// Mock API calls - no projects (HandleSwitch calls GetProjects first)
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
 
 	// Mock PreCreateUpdateValidation (needed by handleNoProjects when no projects exist)
 	mockRepoClient.On("FindGitPathAndURL").Return("", "", errors.New("not in git repository"))
 
 	// Call the utility function through HandleSwitch which uses it
-	err := handler.HandleSwitch(ctx)
+	err := handler.HandleSwitch(ctx, testOrg)
 
 	s.Require().NoError(err)
-	mockConfigService.AssertExpectations(s.T())
 	mockAPIClient.AssertExpectations(s.T())
 	mockRepoClient.AssertExpectations(s.T())
 }
@@ -1751,24 +1749,19 @@ func (s *ProjectTestSuite) TestHandler_Utils_GetSelectedProject_NoProjectID() {
 func (s *ProjectTestSuite) TestHandler_Utils_GetSelectedProject_NoOrganization() {
 	s.T().Parallel()
 
-	handler, mockRepoClient, mockConfigService, mockAPIClient, _ := s.createTestHandler()
+	handler, mockRepoClient, _, mockAPIClient, _ := s.createTestHandler()
 	ctx := context.Background()
+	testOrg := s.createTestOrganization()
+	// Mock API calls - no projects (HandleSwitch calls GetProjects first)
+	mockAPIClient.On("GetProjects", ctx, "org-123").Return([]models.Project{}, nil)
 
-	// Mock config service
-	cfg := s.createTestConfig()
-	mockConfigService.On("GetConfig").Return(cfg)
-
-	// Mock API calls - no organization
-	mockAPIClient.On("GetOrganizationByID", ctx, "org-123").Return(models.Organization{}, api.ErrNoOrganizationID)
-
-	// Mock PreCreateUpdateValidation (needed by handleNoProjects when no organization)
+	// Mock PreCreateUpdateValidation (needed by handleNoProjects when no projects exist)
 	mockRepoClient.On("FindGitPathAndURL").Return("", "", errors.New("not in git repository"))
 
 	// Call through HandleSwitch
-	err := handler.HandleSwitch(ctx)
+	err := handler.HandleSwitch(ctx, testOrg)
 
 	s.Require().NoError(err)
-	mockConfigService.AssertExpectations(s.T())
 	mockAPIClient.AssertExpectations(s.T())
 	mockRepoClient.AssertExpectations(s.T())
 }

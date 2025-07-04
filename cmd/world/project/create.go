@@ -10,7 +10,8 @@ import (
 	"github.com/rotisserie/eris"
 	"pkg.world.dev/world-cli/cmd/internal/clients/api"
 	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/utils"
+	"pkg.world.dev/world-cli/cmd/internal/utils/slug"
+	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/common/tomlutil"
 )
@@ -23,6 +24,7 @@ var (
 
 func (h *Handler) Create(
 	ctx context.Context,
+	org models.Organization,
 	flags models.CreateProjectFlags,
 ) (models.Project, error) {
 	if h.configService.GetConfig().CurrRepoKnown {
@@ -48,6 +50,7 @@ func (h *Handler) Create(
 	p := models.Project{
 		Name:     flags.Name,
 		Slug:     flags.Slug,
+		OrgID:    org.ID,
 		RepoPath: repoPath,
 		RepoURL:  repoURL,
 		Update:   false,
@@ -83,21 +86,12 @@ func (h *Handler) Create(
 	return prj, nil
 }
 
-func (h *Handler) getSetupInput(ctx context.Context, project *models.Project, regions []string) error {
-	// Get organization
-	org, err := h.apiClient.GetOrganizationByID(ctx, h.configService.GetConfig().OrganizationID)
-	if err != nil {
-		return eris.Wrap(err, "Failed to get organization")
-	}
-
-	if org.ID == "" || eris.Is(err, api.ErrNoOrganizationID) {
-		printNoSelectedOrganization()
-		return nil
-	}
-
-	project.OrgID = org.ID
-
-	err = h.inputName(ctx, project)
+func (h *Handler) getSetupInput(
+	ctx context.Context,
+	project *models.Project,
+	regions []string,
+) error {
+	err := h.inputName(ctx, project)
 	if err != nil {
 		return eris.Wrap(err, "Failed to get project name")
 	}
@@ -138,10 +132,6 @@ func (h *Handler) getSetupInput(ctx context.Context, project *models.Project, re
 
 func (h *Handler) inputName(ctx context.Context, project *models.Project) error {
 	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-
 		// If name is not set from cmd flags, get it from world.toml
 		if project.Name == "" {
 			// Get project name from world.toml if it exists, fails silently
@@ -194,53 +184,47 @@ func getForgeProjectNameFromWorldToml(project *models.Project) error {
 }
 
 func validateAndSetName(name string, project *models.Project) error {
-	if err := utils.ValidateName(name, MaxProjectNameLen); err != nil {
+	if err := validate.Name(name, MaxProjectNameLen); err != nil {
 		return err
 	}
 	project.Name = name
 	return nil
 }
 
-//nolint:gocognit // Belongs in a single function
 func (h *Handler) inputSlug(ctx context.Context, project *models.Project) error {
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+		minLength := 3
+		maxLength := 25
+		if project.Slug == "" {
 			// if no slug exists, create a default one from the name
-			minLength := 3
-			maxLength := 25
-			if project.Slug == "" {
-				project.Slug = utils.CreateSlugFromName(project.Name, minLength, maxLength)
-			} else {
-				project.Slug = utils.CreateSlugFromName(project.Slug, minLength, maxLength)
-			}
-
-			slug, err := h.inputService.Prompt(ctx, "Slug", project.Slug)
-			if err != nil {
-				return eris.Wrap(err, "Failed to get project slug")
-			}
-
-			// Validate slug
-			slug, err = utils.SlugToSaneCheck(slug, minLength, maxLength)
-			if err != nil {
-				printer.Errorf("%s\n", err)
-				printer.NewLine(1)
-				continue
-			}
-
-			if err := h.checkIfProjectSlugIsTaken(ctx, project, slug); err != nil {
-				if eris.Is(err, api.ErrProjectSlugAlreadyExists) {
-					printer.Errorf("Project already exists with slug: %s\n", slug)
-				} else {
-					printer.Errorf("%s\n", err)
-				}
-				printer.NewLine(1)
-				continue
-			}
-			return nil
+			project.Slug = slug.CreateFromName(project.Name, minLength, maxLength)
+		} else {
+			// if a slug exists, validate it
+			project.Slug = slug.CreateFromName(project.Slug, minLength, maxLength)
 		}
+
+		slugInput, err := h.inputService.Prompt(ctx, "Slug", project.Slug)
+		if err != nil {
+			return eris.Wrap(err, "Failed to get project slug")
+		}
+
+		slugInput, err = slug.ToSaneCheck(slugInput, minLength, maxLength)
+		if err != nil {
+			printer.Errorf("%s\n", err)
+			printer.NewLine(1)
+			continue
+		}
+
+		if err := h.checkIfProjectSlugIsTaken(ctx, project, slugInput); err != nil {
+			if eris.Is(err, api.ErrProjectSlugAlreadyExists) {
+				printer.Errorf("Project already exists with slug: %s\n", slugInput)
+			} else {
+				printer.Errorf("%s\n", err)
+			}
+			printer.NewLine(1)
+			continue
+		}
+		return nil
 	}
 }
 
@@ -260,62 +244,39 @@ func (h *Handler) checkIfProjectSlugIsTaken(ctx context.Context, project *models
 	return nil
 }
 
-//nolint:gocognit // Feel free to refactor this function
 func (h *Handler) inputRepoURLAndToken(ctx context.Context, project *models.Project) error {
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			repoURL, err := h.inputService.Prompt(ctx, "Enter Repository URL", project.RepoURL)
+		repoURL, err := h.inputService.Prompt(ctx, "Enter Repository URL", project.RepoURL)
+		if err != nil {
+			return eris.Wrap(err, "Failed to get repository URL")
+		}
+
+		// if repoURL prefix is not http or https, add https:// to the repoURL
+		if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
+			repoURL = "https://" + repoURL
+		}
+
+		// Try to access the repo with public token
+		repoToken := ""
+		if err := h.repoClient.ValidateRepoToken(ctx, repoURL, repoToken); err != nil {
+			// If the repo is private, we need to get a token
+			repoToken, err = h.promptForRepoToken(ctx, project)
 			if err != nil {
-				return eris.Wrap(err, "Failed to get repository URL")
+				return eris.Wrap(err, "Failed to get repository token")
 			}
+			repoToken = processRepoToken(repoToken, project)
 
-			// if repoURL prefix is not http or https, add https:// to the repoURL
-			if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
-				repoURL = "https://" + repoURL
-			}
-
-			if err := validateRepoURL(repoURL); err != nil {
+			if err := h.repoClient.ValidateRepoToken(ctx, repoURL, repoToken); err != nil {
+				printer.Errorf("%v\n", err)
+				printer.NewLine(1)
 				continue
 			}
-
-			// Try to access the repo with public token
-			repoToken := ""
-			if err := h.repoClient.ValidateRepoToken(ctx, repoURL, repoToken); err != nil {
-				// If the repo is private, we need to get a token
-				repoToken, err = h.promptForRepoToken(ctx, project)
-				if err != nil {
-					return eris.Wrap(err, "Failed to get repository token")
-				}
-				repoToken = processRepoToken(repoToken, project)
-
-				if err := h.repoClient.ValidateRepoToken(ctx, repoURL, repoToken); err != nil {
-					printer.Errorf("%v\n", err)
-					printer.NewLine(1)
-					continue
-				}
-			}
-
-			project.RepoURL = repoURL
-			project.RepoToken = repoToken
-			return nil
 		}
-	}
-}
 
-func validateRepoURL(repoURL string) error {
-	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") {
-		printer.NewLine(1)
-		printer.Errorln("Invalid Repository URL Format")
-		printer.Infoln("The URL must start with:")
-		printer.Infoln("• http://")
-		printer.Infoln("• https://")
-		printer.NewLine(1)
-		return eris.New("invalid URL format")
+		project.RepoURL = repoURL
+		project.RepoToken = repoToken
+		return nil
 	}
-	return nil
 }
 
 func (h *Handler) promptForRepoToken(ctx context.Context, project *models.Project) (string, error) {
@@ -349,11 +310,8 @@ func processRepoToken(repoToken string, project *models.Project) string {
 func (h *Handler) inputRepoPath(ctx context.Context, project *models.Project) {
 	// Get repository Path
 	for {
-		repoPath, err := h.inputService.Prompt(
-			ctx,
-			"Enter path to Cardinal within Repo (Empty Valid)",
-			project.RepoPath,
-		)
+		prompt := "Enter path to Cardinal within Repo (Empty Valid)"
+		repoPath, err := h.inputService.Prompt(ctx, prompt, project.RepoPath)
 		if err != nil {
 			printer.Errorf("%v\n", err)
 			printer.NewLine(1)
@@ -382,68 +340,30 @@ func (h *Handler) configureNotifications(
 	ctx context.Context,
 	config notificationConfig,
 ) (bool, string, string, error) {
-	enabled, err := h.promptEnableNotifications(ctx, config.name)
+	// Get notification confirmation
+	prompt := fmt.Sprintf("Do you want to set up %s notifications? (y/n)", config.name)
+	enabled, err := h.inputService.Confirm(ctx, prompt, "n")
 	if err != nil {
-		return false, "", "", err
+		return false, "", "", eris.Wrap(err, "Failed to get notification confirmation")
 	}
 	if !enabled {
 		return false, "", "", nil
 	}
 
-	token, err := h.promptForToken(ctx, config)
+	// Get token
+	prompt = fmt.Sprintf("Enter %s %s", config.name, config.tokenName)
+	token, err := h.inputService.Prompt(ctx, prompt, "")
 	if err != nil {
-		return false, "", "", err
+		return false, "", "", eris.Wrap(err, "Failed to get token")
 	}
 
-	channelID, err := h.promptForChannelID(ctx, config.name)
+	// Get channel ID
+	prompt = fmt.Sprintf("Enter %s channel ID", config.name)
+	channelID, err := h.inputService.Prompt(ctx, prompt, "")
 	if err != nil {
-		return false, "", "", err
+		return false, "", "", eris.Wrap(err, "Failed to get channel ID")
 	}
 	return true, token, channelID, nil
-}
-
-func (h *Handler) promptEnableNotifications(
-	ctx context.Context,
-	serviceName string,
-) (bool, error) {
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	default:
-		prompt := fmt.Sprintf("Do you want to set up %s notifications? (y/n)", serviceName)
-		return h.inputService.Confirm(ctx, prompt, "n")
-	}
-}
-
-func (h *Handler) promptForToken(
-	ctx context.Context,
-	config notificationConfig,
-) (string, error) {
-	select {
-	case <-ctx.Done():
-		return "", ctx.Err()
-	default:
-		prompt := fmt.Sprintf("Enter %s %s", config.name, config.tokenName)
-		token, err := h.inputService.Prompt(ctx, prompt, "")
-		if err != nil {
-			return "", eris.Wrap(err, "Failed to get token")
-		}
-		return token, nil
-	}
-}
-
-func (h *Handler) promptForChannelID(ctx context.Context, serviceName string) (string, error) {
-	select {
-	case <-ctx.Done():
-		return "", ctx.Err()
-	default:
-		prompt := fmt.Sprintf("Enter %s channel ID", serviceName)
-		channelID, err := h.inputService.Prompt(ctx, prompt, "")
-		if err != nil {
-			return "", eris.Wrap(err, "Failed to get channel ID")
-		}
-		return channelID, nil
-	}
 }
 
 func (h *Handler) inputDiscord(ctx context.Context, project *models.Project) error {
@@ -508,14 +428,4 @@ func displayProjectDetails(project *models.Project) {
 	} else {
 		printer.Infoln("  - Enabled: No")
 	}
-}
-
-func printRequiredStepsToCreateProject() {
-	printer.NewLine(1)
-	printer.Headerln(" To create a new project follow these steps ")
-	printer.Infoln("1. Move to the root of your World project.")
-	printer.Infoln("   This is the directory that contains world.toml and the cardinal directory")
-	printer.Infoln("2. Must be within a git repository")
-	printer.Info("3. Use command ")
-	printer.Notificationln("'world project create'")
 }
