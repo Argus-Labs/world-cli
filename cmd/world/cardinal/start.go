@@ -11,6 +11,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
@@ -35,17 +36,17 @@ var (
 )
 
 //nolint:gocognit // this is a naturally complex command
-func Start(c *StartCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Start(ctx context.Context, f models.StartCardinalFlags) error {
+	cfg, err := config.GetConfig(&f.Config)
 	if err != nil {
 		return err
 	}
 	cfg.Build = true
-	cfg.Debug = c.Debug
-	cfg.Detach = c.Detach
-	cfg.Telemetry = c.Telemetry
-	if c.LogLevel != "" {
-		zeroLogLevel, err := zerolog.ParseLevel(c.LogLevel)
+	cfg.Debug = f.Debug
+	cfg.Detach = f.Detach
+	cfg.Telemetry = f.Telemetry
+	if f.LogLevel != "" {
+		zeroLogLevel, err := zerolog.ParseLevel(f.LogLevel)
 		if err != nil {
 			return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels())
 		}
@@ -70,14 +71,14 @@ func Start(c *StartCmd) error {
 	// this can be changed in code by calling WithPort() on world options, but we have no way to detect that
 	printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
 	var editorPort int
-	if c.Editor { //nolint:nestif // this is not overly complex
-		if c.EditorPort == "auto" {
+	if f.Editor { //nolint:nestif // this is not overly complex
+		if f.EditorPort == "auto" {
 			editorPort, err = common.FindUnusedPort(cePortStart, cePortEnd)
 			if err != nil {
 				return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
 			}
 		} else {
-			editorPort, err = strconv.Atoi(c.EditorPort)
+			editorPort, err = strconv.Atoi(f.EditorPort)
 			if err != nil {
 				return eris.Wrap(err, "Failed to convert EditorPort to int")
 			}
@@ -96,7 +97,7 @@ func Start(c *StartCmd) error {
 	printer.Infoln("This may take a few minutes to rebuild the Docker images.")
 	printer.Infoln("Use `world cardinal dev` to run Cardinal faster/easier in development mode.")
 
-	group, ctx := errgroup.WithContext(context.Background())
+	group, groupCtx := errgroup.WithContext(ctx)
 
 	// Create docker client
 	dockerClient, err := docker.NewClient(cfg)
@@ -109,16 +110,16 @@ func Start(c *StartCmd) error {
 
 	// Start the World Engine stack
 	group.Go(func() error {
-		if err := dockerClient.Start(ctx, services...); err != nil {
+		if err := dockerClient.Start(groupCtx, services...); err != nil {
 			return eris.Wrap(err, "Encountered an error with Docker")
 		}
 		return eris.Wrap(ErrGracefulExit, "Stack terminated")
 	})
 
 	// Start Cardinal Editor is flag is set to true
-	if c.Editor {
+	if f.Editor {
 		group.Go(func() error {
-			if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, editorPort); err != nil {
+			if err := startCardinalEditor(groupCtx, cfg.RootDir, cfg.GameDir, editorPort); err != nil {
 				return eris.Wrap(err, "Encountered an error with Cardinal Editor")
 			}
 			return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")
