@@ -3,18 +3,19 @@ package cardinal
 import (
 	"context"
 
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 )
 
-func Restart(c *RestartCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Restart(ctx context.Context, f models.RestartCardinalFlags) error {
+	cfg, err := config.GetConfig(&f.Config)
 	if err != nil {
 		return err
 	}
 	cfg.Build = true
-	cfg.Debug = c.Debug
-	cfg.Detach = c.Detach
+	cfg.Debug = f.Debug
+	cfg.Detach = f.Detach
 
 	// Create docker client
 	dockerClient, err := docker.NewClient(cfg)
@@ -23,7 +24,6 @@ func Restart(c *RestartCmd) error {
 	}
 	defer dockerClient.Close()
 
-	ctx := context.Background()
 	err = dockerClient.Restart(ctx, getServices(cfg)...)
 	if err != nil {
 		return err

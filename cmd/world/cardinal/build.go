@@ -8,21 +8,22 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/printer"
 	"pkg.world.dev/world-cli/tea/style"
 )
 
-func Build(c *BuildCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Build(ctx context.Context, f models.BuildCardinalFlags) error {
+	cfg, err := config.GetConfig(&f.Config)
 	if err != nil {
 		return err
 	}
 	cfg.Timeout = -1
 
-	if c.LogLevel != "" {
-		zeroLogLevel, err := zerolog.ParseLevel(c.LogLevel)
+	if f.LogLevel != "" {
+		zeroLogLevel, err := zerolog.ParseLevel(f.LogLevel)
 		if err != nil {
 			return eris.Errorf("invalid value for flag %s: must be one of (%v)", flagLogLevel, validLogLevels())
 		}
@@ -49,8 +50,7 @@ func Build(c *BuildCmd) error {
 	printer.Infoln("Building Cardinal game shard image...")
 	printer.Infoln("This may take a few minutes.")
 
-	ctx := context.Background()
-	group, ctx := errgroup.WithContext(ctx)
+	group, groupCtx := errgroup.WithContext(ctx)
 
 	// Create docker client
 	dockerClient, err := docker.NewClient(cfg)
@@ -61,20 +61,20 @@ func Build(c *BuildCmd) error {
 
 	services := getCardinalServices(cfg)
 
-	if c.Auth != "" { // FIXME: not sure if this is correct: passed in by then overwritten?
-		if (c.User != "" && c.Pass != "") || c.RegToken != "" {
+	if f.Auth != "" { // FIXME: not sure if this is correct: passed in by then overwritten?
+		if (f.User != "" && f.Pass != "") || f.RegToken != "" {
 			authConfig := registry.AuthConfig{
-				Username:      c.User,
-				Password:      c.Pass,
-				RegistryToken: c.RegToken,
+				Username:      f.User,
+				Password:      f.Pass,
+				RegistryToken: f.RegToken,
 			}
-			c.Auth, _ = registry.EncodeAuthConfig(authConfig)
+			f.Auth, _ = registry.EncodeAuthConfig(authConfig)
 		}
 	}
 
 	// Build the World Engine stack
 	group.Go(func() error {
-		if err := dockerClient.Build(ctx, c.Push, c.Auth, services...); err != nil {
+		if err := dockerClient.Build(groupCtx, f.Push, f.Auth, services...); err != nil {
 			return eris.Wrap(err, "Encountered an error with Docker")
 		}
 		return eris.Wrap(ErrGracefulExit, "Stack terminated")

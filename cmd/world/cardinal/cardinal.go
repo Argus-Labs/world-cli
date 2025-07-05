@@ -3,6 +3,8 @@ package cardinal
 import (
 	"context"
 
+	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/docker/service"
@@ -14,7 +16,9 @@ var CardinalCmdPlugin struct {
 
 //nolint:lll, revive // needed to put all the help text in the same line
 type CardinalCmd struct {
-	Config string `flag:"" type:"existingfile" help:"A TOML config file"`
+	Config       string                `flag:"" type:"existingfile" help:"A TOML config file"`
+	Context      context.Context       `                                                      kong:"-"`
+	Dependencies cmdsetup.Dependencies `                                                      kong:"-"`
 
 	Start   *StartCmd   `cmd:"" group:"Cardinal Commands:" help:"Launch your Cardinal game environment"`
 	Stop    *StopCmd    `cmd:"" group:"Cardinal Commands:" help:"Gracefully shut down your Cardinal game environment"`
@@ -45,7 +49,16 @@ type StartCmd struct {
 }
 
 func (c *StartCmd) Run() error {
-	return Start(c)
+	flags := models.StartCardinalFlags{
+		Config:     c.Parent.Config,
+		Detach:     c.Detach,
+		LogLevel:   c.LogLevel,
+		Debug:      c.Debug,
+		Telemetry:  c.Telemetry,
+		Editor:     c.Editor,
+		EditorPort: c.EditorPort,
+	}
+	return c.Parent.Dependencies.CardinalHandler.Start(c.Parent.Context, flags)
 }
 
 type StopCmd struct {
@@ -53,7 +66,10 @@ type StopCmd struct {
 }
 
 func (c *StopCmd) Run() error {
-	return Stop(c)
+	flags := models.StopCardinalFlags{
+		Config: c.Parent.Config,
+	}
+	return c.Parent.Dependencies.CardinalHandler.Stop(c.Parent.Context, flags)
 }
 
 type RestartCmd struct {
@@ -63,18 +79,27 @@ type RestartCmd struct {
 }
 
 func (c *RestartCmd) Run() error {
-	return Restart(c)
+	flags := models.RestartCardinalFlags{
+		Config: c.Parent.Config,
+		Detach: c.Detach,
+		Debug:  c.Debug,
+	}
+	return c.Parent.Dependencies.CardinalHandler.Restart(c.Parent.Context, flags)
 }
 
 type DevCmd struct {
-	Parent    *CardinalCmd    `kong:"-"`
-	Editor    bool            `         flag:"" help:"Enable Cardinal Editor"`
-	PrettyLog bool            `         flag:"" help:"Run Cardinal with pretty logging" default:"true"`
-	Context   context.Context `kong:"-"`
+	Parent    *CardinalCmd `kong:"-"`
+	Editor    bool         `         flag:"" help:"Enable Cardinal Editor"`
+	PrettyLog bool         `         flag:"" help:"Run Cardinal with pretty logging" default:"true"`
 }
 
 func (c *DevCmd) Run() error {
-	return Dev(c)
+	flags := models.DevCardinalFlags{
+		Config:    c.Parent.Config,
+		Editor:    c.Editor,
+		PrettyLog: c.PrettyLog,
+	}
+	return c.Parent.Dependencies.CardinalHandler.Dev(c.Parent.Context, flags)
 }
 
 type PurgeCmd struct {
@@ -82,7 +107,10 @@ type PurgeCmd struct {
 }
 
 func (c *PurgeCmd) Run() error {
-	return Purge(c)
+	flags := models.PurgeCardinalFlags{
+		Config: c.Parent.Config,
+	}
+	return c.Parent.Dependencies.CardinalHandler.Purge(c.Parent.Context, flags)
 }
 
 type BuildCmd struct {
@@ -98,7 +126,18 @@ type BuildCmd struct {
 }
 
 func (c *BuildCmd) Run() error {
-	return Build(c)
+	flags := models.BuildCardinalFlags{
+		Config:    c.Parent.Config,
+		LogLevel:  c.LogLevel,
+		Debug:     c.Debug,
+		Telemetry: c.Telemetry,
+		Push:      c.Push,
+		Auth:      c.Auth,
+		User:      c.User,
+		Pass:      c.Pass,
+		RegToken:  c.RegToken,
+	}
+	return c.Parent.Dependencies.CardinalHandler.Build(c.Parent.Context, flags)
 }
 
 func getServices(cfg *config.Config) []service.Builder {
