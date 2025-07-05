@@ -3,14 +3,15 @@ package evm
 import (
 	"context"
 
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-func Stop(c *StopCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Stop(ctx context.Context, flags models.StopEVMFlags) error {
+	cfg, err := config.GetConfig(&flags.Config)
 	if err != nil {
 		return err
 	}
@@ -21,8 +22,6 @@ func Stop(c *StopCmd) error {
 		return err
 	}
 	defer dockerClient.Close()
-
-	ctx := context.Background()
 
 	err = dockerClient.Stop(ctx, service.EVM, service.CelestiaDevNet)
 	if err != nil {

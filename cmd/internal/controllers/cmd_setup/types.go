@@ -24,6 +24,7 @@ type Dependencies struct {
 	UserHandler         interfaces.UserHandler
 	RootHandler         interfaces.RootHandler
 	CloudHandler        interfaces.CloudHandler
+	EVMHandler          interfaces.EVMHandler
 	SetupController     interfaces.CommandSetupController
 }
 
