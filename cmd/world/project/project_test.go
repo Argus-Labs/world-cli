@@ -1129,7 +1129,7 @@ func (s *ProjectTestSuite) TestHandler_Switch_InvalidSelection() {
 func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_CurrentSelected() {
 	s.T().Parallel()
 
-	handler, _, mockConfigService, mockAPIClient, _ := s.createTestHandler()
+	handler, _, mockConfigService, mockAPIClient, mockInputService := s.createTestHandler()
 	ctx := context.Background()
 	testProject := s.createTestProject()
 	org := s.createTestOrganization()
@@ -1137,6 +1137,7 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_CurrentSele
 	cfg := s.createTestConfig()
 	cfg.ProjectID = "proj-123" // Matches testProject.ID
 	mockConfigService.On("GetConfig").Return(cfg)
+	mockConfigService.On("Save").Return(nil)
 
 	// Mock API calls with multiple projects including current one
 	projects := []models.Project{
@@ -1145,11 +1146,16 @@ func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_CurrentSele
 	}
 	mockAPIClient.On("GetProjects", ctx, "org-123").Return(projects, nil)
 
+	// Mock user selecting the first project (which matches the current project ID)
+	mockInputService.On("Prompt", ctx, "Enter project number ('q' to quit)", "").
+		Return("1", nil)
+
 	err := handler.HandleSwitch(ctx, org)
 
 	s.Require().NoError(err)
 	mockConfigService.AssertExpectations(s.T())
 	mockAPIClient.AssertExpectations(s.T())
+	mockInputService.AssertExpectations(s.T())
 }
 
 func (s *ProjectTestSuite) TestHandler_HandleSwitch_MultipleProjects_NoneSelected() {

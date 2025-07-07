@@ -15,6 +15,18 @@ func (h *Handler) saveOrganization(org models.Organization) error {
 	return nil
 }
 
+func (h *Handler) showOrganizationList(org models.Organization, orgs []models.Organization) {
+	printer.NewLine(1)
+	printer.Headerln("  Organization Information  ")
+	for _, organization := range orgs {
+		if organization.ID == org.ID {
+			printer.Infof("• %s (%s) [SELECTED]\n", organization.Name, organization.Slug)
+		} else {
+			printer.Infof("  %s (%s)\n", organization.Name, organization.Slug)
+		}
+	}
+}
+
 func (h *Handler) PrintNoOrganizations() {
 	printer.NewLine(1)
 	printer.Headerln("   No Organizations Found   ")

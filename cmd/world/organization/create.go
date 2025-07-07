@@ -14,7 +14,7 @@ import (
 
 const MaxOrgNameLen = 50
 
-//nolint:gocognit,funlen // Belongs in a single function
+//nolint:gocognit // Belongs in a single function
 func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFlags) (models.Organization, error) {
 	var orgName, orgSlug string
 	var err error
@@ -30,8 +30,6 @@ func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFla
 			}
 			err = validate.Name(orgName, MaxOrgNameLen)
 			if err != nil {
-				printer.Errorf("%s\n", err)
-				printer.NewLine(1)
 				continue
 			}
 			break
@@ -78,6 +76,7 @@ func (h *Handler) Create(ctx context.Context, flags models.CreateOrganizationFla
 		if confirm {
 			org, err := h.apiClient.CreateOrganization(ctx, orgName, orgSlug)
 			if err != nil {
+				// Check if the error is because the slug already exists.
 				if strings.Contains(err.Error(), api.ErrOrganizationSlugAlreadyExists.Error()) {
 					printer.Errorf(
 						"An Organization already exists with slug: %s, please choose a different slug.\n",
