@@ -1,11 +1,9 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"sync"
@@ -21,7 +19,6 @@ import (
 	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )
 
-//nolint:gocognit,funlen // this is a complex function but it does what it needs to do
 func (h *Handler) Deployment(
 	ctx context.Context,
 	organizationID string,
@@ -78,53 +75,13 @@ func (h *Handler) Deployment(
 		return nil
 	}
 
-	// Use case when the deployment type is not deploy or force deploy
-	// Reset, Destroy, Promote no need to build the image, push the image to the registry,
-	// and send the request to the World Forge.
-	//nolint:nestif // this is a complex function but it does what it needs to do
-	if deployType == DeploymentTypeReset ||
-		deployType == DeploymentTypeDestroy ||
-		deployType == DeploymentTypePromote {
-		// send request to the World Forge
-		err = h.apiClient.ResetDestroyPromoteProject(ctx, organizationID, project.ID, deployType)
-		if err != nil {
-			return eris.Wrap(err, "Failed to deploy project")
-		}
-	} else {
-		// Use case when the deployment type is deploy or force deploy
-		// Contain the logic to build the image, push the image to the registry, and send the request to the World Forge
+	if deployType == DeploymentTypeForceDeploy {
+		deployType = "deploy?force=true"
+	}
 
-		// build the image
-		commitHash, reader, err := deploymentBuild(ctx, project)
-		if err != nil {
-			return eris.Wrap(err, "Failed to build image")
-		}
-
-		// Create a buffer to store the image data
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, reader); err != nil {
-			return eris.Wrapf(err, "Failed to copy stream to buffer")
-		}
-
-		// Trim the commit hash from spaces
-		commitHash = strings.TrimSpace(commitHash)
-
-		// try to push the image to the registry
-		var successPush bool
-		err = h.pushImage(ctx, commitHash, buf, organizationID, project.ID)
-		if err != nil {
-			successPush = false
-			printer.Errorln("Failed to push image to registry in the local machine")
-			printer.Infoln("Trying to push the image to the registry through the World Forge")
-		} else {
-			successPush = true
-			printer.Successln("Pushed image to registry")
-		}
-
-		err = h.apiClient.DeployProject(ctx, organizationID, project.ID, deployType, commitHash, &buf, successPush)
-		if err != nil {
-			return eris.Wrap(err, "Failed to deploy project")
-		}
+	err = h.apiClient.DeployProject(ctx, organizationID, project.ID, deployType)
+	if err != nil {
+		return eris.Wrap(err, "Failed to deploy project")
 	}
 
 	env := DeployEnvPreview

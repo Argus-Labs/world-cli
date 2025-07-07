@@ -90,8 +90,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentDeploy_Success() {
 		Return(true, nil)
 
 	// Mock deployment API calls
-	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeDeploy,
-		mock.AnythingOfType("string"), mock.Anything, mock.AnythingOfType("bool")).
+	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeDeploy).
 		Return(nil)
 
 	// Mock deployment status polling
@@ -106,16 +105,6 @@ func (s *CloudTestSuite) TestHandler_DeploymentDeploy_Success() {
 		}
 	}`)
 	mockAPI.On("GetDeploymentStatus", mock.Anything, "test-project-id").Return(statusResponse, nil)
-
-	// Mock temporary credentials for image pushing
-	mockAPI.On("GetTemporaryCredential", mock.Anything, "test-org-id", "test-project-id").
-		Return(models.TemporaryCredential{
-			AccessKeyID:     "test-access-key",
-			SecretAccessKey: "test-secret-key",
-			SessionToken:    "test-session-token",
-			Region:          "us-west-2",
-			RepoURI:         "test-registry/test-repo",
-		}, nil)
 
 	err := handler.Deployment(ctx, "test-org-id", project, cloud.DeploymentTypeDeploy)
 
@@ -186,7 +175,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentDestroy_Success() {
 		Return(true, nil)
 
 	// Mock deployment API calls
-	mockAPI.On("ResetDestroyPromoteProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeDestroy).
+	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeDestroy).
 		Return(nil)
 
 	// Mock deployment status polling with proper context handling
@@ -241,7 +230,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentReset_Success() {
 		Return(true, nil)
 
 	// Mock deployment API calls
-	mockAPI.On("ResetDestroyPromoteProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeReset).
+	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeReset).
 		Return(nil)
 
 	// Mock deployment status polling
@@ -296,7 +285,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentPromote_Success() {
 		Return(true, nil)
 
 	// Mock deployment API calls
-	mockAPI.On("ResetDestroyPromoteProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypePromote).
+	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypePromote).
 		Return(nil)
 
 	// Mock deployment status polling
@@ -351,8 +340,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentForceDeploy_Success() {
 		Return(true, nil)
 
 	// Mock deployment API calls
-	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", cloud.DeploymentTypeForceDeploy,
-		mock.AnythingOfType("string"), mock.Anything, mock.AnythingOfType("bool")).
+	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "test-project-id", "deploy?force=true").
 		Return(nil)
 
 	// Mock deployment status polling for destroy first
@@ -380,16 +368,6 @@ func (s *CloudTestSuite) TestHandler_DeploymentForceDeploy_Success() {
 		}
 	}`)
 	mockAPI.On("GetDeploymentStatus", mock.Anything, "test-project-id").Return(statusResponse2, nil)
-
-	// Mock temporary credentials for image pushing
-	mockAPI.On("GetTemporaryCredential", mock.Anything, "test-org-id", "test-project-id").
-		Return(models.TemporaryCredential{
-			AccessKeyID:     "test-access-key",
-			SecretAccessKey: "test-secret-key",
-			SessionToken:    "test-session-token",
-			Region:          "us-west-2",
-			RepoURI:         "test-registry/test-repo",
-		}, nil)
 
 	err := handler.Deployment(ctx, "test-org-id", project, cloud.DeploymentTypeForceDeploy)
 
@@ -458,19 +436,8 @@ func (s *CloudTestSuite) TestHandler_DeploymentCreateProject() {
 		Return(true, nil)
 
 	// Mock deploy project call with proper signature
-	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "new-project-id", cloud.DeploymentTypeDeploy,
-		mock.AnythingOfType("string"), mock.Anything, mock.AnythingOfType("bool")).
+	mockAPI.On("DeployProject", mock.Anything, "test-org-id", "new-project-id", cloud.DeploymentTypeDeploy).
 		Return(nil)
-
-	// Mock temporary credentials for image pushing
-	mockAPI.On("GetTemporaryCredential", mock.Anything, "test-org-id", "new-project-id").
-		Return(models.TemporaryCredential{
-			AccessKeyID:     "test-access-key",
-			SecretAccessKey: "test-secret-key",
-			SessionToken:    "test-session-token",
-			Region:          "us-west-2",
-			RepoURI:         "test-registry/test-repo",
-		}, nil)
 
 	// Mock deployment status check
 	statusResponse := []byte(`{
@@ -565,7 +532,7 @@ func (s *CloudTestSuite) TestHandler_DeploymentAPIError() {
 		Return(true, nil)
 
 	// Mock API error
-	mockAPI.On("ResetDestroyPromoteProject", ctx, "test-org-id", "test-project-id", cloud.DeploymentTypeDestroy).
+	mockAPI.On("DeployProject", ctx, "test-org-id", "test-project-id", cloud.DeploymentTypeDestroy).
 		Return(errors.New("API error"))
 
 	err := handler.Deployment(ctx, "test-org-id", project, cloud.DeploymentTypeDestroy)
