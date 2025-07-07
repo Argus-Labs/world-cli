@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rotisserie/eris"
 	"golang.org/x/sync/errgroup"
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
@@ -32,8 +33,8 @@ const (
 	cePortEnd   = 4000
 )
 
-func Dev(c *DevCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Dev(ctx context.Context, f models.DevCardinalFlags) error {
+	cfg, err := config.GetConfig(&f.Config)
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func Dev(c *DevCmd) error {
 	printServiceAddress("Redis", fmt.Sprintf("localhost:%s", RedisPort))
 	printServiceAddress("Cardinal", fmt.Sprintf("localhost:%s", CardinalPort))
 	var port int
-	if c.Editor {
+	if f.Editor {
 		port, err = common.FindUnusedPort(cePortStart, cePortEnd)
 		if err != nil {
 			return eris.Wrap(err, "Failed to find an unused port for Cardinal Editor")
@@ -58,25 +59,22 @@ func Dev(c *DevCmd) error {
 
 	// Start redis, cardinal, and cardinal editor
 	// If any of the services terminates, the entire group will be terminated.
-	if c.Context == nil {
-		c.Context = context.Background()
-	}
-	group, ctx := errgroup.WithContext(c.Context)
+	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
-		if err := startRedis(ctx, cfg); err != nil {
+		if err := startRedis(groupCtx, cfg); err != nil {
 			return eris.Wrap(err, "Encountered an error with Redis")
 		}
 		return eris.Wrap(ErrGracefulExit, "Redis terminated")
 	})
 	group.Go(func() error {
-		if err := startCardinalDevMode(ctx, cfg, c.PrettyLog); err != nil {
+		if err := startCardinalDevMode(groupCtx, cfg, f.PrettyLog); err != nil {
 			return eris.Wrap(err, "Encountered an error with Cardinal")
 		}
 		return eris.Wrap(ErrGracefulExit, "Cardinal terminated")
 	})
-	if c.Editor {
+	if f.Editor {
 		group.Go(func() error {
-			if err := startCardinalEditor(ctx, cfg.RootDir, cfg.GameDir, port); err != nil {
+			if err := startCardinalEditor(groupCtx, cfg.RootDir, cfg.GameDir, port); err != nil {
 				return eris.Wrap(err, "Encountered an error with Cardinal Editor")
 			}
 			return eris.Wrap(ErrGracefulExit, "Cardinal Editor terminated")

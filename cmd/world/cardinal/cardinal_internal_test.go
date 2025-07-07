@@ -13,6 +13,17 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
+	"pkg.world.dev/world-cli/cmd/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/internal/clients/browser"
+	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
+	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/internal/services/input"
+	"pkg.world.dev/world-cli/cmd/world/cloud"
+	"pkg.world.dev/world-cli/cmd/world/organization"
+	"pkg.world.dev/world-cli/cmd/world/project"
+	"pkg.world.dev/world-cli/cmd/world/root"
+	"pkg.world.dev/world-cli/cmd/world/user"
 )
 
 var testCounter uint64
@@ -136,6 +147,69 @@ func copyDir(src, dst string) error {
 	})
 }
 
+// createTestDependencies creates a minimal set of dependencies for testing.
+func createTestDependencies() cmdsetup.Dependencies {
+	configService, _ := config.NewService("LOCAL")
+	inputService := input.NewService()
+	repoClient := repo.NewClient()
+	apiClient := api.NewClient("", "", "")
+
+	projectHandler := project.NewHandler(
+		repoClient,
+		configService,
+		apiClient,
+		&inputService,
+	)
+
+	orgHandler := organization.NewHandler(
+		projectHandler,
+		&inputService,
+		apiClient,
+		configService,
+	)
+
+	userHandler := user.NewHandler(
+		apiClient,
+		&inputService,
+	)
+
+	cloudHandler := cloud.NewHandler(
+		apiClient,
+		configService,
+		projectHandler,
+		&inputService,
+	)
+
+	setupController := cmdsetup.NewController(
+		configService,
+		repoClient,
+		orgHandler,
+		projectHandler,
+		apiClient,
+		&inputService,
+	)
+
+	browserClient := browser.NewClient()
+	rootHandler := root.NewHandler("test-version", configService, apiClient, setupController, browserClient)
+
+	// Create Cardinal handler
+	cardinalHandler := &Handler{}
+
+	return cmdsetup.Dependencies{
+		ConfigService:       configService,
+		InputService:        &inputService,
+		APIClient:           apiClient,
+		RepoClient:          repoClient,
+		OrganizationHandler: orgHandler,
+		ProjectHandler:      projectHandler,
+		UserHandler:         userHandler,
+		CloudHandler:        cloudHandler,
+		SetupController:     setupController,
+		RootHandler:         rootHandler,
+		CardinalHandler:     cardinalHandler,
+	}
+}
+
 func TestCardinalStartStopRestartPurge(t *testing.T) {
 	t.Skip("Skipping cardinal start stop restart purge test")
 
@@ -158,9 +232,15 @@ func TestCardinalStartStopRestartPurge(t *testing.T) {
 	// Change to the template directory (auto-resets after test)
 	t.Chdir(templateDir)
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	// Start cardinal
 	startCmd := StartCmd{ // cardinal start --detach --editor=false
-		Parent: &CardinalCmd{},
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      t.Context(),
+		},
 		Editor: false,
 		Detach: true,
 	}
@@ -170,7 +250,10 @@ func TestCardinalStartStopRestartPurge(t *testing.T) {
 	defer func() {
 		// Purge cardinal
 		purgeCmd := PurgeCmd{
-			Parent: &CardinalCmd{},
+			Parent: &CardinalCmd{
+				Dependencies: dependencies,
+				Context:      t.Context(),
+			},
 		}
 		err = purgeCmd.Run()
 		assert.NilError(t, err)
@@ -181,7 +264,10 @@ func TestCardinalStartStopRestartPurge(t *testing.T) {
 
 	// Restart cardinal
 	restartCmd := RestartCmd{ // cardinal restart --detach
-		Parent: &CardinalCmd{},
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      t.Context(),
+		},
 		Detach: true,
 	}
 	err = restartCmd.Run()
@@ -192,7 +278,10 @@ func TestCardinalStartStopRestartPurge(t *testing.T) {
 
 	// Stop cardinal
 	stopCmd := StopCmd{
-		Parent: &CardinalCmd{},
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      t.Context(),
+		},
 	}
 	err = stopCmd.Run()
 	assert.NilError(t, err)
@@ -226,10 +315,15 @@ func TestCardinalDev(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	devCmd := DevCmd{ // cardinal dev --editor=false
-		Parent:  &CardinalCmd{},
-		Editor:  false,
-		Context: ctx,
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      ctx,
+		},
+		Editor: false,
 	}
 
 	done := make(chan error, 1)
@@ -274,8 +368,14 @@ func TestCardinalStart(t *testing.T) {
 	// Change to the template directory (auto-resets after test)
 	t.Chdir(templateDir)
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	startCmd := StartCmd{
-		Parent: &CardinalCmd{},
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      t.Context(),
+		},
 		Editor: false,
 		Detach: true,
 	}
@@ -291,7 +391,10 @@ func TestCardinalStart(t *testing.T) {
 
 	// Stop Cardinal
 	stopCmd := StopCmd{
-		Parent: &CardinalCmd{},
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      t.Context(),
+		},
 	}
 	err = stopCmd.Run()
 	assert.NilError(t, err)
@@ -325,9 +428,15 @@ func TestCardinalBuild(t *testing.T) {
 	// Change to the template directory (auto-resets after test)
 	t.Chdir(templateDir)
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	// Build cardinal
 	buildCmd := BuildCmd{
-		Parent:   &CardinalCmd{},
+		Parent: &CardinalCmd{
+			Dependencies: dependencies,
+			Context:      t.Context(),
+		},
 		LogLevel: "info",
 	}
 	err = buildCmd.Run()
@@ -336,7 +445,10 @@ func TestCardinalBuild(t *testing.T) {
 	// Cleanup - purge any containers that might have been created during build
 	defer func() {
 		purgeCmd := PurgeCmd{
-			Parent: &CardinalCmd{},
+			Parent: &CardinalCmd{
+				Dependencies: dependencies,
+				Context:      t.Context(),
+			},
 		}
 		_ = purgeCmd.Run() // Ignore errors in cleanup
 	}()

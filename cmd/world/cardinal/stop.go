@@ -3,14 +3,15 @@ package cardinal
 import (
 	"context"
 
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-func Stop(c *StopCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Stop(ctx context.Context, f models.StopCardinalFlags) error {
+	cfg, err := config.GetConfig(&f.Config)
 	if err != nil {
 		return err
 	}
@@ -22,7 +23,6 @@ func Stop(c *StopCmd) error {
 	}
 	defer dockerClient.Close()
 
-	ctx := context.Background()
 	err = dockerClient.Stop(ctx, service.Nakama, service.Cardinal,
 		service.NakamaDB, service.Redis, service.Jaeger, service.Prometheus)
 	if err != nil {

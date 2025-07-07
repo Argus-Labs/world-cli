@@ -318,6 +318,8 @@ func initDependencies(env, version string) (cmdsetup.Dependencies, error) {
 
 	evmHandler := evm.NewHandler()
 
+	cardinalHandler := cardinal.NewHandler()
+
 	setupController := cmdsetup.NewController(
 		configService,
 		repoClient,
@@ -342,5 +344,6 @@ func initDependencies(env, version string) (cmdsetup.Dependencies, error) {
 		EVMHandler:          evmHandler,
 		SetupController:     setupController,
 		RootHandler:         rootHandler,
+		CardinalHandler:     cardinalHandler,
 	}, nil
 }
