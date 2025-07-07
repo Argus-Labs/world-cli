@@ -7,12 +7,8 @@ import (
 	"pkg.world.dev/world-cli/cmd/internal/models"
 )
 
-var CmdPlugin struct {
-	Cloud *Cmd `cmd:""`
-}
-
 //nolint:lll // needed to put all the help text in the same line
-type Cmd struct {
+var CmdPlugin struct {
 	Deploy  *DeployCmd  `cmd:"" group:"Cloud Management Commands:" help:"Deploy your World Forge project to a TEST environment in the cloud"`
 	Status  *StatusCmd  `cmd:"" group:"Cloud Management Commands:" help:"Check the status of your deployed World Forge project"`
 	Promote *PromoteCmd `cmd:"" group:"Cloud Management Commands:" help:"Deploy your game project to a LIVE environment in the cloud"`
