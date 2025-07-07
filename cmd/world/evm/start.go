@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/rotisserie/eris"
+	"pkg.world.dev/world-cli/cmd/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/docker/service"
@@ -14,8 +15,8 @@ import (
 	"pkg.world.dev/world-cli/common/teacmd"
 )
 
-func Start(c *StartCmd) error {
-	cfg, err := config.GetConfig(&c.Parent.Config)
+func (h *Handler) Start(ctx context.Context, flags models.StartEVMFlags) error {
+	cfg, err := config.GetConfig(&flags.Config)
 	if err != nil {
 		return err
 	}
@@ -27,17 +28,12 @@ func Start(c *StartCmd) error {
 	}
 	defer dockerClient.Close()
 
-	ctx := c.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	if err = validateDALayer(ctx, c, cfg, dockerClient); err != nil {
+	if err = validateDALayer(ctx, flags, cfg, dockerClient); err != nil {
 		return err
 	}
 
-	if c.DAAuthToken != "" {
-		cfg.DockerEnv[EnvDAAuthToken] = c.DAAuthToken
+	if flags.DAAuthToken != "" {
+		cfg.DockerEnv[EnvDAAuthToken] = flags.DAAuthToken
 	}
 
 	cfg.Build = true
@@ -63,7 +59,11 @@ func Start(c *StartCmd) error {
 
 // validateDevDALayer starts a locally running version of the DA layer, and replaces the DA_AUTH_TOKEN configuration
 // variable with the token from the locally running container.
-func validateDevDALayer(ctx context.Context, _ *StartCmd, cfg *config.Config, dockerClient *docker.Client) error {
+func validateDevDALayer(
+	ctx context.Context,
+	cfg *config.Config,
+	dockerClient *docker.Client,
+) error {
 	cfg.Build = true
 	cfg.Debug = false
 	cfg.Detach = true
@@ -114,10 +114,15 @@ func validateProdDALayer(cfg *config.Config) error {
 	return nil
 }
 
-func validateDALayer(ctx context.Context, cmd *StartCmd, cfg *config.Config, dockerClient *docker.Client) error {
-	if cmd.UseDevDA {
+func validateDALayer(
+	ctx context.Context,
+	flags models.StartEVMFlags,
+	cfg *config.Config,
+	dockerClient *docker.Client,
+) error {
+	if flags.UseDevDA {
 		cfg.DevDA = true
-		return validateDevDALayer(ctx, cmd, cfg, dockerClient)
+		return validateDevDALayer(ctx, cfg, dockerClient)
 	}
 	return validateProdDALayer(cfg)
 }

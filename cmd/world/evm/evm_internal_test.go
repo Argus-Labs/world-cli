@@ -13,6 +13,17 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
+	"pkg.world.dev/world-cli/cmd/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/internal/clients/browser"
+	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
+	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/internal/services/input"
+	"pkg.world.dev/world-cli/cmd/world/cloud"
+	"pkg.world.dev/world-cli/cmd/world/organization"
+	"pkg.world.dev/world-cli/cmd/world/project"
+	"pkg.world.dev/world-cli/cmd/world/root"
+	"pkg.world.dev/world-cli/cmd/world/user"
 )
 
 var testCounter uint64
@@ -135,6 +146,69 @@ func copyDir(src, dst string) error {
 	})
 }
 
+// createTestDependencies creates a minimal set of dependencies for testing.
+func createTestDependencies() cmdsetup.Dependencies {
+	configService, _ := config.NewService("LOCAL")
+	inputService := input.NewService()
+	repoClient := repo.NewClient()
+	apiClient := api.NewClient("", "", "")
+
+	projectHandler := project.NewHandler(
+		repoClient,
+		configService,
+		apiClient,
+		&inputService,
+	)
+
+	orgHandler := organization.NewHandler(
+		projectHandler,
+		&inputService,
+		apiClient,
+		configService,
+	)
+
+	userHandler := user.NewHandler(
+		apiClient,
+		&inputService,
+	)
+
+	cloudHandler := cloud.NewHandler(
+		apiClient,
+		configService,
+		projectHandler,
+		&inputService,
+	)
+
+	setupController := cmdsetup.NewController(
+		configService,
+		repoClient,
+		orgHandler,
+		projectHandler,
+		apiClient,
+		&inputService,
+	)
+
+	browserClient := browser.NewClient()
+	rootHandler := root.NewHandler("test-version", configService, apiClient, setupController, browserClient)
+
+	// Create EVM handler
+	evmHandler := &Handler{}
+
+	return cmdsetup.Dependencies{
+		ConfigService:       configService,
+		InputService:        &inputService,
+		APIClient:           apiClient,
+		RepoClient:          repoClient,
+		OrganizationHandler: orgHandler,
+		ProjectHandler:      projectHandler,
+		UserHandler:         userHandler,
+		CloudHandler:        cloudHandler,
+		SetupController:     setupController,
+		RootHandler:         rootHandler,
+		EVMHandler:          evmHandler,
+	}
+}
+
 func TestEVMStart(t *testing.T) {
 	t.Skip("Skipping evm start test")
 
@@ -157,15 +231,20 @@ func TestEVMStart(t *testing.T) {
 	// Change to the template directory (auto-resets after test)
 	t.Chdir(templateDir)
 
-	// Start evm dev
-	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(10*time.Second))
+	// Start evm dev with longer timeout
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(20*time.Second))
 	defer cancel()
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	startCmd := StartCmd{
-		Parent:   &EvmCmd{},
-		UseDevDA: true,
-		Context:  ctx,
+		Parent:       &EvmCmd{},
+		UseDevDA:     true,
+		Context:      ctx,
+		Dependencies: dependencies,
 	}
+
 	done := make(chan error, 1)
 	go func() {
 		done <- startCmd.Run() // evm start --dev
@@ -207,14 +286,18 @@ func TestEVMStop(t *testing.T) {
 	// Change to the template directory (auto-resets after test)
 	t.Chdir(templateDir)
 
-	// Start EVM first so we have something to stop
-	ctx, startCancel := context.WithTimeout(t.Context(), 5*time.Second)
+	// Start EVM first so we have something to stop with longer timeout
+	ctx, startCancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer startCancel()
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	startCmd := StartCmd{
-		Parent:   &EvmCmd{},
-		UseDevDA: true,
-		Context:  ctx,
+		Parent:       &EvmCmd{},
+		UseDevDA:     true,
+		Context:      ctx,
+		Dependencies: dependencies,
 	}
 
 	// Start EVM in background
@@ -228,7 +311,9 @@ func TestEVMStop(t *testing.T) {
 
 	// Now test the Stop command
 	stopCmd := StopCmd{
-		Parent: &EvmCmd{},
+		Parent:       &EvmCmd{},
+		Context:      ctx,
+		Dependencies: dependencies,
 	}
 
 	err = stopCmd.Run()
@@ -264,14 +349,18 @@ func TestEVMStartAndStop(t *testing.T) {
 	// Change to the template directory (auto-resets after test)
 	t.Chdir(templateDir)
 
-	// Start EVM
-	ctx, startCancel := context.WithTimeout(t.Context(), 5*time.Second)
+	// Start EVM with longer timeout for container cleanup
+	ctx, startCancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer startCancel()
 
+	// Create dependencies and CLI commands
+	dependencies := createTestDependencies()
+
 	startCmd := StartCmd{
-		Parent:   &EvmCmd{},
-		UseDevDA: true,
-		Context:  ctx,
+		Parent:       &EvmCmd{},
+		UseDevDA:     true,
+		Context:      ctx,
+		Dependencies: dependencies,
 	}
 
 	// Start EVM in background
@@ -285,7 +374,9 @@ func TestEVMStartAndStop(t *testing.T) {
 
 	// Test Stop command
 	stopCmd := StopCmd{
-		Parent: &EvmCmd{},
+		Parent:       &EvmCmd{},
+		Context:      ctx,
+		Dependencies: dependencies,
 	}
 
 	err = stopCmd.Run()
