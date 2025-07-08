@@ -76,6 +76,8 @@ type ClientInterface interface {
 	GetOrganizationByID(ctx context.Context, id string) (models.Organization, error)
 	// CreateOrganization creates a new organization
 	CreateOrganization(ctx context.Context, name, slug string) (models.Organization, error)
+	// GetOrganizationMembers retrieves all members of an organization
+	GetOrganizationMembers(ctx context.Context, orgID string) ([]models.OrganizationMember, error)
 
 	// ========================================
 	// Project Management Methods

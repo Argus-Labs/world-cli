@@ -99,3 +99,16 @@ func (c *Client) UpdateUserRoleInOrganization(ctx context.Context, orgID, userEm
 
 	return nil
 }
+
+func (c *Client) GetOrganizationMembers(ctx context.Context, orgID string) ([]models.OrganizationMember, error) {
+	if orgID == "" {
+		return []models.OrganizationMember{}, eris.New("organization ID is required")
+	}
+
+	endpoint := fmt.Sprintf("/api/organization/%s/members", orgID)
+	body, err := c.sendRequest(ctx, get, endpoint, nil)
+	if err != nil {
+		return []models.OrganizationMember{}, eris.Wrap(err, "Failed to get organization members")
+	}
+	return parseResponse[[]models.OrganizationMember](body)
+}

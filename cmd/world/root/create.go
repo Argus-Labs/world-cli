@@ -105,8 +105,8 @@ func (m WorldCreateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg: //nolint:exhaustive // not applicable
-		switch msg.Type {
+	case tea.KeyMsg:
+		switch msg.Type { //nolint:exhaustive // Missing are not relevant
 		case tea.KeyEnter:
 			if m.projectNameInput.Value() == "" {
 				m.projectNameInput.SetValue("starter-game")

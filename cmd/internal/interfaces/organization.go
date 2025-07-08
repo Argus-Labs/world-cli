@@ -20,6 +20,13 @@ type OrganizationHandler interface {
 		flags models.SwitchOrganizationFlags,
 	) (models.Organization, error)
 
+	// MembersList lists members of an organization.
+	MembersList(
+		ctx context.Context,
+		org models.Organization,
+		flags models.MembersListFlags,
+	) error
+
 	// PromptForSwitch manages organization selection with optional creation.
 	// If enableCreation is true, allows creating a new organization during selection.
 	PromptForSwitch(

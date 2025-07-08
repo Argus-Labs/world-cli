@@ -176,6 +176,15 @@ func (m *MockClient) GetDeploymentHealthStatus(
 	return args.Get(0).(map[string]models.DeploymentHealthCheckResult), args.Error(1)
 }
 
+// GetOrganizationMembers mocks getting organization members.
+func (m *MockClient) GetOrganizationMembers(ctx context.Context, orgID string) ([]models.OrganizationMember, error) {
+	args := m.Called(ctx, orgID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.OrganizationMember), args.Error(1)
+}
+
 // Utility methods
 
 // SetAuthToken mocks setting auth token.

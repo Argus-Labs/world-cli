@@ -9,13 +9,6 @@ import (
 	"pkg.world.dev/world-cli/common/printer"
 )
 
-const (
-	RoleMember Role = "member"
-	RoleAdmin  Role = "admin"
-	RoleOwner  Role = "owner"
-	NoneRole   Role = "none"
-)
-
 var (
 	ErrFailedToSetUserRoleInOrg = eris.New("Failed to set user role in organization")
 )
@@ -56,10 +49,10 @@ func (h *Handler) ChangeRoleInOrganization(
 
 func (h *Handler) promptForRole(ctx context.Context, roleFlag string) (string, error) {
 	roles := []string{
-		string(RoleMember),
-		string(RoleAdmin),
-		string(RoleOwner),
-		string(NoneRole),
+		string(models.RoleMember),
+		string(models.RoleAdmin),
+		string(models.RoleOwner),
+		string(models.RoleNone),
 	}
 
 	roleIndex := 0

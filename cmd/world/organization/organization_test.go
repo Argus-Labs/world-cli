@@ -580,3 +580,261 @@ func (s *OrganizationTestSuite) TestHandler_PromptForSwitch_InputError() {
 	s.Equal(models.Organization{}, result)
 	mockInputService.AssertExpectations(s.T())
 }
+
+// TestHandler_MembersList_Success tests successful members list retrieval.
+func (s *OrganizationTestSuite) TestHandler_MembersList_Success() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: false,
+	}
+
+	// Create test members with different roles
+	testMembers := []models.OrganizationMember{
+		{
+			Role: models.RoleOwner,
+			User: models.User{Name: "Owner User", Email: "owner@example.com"},
+		},
+		{
+			Role: models.RoleAdmin,
+			User: models.User{Name: "Admin User", Email: "admin@example.com"},
+		},
+		{
+			Role: models.RoleMember,
+			User: models.User{Name: "Member User", Email: "member@example.com"},
+		},
+	}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_WithRemovedList tests members list with removed list flag.
+func (s *OrganizationTestSuite) TestHandler_MembersList_WithRemovedList() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: true,
+	}
+
+	// Create test members including RoleNone (removed members)
+	testMembers := []models.OrganizationMember{
+		{
+			Role: models.RoleOwner,
+			User: models.User{Name: "Owner User", Email: "owner@example.com"},
+		},
+		{
+			Role: models.RoleNone,
+			User: models.User{Name: "Removed User", Email: "removed@example.com"},
+		},
+	}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_WithoutRemovedList tests members list without removed list flag.
+func (s *OrganizationTestSuite) TestHandler_MembersList_WithoutRemovedList() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: false,
+	}
+
+	// Create test members including RoleNone (removed members)
+	testMembers := []models.OrganizationMember{
+		{
+			Role: models.RoleOwner,
+			User: models.User{Name: "Owner User", Email: "owner@example.com"},
+		},
+		{
+			Role: models.RoleNone,
+			User: models.User{Name: "Removed User", Email: "removed@example.com"},
+		},
+	}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_EmptyMembers tests members list with no members.
+func (s *OrganizationTestSuite) TestHandler_MembersList_EmptyMembers() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: false,
+	}
+
+	// Empty members list
+	testMembers := []models.OrganizationMember{}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_AllRoles tests members list with all possible roles.
+func (s *OrganizationTestSuite) TestHandler_MembersList_AllRoles() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: true,
+	}
+
+	// Create test members with all possible roles
+	testMembers := []models.OrganizationMember{
+		{
+			Role: models.RoleOwner,
+			User: models.User{Name: "Owner User", Email: "owner@example.com"},
+		},
+		{
+			Role: models.RoleAdmin,
+			User: models.User{Name: "Admin User 1", Email: "admin1@example.com"},
+		},
+		{
+			Role: models.RoleAdmin,
+			User: models.User{Name: "Admin User 2", Email: "admin2@example.com"},
+		},
+		{
+			Role: models.RoleMember,
+			User: models.User{Name: "Member User 1", Email: "member1@example.com"},
+		},
+		{
+			Role: models.RoleMember,
+			User: models.User{Name: "Member User 2", Email: "member2@example.com"},
+		},
+		{
+			Role: models.RoleMember,
+			User: models.User{Name: "Member User 3", Email: "member3@example.com"},
+		},
+		{
+			Role: models.RoleNone,
+			User: models.User{Name: "Removed User", Email: "removed@example.com"},
+		},
+	}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_InvalidRole tests members list with invalid role handling.
+func (s *OrganizationTestSuite) TestHandler_MembersList_InvalidRole() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: false,
+	}
+
+	// Create test members with invalid role
+	testMembers := []models.OrganizationMember{
+		{
+			Role: models.Role("invalid_role"),
+			User: models.User{Name: "Invalid User", Email: "invalid@example.com"},
+		},
+		{
+			Role: models.RoleOwner,
+			User: models.User{Name: "Owner User", Email: "owner@example.com"},
+		},
+	}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_APIError tests members list when API call fails.
+func (s *OrganizationTestSuite) TestHandler_MembersList_APIError() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: false,
+	}
+
+	// Mock API call to return error
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(nil, errors.New("API error"))
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "API error")
+	s.Require().Contains(err.Error(), "MembersList: Failed to get organization members")
+	mockAPIClient.AssertExpectations(s.T())
+}
+
+// TestHandler_MembersList_EmptyUserData tests members list with empty user data.
+func (s *OrganizationTestSuite) TestHandler_MembersList_EmptyUserData() {
+	s.T().Parallel()
+
+	handler, _, _, mockAPIClient, _ := s.createTestHandler()
+	ctx := context.Background()
+	org := s.createTestOrganization()
+	flags := models.MembersListFlags{
+		IncludeRemoved: false,
+	}
+
+	// Create test members with empty user data
+	testMembers := []models.OrganizationMember{
+		{
+			Role: models.RoleOwner,
+			User: models.User{Name: "", Email: ""},
+		},
+		{
+			Role: models.RoleAdmin,
+			User: models.User{Name: "Admin User", Email: ""},
+		},
+		{
+			Role: models.RoleMember,
+			User: models.User{Name: "", Email: "member@example.com"},
+		},
+	}
+
+	mockAPIClient.On("GetOrganizationMembers", ctx, org.ID).Return(testMembers, nil)
+
+	err := handler.MembersList(ctx, org, flags)
+
+	s.Require().NoError(err)
+	mockAPIClient.AssertExpectations(s.T())
+}
