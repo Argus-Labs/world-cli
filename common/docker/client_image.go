@@ -153,12 +153,17 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	tarReader := bytes.NewReader(buf.Bytes())
 
 	sourcePath := "."
+	githubToken := os.Getenv("ARGUS_WEV2_GITHUB_TOKEN")
+	if githubToken == "" {
+		return nil, eris.New("ARGUS_WEV2_GITHUB_TOKEN is not set")
+	}
 	buildOptions := build.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
 		Tags:       []string{dockerService.Image},
 		Target:     dockerService.BuildTarget,
 		BuildArgs: map[string]*string{
-			"SOURCE_PATH": &sourcePath,
+			"SOURCE_PATH":  &sourcePath,
+			"GITHUB_TOKEN": &githubToken,
 		},
 	}
 
