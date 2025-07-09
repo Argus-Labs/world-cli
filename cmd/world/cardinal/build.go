@@ -3,6 +3,7 @@ package cardinal
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/docker/docker/api/types/registry"
 	"github.com/rotisserie/eris"
@@ -18,7 +19,25 @@ import (
 func (h *Handler) Build(ctx context.Context, f models.BuildCardinalFlags) error {
 	cfg, err := config.GetConfig(&f.Config)
 	if err != nil {
-		return err
+		// No config file found, create a default config
+		printer.Infoln("No config file found, creating a default config")
+
+		// Get current working directory for Cardinal v2 projects
+		cwd, err := os.Getwd()
+		if err != nil {
+			return eris.Wrap(err, "Failed to get current working directory")
+		}
+
+		// Create a default config
+		cfg = &config.Config{
+			RootDir:   cwd,
+			GameDir:   cwd,
+			Detach:    false,
+			Build:     true,
+			DockerEnv: make(map[string]string),
+		}
+
+		cfg.DockerEnv[DockerCardinalEnvLogLevel] = zerolog.DebugLevel.String()
 	}
 	cfg.Timeout = -1
 
