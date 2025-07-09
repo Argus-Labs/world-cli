@@ -232,7 +232,7 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 	})
 }
 
-// addSSHKeysToTarWriter adds SSH keys to the tar archive if they exist
+// addSSHKeysToTarWriter adds SSH keys to the tar archive if they exist.
 func (c *Client) addSSHKeysToTarWriter(tw *tar.Writer) error {
 	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
 
@@ -249,7 +249,9 @@ func (c *Client) addSSHKeysToTarWriter(tw *tar.Writer) error {
 		}
 
 		// Skip directories and non-key files
-		if info.IsDir() || !strings.HasSuffix(info.Name(), ".pub") && !strings.HasSuffix(info.Name(), "id_rsa") && !strings.HasSuffix(info.Name(), "id_ed25519") {
+		if info.IsDir() ||
+			!strings.HasSuffix(info.Name(), ".pub") && !strings.HasSuffix(info.Name(), "id_rsa") &&
+				!strings.HasSuffix(info.Name(), "id_ed25519") {
 			return nil
 		}
 
