@@ -69,6 +69,12 @@ func (h *Handler) Build(ctx context.Context, f models.BuildCardinalFlags) error 
 	printer.Infoln("Building Cardinal game shard image...")
 	printer.Infoln("This may take a few minutes.")
 
+	// Set the namespace
+	if cfg.DockerEnv["CARDINAL_NAMESPACE"] == "" {
+		cfg.DockerEnv["CARDINAL_NAMESPACE"] = "defaultnamespace"
+	}
+	printer.Infof("Namespace: %s", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+
 	group, groupCtx := errgroup.WithContext(ctx)
 
 	// Create docker client
