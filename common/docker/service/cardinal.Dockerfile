@@ -11,8 +11,9 @@ WORKDIR /go/src/app
 # Set Go environment variables for private repositories
 ENV GOPRIVATE=github.com/argus-labs/*,pkg.world.dev/*
 
-# Configure git to use HTTPS with GitHub token if provided, otherwise use SSH
-RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+# Configure git to use HTTPS with GitHub token
+RUN --mount=type=secret,id=github_token \
+    git config --global url."https://$(cat /run/secrets/github_token):x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 # Copy the entire source code
 COPY /${SOURCE_PATH} ./

@@ -144,11 +144,6 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 		return nil, eris.Wrap(err, "Failed to add source code to tar writer")
 	}
 
-	// Add SSH keys if they exist
-	if err := c.addSSHKeysToTarWriter(tw); err != nil {
-		return nil, eris.Wrap(err, "Failed to add SSH keys to tar writer")
-	}
-
 	// Read the tar archive
 	tarReader := bytes.NewReader(buf.Bytes())
 
@@ -226,64 +221,6 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 
 		if _, err := io.Copy(tw, file); err != nil {
 			return eris.Wrap(err, "Failed to copy file to tar writer")
-		}
-
-		return nil
-	})
-}
-
-// addSSHKeysToTarWriter adds SSH keys to the tar archive if they exist.
-func (c *Client) addSSHKeysToTarWriter(tw *tar.Writer) error {
-	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
-
-	// Check if SSH directory exists
-	if _, err := os.Stat(sshDir); os.IsNotExist(err) {
-		// SSH directory doesn't exist, skip
-		return nil
-	}
-
-	// Add SSH keys to the tar archive
-	return filepath.Walk(sshDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return eris.Wrapf(err, "Failed to walk SSH directory %s", sshDir)
-		}
-
-		// Skip directories and non-key files
-		if info.IsDir() ||
-			!strings.HasSuffix(info.Name(), ".pub") && !strings.HasSuffix(info.Name(), "id_rsa") &&
-				!strings.HasSuffix(info.Name(), "id_ed25519") {
-			return nil
-		}
-
-		// Get relative path from SSH directory
-		relPath, err := filepath.Rel(sshDir, path)
-		if err != nil {
-			return eris.Wrapf(err, "Failed to get relative path %s", path)
-		}
-
-		// Create tar header
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return eris.Wrap(err, "Failed to create tar header")
-		}
-
-		// Set the name to be in the .ssh directory
-		header.Name = filepath.ToSlash(filepath.Join(".ssh", relPath))
-
-		// Write the header
-		if err := tw.WriteHeader(header); err != nil {
-			return eris.Wrap(err, "Failed to write header to tar writer")
-		}
-
-		// Write the file content
-		file, err := os.Open(path)
-		if err != nil {
-			return eris.Wrapf(err, "Failed to open SSH key file %s", path)
-		}
-		defer file.Close()
-
-		if _, err := io.Copy(tw, file); err != nil {
-			return eris.Wrap(err, "Failed to copy SSH key to tar writer")
 		}
 
 		return nil

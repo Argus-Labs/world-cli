@@ -32,7 +32,7 @@ func checkBuildkitSupport(cli *client.Client) bool {
 		return false
 	}
 
-	// Check if DOCKER_BUILDKIT environment variable is set to 1
+	// Always return true to enable BuildKit (or check environment variable)
 	buildKitEnv := os.Getenv("DOCKER_BUILDKIT")
-	return buildKitEnv == "1"
+	return buildKitEnv == "1" || buildKitEnv == ""
 }
