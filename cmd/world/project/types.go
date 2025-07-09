@@ -3,11 +3,11 @@ package project
 import (
 	"context"
 
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/clients/repo"
-	"pkg.world.dev/world-cli/cmd/internal/interfaces"
-	"pkg.world.dev/world-cli/cmd/internal/services/config"
-	"pkg.world.dev/world-cli/cmd/internal/services/input"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/repo"
+	"pkg.world.dev/world-cli/cmd/world/internal/interfaces"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/input"
 )
 
 const nilUUID = "00000000-0000-0000-0000-000000000000"

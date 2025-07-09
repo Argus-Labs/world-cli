@@ -8,7 +8,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 	"pkg.world.dev/world-cli/common/printer"

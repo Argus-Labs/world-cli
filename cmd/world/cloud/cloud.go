@@ -3,8 +3,8 @@ package cloud
 import (
 	"context"
 
-	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 )
 
 //nolint:lll // needed to put all the help text in the same line

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/mock"
-	"pkg.world.dev/world-cli/cmd/internal/interfaces"
+	"pkg.world.dev/world-cli/cmd/world/internal/interfaces"
 )
 
 // Interface guard.

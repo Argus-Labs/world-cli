@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/rotisserie/eris"
-	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/printer"
 )
 

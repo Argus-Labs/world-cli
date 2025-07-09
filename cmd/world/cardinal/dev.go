@@ -14,7 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rotisserie/eris"
 	"golang.org/x/sync/errgroup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"

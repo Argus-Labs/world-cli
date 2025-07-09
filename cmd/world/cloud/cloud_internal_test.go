@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/services/config"
-	"pkg.world.dev/world-cli/cmd/internal/services/input"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/input"
 	"pkg.world.dev/world-cli/cmd/world/cloud"
 	"pkg.world.dev/world-cli/cmd/world/project"
 )

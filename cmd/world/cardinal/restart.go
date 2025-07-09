@@ -3,7 +3,7 @@ package cardinal
 import (
 	"context"
 
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/docker"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/alecthomas/kong"
-	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
+	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
 )
 
 var CLI Cmd

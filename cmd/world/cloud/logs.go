@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/printer"
 	logsv1 "pkg.world.dev/world-cli/gen/logs/v1"
 	"pkg.world.dev/world-cli/gen/logs/v1/logsv1connect"

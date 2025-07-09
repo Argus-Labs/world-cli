@@ -1,6 +1,6 @@
 package evm
 
-import "pkg.world.dev/world-cli/cmd/internal/interfaces"
+import "pkg.world.dev/world-cli/cmd/world/internal/interfaces"
 
 var _ interfaces.EVMHandler = (*Handler)(nil)
 

@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/clients/browser"
-	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/browser"
+	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/config"
 	"pkg.world.dev/world-cli/cmd/world/root"
 )
 

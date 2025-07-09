@@ -1,10 +1,10 @@
 package root
 
 import (
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/clients/browser"
-	"pkg.world.dev/world-cli/cmd/internal/interfaces"
-	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/browser"
+	"pkg.world.dev/world-cli/cmd/world/internal/interfaces"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/config"
 )
 
 // Interface guard.

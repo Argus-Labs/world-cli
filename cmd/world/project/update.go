@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/printer"
 )
 

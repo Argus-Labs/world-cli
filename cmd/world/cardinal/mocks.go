@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/mock"
-	"pkg.world.dev/world-cli/cmd/internal/interfaces"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/interfaces"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 )
 
 var _ interfaces.CardinalHandler = (*MockHandler)(nil)

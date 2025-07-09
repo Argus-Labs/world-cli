@@ -3,8 +3,8 @@ package cardinal
 import (
 	"context"
 
-	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/config"
 	"pkg.world.dev/world-cli/common/dependency"
 	"pkg.world.dev/world-cli/common/docker/service"

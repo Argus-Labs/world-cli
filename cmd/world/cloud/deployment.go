@@ -14,7 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog/log"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/printer"
 	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )

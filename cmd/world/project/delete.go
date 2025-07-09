@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/cmd/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
 	"pkg.world.dev/world-cli/common/printer"
 )
 

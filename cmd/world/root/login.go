@@ -15,9 +15,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rotisserie/eris"
 	"github.com/rs/zerolog/log"
-	cmdsetup "pkg.world.dev/world-cli/cmd/internal/controllers/cmd_setup"
-	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/services/config"
+	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/services/config"
 	"pkg.world.dev/world-cli/common/printer"
 	teaspinner "pkg.world.dev/world-cli/tea/component/spinner"
 )

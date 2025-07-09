@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/rotisserie/eris"
-	"pkg.world.dev/world-cli/cmd/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/internal/models"
-	"pkg.world.dev/world-cli/cmd/internal/utils/slug"
-	"pkg.world.dev/world-cli/cmd/internal/utils/validate"
+	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
+	"pkg.world.dev/world-cli/cmd/world/internal/models"
+	"pkg.world.dev/world-cli/cmd/world/internal/utils/slug"
+	"pkg.world.dev/world-cli/cmd/world/internal/utils/validate"
 	"pkg.world.dev/world-cli/common/printer"
 )
 
