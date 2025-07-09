@@ -211,6 +211,11 @@ func TestStartUndetach(t *testing.T) {
 func TestBuild(t *testing.T) {
 	t.Parallel()
 
+	// Skip test if GitHub token is not available
+	if os.Getenv("ARGUS_WEV2_GITHUB_TOKEN") == "" {
+		t.Skip("Skipping build test - ARGUS_WEV2_GITHUB_TOKEN not set")
+	}
+
 	namespace := getUniqueNamespace(t)
 
 	// Create a temporary directory

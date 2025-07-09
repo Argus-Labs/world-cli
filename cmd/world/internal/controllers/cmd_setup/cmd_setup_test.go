@@ -59,7 +59,7 @@ func TestSetupCommandSuite(t *testing.T) {
 
 // TestLoginScenarios tests various login scenarios.
 func (s *SetupCommandSuite) TestLoginScenarios() {
-	s.T().Parallel()
+	// s.T().Parallel()
 
 	testCases := []struct {
 		name           string
@@ -161,7 +161,7 @@ func (s *SetupCommandSuite) TestLoginScenarios() {
 
 // TestHandleOrganizationInvitationsAcceptInvitation tests accepting organization invitations.
 func (s *SetupCommandSuite) TestHandleOrganizationInvitationsAcceptInvitation() {
-	s.T().Parallel()
+	// s.T().Parallel()
 	controller, mockAPI, mockConfig, mockInput, mockRepo, mockOrgHandler, mockProjectHandler := s.createTestController()
 	ctx := context.Background()
 
@@ -311,7 +311,7 @@ func (s *SetupCommandSuite) TestRepoLookupSuccess() {
 
 // TestRepoLookupNotLoggedIn tests repository lookup when user is not logged in.
 func (s *SetupCommandSuite) TestRepoLookupNotLoggedIn() {
-	s.T().Parallel()
+	// s.T().Parallel()
 	controller, mockAPI, mockConfig, mockInput, mockRepo, mockOrgHandler, mockProjectHandler := s.createTestController()
 	ctx := context.Background()
 
@@ -343,7 +343,7 @@ func (s *SetupCommandSuite) TestRepoLookupNotLoggedIn() {
 
 // TestNeedOrgDataNoOrgsCreateNew tests creating a new organization when none exist.
 func (s *SetupCommandSuite) TestNeedOrgDataNoOrgsCreateNew() {
-	s.T().Parallel()
+	// s.T().Parallel()
 	controller, mockAPI, mockConfig, mockInput, mockRepo, mockOrgHandler, mockProjectHandler := s.createTestController()
 	ctx := context.Background()
 
@@ -777,7 +777,7 @@ func (s *SetupCommandSuite) TestRepoLookupNewProjectDiscovered() {
 
 // TestOrganizationInvitationScenarios tests organization invitation handling.
 func (s *SetupCommandSuite) TestOrganizationInvitationScenarios() {
-	s.T().Parallel()
+	// s.T().Parallel()
 
 	testCases := []struct {
 		name         string
@@ -852,7 +852,7 @@ func (s *SetupCommandSuite) TestOrganizationInvitationScenarios() {
 
 // TestOrganizationDataScenarios tests organization data handling scenarios.
 func (s *SetupCommandSuite) TestOrganizationDataScenarios() {
-	s.T().Parallel()
+	// s.T().Parallel()
 
 	testCases := []struct {
 		name          string
@@ -1004,7 +1004,7 @@ func (s *SetupCommandSuite) TestOrganizationDataScenarios() {
 
 // TestProjectDataScenarios tests project data handling scenarios.
 func (s *SetupCommandSuite) TestProjectDataScenarios() {
-	s.T().Parallel()
+	// s.T().Parallel()
 
 	testCases := []struct {
 		name              string
@@ -1199,7 +1199,7 @@ func (s *SetupCommandSuite) TestProjectDataScenarios() {
 
 // TestExistingDataScenarios tests existing data handling scenarios.
 func (s *SetupCommandSuite) TestExistingDataScenarios() {
-	s.T().Parallel()
+	// s.T().Parallel()
 
 	testCases := []struct {
 		name              string
