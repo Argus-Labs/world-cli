@@ -440,8 +440,8 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 
 	// Check for error details
 	if errorDetail, ok := event["errorDetail"]; ok {
-		if errorDetailMap, ok := errorDetail.(map[string]interface{}); ok { //nolint:govet
-			if message, ok := errorDetailMap["message"]; ok && message != "" { //nolint:govet
+		if errorDetailMap, ok2 := errorDetail.(map[string]interface{}); ok2 {
+			if message, ok3 := errorDetailMap["message"]; ok3 && message != "" {
 				return "", eris.New(message.(string))
 			}
 		}
