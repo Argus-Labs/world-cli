@@ -228,14 +228,19 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 }
 
 // readBuildLog filters the output of the Docker build command
-// there is two types of output:
+// there are two types of output:
 // 1. Output from the build process without buildkit
-//   - stream: Output from the build process
+//   - stream: Output from the build process (steps, status, etc.)
 //   - error: Error message from the build process
+//   - errorDetail: Detailed error information
+//   - status: Status updates from the build process
 //
 // 2. Output from the build process with buildkit
-//   - moby.buildkit.trace: Output from the build process
-//   - error: Need to research how buildkit log send error messages (TODO)
+//   - moby.buildkit.trace: Status response with vertex information
+//   - moby.buildkit.v1: Version 1 buildkit messages
+//   - error: Error messages in various formats
+//   - stream: Stream output from build steps
+//   - progress: Progress information
 func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Program, imageName string) error {
 	// Create a new JSON decoder
 	decoder := json.NewDecoder(reader)
@@ -295,53 +300,181 @@ func (c *Client) parseBuildkitResp(decoder *json.Decoder, stop *bool) (string, e
 	var msg jsonmessage.JSONMessage
 	if err := decoder.Decode(&msg); errors.Is(err, io.EOF) {
 		*stop = true
+		return "", nil
 	} else if err != nil {
 		return "", eris.Wrap(err, "Error decoding build output")
 	}
 
+	// Handle different message types
+	switch msg.ID {
+	case "moby.buildkit.trace":
+		return c.parseBuildkitTrace(msg)
+	case "moby.buildkit.v1":
+		return c.parseBuildkitV1(msg)
+	default:
+		// Handle other message types including errors
+		return c.parseBuildkitGeneric(msg)
+	}
+}
+
+func (c *Client) parseBuildkitTrace(msg jsonmessage.JSONMessage) (string, error) {
 	var resp controlapi.StatusResponse
 
-	if msg.ID != "moby.buildkit.trace" {
+	if msg.Aux == nil {
 		return "", nil
 	}
 
 	var dt []byte
-	// ignoring all messages that are not understood
-	// need to research how buildkit log send error messages
 	if err := json.Unmarshal(*msg.Aux, &dt); err != nil {
-		return "", nil //nolint:nilerr // ignore error
+		return "", nil //nolint:nilerr // ignore unmarshal errors for unknown message types
 	}
 	if err := (&resp).Unmarshal(dt); err != nil {
-		return "", nil //nolint:nilerr // ignore error
+		return "", nil //nolint:nilerr // ignore unmarshal errors for unknown message types
 	}
 
 	if len(resp.Vertexes) == 0 {
 		return "", nil
 	}
 
-	// return the name of the vertex (step) that is currently being executed
-	return resp.Vertexes[len(resp.Vertexes)-1].Name, nil
+	// Return the name of the vertex (step) that is currently being executed
+	latestVertex := resp.Vertexes[len(resp.Vertexes)-1]
+
+	// Check if the vertex has an error
+	if latestVertex.Error != "" {
+		return "", eris.New(latestVertex.Error)
+	}
+
+	// Include progress information if available
+	stepInfo := latestVertex.Name
+	if latestVertex.ProgressGroup != nil {
+		stepInfo = fmt.Sprintf("%s (in progress)", latestVertex.Name)
+	}
+
+	return stepInfo, nil
 }
 
-func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string, error) {
+func (c *Client) parseBuildkitV1(msg jsonmessage.JSONMessage) (string, error) {
+	// Handle buildkit v1 messages which can contain detailed build information
+	if msg.Aux == nil {
+		return "", nil
+	}
+
+	var auxData map[string]interface{}
+	if err := json.Unmarshal(*msg.Aux, &auxData); err != nil {
+		return "", nil //nolint:nilerr // ignore unmarshal errors
+	}
+
+	// Extract step information from v1 messages
+	if step, ok := auxData["step"].(string); ok && step != "" {
+		return step, nil
+	}
+
+	// Check for error information
+	if errorMsg, ok := auxData["error"].(string); ok && errorMsg != "" {
+		return "", eris.New(errorMsg)
+	}
+
+	return "", nil
+}
+
+func (c *Client) parseBuildkitGeneric(msg jsonmessage.JSONMessage) (string, error) {
+	// Handle generic buildkit messages including errors and progress updates
+
+	// Check for error messages in the main message
+	if msg.Error != nil {
+		return "", eris.New(msg.Error.Message)
+	}
+
+	// Check for error messages in the stream
+	if msg.Stream != "" {
+		stream := strings.TrimSpace(msg.Stream)
+
+		// Check if this is an error message
+		if strings.Contains(strings.ToLower(stream), "error") {
+			return "", eris.New(stream)
+		}
+
+		// Check if this is a build step
+		if strings.HasPrefix(stream, "Step") {
+			return stream, nil
+		}
+
+		// Check for other important build information
+		if strings.Contains(stream, "Pulling") ||
+			strings.Contains(stream, "Building") ||
+			strings.Contains(stream, "Running") ||
+			strings.Contains(stream, "Executing") {
+			return stream, nil
+		}
+	}
+
+	// Check for error details
+	if msg.Error != nil {
+		return "", eris.New(msg.Error.Message)
+	}
+
+	// Check for progress information
+	if msg.Progress != nil {
+		progress := msg.Progress.String()
+		if progress != "" {
+			return progress, nil
+		}
+	}
+
+	return "", nil
+}
+
+func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string, error) { //nolint:gocognit
 	var event map[string]interface{}
 	if err := decoder.Decode(&event); errors.Is(err, io.EOF) {
 		*stop = true
+		return "", nil
 	} else if err != nil {
 		return "", eris.Wrap(err, "Error decoding build output")
 	}
 
-	// Only show the step if it's a build step
-	step := ""
-	if val, ok := event["stream"]; ok && val != "" && strings.HasPrefix(val.(string), "Step") {
-		if step, ok = val.(string); ok && step != "" {
-			step = strings.TrimSpace(step)
-		}
-	} else if val, ok = event["error"]; ok && val != "" {
+	// Check for error messages first
+	if val, ok := event["error"]; ok && val != "" {
 		return "", eris.New(val.(string))
 	}
 
-	return step, nil
+	// Check for error details
+	if errorDetail, ok := event["errorDetail"]; ok {
+		if errorDetailMap, ok := errorDetail.(map[string]interface{}); ok { //nolint:govet
+			if message, ok := errorDetailMap["message"]; ok && message != "" { //nolint:govet
+				return "", eris.New(message.(string))
+			}
+		}
+	}
+
+	// Check for build steps and other important information
+	if val, ok := event["stream"]; ok && val != "" {
+		stream := strings.TrimSpace(val.(string))
+
+		// Check if this is a build step
+		if strings.HasPrefix(stream, "Step") {
+			return stream, nil
+		}
+
+		// Check for other important build information
+		if strings.Contains(stream, "Pulling") ||
+			strings.Contains(stream, "Building") ||
+			strings.Contains(stream, "Running") ||
+			strings.Contains(stream, "Executing") ||
+			strings.Contains(stream, "Successfully") {
+			return stream, nil
+		}
+	}
+
+	// Check for status updates
+	if val, ok := event["status"]; ok && val != "" {
+		status := strings.TrimSpace(val.(string))
+		if status != "" {
+			return status, nil
+		}
+	}
+
+	return "", nil
 }
 
 // filterImages filters the images that need to be pulled.
