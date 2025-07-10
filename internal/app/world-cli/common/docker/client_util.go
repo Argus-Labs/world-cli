@@ -32,7 +32,13 @@ func checkBuildkitSupport(cli *client.Client) bool {
 		return false
 	}
 
-	// Always return true to enable BuildKit (or check environment variable)
+	// Check environment variable to enable BuildKit (disabled by default unless explicitly enabled)
+	useBuildKit := os.Getenv("USE_DOCKER_BUILDKIT")
+	if useBuildKit != "1" {
+		return false
+	}
+
+	// Only enable BuildKit if explicitly requested and Docker supports it
 	buildKitEnv := os.Getenv("DOCKER_BUILDKIT")
 	return buildKitEnv == "1" || buildKitEnv == ""
 }

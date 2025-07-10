@@ -569,6 +569,11 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 			return stream, nil
 		}
 
+		// Check for debug output (echo statements)
+		if strings.HasPrefix(stream, "DEBUG:") {
+			return stream, nil
+		}
+
 		// Check for other important build information
 		if strings.Contains(stream, "Pulling") ||
 			strings.Contains(stream, "Building") ||
