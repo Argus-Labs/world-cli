@@ -12,23 +12,23 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
-	"pkg.world.dev/world-cli/cmd/world/internal/clients/api"
-	"pkg.world.dev/world-cli/cmd/world/internal/clients/browser"
-	"pkg.world.dev/world-cli/cmd/world/internal/clients/repo"
-	cmdsetup "pkg.world.dev/world-cli/cmd/world/internal/controllers/cmd_setup"
-	cfgService "pkg.world.dev/world-cli/cmd/world/internal/services/config"
-	"pkg.world.dev/world-cli/cmd/world/internal/services/input"
-	"pkg.world.dev/world-cli/cmd/world/cardinal"
-	"pkg.world.dev/world-cli/cmd/world/cloud"
-	"pkg.world.dev/world-cli/cmd/world/evm"
-	"pkg.world.dev/world-cli/cmd/world/organization"
-	"pkg.world.dev/world-cli/cmd/world/project"
-	"pkg.world.dev/world-cli/cmd/world/root"
-	"pkg.world.dev/world-cli/cmd/world/user"
-	"pkg.world.dev/world-cli/common/config"
-	"pkg.world.dev/world-cli/common/logger"
-	"pkg.world.dev/world-cli/common/printer"
-	"pkg.world.dev/world-cli/telemetry"
+	"pkg.world.dev/world-cli/internal/app/world-cli/clients/api"
+	"pkg.world.dev/world-cli/internal/app/world-cli/clients/browser"
+	"pkg.world.dev/world-cli/internal/app/world-cli/clients/repo"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/cardinal"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/cloud"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/evm"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/organization"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/project"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/root"
+	"pkg.world.dev/world-cli/internal/app/world-cli/commands/user"
+	"pkg.world.dev/world-cli/internal/app/world-cli/common/config"
+	"pkg.world.dev/world-cli/internal/app/world-cli/common/telemetry"
+	cmdsetup "pkg.world.dev/world-cli/internal/app/world-cli/controllers/cmd_setup"
+	cfgService "pkg.world.dev/world-cli/internal/app/world-cli/services/config"
+	"pkg.world.dev/world-cli/internal/app/world-cli/services/input"
+	"pkg.world.dev/world-cli/internal/pkg/logger"
+	"pkg.world.dev/world-cli/internal/pkg/printer"
 )
 
 const (
@@ -112,17 +112,17 @@ func main() {
 	}
 
 	// Initialize packages
-	root.CLI.Plugins = kong.Plugins{
-		&cardinal.CardinalCmdPlugin,
-		&cloud.CmdPlugin,
-		&evm.EvmCmdPlugin,
-		&project.CmdPlugin,
-		&organization.CmdPlugin,
-		&user.CmdPlugin,
+	CLI.Plugins = kong.Plugins{
+		&CardinalCmdPlugin,
+		&CloudCmdPlugin,
+		&EvmCmdPlugin,
+		&ProjectCmdPlugin,
+		&OrganizationCmdPlugin,
+		&UserCmdPlugin,
 	}
 
 	ctx := kong.Parse(
-		&root.CLI,
+		&CLI,
 		kong.Name("world"),
 		kong.Description("World CLI: Your complete toolkit for World Engine development"),
 		kong.UsageOnError(),
@@ -132,13 +132,13 @@ func main() {
 		}),
 	)
 	realCtx := contextWithSigterm(context.Background())
-	SetKongParentsAndContext(realCtx, dependencies, &root.CLI)
-	SetKongParentsAndContext(realCtx, dependencies, &cardinal.CardinalCmdPlugin)
-	SetKongParentsAndContext(realCtx, dependencies, &cloud.CmdPlugin)
-	SetKongParentsAndContext(realCtx, dependencies, &evm.EvmCmdPlugin)
-	SetKongParentsAndContext(realCtx, dependencies, &project.CmdPlugin)
-	SetKongParentsAndContext(realCtx, dependencies, &organization.CmdPlugin)
-	SetKongParentsAndContext(realCtx, dependencies, &user.CmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &CLI)
+	SetKongParentsAndContext(realCtx, dependencies, &CardinalCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &CloudCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &EvmCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &ProjectCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &OrganizationCmdPlugin)
+	SetKongParentsAndContext(realCtx, dependencies, &UserCmdPlugin)
 	err = ctx.Run()
 	if err != nil {
 		sentry.CaptureException(err)
