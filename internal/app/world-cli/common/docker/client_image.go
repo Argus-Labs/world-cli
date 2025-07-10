@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/docker/docker/api/types/build"
@@ -164,6 +165,8 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 
 	if service.BuildkitSupport {
 		buildOptions.Version = build.BuilderBuildKit
+		// Create a unique session ID for BuildKit
+		buildOptions.SessionID = fmt.Sprintf("buildkit-session-%d", time.Now().UnixNano())
 	}
 
 	// Build the image

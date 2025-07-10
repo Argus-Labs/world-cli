@@ -12,7 +12,7 @@ WORKDIR /go/src/app
 ENV GOPRIVATE=github.com/argus-labs/*,pkg.world.dev/*
 
 # Configure git to use HTTPS with GitHub token
-RUN git config --global url."https://$(cat /run/secrets/github_token):x-oauth-basic@github.com/".insteadOf "https://github.com/"
+RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 # Copy go.mod files first to leverage Docker layer caching
 COPY /${SOURCE_PATH}/go.mod ./
