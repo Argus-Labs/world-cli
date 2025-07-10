@@ -44,6 +44,15 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 		return nil
 	}
 
+	// Log verbose information about the build process
+	if logger.VerboseMode {
+		logger.Printf("Starting Docker build process for %d services\r\n", len(serviceToBuild))
+		for _, service := range serviceToBuild {
+			logger.Printf("  - Building service: %s (image: %s, target: %s)\r\n",
+				service.Name, service.Image, service.BuildTarget)
+		}
+	}
+
 	// Create ctx with cancel
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -57,6 +66,19 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 		dockerService := ds
 
 		go func() {
+			defer func() {
+				// Ensure we always send an error if the context was cancelled
+				select {
+				case <-ctx.Done():
+					errChan <- eris.New(fmt.Sprintf("Build cancelled for %s", dockerService.Image))
+				default:
+				}
+			}()
+
+			if logger.VerboseMode {
+				logger.Printf("Starting build for service: %s\r\n", dockerService.Name)
+			}
+
 			p.Send(multispinner.ProcessState{
 				State: "building",
 				Type:  "image",
@@ -64,8 +86,14 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 			})
 
 			// Remove the container
+			if logger.VerboseMode {
+				logger.Printf("Removing existing container for service: %s\r\n", dockerService.Name)
+			}
 			err := c.removeContainer(ctx, dockerService.Name)
 			if err != nil {
+				if logger.VerboseMode {
+					logger.Printf("Error removing container for %s: %v\r\n", dockerService.Name, err)
+				}
 				p.Send(multispinner.ProcessState{
 					Icon:   style.CrossIcon.Render(),
 					State:  "building",
@@ -79,8 +107,14 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 			}
 
 			// Start the build process
+			if logger.VerboseMode {
+				logger.Printf("Initiating Docker build for service: %s\r\n", dockerService.Name)
+			}
 			buildResponse, err := c.buildImage(ctx, dockerService)
 			if err != nil {
+				if logger.VerboseMode {
+					logger.Printf("Error building image for %s: %v\r\n", dockerService.Name, err)
+				}
 				p.Send(multispinner.ProcessState{
 					Icon:   style.CrossIcon.Render(),
 					State:  "building",
@@ -95,8 +129,14 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 			defer buildResponse.Body.Close()
 
 			// Print the build logs
+			if logger.VerboseMode {
+				logger.Printf("Processing build logs for service: %s\r\n", dockerService.Name)
+			}
 			err = c.readBuildLog(ctx, buildResponse.Body, p, dockerService.Image)
 			if err != nil {
+				if logger.VerboseMode {
+					logger.Printf("Error reading build logs for %s: %v\r\n", dockerService.Name, err)
+				}
 				errChan <- err
 			}
 		}()
@@ -116,18 +156,35 @@ func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Serv
 
 	// If there were any errors, return them as a combined error
 	if len(errs) > 0 {
-		return eris.New(fmt.Sprintf("Errors: %v", errs))
+		if logger.VerboseMode {
+			logger.Printf("Build completed with %d errors\r\n", len(errs))
+			for i, err := range errs {
+				logger.Printf("  Error %d: %v\r\n", i+1, err)
+			}
+		}
+		return eris.New(fmt.Sprintf("Docker build failed: %v", errs))
+	}
+
+	if logger.VerboseMode {
+		logger.Printf("All Docker builds completed successfully\r\n")
 	}
 
 	return nil
 }
 
 func (c *Client) buildImage(ctx context.Context, dockerService service.Service) (*build.ImageBuildResponse, error) {
+	if logger.VerboseMode {
+		logger.Printf("Creating build context for service: %s\r\n", dockerService.Name)
+	}
+
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
 	// Add the Dockerfile to the tar archive
+	if logger.VerboseMode {
+		logger.Printf("Adding Dockerfile to build context (size: %d bytes)\r\n", len(dockerService.Dockerfile))
+	}
 	header := &tar.Header{
 		Name: "Dockerfile",
 		Size: int64(len(dockerService.Dockerfile)),
@@ -140,6 +197,9 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	}
 
 	// Add source code to the tar archive
+	if logger.VerboseMode {
+		logger.Printf("Adding source code from directory: %s\r\n", c.cfg.RootDir)
+	}
 	if err := c.addFileToTarWriter(c.cfg.RootDir, tw); err != nil {
 		return nil, eris.Wrap(err, "Failed to add source code to tar writer")
 	}
@@ -152,6 +212,15 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	if githubToken == "" {
 		return nil, eris.New("ARGUS_WEV2_GITHUB_TOKEN is not set")
 	}
+
+	if logger.VerboseMode {
+		logger.Printf("Configuring build options for service: %s\r\n", dockerService.Name)
+		logger.Printf("  - Image tag: %s\r\n", dockerService.Image)
+		logger.Printf("  - Build target: %s\r\n", dockerService.BuildTarget)
+		logger.Printf("  - Source path: %s\r\n", sourcePath)
+		logger.Printf("  - BuildKit support: %t\r\n", service.BuildkitSupport)
+	}
+
 	buildOptions := build.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
 		Tags:       []string{dockerService.Image},
@@ -167,9 +236,16 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	// }
 
 	// Build the image
+	if logger.VerboseMode {
+		logger.Printf("Starting Docker build for service: %s\r\n", dockerService.Name)
+	}
 	buildResponse, err := c.client.ImageBuild(ctx, tarReader, buildOptions)
 	if err != nil {
 		return nil, eris.Wrap(err, "Failed to build image")
+	}
+
+	if logger.VerboseMode {
+		logger.Printf("Docker build initiated successfully for service: %s\r\n", dockerService.Name)
 	}
 
 	return &buildResponse, nil
@@ -177,6 +253,13 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 
 // The tar file is used to build the Docker image.
 func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
+	var fileCount int
+	var totalSize int64
+
+	if logger.VerboseMode {
+		logger.Printf("Walking directory: %s\r\n", baseDir)
+	}
+
 	return filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return eris.Wrapf(err, "Failed to walk the directory %s", baseDir)
@@ -190,6 +273,9 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 
 		// Skip .git directory and all files inside it
 		if info.Name() == ".git" {
+			if logger.VerboseMode {
+				logger.Printf("Skipping .git directory: %s\r\n", path)
+			}
 			return filepath.SkipDir
 		}
 
@@ -209,6 +295,9 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 
 		// If it's a directory, there's no need to write file content
 		if info.IsDir() {
+			if logger.VerboseMode {
+				logger.Printf("Added directory to build context: %s\r\n", header.Name)
+			}
 			return nil
 		}
 
@@ -221,6 +310,13 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 
 		if _, err := io.Copy(tw, file); err != nil {
 			return eris.Wrap(err, "Failed to copy file to tar writer")
+		}
+
+		// Log file addition in verbose mode
+		if logger.VerboseMode {
+			fileCount++
+			totalSize += info.Size()
+			logger.Printf("Added file to build context: %s (size: %d bytes)\r\n", header.Name, info.Size())
 		}
 
 		return nil
@@ -242,12 +338,19 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 //   - stream: Stream output from build steps
 //   - progress: Progress information
 func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Program, imageName string) error {
+	if logger.VerboseMode {
+		logger.Printf("Starting to read build logs for image: %s\r\n", imageName)
+	}
+
 	// Create a new JSON decoder
 	decoder := json.NewDecoder(reader)
 
 	for stop := false; !stop; {
 		select {
 		case <-ctx.Done():
+			if logger.VerboseMode {
+				logger.Printf("Build log reading cancelled for image: %s\r\n", imageName)
+			}
 			stop = true
 		default:
 			var step string
@@ -262,6 +365,9 @@ func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Prog
 
 			// Send the step to the spinner
 			if err != nil {
+				if logger.VerboseMode {
+					logger.Printf("Build error for image %s: %v\r\n", imageName, err)
+				}
 				p.Send(multispinner.ProcessState{
 					Icon:   style.CrossIcon.Render(),
 					State:  "building",
@@ -274,6 +380,9 @@ func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Prog
 			}
 
 			if step != "" {
+				if logger.VerboseMode {
+					logger.Printf("Build step for image %s: %s\r\n", imageName, step)
+				}
 				p.Send(multispinner.ProcessState{
 					State:  "building",
 					Type:   "image",
@@ -282,6 +391,10 @@ func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Prog
 				})
 			}
 		}
+	}
+
+	if logger.VerboseMode {
+		logger.Printf("Build log reading completed for image: %s\r\n", imageName)
 	}
 
 	// Send the final message to the spinner
@@ -487,6 +600,9 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 		_, err := c.client.ImageInspect(ctx, service.Image)
 		if err == nil {
 			// Image already exists, skip pulling
+			if logger.VerboseMode {
+				logger.Printf("Image already exists, skipping pull: %s\r\n", service.Image)
+			}
 			continue
 		}
 
@@ -496,14 +612,28 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 			// Image does not exist and does not need to be built
 			// Add the image to the list of images to pull
 			if service.OS != "" {
-				images[service.Image] = fmt.Sprintf("%s/%s", service.OS, service.Architecture)
+				platform := fmt.Sprintf("%s/%s", service.OS, service.Architecture)
+				images[service.Image] = platform
+				if logger.VerboseMode {
+					logger.Printf("Added image to pull list: %s (platform: %s)\r\n", service.Image, platform)
+				}
 			} else {
 				images[service.Image] = ""
+				if logger.VerboseMode {
+					logger.Printf("Added image to pull list: %s\r\n", service.Image)
+				}
+			}
+		} else {
+			if logger.VerboseMode {
+				logger.Printf("Image will be built, skipping pull: %s\r\n", service.Image)
 			}
 		}
 
 		// Recursively check dependencies
 		if service.Dependencies != nil {
+			if logger.VerboseMode {
+				logger.Printf("Checking dependencies for service: %s\r\n", service.Name)
+			}
 			c.filterImages(ctx, images, service.Dependencies...)
 		}
 	}
@@ -514,6 +644,17 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 	// Filter the images that need to be pulled
 	images := make(map[string]string)
 	c.filterImages(ctx, images, services...)
+
+	if logger.VerboseMode {
+		logger.Printf("Starting to pull %d images\r\n", len(images))
+		for imageName, platform := range images {
+			if platform != "" {
+				logger.Printf("  - Pulling image: %s (platform: %s)\r\n", imageName, platform)
+			} else {
+				logger.Printf("  - Pulling image: %s\r\n", imageName)
+			}
+		}
+	}
 
 	// Create a new progress container with a wait group
 	var wg sync.WaitGroup
@@ -540,6 +681,10 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 		go func() {
 			defer wg.Done()
 
+			if logger.VerboseMode {
+				logger.Printf("Starting pull for image: %s\r\n", imageName)
+			}
+
 			// Start pulling the image
 			responseBody, err := c.client.ImagePull(ctx, imageName, image.PullOptions{
 				Platform: platform,
@@ -547,7 +692,10 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
-				printer.Infof("Error pulling image %s: %v\n", imageName, err)
+				if logger.VerboseMode {
+					logger.Printf("Error pulling image %s: %v\r\n", imageName, err)
+				}
+				printer.Infof("Error pulling image %s: %v\r\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pulling image %s", imageName)
 
 				// Stop the progress bar without clearing
@@ -560,26 +708,35 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			decoder := json.NewDecoder(responseBody)
 			var current int
 			var event map[string]interface{}
-			for decoder.More() { //nolint:dupl // different commands
+			for decoder.More() {
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
-					printer.Infof("Pulling of image %s was canceled\n", imageName)
+					if logger.VerboseMode {
+						logger.Printf("Pulling of image %s was canceled\r\n", imageName)
+					}
+					printer.Infof("Pulling of image %s was canceled\r\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:
 					if err := decoder.Decode(&event); err != nil {
-						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
+						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\r\n", imageName, err))
 						continue
 					}
 
 					// Check for errorDetail and error fields
 					if errorDetail, ok := event["errorDetail"]; ok {
 						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
+							if logger.VerboseMode {
+								logger.Printf("Pull error for image %s: %s\r\n", imageName, errorMessage.(string))
+							}
 							errChan <- eris.New(errorMessage.(string))
 							continue
 						}
 					} else if errorMsg, okay := event["error"]; okay {
+						if logger.VerboseMode {
+							logger.Printf("Pull error for image %s: %s\r\n", imageName, errorMsg.(string))
+						}
 						errChan <- eris.New(errorMsg.(string))
 						continue
 					}
@@ -589,6 +746,9 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
 							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
 							if calculatedCurrent > current {
+								if logger.VerboseMode {
+									logger.Printf("Pull progress for image %s: %d%%\r\n", imageName, calculatedCurrent)
+								}
 								bar.SetCurrent(int64(calculatedCurrent))
 								current = calculatedCurrent
 							}
@@ -601,6 +761,9 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 			// Handle if the current and total is not available in the response body
 			// Usually, because docker image is already pulled from the cache
 			bar.SetCurrent(100)
+			if logger.VerboseMode {
+				logger.Printf("Completed pull for image: %s\r\n", imageName)
+			}
 		}()
 	}
 
@@ -617,7 +780,17 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 
 	// If there were any errors, return them as a combined error
 	if len(errs) > 0 {
+		if logger.VerboseMode {
+			logger.Printf("Image pull completed with %d errors\r\n", len(errs))
+			for i, err := range errs {
+				logger.Printf("  Error %d: %v\r\n", i+1, err)
+			}
+		}
 		return eris.New(fmt.Sprintf("Errors: %v", errs))
+	}
+
+	if logger.VerboseMode {
+		logger.Printf("All images pulled successfully\r\n")
 	}
 
 	return nil
@@ -642,7 +815,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 		// check if the image exists
 		_, err := c.client.ImageInspect(ctx, imageName)
 		if err != nil {
-			return eris.New(fmt.Sprintf("Error inspecting image %s for service %s: %v\n",
+			return eris.New(fmt.Sprintf("Error inspecting image %s for service %s: %v\r\n",
 				imageName, service.Name, err))
 		}
 
@@ -664,7 +837,7 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 
 			if err != nil {
 				// Handle the error: log it and send it to the error channel
-				printer.Infof("Error pushing image %s: %v\n", imageName, err)
+				printer.Infof("Error pushing image %s: %v\r\n", imageName, err)
 				errChan <- eris.Wrapf(err, "error pushing image %s", imageName)
 
 				// Stop the progress bar without clearing
@@ -677,16 +850,16 @@ func (c *Client) pushImages(ctx context.Context, pushTo string, authString strin
 			decoder := json.NewDecoder(responseBody)
 			var current int
 			var event map[string]interface{}
-			for decoder.More() { //nolint:dupl // different commands
+			for decoder.More() {
 				select {
 				case <-ctx.Done():
 					// Handle context cancellation
-					printer.Infof("Pushing image %s was canceled\n", imageName)
+					printer.Infof("Pushing image %s was canceled\r\n", imageName)
 					bar.Abort(false) // Stop the progress bar without clearing
 					return
 				default:
 					if err := decoder.Decode(&event); err != nil {
-						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\n", imageName, err))
+						errChan <- eris.New(fmt.Sprintf("Error decoding event for %s: %v\r\n", imageName, err))
 						continue
 					}
 
