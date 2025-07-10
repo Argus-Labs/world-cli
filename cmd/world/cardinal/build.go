@@ -73,7 +73,7 @@ func (h *Handler) Build(ctx context.Context, f models.BuildCardinalFlags) error 
 	if cfg.DockerEnv["CARDINAL_NAMESPACE"] == "" {
 		cfg.DockerEnv["CARDINAL_NAMESPACE"] = "defaultnamespace"
 	}
-	printer.Infof("Namespace: %s", cfg.DockerEnv["CARDINAL_NAMESPACE"])
+	printer.Infof("Namespace: %s\n", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 
 	group, groupCtx := errgroup.WithContext(ctx)
 
