@@ -147,10 +147,19 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 	// Read the tar archive
 	tarReader := bytes.NewReader(buf.Bytes())
 
+	sourcePath := "."
+	githubToken := os.Getenv("ARGUS_WEV2_GITHUB_TOKEN")
+	if githubToken == "" {
+		return nil, eris.New("ARGUS_WEV2_GITHUB_TOKEN is not set")
+	}
 	buildOptions := build.ImageBuildOptions{
 		Dockerfile: "Dockerfile",
 		Tags:       []string{dockerService.Image},
 		Target:     dockerService.BuildTarget,
+		BuildArgs: map[string]*string{
+			"SOURCE_PATH":  &sourcePath,
+			"GITHUB_TOKEN": &githubToken,
+		},
 	}
 
 	if service.BuildkitSupport {
@@ -178,9 +187,10 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 		if err != nil {
 			return eris.Wrapf(err, "Failed to get relative path %s", path)
 		}
-		// Skip files that are not world.toml or inside the cardinal directory
-		if info.Name() != "world.toml" && !strings.HasPrefix(filepath.ToSlash(relPath), "cardinal/") {
-			return nil
+
+		// Skip .git directory and all files inside it
+		if info.Name() == ".git" {
+			return filepath.SkipDir
 		}
 
 		// Create a tar header for the file or directory

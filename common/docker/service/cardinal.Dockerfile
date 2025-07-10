@@ -1,21 +1,30 @@
 ################################
 # Build Image - Normal
 ################################
-FROM golang:1.24-bookworm AS build
+FROM golang:1.24 AS build
+
+ARG SOURCE_PATH
+ARG GITHUB_TOKEN
 
 WORKDIR /go/src/app
 
-# Copy the go module files and download the dependencies
-# We do this before copying the rest of the source code to avoid
-# having to re-download the dependencies every time we build the image
-COPY /cardinal/go.mod /cardinal/go.sum ./
-RUN go mod download
+# Set Go environment variables for private repositories
+ENV GOPRIVATE=github.com/argus-labs/*,pkg.world.dev/*
+
+# Configure git to use HTTPS with GitHub token
+RUN --mount=type=secret,id=github_token \
+    git config --global url."https://$(cat /run/secrets/github_token):x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+# Copy the entire source code
+COPY /${SOURCE_PATH} ./
+
+# Download dependencies
+RUN go mod tidy
 
 # Set the GOCACHE environment variable to /root/.cache/go-build to speed up build
 ENV GOCACHE=/root/.cache/go-build
 
-# Copy the rest of the source code and build the binary
-COPY /cardinal ./
+# Build the binary
 RUN --mount=type=cache,target="/root/.cache/go-build" go build -v -o /go/bin/app
 
 ################################
@@ -23,39 +32,8 @@ RUN --mount=type=cache,target="/root/.cache/go-build" go build -v -o /go/bin/app
 ################################
 FROM gcr.io/distroless/base-debian12 AS runtime
 
-# Copy world.toml to the image
-COPY world.toml world.toml
-
 # Copy the binary from the build image
 COPY --from=build /go/bin/app /usr/bin
 
 # Run the binary
 CMD ["app"]
-
-################################
-# Runtime Image - Debug
-################################
-FROM golang:1.24-bookworm AS runtime-debug
-
-WORKDIR /go/src/app
-
-# Install delve
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
-
-# Copy the go module files and download the dependencies
-# We do this before copying the rest of the source code to avoid
-# having to re-download the dependencies every time we build the image
-COPY /cardinal/go.mod /cardinal/go.sum ./
-RUN go mod download
-
-# Set the GOCACHE environment variable to /root/.cache/go-build to speed up build
-ENV GOCACHE=/root/.cache/go-build
-
-# Copy the rest of the source code and build the binary with debugging symbols
-COPY /cardinal ./
-RUN --mount=type=cache,target="/root/.cache/go-build" go build -gcflags="all=-N -l" -v -o /usr/bin/app
-
-# Copy world.toml to the image
-COPY world.toml world.toml
-
-CMD ["dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "/usr/bin/app"]

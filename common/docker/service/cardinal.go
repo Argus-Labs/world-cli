@@ -3,7 +3,6 @@ package service
 import (
 	_ "embed"
 	"fmt"
-	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -11,8 +10,20 @@ import (
 )
 
 const (
-	// mountCache is the Docker mount command to cache the go build cache.
-	mountCacheScript = `--mount=type=cache,target="/root/.cache/go-build"`
+// mountCache is the Docker mount command to cache the go build cache.
+// mountCacheScript = `--mount=type=cache,target="/root/.cache/go-build"`
+// mountSecret is the Docker mount command for GitHub token secret.
+// mountSecretScript = `--mount=type=secret,id=github_token`
+// gitConfigWithSecret is the git config command that uses the secret mount.
+//
+//	gitConfigWithSecret = `RUN --mount=type=secret,id=github_token \
+//	  git config --global \
+//	  url."https://$(cat /run/secrets/github_token):x-oauth-basic@github.com/".insteadOf "https://github.com/"`
+//
+// gitConfigWithEnv is the git config command that uses environment variable.
+//
+//	gitConfigWithEnv = `RUN git config --global \
+//	  url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"`
 )
 
 //nolint:gochecknoglobals // dockerfileContent is embedded at compile time and is read-only
@@ -36,7 +47,11 @@ func Cardinal(cfg *config.Config) Service {
 
 	dockerfile := dockerfileContent
 	if !BuildkitSupport {
-		dockerfile = strings.ReplaceAll(dockerfile, mountCacheScript, "")
+		// dockerfile = strings.ReplaceAll(dockerfile, mountCacheScript, "")
+		// dockerfile = strings.ReplaceAll(dockerfile, gitConfigWithSecret, gitConfigWithEnv)
+		// (not recommended) uncomment the lines above and comment out the panic if you want to support insecure builds
+		// without BuildKit. Insecure because this embeds the GitHub token value in the image layers
+		panic("BuildKit is required to build the Cardinal image. Please enable BuildKit in your Docker configuration.")
 	}
 
 	// Set env variables
