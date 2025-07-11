@@ -29,7 +29,7 @@ import (
 	"pkg.world.dev/world-cli/internal/pkg/tea/style"
 )
 
-func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Service) error {
+func (c *Client) buildImages(ctx context.Context, dockerServices ...service.Service) error { //nolint:gocognit, funlen
 	// Filter all services that need to be built
 	var (
 		serviceToBuild []service.Service
@@ -254,7 +254,7 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 }
 
 // The tar file is used to build the Docker image.
-func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
+func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error { //nolint:gocognit
 	var fileCount int
 	var totalSize int64
 
@@ -339,7 +339,10 @@ func (c *Client) addFileToTarWriter(baseDir string, tw *tar.Writer) error {
 //   - error: Error messages in various formats
 //   - stream: Stream output from build steps
 //   - progress: Progress information
-func (c *Client) readBuildLog(ctx context.Context, reader io.Reader, p *tea.Program, imageName string) error {
+//
+//nolint:gocognit
+func (c *Client) readBuildLog(ctx context.Context,
+	reader io.Reader, p *tea.Program, imageName string) error {
 	if logger.VerboseMode {
 		logger.Printf("Starting to read build logs for image: %s\r\n", imageName)
 	}
@@ -601,6 +604,8 @@ func (c *Client) parseNonBuildkitResp(decoder *json.Decoder, stop *bool) (string
 // Remove duplicates.
 // Remove images that are already pulled.
 // Remove images that need to be built.
+//
+//nolint:gocognit
 func (c *Client) filterImages(ctx context.Context, images map[string]string, services ...service.Service) {
 	for _, service := range services {
 		// check if the image exists
@@ -615,7 +620,7 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 
 		// check if the image needs to be built
 		// if the service has a Dockerfile, it needs to be built
-		if service.Dockerfile == "" {
+		if service.Dockerfile == "" { //nolint:nestif // need nesting
 			// Image does not exist and does not need to be built
 			// Add the image to the list of images to pull
 			if service.OS != "" {
@@ -647,7 +652,7 @@ func (c *Client) filterImages(ctx context.Context, images map[string]string, ser
 }
 
 // Pulls the image if it does not exist.
-func (c *Client) pullImages(ctx context.Context, services ...service.Service) error { //nolint:gocognit
+func (c *Client) pullImages(ctx context.Context, services ...service.Service) error { //nolint:gocognit,funlen
 	// Filter the images that need to be pulled
 	images := make(map[string]string)
 	c.filterImages(ctx, images, services...)
@@ -732,7 +737,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 					}
 
 					// Check for errorDetail and error fields
-					if errorDetail, ok := event["errorDetail"]; ok {
+					if errorDetail, ok := event["errorDetail"]; ok { //nolint:nestif // need nesting
 						if errorMessage, okay := errorDetail.(map[string]interface{})["message"]; okay {
 							if logger.VerboseMode {
 								logger.Printf("Pull error for image %s: %s\r\n", imageName, errorMessage.(string))
@@ -749,7 +754,7 @@ func (c *Client) pullImages(ctx context.Context, services ...service.Service) er
 					}
 
 					// Handle progress updates
-					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok {
+					if progressDetail, ok := event["progressDetail"].(map[string]interface{}); ok { //nolint:nestif // need nesting
 						if total, okay := progressDetail["total"].(float64); okay && total > 0 {
 							calculatedCurrent := int(progressDetail["current"].(float64) * 100 / total)
 							if calculatedCurrent > current {
