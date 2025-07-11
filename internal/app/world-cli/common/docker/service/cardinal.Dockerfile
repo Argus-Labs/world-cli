@@ -11,7 +11,7 @@ WORKDIR /go/src/app
 # Set Go environment variables for private repositories
 ENV GOPRIVATE=github.com/argus-labs/*,pkg.world.dev/*
 
-RUN echo "DEBUG: GITHUB_TOKEN is ${GITHUB_TOKEN}" >&2
+RUN echo "DEBUG: GITHUB_TOKEN is ${GITHUB_TOKEN}"
 
 # Configure git to use HTTPS with GitHub token
 RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"

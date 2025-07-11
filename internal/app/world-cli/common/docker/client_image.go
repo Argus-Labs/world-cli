@@ -220,6 +220,7 @@ func (c *Client) buildImage(ctx context.Context, dockerService service.Service) 
 		logger.Printf("  - Build target: %s\r\n", dockerService.BuildTarget)
 		logger.Printf("  - Source path: %s\r\n", sourcePath)
 		logger.Printf("  - BuildKit support: %t\r\n", service.BuildkitSupport)
+		logger.Printf("  - DOCKER_BUILDKIT env: %s\r\n", os.Getenv("DOCKER_BUILDKIT"))
 	}
 
 	buildOptions := build.ImageBuildOptions{
