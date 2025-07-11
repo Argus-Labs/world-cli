@@ -133,7 +133,7 @@ func main() {
 	)
 
 	// Set verbose mode if the flag is enabled
-	if root.CLI.Verbose {
+	if CLI.Verbose {
 		logger.VerboseMode = true
 	}
 

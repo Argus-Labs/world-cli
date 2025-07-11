@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"pkg.world.dev/world-cli/internal/app/world-cli/common/config"
-	"pkg.world.dev/world-cli/internal/app/world-cli/common/logger"
+	"pkg.world.dev/world-cli/internal/pkg/logger"
 )
 
 const (
