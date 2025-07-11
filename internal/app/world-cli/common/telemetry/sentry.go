@@ -25,7 +25,9 @@ func SentryInit(sentryDsn string, env string, appVersion string) {
 			Release:            fmt.Sprintf("world-cli@%s", appVersion),
 		})
 		if err != nil {
-			log.Err(err).Msg("Cannot initialize sentry")
+			log.Err(err).Msg("Cannot initialize sentry. \r\n" +
+				" Please check your SENTRY_DSN in your GitHub Actions secrets for World CLI repository. \r\n" +
+				" If you are running locally, you can ignore this message.\r\n")
 			return
 		}
 
