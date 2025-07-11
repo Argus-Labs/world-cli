@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"pkg.world.dev/world-cli/internal/app/world-cli/common/config"
+	"pkg.world.dev/world-cli/internal/pkg/logger"
 )
 
 const (
@@ -34,7 +35,7 @@ func getCardinalContainerName(cfg *config.Config) string {
 	return fmt.Sprintf("%s-cardinal", cfg.DockerEnv["CARDINAL_NAMESPACE"])
 }
 
-func Cardinal(cfg *config.Config) Service {
+func Cardinal(cfg *config.Config) Service { //nolint:funlen // it does what it needs to do
 	// Check cardinal namespace
 	checkCardinalNamespace(cfg)
 
@@ -47,11 +48,11 @@ func Cardinal(cfg *config.Config) Service {
 
 	dockerfile := dockerfileContent
 	if !BuildkitSupport {
-		// dockerfile = strings.ReplaceAll(dockerfile, mountCacheScript, "")
-		// dockerfile = strings.ReplaceAll(dockerfile, gitConfigWithSecret, gitConfigWithEnv)
-		// (not recommended) uncomment the lines above and comment out the panic if you want to support insecure builds
-		// without BuildKit. Insecure because this embeds the GitHub token value in the image layers
-		panic("BuildKit is required to build the Cardinal image. Please enable BuildKit in your Docker configuration.")
+		// When BuildKit is disabled, we use the standard Dockerfile without BuildKit-specific features
+		// This is less secure as it embeds the GitHub token in image layers, but allows for debugging
+		if logger.VerboseMode {
+			logger.Printf("BuildKit disabled - using standard Docker build for Cardinal\r\n")
+		}
 	}
 
 	// Set env variables

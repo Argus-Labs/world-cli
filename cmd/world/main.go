@@ -131,6 +131,12 @@ func main() {
 			Summary: true,
 		}),
 	)
+
+	// Set verbose mode if the flag is enabled
+	if CLI.Verbose {
+		logger.VerboseMode = true
+	}
+
 	realCtx := contextWithSigterm(context.Background())
 	SetKongParentsAndContext(realCtx, dependencies, &CLI)
 	SetKongParentsAndContext(realCtx, dependencies, &CardinalCmdPlugin)

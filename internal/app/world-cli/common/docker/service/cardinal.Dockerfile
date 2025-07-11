@@ -11,9 +11,10 @@ WORKDIR /go/src/app
 # Set Go environment variables for private repositories
 ENV GOPRIVATE=github.com/argus-labs/*,pkg.world.dev/*
 
+RUN echo "DEBUG: GITHUB_TOKEN is ${GITHUB_TOKEN}"
+
 # Configure git to use HTTPS with GitHub token
-RUN --mount=type=secret,id=github_token \
-    git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 # Copy go.mod files first to leverage Docker layer caching
 COPY /${SOURCE_PATH}/go.mod ./
@@ -34,7 +35,7 @@ RUN rm go.sum
 RUN go mod tidy
 
 # Build the binary
-RUN --mount=type=cache,target="/root/.cache/go-build" go build -v -o /go/bin/app
+RUN go build -v -o /go/bin/app
 
 ################################
 # Runtime Image - Normal

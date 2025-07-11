@@ -70,7 +70,6 @@ Thumbs.db
 *.log
 
 # Generated Go files (protobuf, codegen)
-*.pb.go
 *.pb.gw.go
 *.gen.go
 
