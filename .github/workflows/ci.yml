@@ -16,7 +16,7 @@ jobs:
     runs-on: namespace-profile-linux-4vcpu-8gb-cached
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Golang
         uses: actions/setup-go@v5
@@ -62,7 +62,7 @@ jobs:
       GO_VERSION: 1.24.0
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Golang
         uses: actions/setup-go@v5
@@ -108,7 +108,7 @@ jobs:
     if: ${{ github.event_name != 'push' || contains(github.event.head_commit.modified, '**.md') || contains(github.event.head_commit.added, '**.md') }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       ## detect errors from markdownlint-cli and create annotations for them
       - uses: xt0rted/markdownlint-problem-matcher@v3
       - uses: articulate/actions-markdownlint@v1
@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Go
         uses: actions/setup-go@v5
