@@ -118,6 +118,13 @@ func (c *Client) Start(ctx context.Context,
 		}
 	}()
 
+	// Set default namespace if not provided
+	if namespace == "" {
+		logger.Warn("CARDINAL_NAMESPACE not provided, defaulting to defaultnamespace")
+		namespace = "defaultnamespace"
+		c.cfg.DockerEnv["CARDINAL_NAMESPACE"] = namespace
+	}
+
 	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
 	err := c.createNetworkIfNotExists(ctx, namespace)
 	if err != nil {
@@ -194,6 +201,15 @@ func (c *Client) Purge(ctx context.Context, serviceBuilders ...service.Builder) 
 	if err != nil {
 		return eris.Wrap(err, "Failed to remove containers")
 	}
+
+	namespace := c.cfg.DockerEnv["CARDINAL_NAMESPACE"]
+	// Set default namespace if not provided
+	if namespace == "" {
+		logger.Warn("CARDINAL_NAMESPACE not provided, defaulting to defaultnamespace")
+		namespace = "defaultnamespace"
+		c.cfg.DockerEnv["CARDINAL_NAMESPACE"] = namespace
+	}
+
 
 	err = c.processVolume(ctx, REMOVE, c.cfg.DockerEnv["CARDINAL_NAMESPACE"])
 	if err != nil {
