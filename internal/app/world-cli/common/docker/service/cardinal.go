@@ -126,9 +126,9 @@ func Cardinal(cfg *config.Config) Service { //nolint:funlen // it does what it n
 		BuildTarget: runtime,
 		Dependencies: []Service{
 			{
-				Name: "golang:1.24-bookworm",
+				Name: "golang:1.23-bookworm",
 				Config: container.Config{
-					Image: "golang:1.24-bookworm",
+					Image: "golang:1.23-bookworm",
 				},
 			},
 			{

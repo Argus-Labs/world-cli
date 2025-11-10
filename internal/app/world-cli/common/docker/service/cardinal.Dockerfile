@@ -1,7 +1,7 @@
 ################################
 # Build Image - Normal
 ################################
-FROM golang:1.24 AS build
+FROM golang:1.23 AS build
 
 ARG SOURCE_PATH
 ARG GITHUB_TOKEN
