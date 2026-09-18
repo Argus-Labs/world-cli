@@ -240,7 +240,7 @@ Clients launch with a minimal `PATH` and often cannot find `world`. Use an absol
 }
 ```
 
-Run `which world` to get yours.
+Run `which world` on macOS/Linux or `Get-Command world` in PowerShell to get yours.
 
 ## Troubleshooting
 
